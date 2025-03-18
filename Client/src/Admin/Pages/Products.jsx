@@ -5,7 +5,6 @@ import "react-toastify/dist/ReactToastify.css";
 import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
 import productsApi from "../../api/productsApi";
-import axios from "axios";
 import { Scrollbars } from "react-custom-scrollbars-2";
 
 const Products = () => {

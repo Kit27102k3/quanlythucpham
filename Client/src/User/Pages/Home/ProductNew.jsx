@@ -42,6 +42,7 @@ function ProductNew() {
                 alt=""
                 className="w-64 h-64 object-cover hover-scale-up"
               />
+              <div className="lg:bg-red-500 w-10 p-1 text-white rounded lg:absolute top-2 left-2">-5%</div>
               <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
                 <button className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
                   Thêm vào giỏ
