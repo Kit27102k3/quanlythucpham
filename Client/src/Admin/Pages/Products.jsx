@@ -6,6 +6,7 @@ import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
 import productsApi from "../../api/productsApi";
 import axios from "axios";
+import { Scrollbars } from "react-custom-scrollbars-2";
 
 const Products = () => {
   const [visible, setVisible] = useState(false);
@@ -80,10 +81,10 @@ const Products = () => {
         </IconField>
         <Dropdown
           value={selectedProduct}
-          options={products.map((product) => ({
-            label: product.productCode,
-            value: product._id,
-          }))}
+          // options={products.map((product) => ({
+          //   label: product.productCode,
+          //   value: product._id,
+          // }))}
           onChange={handleProductChange}
           placeholder="Tất cả"
           className="w-[200px] text-[10px]"
@@ -119,52 +120,54 @@ const Products = () => {
           </tr>
         </thead>
         <tbody>
-          {products.map((product) => (
-            <tr key={product._id} className="border-b">
-              <td className="border border-gray-300 p-2">
-                {product.productName}
-              </td>
-              <td className="border border-gray-300 p-2">
-                {product.productBrand}
-              </td>
-              <td className="border border-gray-300 p-2">
-                {product.productCategory}
-              </td>
-              <td className="border border-gray-300 p-2">
-                {product.productPrice}
-              </td>
-              <td className="border border-gray-300 p-2">
-                {product.productStatus}
-              </td>
-              <td className="border border-gray-300 p-2">
-                {product.productDiscount}
-              </td>
-              <td className="border border-gray-300 p-2">
-                {product.productStock}
-              </td>
-              <td className="border border-gray-300 p-2">
-                {product.productCode}
-              </td>
-              <td className="border border-gray-300 p-2">
-                {product.productTypeName}
-              </td>
-              <td className="border border-gray-300 p-2">
-                {product.productOrigin}
-              </td>
-              <td className="border border-gray-300 p-2">
-                <Button
-                  label="Sửa"
-                  className="p-1 bg-red-500 text-white rounded text-[12px] ml-2"
-                  onClick={() => handleUpdateProduct(product._id)}
-                />
-                <Button
-                  label="Xóa"
-                  className="p-1 bg-red-500 text-white rounded text-[12px] ml-2"
-                  onClick={() => handleDeleteProduct(product._id)}
-                />
-              </td>
-            </tr>
-          ))}
+          {products
+            .filter((product) => product) // Loại bỏ các phần tử undefined/null
+            .map((product) => (
+              <tr key={product._id} className="border-b">
+                <td className="border border-gray-300 p-2">
+                  {product.productName}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {product.productBrand}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {product.productCategory}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {product.productPrice}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {product.productStatus}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {product.productDiscount}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {product.productStock}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {product.productCode}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {product.productTypeName}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  {product.productOrigin}
+                </td>
+                <td className="border border-gray-300 p-2">
+                  <Button
+                    label="Sửa"
+                    className="p-1 bg-red-500 text-white rounded text-[12px] ml-2"
+                    onClick={() => handleUpdateProduct(product._id)}
+                  />
+                  <Button
+                    label="Xóa"
+                    className="p-1 bg-red-500 text-white rounded text-[12px] ml-2"
+                    onClick={() => handleDeleteProduct(product._id)}
+                  />
+                </td>
+              </tr>
+            ))}
         </tbody>
       </table>
 
@@ -179,6 +182,7 @@ const Products = () => {
           setVisible={setVisible}
           products={products}
           setProducts={setProducts}
+          fetchProducts={fetchProducts}
         />
       </Dialog>
       <ToastContainer />
@@ -186,7 +190,7 @@ const Products = () => {
   );
 };
 
-const AddProduct = ({ setVisible, products, setProducts }) => {
+const AddProduct = ({ setVisible, products, setProducts, fetchProducts }) => {
   const [product, setProduct] = useState({
     productName: "",
     productPrice: "",
@@ -230,306 +234,334 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
-    const updatedImages = [...product.productImages, ...files];
-    setProduct({
-      ...product,
-      productImages: updatedImages,
-    });
-    const newPreviews = files.map((file) => URL.createObjectURL(file));
-    setImagePreviews([...imagePreviews, ...newPreviews]);
+    const validFiles = files.filter((file) => file instanceof File);
+    setProduct((prev) => ({
+      ...prev,
+      productImages: [...prev.productImages, ...validFiles],
+    }));
+    const newPreviews = validFiles.map((file) => URL.createObjectURL(file));
+    setImagePreviews((prev) => [...prev, ...newPreviews]);
   };
-
   const handleRemoveImage = (index) => {
-    const updatedImages = product.productImages.filter((_, i) => i !== index);
-    const updatedPreviews = imagePreviews.filter((_, i) => i !== index);
-
-    setProduct({
-      ...product,
-      productImages: updatedImages,
+    setProduct((prev) => ({
+      ...prev,
+      productImages: prev.productImages.filter((_, i) => i !== index),
+    }));
+    setImagePreviews((prev) => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
     });
-    setImagePreviews(updatedPreviews);
-    URL.revokeObjectURL(imagePreviews[index]);
   };
+
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
+    };
+  }, [imagePreviews]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const formData = new FormData();
     Object.keys(product).forEach((key) => {
-      formData.append(key, product[key]);
+      if (product[key] !== null && product[key] !== undefined) {
+        if (typeof product[key] === "object" && !Array.isArray(product[key])) {
+          formData.append(key, JSON.stringify(product[key]));
+        } else {
+          formData.append(key, String(product[key]));
+        }
+      }
     });
     product.productImages.forEach((file) => {
-      formData.append("productImages", file);
+      if (file instanceof File) {
+        formData.append("productImages", file);
+      }
     });
-
     try {
-      const response = await axios.post(
-        "http://localhost:8080/api/products",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-      console.log(response.data);
-      toast.success("Product added successfully!");
+      const response = await productsApi.createProduct(formData);
+      toast.success("Thêm sản phẩm thành công!");
       setVisible(false);
-      setProducts([...products, response.data]);
+      setProducts((prev) => [...prev, response.data]);
+      fetchProducts();
     } catch (error) {
       console.error(
         "Error while submitting data:",
         error.response?.data || error.message
       );
-      toast.error("Failed to add product.");
+      if (error.response?.data?.error) {
+        Object.entries(error.response.data.error).forEach(([key, message]) => {
+          console.error(`${key}: ${message}`);
+        });
+      }
+      toast.error(
+        `Failed to add product: ${
+          error.response?.data?.message || error.message
+        }`
+      );
     }
   };
+
   return (
-    <div className="p-4 card flex flex-col justify-content-center mt-2">
-      <div className="flex flex-col gap-6 mb-5">
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productName"
-            name="productName"
-            value={product.productName}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productName" className="text-sm -mt-3">
-            Tên sản phẩm
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productPrice"
-            name="productPrice"
-            value={product.productPrice}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productPrice" className="text-sm -mt-3">
-            Giá sản phẩm
-          </label>
-        </FloatLabel>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">Hình ảnh</label>
-          <input
-            type="file"
-            multiple
-            onChange={handleImageUpload}
-            accept="image/*"
-            className="border p-2 rounded w-full"
-          />
-          <div className="flex flex-wrap mt-2">
-            {imagePreviews.map((preview, index) => (
-              <div key={index} className="relative mr-2 mb-2">
-                <img
-                  src={preview}
-                  alt={`Preview ${index}`}
-                  className="w-24 h-24 object-cover"
+    <>
+      <Scrollbars
+        style={{
+          width: "100%",
+          height: "550px",
+        }}
+      >
+        <div className="p-4 card flex flex-col justify-content-center mt-2">
+          <div className="flex flex-col gap-6 mb-5">
+            <div className="flex justify-between gap-4">
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-[350px]"
+                  id="productName"
+                  name="productName"
+                  value={product.productName}
+                  onChange={handleInputChange}
                 />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveImage(index)}
-                  className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                >
-                  &times;
-                </button>
+                <label htmlFor="productName" className="text-sm -mt-3">
+                  Tên sản phẩm
+                </label>
+              </FloatLabel>
+
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-[350px]"
+                  id="productPrice"
+                  name="productPrice"
+                  value={product.productPrice}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productPrice" className="text-sm -mt-3">
+                  Giá sản phẩm
+                </label>
+              </FloatLabel>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Hình ảnh</label>
+              <input
+                type="file"
+                multiple
+                onChange={handleImageUpload}
+                accept="image/*"
+                className="border p-2 rounded w-full"
+              />
+              <div className="flex flex-wrap mt-2">
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className="relative mr-2 mb-2">
+                    <img
+                      src={preview}
+                      alt={`Preview ${index}`}
+                      className="w-24 h-24 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            <div className="flex justify-between items-center gap-2">
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-full"
+                  id="productCategory"
+                  name="productCategory"
+                  value={product.productCategory}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productCategory" className="text-sm -mt-3">
+                  Loại sản phẩm
+                </label>
+              </FloatLabel>
+
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-full"
+                  id="productBrand"
+                  name="productBrand"
+                  value={product.productBrand}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productBrand" className="text-sm -mt-3">
+                  Thương hiệu
+                </label>
+              </FloatLabel>
+
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-full"
+                  id="productStatus"
+                  name="productStatus"
+                  value={product.productStatus}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productStatus" className="text-sm -mt-3">
+                  Tình trạng
+                </label>
+              </FloatLabel>
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-full"
+                  id="productDiscount"
+                  name="productDiscount"
+                  value={product.productDiscount}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productDiscount" className="text-sm -mt-3">
+                  Giảm giá
+                </label>
+              </FloatLabel>
+            </div>
+
+            <FloatLabel>
+              <InputText
+                className="border p-2 rounded w-full"
+                id="productInfo"
+                name="productInfo"
+                value={product.productInfo}
+                onChange={handleInputChange}
+              />
+              <label htmlFor="productInfo" className="text-sm -mt-3">
+                Thông tin
+              </label>
+            </FloatLabel>
+
+            <FloatLabel>
+              <InputText
+                className="border p-2 rounded w-full"
+                id="productDetails"
+                name="productDetails"
+                value={product.productDetails}
+                onChange={handleInputChange}
+              />
+              <label htmlFor="productDetails" className="text-sm -mt-3">
+                Thông tin chi tiết
+              </label>
+            </FloatLabel>
+
+            <div className="flex items-center justify-between">
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-[230px]"
+                  id="productStock"
+                  name="productStock"
+                  value={product.productStock}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productStock" className="text-sm -mt-3">
+                  Số lượng tồn kho
+                </label>
+              </FloatLabel>
+
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-[230px]"
+                  id="productCode"
+                  name="productCode"
+                  value={product.productCode}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productCode" className="text-sm -mt-3">
+                  Mã sản phẩm
+                </label>
+              </FloatLabel>
+
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-[230px]"
+                  id="productWeight"
+                  name="productWeight"
+                  value={product.productWeight}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productWeight" className="text-sm -mt-3">
+                  Khối lượng
+                </label>
+              </FloatLabel>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-[230px]"
+                  id="productPromoPrice"
+                  name="productPromoPrice"
+                  value={product.productPromoPrice}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productPromoPrice" className="text-sm -mt-3">
+                  Giá khuyến mãi
+                </label>
+              </FloatLabel>
+
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-[230px]"
+                  id="productWarranty"
+                  name="productWarranty"
+                  value={product.productWarranty}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productWarranty" className="text-sm -mt-3">
+                  Bảo hành
+                </label>
+              </FloatLabel>
+
+              <FloatLabel>
+                <InputText
+                  className="border p-2 rounded w-[230px]"
+                  id="productOrigin"
+                  name="productOrigin"
+                  value={product.productOrigin}
+                  onChange={handleInputChange}
+                />
+                <label htmlFor="productOrigin" className="text-sm -mt-3">
+                  Xuất xứ
+                </label>
+              </FloatLabel>
+            </div>
+            <FloatLabel>
+              <InputText
+                className="border p-2 rounded w-full"
+                id="productIntroduction"
+                name="productIntroduction"
+                value={product.productIntroduction}
+                onChange={handleInputChange}
+              />
+              <label htmlFor="productIntroduction" className="text-sm -mt-3">
+                Giới thiệu
+              </label>
+            </FloatLabel>
+
+            <FloatLabel>
+              <InputText
+                className="border p-2 rounded w-full"
+                id="productDescription"
+                name="productDescription"
+                value={product.productDescription}
+                onChange={handleInputChange}
+              />
+              <label htmlFor="productDescription" className="text-sm -mt-3">
+                Mô tả
+              </label>
+            </FloatLabel>
           </div>
+
+          <Button
+            label="Thêm"
+            onClick={handleSubmit}
+            className="p-3 bg-blue-500 text-white rounded text-[12px] gap-2"
+          />
         </div>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productCategory"
-            name="productCategory"
-            value={product.productCategory}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productCategory" className="text-sm -mt-3">
-            Loại sản phẩm
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productBrand"
-            name="productBrand"
-            value={product.productBrand}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productBrand" className="text-sm -mt-3">
-            Thương hiệu
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productStatus"
-            name="productStatus"
-            value={product.productStatus}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productStatus" className="text-sm -mt-3">
-            Tình trạng
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productDiscount"
-            name="productDiscount"
-            value={product.productDiscount}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productDiscount" className="text-sm -mt-3">
-            Giảm giá
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productInfo"
-            name="productInfo"
-            value={product.productInfo}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productInfo" className="text-sm -mt-3">
-            Thông tin
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productDetails"
-            name="productDetails"
-            value={product.productDetails}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productDetails" className="text-sm -mt-3">
-            Thông tin chi tiết
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productStock"
-            name="productStock"
-            value={product.productStock}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productStock" className="text-sm -mt-3">
-            Số lượng tồn kho
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productCode"
-            name="productCode"
-            value={product.productCode}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productCode" className="text-sm -mt-3">
-            Mã sản phẩm
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productWeight"
-            name="productWeight"
-            value={product.productWeight}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productWeight" className="text-sm -mt-3">
-            Khối lượng
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productPromoPrice"
-            name="productPromoPrice"
-            value={product.productPromoPrice}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productPromoPrice" className="text-sm -mt-3">
-            Giá khuyến mãi
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productWarranty"
-            name="productWarranty"
-            value={product.productWarranty}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productWarranty" className="text-sm -mt-3">
-            Bảo hành
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productOrigin"
-            name="productOrigin"
-            value={product.productOrigin}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productOrigin" className="text-sm -mt-3">
-            Xuất xứ
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productIntroduction"
-            name="productIntroduction"
-            value={product.productIntroduction}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productIntroduction" className="text-sm -mt-3">
-            Giới thiệu
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productDescription"
-            name="productDescription"
-            value={product.productDescription}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productDescription" className="text-sm -mt-3">
-            Mô tả
-          </label>
-        </FloatLabel>
-      </div>
-
-      <Button
-        label="Thêm"
-        onClick={handleSubmit}
-        className="p-3 bg-blue-500 text-white rounded text-[12px] gap-2"
-      />
-    </div>
+      </Scrollbars>
+    </>
   );
 };
 
