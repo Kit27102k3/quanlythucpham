@@ -1,0 +1,59 @@
+@tailwind utilities;
+@import "tailwindcss/preflight";
+@import "tailwindcss";
+@import "primereact/resources/themes/lara-light-blue/theme.css"
+  layer(primereact);
+
+@layer tailwind-utilities {
+  @tailwind utilities;
+}
+
+
+.li-list {
+  font-size: "10px";
+  text-transform: none;
+  list-style-type: none;
+}
+
+.li-list:hover {
+  color: #51aa1b;
+}
+
+.dropdown {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 1s ease, transform 1s ease;
+}
+
+.dropdown.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.border-dashed {
+  border: none !important;
+}
+
+.p-your-input-class {
+  background-color: white !important;
+  color: black !important;
+}
+
+/* Ghi đè style cho các nút phân trang */
+.p-paginator .p-paginator-pages .p-paginator-page {
+  background-color: #ffffff !important; /* Nền trắng */
+  color: #000000 !important; /* Chữ đen */
+  border: 1px solid #51bb1a !important; /* Viền #51bb1a */
+}
+
+/* Ghi đè style cho nút đang được chọn (active) */
+.p-paginator .p-paginator-pages .p-highlight {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #51bb1a !important;
+}
+
+/* Chỉnh màu icon (<< < > >>) nếu muốn */
+.p-paginator .p-paginator-icon {
+  color: #000000 !important; /* Màu icon đen */
+}

@@ -1,0 +1,99 @@
+import "../../../index.css";
+
+const products = [
+  {
+    urlImage:
+      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
+    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
+    price: "13.000",
+  },
+  {
+    urlImage:
+      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
+    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
+    price: "13.000",
+  },
+  {
+    urlImage:
+      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
+    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
+    price: "13.000",
+  },
+  {
+    urlImage:
+      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
+    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
+    price: "13.000",
+  },
+];
+
+function ProductNew() {
+  return (
+    <>
+      <div className="grid grid-cols-2 lg:grid lg:grid-cols-4">
+        {products.map((product, index) => (
+          <div
+            key={index}
+            className="relative flex flex-col items-center group cursor-pointer"
+          >
+            <div className="relative overflow-hidden ">
+              <img
+                src={product.urlImage}
+                alt=""
+                className="w-64 h-64 object-cover hover-scale-up"
+              />
+              <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                <button className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
+                  Thêm vào giỏ
+                </button>
+                <button className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
+                  Xem chi tiết
+                </button>
+              </div>
+            </div>
+            <div className="flex flex-col items-center">
+              <p className="font-medium hover:text-[#51aa1b] text-sm">
+                {product.title.slice(0, 25)}...
+              </p>
+              <p className="text-[#51aa1b]">{product.price}đ</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 items-center justify-between">
+        <div className="p-4 rounded-lg relative">
+          <img
+            alt="fresh-grapes"
+            src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_banner_index_1.jpg?1721896755861"
+            className="my-2 rounded-md shadow-lg w-[585px] h-[327px]"
+          />
+          <div className="absolute top-[20%] left-[40px] ">
+              <h2 className="text-[#51aa1b] text-xl font-semibold">THỰC PHẨM SẠCH</h2>
+              <p className="text-2xl font-extralight">Đồ ăn tươi ngon <br /> Mỗi ngày</p>
+              <button className="bg-[#d73e6e] text-white w-[150px] hover:bg-secondary/80 mt-2 p-2 rounded-4xl cursor-pointer">
+                XEM THÊM
+              </button>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-lg relative">
+          <img
+            alt="fresh-lemon"
+            src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_banner_index_2.jpg?1721896755861"
+            className="my-2 rounded-md shadow-lg w-[585px] h-[327px]"
+          />
+          <div className="absolute left-[40px] top-[20%]">
+              <h2 className="text-[#51aa1b] text-xl font-semibold">THỰC PHẨM TƯƠI</h2>
+              <p className="text-2xl font-extralight">Giao nhanh <br /> Chớp mắt</p>
+              <button className="bg-[#fcc108] text-white w-[150px] hover:bg-secondary/80 mt-2 p-2 rounded-4xl cursor-pointer">
+                XEM THÊM
+              </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export default ProductNew;
