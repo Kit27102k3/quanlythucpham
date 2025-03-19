@@ -1,17 +1,13 @@
 import express from "express";
-import {
-  register,
-  login,
-  refreshToken,
-  logout,
-} from "../Controller/authController.js";
-import { verifyToken } from "../Middleware/authMiddleware.js";
+import { register, login, logout } from "../Controller/authController.js";
 import User from "../Model/Account/Register.js";
 
 const router = express.Router();
 
 router.post("/register", register);
 router.post("/login", login);
+router.post("/logout", logout);
+
 router.post("/refresh-token", async (req, res) => {
   const { refreshToken } = req.body; // Hoặc lấy từ cookies
 
@@ -20,41 +16,55 @@ router.post("/refresh-token", async (req, res) => {
   }
 
   try {
-    // Kiểm tra refresh token trong database
-    const user = await User.findOne({ refreshToken });
-    if (!user) {
+    // Kiểm tra refresh token trong bảng RefreshToken
+    const storedToken = await RefreshToken.findOne({ token: refreshToken });
+    if (!storedToken) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
 
     // Xác thực refresh token
-    jwt.verify(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET,
-      (err, decoded) => {
-        if (err) {
-          return res
-            .status(401)
-            .json({ message: "Invalid or expired refresh token" });
-        }
-
-        // Tạo access token mới
-        const accessToken = jwt.sign(
-          { id: user._id, email: user.email },
-          process.env.ACCESS_TOKEN_SECRET,
-          { expiresIn: "15m" } // Thời hạn của access token
-        );
-
-        // Trả về access token mới
-        res.json({ accessToken });
+    jwt.verify(refreshToken, "SECRET_REFRESH", async (err, decoded) => {
+      if (err) {
+        return res
+          .status(401)
+          .json({ message: "Invalid or expired refresh token" });
       }
-    );
+
+      // Lấy thông tin user từ decoded id
+      const user = await User.findById(decoded.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Tạo access token mới
+      const accessToken = jwt.sign({ id: user._id }, "SECRET_ACCESS", {
+        expiresIn: "15m",
+      });
+
+      // Tạo refresh token mới
+      const newRefreshToken = jwt.sign({ id: user._id }, "SECRET_REFRESH", {
+        expiresIn: "7d",
+      });
+
+      // Cập nhật lại refresh token trong database
+      storedToken.token = newRefreshToken;
+      await storedToken.save();
+
+      // Set lại cookie cho refresh token mới
+      res.cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "Strict",
+      });
+
+      // Trả về access token mới
+      res.json({ accessToken });
+    });
   } catch (error) {
     console.error("Error refreshing token:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
-router.post("/logout", logout);
 
 router.get("/profile", async function (req, res) {
   try {

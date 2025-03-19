@@ -21,8 +21,23 @@ export default function Register() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const validateForm = () => {
+    const { email, phone, firstName, lastName, userName, password } = formData;
+    if (!email || !phone || !firstName || !lastName || !userName || !password) {
+      toast.error("Vui lòng điền đầy đủ thông tin!");
+      return false;
+    }
+    if (password.length < 6) {
+      toast.error("Mật khẩu phải có ít nhất 6 ký tự!");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
+
     try {
       const response = await authApi.register(formData);
       toast.success("Đăng ký thành công!");
@@ -37,10 +52,18 @@ export default function Register() {
         userImage: "",
       });
     } catch (error) {
-      if (error.code === 110000) {
-        toast.error("Tên người dùng đã tồn tại. Vui lòng chọn tên khác.");
+      if (error.response && error.response.data) {
+        const { message } = error.response.data;
+        if (message.includes("duplicate key error")) {
+          toast.error(
+            "Tên người dùng hoặc email đã tồn tại. Vui lòng chọn tên khác."
+          );
+        } else {
+          toast.error(message || "Đăng ký không thành công!");
+        }
+      } else {
+        toast.error("Đăng ký không thành công!");
       }
-      toast.error("Đăng ký không thành công!");
     }
   };
 

@@ -10,7 +10,6 @@ const UserSchema = new mongoose.Schema(
     password: { type: String, required: true },
     address: { type: String, require: false, default: "" },
     userImage: { type: String, required: false, default: "" },
-    refreshToken: { type: String, required: false, default: "" },
   },
   { timestamps: true }
 );
