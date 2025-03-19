@@ -1,8 +1,23 @@
 import { Link, Outlet } from "react-router-dom";
-import useFetchUserProfile from "../../Until/useFetchUserProfile";
+import { useFetchUserProfile } from "../../Until/useFetchUserProfile";
+import { useState, useEffect } from "react";
+import authApi from "../../../api/authApi";
 
 function DefaultProfile() {
-  const { users, fetchUserProfile } = useFetchUserProfile();
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response = await authApi.getProfile();
+        setUsers(response.data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    fetchUserProfile();
+  }, []);
+
   return (
     <div className="w-full h-full ">
       <div className="grid grid-cols-1 sm:grid sm:grid-cols-[40%_60%] lg:grid-cols-[20%_80%]">
@@ -10,11 +25,9 @@ function DefaultProfile() {
           <h1 className="uppercase text-[19px] font-normal text-[#212B25] mb-1 ">
             Trang tài khoản
           </h1>
-          {users.map((user, index) => (
-            <p key={index} className="font-bold text-sm text-[#212B25] mb-2 ">
-              Xin chào, <span>{`${user.firstName} ${user.lastName}`} !</span>
-            </p>
-          ))}
+          <p className="font-bold text-sm text-[#212B25] mb-2 ">
+            Xin chào, <span>{`${users?.firstName} ${users?.lastName}`} !</span>
+          </p>
           <ul>
             <li>
               <Link

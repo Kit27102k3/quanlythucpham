@@ -1,15 +1,25 @@
 import { useState, useEffect } from "react";
 import authApi from "../../api/authApi";
+import axios from "axios";
 
-const useFetchUserProfile = () => {
-  const [users, setUsers] = useState([]);
+export const useFetchUserProfile = () => {
+  const [users, setUsers] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const fetchUserProfile = async () => {
+    const userId = localStorage.getItem("userId");
     try {
-      const response = await authApi.getProfile();
+      setLoading(true);
+      setError(null);
+      const response = await axios.get(
+        `http://localhost:8080/auth/profile/${userId}`
+      );
       setUsers(response.data);
-    } catch (error) {
-      console.log(error);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -17,7 +27,5 @@ const useFetchUserProfile = () => {
     fetchUserProfile();
   }, []);
 
-  return { users, fetchUserProfile };
+  return { users, loading, error, fetchUserProfile };
 };
-
-export default useFetchUserProfile;

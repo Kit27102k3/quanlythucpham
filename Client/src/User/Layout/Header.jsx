@@ -85,11 +85,14 @@ const Header = () => {
     try {
       await authApi.logout();
       localStorage.removeItem("accessToken");
-      setIsLoggedIn(false);
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("userId");
+      axios.interceptors.request.clear();
+      axios.interceptors.response.clear();
       toast.success("Đăng xuất thành công!");
       navigate("/");
     } catch (error) {
-      toast.error("Đăng xuất không thành công!");
+      console.log(error);
     }
   };
 
@@ -184,20 +187,27 @@ const Header = () => {
             <div className="flex items-center justify-end">
               <HoverCard.Root>
                 <HoverCard.Trigger>
-                  <Link href="/gio-hang" className="text-white"> {/* target="_blank" : chuyển tab mới nếu cần*/}
+                  <Link href="/gio-hang" className="text-white">
+                    {" "}
+                    {/* target="_blank" : chuyển tab mới nếu cần*/}
                     <Tooltip content="Giỏ hàng">
                       <i
                         className="pi pi-cart-minus"
                         style={{ fontSize: "22px" }}
                       >
-                        <Badge value="0" className="absolute top-21 right-4 lg:right-32 lg:top-16" />
+                        <Badge
+                          value="0"
+                          className="absolute top-21 right-4 lg:right-32 lg:top-16"
+                        />
                       </i>
                     </Tooltip>
                   </Link>
                 </HoverCard.Trigger>
                 <HoverCard.Content maxWidth="400px">
                   <Flex gap="4">
-                    <Text><Products/></Text>
+                    <Text>
+                      <Products />
+                    </Text>
                   </Flex>
                 </HoverCard.Content>
               </HoverCard.Root>

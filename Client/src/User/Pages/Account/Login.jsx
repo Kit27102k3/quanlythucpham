@@ -12,6 +12,7 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
@@ -19,10 +20,13 @@ const Login = () => {
     try {
       const response = await authApi.login({ userName: username, password });
       localStorage.setItem("accessToken", response.data.accessToken);
+      localStorage.setItem("refreshToken", response.data.refreshToken);
+      localStorage.setItem("userId", response.data.userId);
+      setIsLoggedIn(true);
       toast.success("Đăng nhập thành công!");
       navigate("/");
     } catch (error) {
-      toast.error("Đăng nhập không thành công!");
+      console.log(error);
     }
   };
 
@@ -70,7 +74,9 @@ const Login = () => {
               onChange={(e) => setUsername(e.target.value)}
               required
             />
-            <label className="-mt-2" htmlFor="username">Username</label>
+            <label className="-mt-2" htmlFor="username">
+              Username
+            </label>
           </FloatLabel>
 
           <FloatLabel>
@@ -88,7 +94,9 @@ const Login = () => {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <label className="-mt-2" htmlFor="password">Password</label>
+            <label className="-mt-2" htmlFor="password">
+              Password
+            </label>
           </FloatLabel>
 
           <div className="mt-5 flex flex-col md:flex-row items-center justify-between w-full text-sm">

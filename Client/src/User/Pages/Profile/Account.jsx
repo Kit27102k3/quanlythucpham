@@ -22,23 +22,21 @@ function Account() {
         Thông tin tài khoản
       </h1>
       <>
-        {users.map((user, index) => (
-          <div key={index} className="flex flex-col gap-4">
-            <p className="text-sm font-bold">
-              Họ tên:{" "}
-              <span className="font-normal">{`${user.firstName} ${user.lastName}`}</span>
-            </p>
-            <p className="text-sm font-bold">
-              Email: <span className="font-normal">{user.email}</span>
-            </p>
-            <p className="text-sm font-bold">
-              Điện thoại: <span className="font-normal">{user.phone}</span>
-            </p>
-            <p className="text-sm font-bold">
-              Địa chỉ: <span className="font-normal">{user.address}</span>
-            </p>
-          </div>
-        ))}
+        <div className="flex flex-col gap-4">
+          <p className="text-sm font-bold">
+            Họ tên:{" "}
+            <span className="font-normal">{`${users?.firstName} ${users?.lastName}`}</span>
+          </p>
+          <p className="text-sm font-bold">
+            Email: <span className="font-normal">{users?.email}</span>
+          </p>
+          <p className="text-sm font-bold">
+            Điện thoại: <span className="font-normal">{users?.phone}</span>
+          </p>
+          <p className="text-sm font-bold">
+            Địa chỉ: <span className="font-normal">{users?.address}</span>
+          </p>
+        </div>
       </>
     </div>
   );

@@ -11,48 +11,42 @@ export const register = async (req, res) => {
       firstName,
       lastName,
       userName,
-      address,
       password,
+      address,
       userImage,
     } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "Email đã được sử dụng" });
+      return res.status(400).json({ message: "Email already in use" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const newUser = new User({
       email,
       phone,
       firstName,
       lastName,
       userName,
-      address,
       password: hashedPassword,
+      address,
       userImage,
     });
-
     await newUser.save();
 
     const refreshToken = jwt.sign({ id: newUser._id }, "SECRET_REFRESH", {
       expiresIn: "7d",
     });
+    await RefreshToken.create({ userId: newUser._id, token: refreshToken });
 
-    const newRefreshToken = new RefreshToken({
-      userId: newUser._id,
-      token: refreshToken,
-    });
-    await newRefreshToken.save();
-
-    res.status(201).json({
-      message: "Người dùng đã đăng ký thành công!",
-      userId: newUser._id,
-      refreshToken,
-    });
+    res
+      .status(201)
+      .json({
+        message: "User registered successfully",
+        userId: newUser._id,
+        refreshToken,
+      });
   } catch (error) {
-    console.error("Lỗi khi đăng ký:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -63,12 +57,12 @@ export const login = async (req, res) => {
     const user = await User.findOne({ userName });
 
     if (!user) {
-      return res.status(400).json({ message: "Người dùng không tồn tại" });
+      return res.status(400).json({ message: "User not found" });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(400).json({ message: "Mật khẩu không hợp lệ" });
+      return res.status(400).json({ message: "Invalid password" });
     }
 
     const accessToken = jwt.sign({ id: user._id }, "SECRET_ACCESS", {
@@ -78,21 +72,10 @@ export const login = async (req, res) => {
       expiresIn: "7d",
     });
 
-    // Xóa token cũ (nếu có) và lưu token mới
-    await RefreshToken.findOneAndDelete({ userId: user._id });
-    const newRefreshToken = new RefreshToken({
-      userId: user._id,
-      token: refreshToken,
-    });
-    await newRefreshToken.save();
+    await RefreshToken.deleteMany({ userId: user._id });
+    await RefreshToken.create({ userId: user._id, token: refreshToken });
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    });
-
-    res.json({ accessToken });
+    res.status(200).json({ accessToken, refreshToken, userId: user._id });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -100,42 +83,37 @@ export const login = async (req, res) => {
 
 export const refreshToken = async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken;
+    const { refreshToken } = req.body;
+
     if (!refreshToken) {
-      return res.status(401).json({ message: "No refresh token" });
+      return res.status(401).json({ message: "No refresh token provided" });
     }
 
-    // Kiểm tra refreshToken trong database
     const tokenRecord = await RefreshToken.findOne({ token: refreshToken });
     if (!tokenRecord) {
       return res.status(403).json({ message: "Invalid refresh token" });
     }
 
-    jwt.verify(refreshToken, "SECRET_REFRESH", async (err, decode) => {
+    jwt.verify(refreshToken, "SECRET_REFRESH", async (err, decoded) => {
       if (err) {
-        return res.status(403).json({ message: "Invalid refresh token" });
+        return res
+          .status(403)
+          .json({ message: "Invalid or expired refresh token" });
       }
 
-      // Tạo token mới
-      const newAccessToken = jwt.sign({ id: decode.id }, "SECRET_ACCESS", {
+      const newAccessToken = jwt.sign({ id: decoded.id }, "SECRET_ACCESS", {
         expiresIn: "15m",
       });
-
-      const newRefreshToken = jwt.sign({ id: decode.id }, "SECRET_REFRESH", {
+      const newRefreshToken = jwt.sign({ id: decoded.id }, "SECRET_REFRESH", {
         expiresIn: "7d",
       });
 
-      // Cập nhật refreshToken trong database
       tokenRecord.token = newRefreshToken;
       await tokenRecord.save();
 
-      res.cookie("refreshToken", newRefreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "Strict",
-      });
-
-      res.json({ accessToken: newAccessToken });
+      res
+        .status(200)
+        .json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -144,18 +122,29 @@ export const refreshToken = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    const refreshToken = req.body.refreshToken || req.cookies.refreshToken;
-    if (!refreshToken) return res.status(401).json({ message: "No token" });
+    const { refreshToken } = req.body;
 
-    const tokenRecord = await RefreshToken.findOne({ token: refreshToken });
-    if (!tokenRecord) {
-      return res.status(400).json({ message: "Invalid refresh token" });
+    if (!refreshToken) {
+      return res.status(401).json({ message: "No refresh token provided" });
     }
 
-    await RefreshToken.deleteOne({ token: refreshToken });
+    await RefreshToken.findOneAndDelete({ token: refreshToken });
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-    res.clearCookie("refreshToken");
-    res.json({ message: "Logged out" });
+export const getUserProfile = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
