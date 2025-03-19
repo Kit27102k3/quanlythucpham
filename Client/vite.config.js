@@ -5,6 +5,14 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
-    port: 5000,
+    port: 3000,
+    proxy: {
+      "/api-provinces": {
+        target: "https://provinces.open-api.vn",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api-provinces/, ""),
+      },
+    },
   },
 });

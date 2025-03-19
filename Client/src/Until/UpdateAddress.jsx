@@ -12,26 +12,67 @@ function UpdateAddress() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
 
   useEffect(() => {
-    axios.get(`${host}?depth=1`).then((response) => {
-      setCities(response.data);
-    });
+    const fetchCities = async () => {
+      try {
+        const response = await axios.get("/api-provinces/api/?depth=1");
+        setCities(response.data);
+      } catch (err) {
+        setError("Không thể tải danh sách tỉnh/thành phố.");
+      }
+    };
+
+    fetchCities();
   }, []);
 
   useEffect(() => {
+    let controller = new AbortController();
+
     if (selectedCity) {
-      axios.get(`${host}p/${selectedCity}?depth=2`).then((response) => {
-        setDistricts(response.data.districts);
-        setWards([]);
-      });
+      const fetchDistricts = async () => {
+        try {
+          const response = await axios.get(
+            `/api-provinces/api/p/${selectedCity}?depth=2`,
+            {
+              signal: controller.signal,
+            }
+          );
+          setDistricts(response.data.districts);
+          setWards([]);
+        } catch (err) {
+          if (err.name !== "CanceledError") {
+            setError("Không thể tải danh sách quận/huyện.");
+          }
+        }
+      };
+
+      fetchDistricts();
     }
+
+    return () => controller.abort();
   }, [selectedCity]);
 
   useEffect(() => {
+    let controller = new AbortController();
+
     if (selectedDistrict) {
-      axios.get(`${host}d/${selectedDistrict}?depth=2`).then((response) => {
-        setWards(response.data.wards);
-      });
+      const fetchWards = async () => {
+        try {
+          const response = await axios.get(
+            `/api-provinces/api/d/${selectedDistrict}?depth=2`,
+            { signal: controller.signal }
+          );
+          setWards(response.data.wards);
+        } catch (err) {
+          if (err.name !== "CanceledError") {
+            setError("Không thể tải danh sách phường/xã.");
+          }
+        }
+      };
+
+      fetchWards();
     }
+
+    return () => controller.abort();
   }, [selectedDistrict]);
 
   return (

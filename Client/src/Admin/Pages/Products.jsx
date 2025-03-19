@@ -6,6 +6,7 @@ import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
 import productsApi from "../../api/productsApi";
 import { Scrollbars } from "react-custom-scrollbars-2";
+import axios from "axios";
 
 const Products = () => {
   const [visible, setVisible] = useState(false);
@@ -54,8 +55,8 @@ const Products = () => {
         updatedProduct._id,
         updatedProduct
       );
-      setProducts(
-        products.map((p) => (p._id === updatedProduct._id ? response : p))
+      setProducts((prev) =>
+        prev.map((p) => (p._id === updatedProduct._id ? response : p))
       );
       toast.success("Cập nhật sản phẩm thành công!");
       setEditVisible(false);
@@ -80,10 +81,10 @@ const Products = () => {
         </IconField>
         <Dropdown
           value={selectedProduct}
-          // options={products.map((product) => ({
-          //   label: product.productCode,
-          //   value: product._id,
-          // }))}
+          options={products.map((product) => ({
+            label: product.productCode,
+            value: product._id,
+          }))}
           onChange={handleProductChange}
           placeholder="Tất cả"
           className="w-[200px] text-[10px]"
@@ -231,25 +232,39 @@ const AddProduct = ({ setVisible, products, setProducts, fetchProducts }) => {
     });
   };
 
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const validFiles = files.filter((file) => file instanceof File);
-    setProduct((prev) => ({
-      ...prev,
-      productImages: [...prev.productImages, ...validFiles],
-    }));
-    const newPreviews = validFiles.map((file) => URL.createObjectURL(file));
-    setImagePreviews((prev) => [...prev, ...newPreviews]);
-  };
-  const handleRemoveImage = (index) => {
-    setProduct((prev) => ({
-      ...prev,
-      productImages: prev.productImages.filter((_, i) => i !== index),
-    }));
-    setImagePreviews((prev) => {
-      URL.revokeObjectURL(prev[index]);
-      return prev.filter((_, i) => i !== index);
+  const handleImageUpload = async (e) => {
+    // Check if e.target.files is properly accessed
+    const files = e.target.files;
+    if (!files) return; // Ensure that files exist
+
+    const formData = new FormData();
+    const filesArray = Array.from(files); // Convert files to an array
+
+    filesArray.forEach((file) => {
+      formData.append("image", file); // Make sure the key matches what your server expects
     });
+
+    try {
+      const response = await axios.post(
+        "http://localhost:8080/api/upload",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (response.status === 200) {
+        // Create preview URLs for the uploaded files
+        const previews = filesArray.map((file) => URL.createObjectURL(file));
+        setImagePreviews((prevPreviews) => [...prevPreviews, ...previews]);
+      } else {
+        throw new Error("Failed to upload");
+      }
+    } catch (error) {
+      console.error("Error:", error.response?.data || error.message);
+    }
   };
 
   useEffect(() => {
@@ -258,44 +273,55 @@ const AddProduct = ({ setVisible, products, setProducts, fetchProducts }) => {
     };
   }, [imagePreviews]);
 
+  const handleRemoveImage = (index) => {
+    setImagePreviews((prevImages) => prevImages.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formData = new FormData();
-    Object.keys(product).forEach((key) => {
-      if (product[key] !== null && product[key] !== undefined) {
-        if (typeof product[key] === "object" && !Array.isArray(product[key])) {
-          formData.append(key, JSON.stringify(product[key]));
-        } else {
-          formData.append(key, String(product[key]));
-        }
-      }
-    });
-    product.productImages.forEach((file) => {
-      if (file instanceof File) {
-        formData.append("productImages", file);
-      }
-    });
+
+    if (!product.productName || !product.productPrice) {
+      toast.error("Vui lòng điền đầy đủ thông tin sản phẩm!");
+      return;
+    }
     try {
-      const response = await productsApi.createProduct(formData);
+      const imageUrls = await Promise.all(
+        product.productImages.map(async (file) => {
+          if (file instanceof File) {
+            const formData = new FormData();
+            formData.append("image", file);
+
+            const res = await fetch("http://localhost:8080/api/upload", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!res.ok) {
+              throw new Error("Failed to upload image");
+            }
+
+            const data = await res.json();
+            return data.imageUrl;
+          }
+          return file;
+        })
+      );
+
+      const productData = {
+        ...product,
+        productImages: imageUrls,
+      };
+
+      // Gửi dữ liệu sản phẩm lên server
+      const response = await productsApi.createProduct(productData);
       toast.success("Thêm sản phẩm thành công!");
+
+      // Cập nhật state sau khi thêm sản phẩm thành công
+      setProducts((prev) => [...prev, response]);
       setVisible(false);
-      setProducts((prev) => [...prev, response.data]);
-      fetchProducts();
     } catch (error) {
-      console.error(
-        "Error while submitting data:",
-        error.response?.data || error.message
-      );
-      if (error.response?.data?.error) {
-        Object.entries(error.response.data.error).forEach(([key, message]) => {
-          console.error(`${key}: ${message}`);
-        });
-      }
-      toast.error(
-        `Failed to add product: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+      console.error(error);
+      toast.error("Thêm sản phẩm thất bại!");
     }
   };
 

@@ -14,6 +14,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@filebase/client": "^0.0.5",
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-brands-svg-icons": "^6.7.2",
     "@fortawesome/free-regular-svg-icons": "^6.7.2",
@@ -24,15 +25,18 @@
     "@radix-ui/react-slot": "^1.1.2",
     "@radix-ui/themes": "^3.2.0",
     "@tailwindcss/vite": "^4.0.3",
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.7.9",
     "buffer": "^6.0.3",
     "chart.js": "^4.4.8",
     "class-variance-authority": "^0.7.1",
+    "firebase": "^11.4.0",
     "framer-motion": "^12.4.7",
     "lucide-react": "^0.475.0",
     "motion": "^12.3.1",
     "primeicons": "^7.0.0",
     "primereact": "^10.9.2",
+    "process": "^0.11.10",
     "puppeteer": "^24.2.1",
     "quill": "^2.0.3",
     "react": "^18.3.1",
@@ -41,7 +45,8 @@
     "react-icons": "^5.5.0",
     "react-router-dom": "^7.2.0",
     "react-scrollbars-custom": "^4.1.1",
-    "react-toastify": "^11.0.3"
+    "react-toastify": "^11.0.3",
+    "stream-browserify": "^3.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

@@ -13,11 +13,12 @@ function App() {
           <ul>
             {publicRoutes.map((route, index) => (
               <li key={index}>
-                <Link to={Route.path}>{route.name}</Link>
+                <Link to={route.path}>{route.name}</Link>{" "}
               </li>
             ))}
           </ul>
         </nav>
+
         <Routes>
           {publicRoutes.map((route, index) =>
             route.children ? (
@@ -54,19 +55,45 @@ function App() {
               />
             )
           )}
-          {privateRoutes.map((route, index) => (
-            <Route
-              key={index}
-              path={route.path}
-              element={
-                <HeaderAdmin>
-                  <route.page />
-                </HeaderAdmin>
-              }
-            />
-          ))}
+
+          {privateRoutes.map((route, index) =>
+            route.children ? (
+              <Route
+                key={index}
+                path={route.path}
+                element={
+                  route.layout === null ? (
+                    <route.page />
+                  ) : (
+                    <HeaderAdmin>
+                      <route.page />
+                    </HeaderAdmin>
+                  )
+                }
+              >
+                {route.children.map((child, idx) => (
+                  <Route key={idx} path={child.path} element={<child.page />} />
+                ))}
+              </Route>
+            ) : (
+              <Route
+                key={index}
+                path={route.path}
+                element={
+                  route.layout === null ? (
+                    <route.page />
+                  ) : (
+                    <HeaderAdmin>
+                      <route.page />
+                    </HeaderAdmin>
+                  )
+                }
+              />
+            )
+          )}
         </Routes>
       </Router>
+
       <ToastContainer
         position="top-right"
         autoClose={5000}

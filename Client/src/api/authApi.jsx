@@ -8,20 +8,12 @@ const authApi = {
   login: (credentials) =>
     axios.post(`${API_URL}/login`, credentials, { withCredentials: true }),
   refreshToken: () =>
-    axios.post(`${API_URL}/refresh-token`, {}, { withCredentials: true }),
+    axios.post(`${API_URL}/refresh-token`, {
+      refreshToken: localStorage.getItem("refreshToken"),
+    }),
   logout: () => axios.post(`${API_URL}/logout`, {}, { withCredentials: true }),
+  getProfile: () => axios.get(`${API_URL}/profile`),
 };
-
-axios.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
 
 axios.interceptors.response.use(
   (response) => response,
@@ -48,5 +40,17 @@ axios.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 
 export default authApi;

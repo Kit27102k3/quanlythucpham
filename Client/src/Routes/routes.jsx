@@ -18,6 +18,8 @@ import News from "../User/Pages/News/News";
 import Dashboard from "../Admin/Pages/Dashboard";
 import Products from "../Admin/Pages/Products";
 import Categories from "../Admin/Pages/Categories";
+import Customers from "../Admin/Pages/Customers";
+import CustomerDetails from "../Admin/Pages/CustomerDetails";
 
 const publicRoutes = [
   {
@@ -95,22 +97,29 @@ const privateRoutes = [
   {
     path: "/admin",
     page: HeadlessSidebar,
-    layout: null,
   },
   {
     path: "/admin/dashboard",
     page: Dashboard,
-    layout: null,
   },
   {
     path: "/admin/products",
     page: Products,
-    layout: null,
   },
   {
     path: "/admin/categories",
     page: Categories,
+  },
+  {
+    path: "/admin/customers",
+    page: Customers,
+    
+  },
+  {
+    path: "/admin/customers/details",
+    page: CustomerDetails,
     layout: null,
+    
   },
 ];
 
