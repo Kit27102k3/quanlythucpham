@@ -4,7 +4,25 @@ import Product from "../Model/Products/Products.js";
 // Tạo sản phẩm mới
 export const createProduct = async (req, res) => {
   try {
-    const { productName, productPrice } = req.body;
+    const {
+      productName,
+      productPrice,
+      productCategory,
+      productDescription,
+      productBrand,
+      productStatus,
+      productDiscount,
+      productInfo,
+      productDetails,
+      productStock,
+      productCode,
+      productWeight,
+      productPromoPrice,
+      productWarranty,
+      productOrigin,
+      productIntroduction,
+    } = req.body;
+
     const productImages = req.files
       ? req.files.map((file) => file.filename)
       : [];
@@ -17,6 +35,20 @@ export const createProduct = async (req, res) => {
       productName,
       productPrice,
       productImages,
+      productCategory,
+      productDescription,
+      productBrand,
+      productStatus,
+      productDiscount,
+      productInfo,
+      productDetails,
+      productStock,
+      productCode,
+      productWeight,
+      productPromoPrice,
+      productWarranty,
+      productOrigin,
+      productIntroduction,
     });
 
     await newProduct.save();
@@ -63,5 +95,18 @@ export const deleteProduct = async (req, res) => {
     res.status(200).json({ message: "Xóa sản phẩm thành công" });
   } catch (error) {
     res.status(500).json({ message: "Xóa sản phẩm thất bại", error });
+  }
+};
+
+export const getProductById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ message: "Lấy chi tiết sản phẩm thất bại", error });
   }
 };

@@ -13,11 +13,11 @@ const productsApi = {
     }
   },
 
-  createProduct: async (formData) => {
+  createProduct: async (data) => {
     try {
-      const response = await axios.post(API_URL, formData, {
+      const response = await axios.post(API_URL, data, {
         headers: {
-          "Content-Type": "multipart/form-data", // Đảm bảo header này được thiết lập
+          "Content-Type": "multipart/form-data",
         },
       });
       console.log("Thêm sản phẩm thành công:", response.data);
@@ -46,6 +46,11 @@ const productsApi = {
       console.error("Lỗi khi xóa sản phẩm:", error);
       throw error;
     }
+  },
+
+  getProductById: async (id) => {
+    const response = await axios.get(`${API_URL}/${id}`);
+    return response.data;
   },
 };
 

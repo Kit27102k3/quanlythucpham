@@ -1,27 +1,38 @@
-import React, { useState, useRef } from "react";
-// import { Galleria } from "primereact/galleria";
-// import { Image } from "primereact/image";
+import { useEffect, useState } from "react";
 import { DotFilledIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Card, CardContent } from "../../component/ui/card";
 import { ChevronDown, ChevronRight, DivideCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import productsApi from "../../../api/productsApi";
+import { useParams } from "react-router-dom";
+import formatCurrency from "../../Until/FotmatPrice";
 import "../../../index.css";
 import Kitchen from "./Kitchen";
 
-const images = [
-  "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-  "https://bizweb.dktcdn.net/100/360/151/products/nuocdua2.jpg?v=1562726113047",
-  "https://bizweb.dktcdn.net/100/360/151/products/nuocdua3.jpg?v=1562726113047",
-  "https://bizweb.dktcdn.net/100/360/151/products/nuocdua5.jpg?v=1562726113047",
-];
-
 export default function ProductDetails() {
-  const [selectedImage, setSelectedImage] = useState(images[0]);
+  const [selectedImage, setSelectedImage] = useState([]);
+  const [productImages, setProductImages] = useState([]);
   const [count, setCount] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
   const [overview, setOverview] = useState(false);
   const [introduce, setIntroduce] = useState(false);
   const [activeTab, setActiveTab] = useState("description");
+  const [products, setProducts] = useState(null);
+  const { id } = useParams();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const data = await productsApi.getProductById(id);
+        setProducts(data);
+        setProductImages(data.productImages);
+        setSelectedImage(data?.productImages[0] || null);
+      } catch (error) {
+        console.error("Lỗi khi lấy danh sách sản phẩm:", error);
+      }
+    };
+    fetchProducts();
+  }, [id]);
 
   const toggleOpen = () => {
     setIsOpen(!isOpen);
@@ -35,29 +46,39 @@ export default function ProductDetails() {
     setIntroduce(!introduce);
   };
 
+  useEffect(() => {
+    if (productImages?.length > 0) {
+      setSelectedImage(productImages[0]);
+    }
+  }, [productImages]);
+
+  const descriptionArray =
+    products?.productDescription &&
+    typeof products?.productDescription[0] === "string"
+      ? JSON.parse(products?.productDescription[0])
+      : [];
+
   return (
     <div className="p-2 lg:px-[120px] lg:mt-2 lg:mb-5">
       <div className="text-sm text-[#333333]">
         <a href="">Trang chủ</a> {"> "}
         <span>Sản phẩm mới</span> {"> "}
-        <span className="text-[#51bb1a]">
-          Nước dừa xiêm hương vị sen Cocoxim hộp 330ml
-        </span>
+        <span className="text-[#51bb1a]">{products?.productName}</span>
       </div>
       <div className="lg:grid lg:grid-cols-[80%_20%] lg:mt-10 lg:gap-4">
         <div className="lg:grid lg:grid-cols-2">
           <div className=" bg-white gap-2 lg:grid lg:grid-cols-1">
             <img
-              src={selectedImage}
+              src={`http://localhost:8080/uploads/${selectedImage}`}
               alt=""
               className="w-[280px] h-[300px] border-gray-600 mx-auto p-4 object-cover"
             />
             <div className="grid grid-cols-4 mb-5 lg:grid lg:grid-cols-4 gap-2 lg:place-items-center lg:mt-4">
-              {images.map((img, index) => (
+              {productImages?.map((img, index) => (
                 <img
                   key={index}
-                  src={img}
-                  alt=""
+                  src={`http://localhost:8080/uploads/${img}`}
+                  alt="Thumbnail"
                   className={`border-[#51bb1a] h-16 w-16 cursor-pointer transition-all duration-300 ${
                     selectedImage === img ? "border-2 border-[#51bb1a]" : ""
                   }`}
@@ -70,7 +91,7 @@ export default function ProductDetails() {
             <div>
               <div className="grid grid-cols-1 place-items-center lg:place-items-start gap-2 ">
                 <p className="textx-[20px] text-[#000000] lg:text-[26px] lg:font-medium">
-                  Nước dừa xiêm hương vị sen Cocoxim hộp 330ml
+                  {products?.productName}
                 </p>
                 <div className="lg:grid lg:grid-cols-2 lg:gap-4">
                   <p className="text-[12px] text-left">
@@ -79,35 +100,23 @@ export default function ProductDetails() {
                   </p>
                   <p className="text-[12px] text-left">
                     Thương hiệu:{" "}
-                    <span className="text-[#51bb1a] ">Cocoxim</span>
+                    <span className="text-[#51bb1a] ">{products?.productBrand}</span>
                   </p>
                 </div>
-                <p className="lg:text-[24px] lg:font-medium">13.500đ</p>
+                <p className="lg:text-[24px] lg:font-medium">{formatCurrency(products?.productPrice)}đ</p>
               </div>
 
               <div className="lg:mt-1">
                 <p className="text-[12px] lg:text-sm lg:font-medium">
-                  Tình trạng: <span className="text-[#51bb1a] ">Còn hàng</span>
+                  Tình trạng: <span className="text-[#51bb1a] ">{products?.productStatus}</span>
                 </p>
                 <ul className="flex flex-col text-sm gap-1 mt-2">
-                  <div className="flex items-center gap-2">
-                    <DotFilledIcon />{" "}
-                    <span>
-                      Bao bì sản phẩm có thể thay đổi theo Nhà cung cấp
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DotFilledIcon />{" "}
-                    <span>Sản xuất trên quy trình công nghệ hiện đại</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DotFilledIcon />{" "}
-                    <span>Đảm bảo an toàn cho người tiêu dùng</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DotFilledIcon />{" "}
-                    <span>Được đóng hộp tiện lợi cho sử dụng và bảo quản</span>
-                  </div>
+                  {descriptionArray.map((item, index) => (
+                    <li key={index} className="flex items-center gap-2">
+                      <DotFilledIcon />
+                      <span>{item}</span>
+                    </li>
+                  ))}
                 </ul>
                 <Card className="w-full hide-on-pc">
                   <div
