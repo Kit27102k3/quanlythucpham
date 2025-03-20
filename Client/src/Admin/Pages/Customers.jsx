@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate, Outlet } from "react-router-dom";
+import { Pencil1Icon } from "@radix-ui/react-icons";
 
 function Customers() {
   const [users, setUsers] = useState([]);
@@ -159,13 +160,13 @@ function Customers() {
                 <td className="p-3 space-x-2 flex gap-2">
                   <button
                     onClick={() => handleDelete(user._id)}
-                    className="text-white bg-red-500 rounded p-1 hover:opacity-70"
+                    className="text-white bg-red-500 p-1 rounded hover:opacity-70 cursor-pointer text-[12px]"
                   >
                     Xóa
                   </button>
                   <button
                     onClick={() => handleBlock(user._id)}
-                    className="text-white bg-blue-500 rounded p-1 hover:opacity-70"
+                    className="text-white bg-blue-500 rounded p-1 text-[12px] hover:opacity-70 cursor-pointer"
                   >
                     {user.isBlocked ? "Bỏ chặn" : "Chặn"}
                   </button>
@@ -173,7 +174,7 @@ function Customers() {
                     onClick={() =>
                       navigate(`/admin/customers/details/${user._id}`)
                     }
-                    className="text-white bg-green-500 rounded p-1 hover:opacity-70"
+                    className="text-white text-[12px] bg-green-500 rounded p-1 hover:opacity-70 cursor-pointer"
                   >
                     Xem chi tiết
                   </button>

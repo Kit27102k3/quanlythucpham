@@ -1,4 +1,5 @@
 import axios from "axios";
+import { toast } from "react-toastify";
 
 const API_URL = "http://localhost:8080/auth";
 
@@ -30,6 +31,12 @@ instance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    if (originalRequest.url === "/logout") {
+      localStorage.clear();
+      window.location.href = "/";
+      return Promise.reject(error);
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
@@ -88,7 +95,16 @@ const refreshToken = async () => {
 const authApi = {
   register: (userData) => instance.post("/register", userData),
   login: (credentials) => instance.post("/login", credentials),
-  logout: () => instance.post("/logout"),
+  logout: async () => {
+    try {
+      await instance.post("/logout").catch(() => {});
+    } finally {
+      localStorage.clear();
+      toast.success("Đăng xuất thành công!");
+      window.location.href = "/";
+    }
+  },
+
   refreshToken: () => refreshToken(),
   getProfile: () => {
     const userId = localStorage.getItem("userId");

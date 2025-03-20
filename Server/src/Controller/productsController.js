@@ -1,15 +1,32 @@
+// server/controllers/productController.js
 import Product from "../Model/Products/Products.js";
 
+// Tạo sản phẩm mới
 export const createProduct = async (req, res) => {
   try {
-    const product = new Product(req.body);
-    await product.save();
-    res.status(201).json({ message: "Thêm sản phẩm thành công", product });
+    const { productName, productPrice } = req.body;
+    const productImages = req.files
+      ? req.files.map((file) => file.filename)
+      : [];
+
+    if (!productName || !productPrice) {
+      return res.status(400).json({ message: "Thiếu thông tin sản phẩm" });
+    }
+
+    const newProduct = new Product({
+      productName,
+      productPrice,
+      productImages,
+    });
+
+    await newProduct.save();
+    res.status(201).json({ product: newProduct });
   } catch (error) {
-    res.status(400).json({ message: "Thêm sản phẩm thất bại", error });
+    res.status(500).json({ message: error.message });
   }
 };
 
+// Lấy tất cả sản phẩm
 export const getAllProducts = async (req, res) => {
   try {
     const products = await Product.find();
@@ -19,6 +36,7 @@ export const getAllProducts = async (req, res) => {
   }
 };
 
+// Cập nhật sản phẩm
 export const updateProduct = async (req, res) => {
   const { id } = req.params;
   try {
@@ -34,6 +52,7 @@ export const updateProduct = async (req, res) => {
   }
 };
 
+// Xóa sản phẩm
 export const deleteProduct = async (req, res) => {
   const { id } = req.params;
   try {

@@ -13,9 +13,14 @@ const productsApi = {
     }
   },
 
-  createProduct: async (data) => {
+  createProduct: async (formData) => {
     try {
-      const response = await axios.post(API_URL, data);
+      const response = await axios.post(API_URL, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data", // Đảm bảo header này được thiết lập
+        },
+      });
+      console.log("Thêm sản phẩm thành công:", response.data);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi thêm sản phẩm:", error);

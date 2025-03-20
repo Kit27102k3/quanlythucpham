@@ -39,13 +39,11 @@ export const register = async (req, res) => {
     });
     await RefreshToken.create({ userId: newUser._id, token: refreshToken });
 
-    res
-      .status(201)
-      .json({
-        message: "User registered successfully",
-        userId: newUser._id,
-        refreshToken,
-      });
+    res.status(201).json({
+      message: "User registered successfully",
+      userId: newUser._id,
+      refreshToken,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -144,6 +142,15 @@ export const getUserProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getAllUser = async (req, res) => {
+  try {
+    const user = await User.find();
     res.status(200).json(user);
   } catch (error) {
     res.status(500).json({ message: error.message });
