@@ -52,6 +52,23 @@ const productsApi = {
     const response = await axios.get(`${API_URL}/${id}`);
     return response.data;
   },
+
+  getProductByCategory: async (category) => {
+    const response = await axios.get(`${API_URL}/category/${category}`);
+    return response.data;
+  },
+
+  searchProducts: async (query) => {
+    try {
+      const response = await axios.get(
+        `${API_URL}/search?name=${encodeURIComponent(query)}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      throw error;
+    }
+  },
 };
 
 export default productsApi;

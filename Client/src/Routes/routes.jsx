@@ -20,6 +20,7 @@ import Products from "../Admin/Pages/Products";
 import Categories from "../Admin/Pages/Categories";
 import Customers from "../Admin/Pages/Customers";
 import CustomerDetails from "../Admin/Pages/CustomerDetails";
+import SearchProducts from "../User/Pages/Product/SearchProducts";
 
 const publicRoutes = [
   {
@@ -77,6 +78,10 @@ const publicRoutes = [
     page: Contact,
   },
   {
+    path: "/search/:query?",
+    page: SearchProducts,
+  },
+  {
     path: "/dang-nhap",
     page: Login,
     layout: null,
@@ -113,13 +118,11 @@ const privateRoutes = [
   {
     path: "/admin/customers",
     page: Customers,
-    
   },
   {
     path: "/admin/customers/details",
     page: CustomerDetails,
     layout: null,
-    
   },
 ];
 

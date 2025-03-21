@@ -113,17 +113,17 @@ const Products = () => {
       <table className="w-full">
         <thead>
           <tr className="bg-gray-200">
-            <th className="border border-gray-300 p-2">Tên sản phẩm</th>
-            <th className="border border-gray-300 p-2">Thương hiệu</th>
-            <th className="border border-gray-300 p-2">Loại sản phẩm</th>
-            <th className="border border-gray-300 p-2">Giá sản phẩm</th>
-            <th className="border border-gray-300 p-2">Tình trạng</th>
-            <th className="border border-gray-300 p-2">Giảm giá</th>
-            <th className="border border-gray-300 p-2">Số lượng tồn kho</th>
-            <th className="border border-gray-300 p-2">Mã Loại</th>
-            <th className="border border-gray-300 p-2">Tên Loại</th>
-            <th className="border border-gray-300 p-2">Xuất xứ</th>
-            <th className="border border-gray-300 p-2 w-[120px]">Chức Năng</th>
+            <th className="border border-gray-300 p-2 text-sm">Tên sản phẩm</th>
+            <th className="border border-gray-300 p-2 text-sm">Thương hiệu</th>
+            <th className="border border-gray-300 p-2 text-sm">Loại sản phẩm</th>
+            <th className="border border-gray-300 p-2 text-sm">Giá sản phẩm</th>
+            <th className="border border-gray-300 p-2 text-sm">Tình trạng</th>
+            <th className="border border-gray-300 p-2 text-sm">Giảm giá</th>
+            <th className="border border-gray-300 p-2 text-sm">Số lượng tồn kho</th>
+            <th className="border border-gray-300 p-2 text-sm">Mã Loại</th>
+            <th className="border border-gray-300 p-2 text-sm">Tên Loại</th>
+            <th className="border border-gray-300 p-2 text-sm">Xuất xứ</th>
+            <th className="border border-gray-300 p-2 text-sm w-[120px]">Chức Năng</th>
           </tr>
         </thead>
         <tbody>
@@ -138,37 +138,37 @@ const Products = () => {
               )
               .map((product) => (
                 <tr key={product?._id} className="border-b">
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     {product?.productName}
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     {product?.productBrand}
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     {product?.productCategory}
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     {product?.productPrice}
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     {product?.productStatus}
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     {product?.productDiscount}
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     {product?.productStock}
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     {product?.productCode}
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     {product?.productTypeName}
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     {product?.productOrigin}
                   </td>
-                  <td className="border border-gray-300 p-2">
+                  <td className="border border-gray-300 p-2 text-[14px]">
                     <Button
                       label="Sửa"
                       className="p-1 bg-blue-500 text-white rounded text-[12px] ml-2"
@@ -185,7 +185,6 @@ const Products = () => {
         </tbody>
       </table>
 
-      {/* Dialog thêm sản phẩm */}
       <Dialog
         header="Thêm Sản Phẩm"
         visible={visible}
@@ -201,7 +200,6 @@ const Products = () => {
         />
       </Dialog>
 
-      {/* Dialog chỉnh sửa sản phẩm */}
       <Dialog
         header="Chỉnh Sửa Sản Phẩm"
         visible={editVisible}

@@ -18,6 +18,7 @@ import ProductDetail from "../Pages/Product/ProductDetail";
 import SidebarLeft from "../Until/SidebarLeft";
 import "../../index.css";
 import Products from "../Cart/Products";
+import productsApi from "../../api/productsApi";
 
 const placeholders = [
   "Đồ uống các loại",
@@ -45,9 +46,12 @@ const Header = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [showProduct, setShowProduct] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [products, setProducts] = useState([]); // Danh sách sản phẩm từ API
+  const [filteredProducts, setFilteredProducts] = useState([]); // Kết quả tìm kiếm
+  const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef(null);
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -57,27 +61,80 @@ const Header = () => {
   }, []);
 
   useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await productsApi.getAllProducts();
+        setProducts(res);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm) {
+        const result = products.filter((product) =>
+          product?.productName.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        setFilteredProducts(result);
+      } else {
+        setFilteredProducts([]);
+      }
+    }, 300); 
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, products]);
+
+  const handleSearch = () => {
+    if (searchTerm.trim()) {
+      navigate(`/search?query=${encodeURIComponent(searchTerm)}`);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSearch();
+    }
+  };
+
+  const handleInputChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  useEffect(() => {
     const input = inputRef.current;
+    let typingTimeout;
+    let deletingTimeout;
+    let index = 0;
 
-    const typePlaceholder = (text, index = 0) => {
-      if (index < text.length) {
-        input.placeholder = text.slice(0, index + 1);
-        setTimeout(() => typePlaceholder(text, index + 1), 50);
+    const typePlaceholder = () => {
+      if (index <= placeholders[currentIndex].length) {
+        input.placeholder = placeholders[currentIndex].slice(0, index);
+        index++;
+        typingTimeout = setTimeout(typePlaceholder, 50);
       } else {
-        setTimeout(() => deletePlaceholder(text), 2000);
+        deletingTimeout = setTimeout(deletePlaceholder, 2000);
       }
     };
 
-    const deletePlaceholder = (text, index = text.length) => {
-      if (index > 0) {
-        input.placeholder = text.slice(0, index - 1);
-        setTimeout(() => deletePlaceholder(text, index - 1), 50);
+    const deletePlaceholder = () => {
+      if (index >= 0) {
+        input.placeholder = placeholders[currentIndex].slice(0, index);
+        index--;
+        deletingTimeout = setTimeout(deletePlaceholder, 50);
       } else {
-        const nextIndex = (currentIndex + 1) % placeholders.length;
-        setCurrentIndex(nextIndex);
+        setCurrentIndex((prevIndex) => (prevIndex + 1) % placeholders.length);
       }
     };
-    typePlaceholder(placeholders[currentIndex]);
+
+    typePlaceholder();
+
+    return () => {
+      clearTimeout(typingTimeout);
+      clearTimeout(deletingTimeout);
+    };
   }, [currentIndex]);
 
   const handleLogout = async (e) => {
@@ -157,6 +214,9 @@ const Header = () => {
           <div className="grid grid-cols-1 md:grid-cols-1 md:relative items-center lg:relative">
             <input
               ref={inputRef}
+              value={searchTerm}
+              onChange={handleInputChange}
+              onKeyPress={handleKeyPress}
               type="text"
               className="w-full hide-on-mobile bg-white p-3 border-2 h-10 border-none rounded-l-full rounded-r-full focus:outline-none transition duration-300"
             />
@@ -164,6 +224,7 @@ const Header = () => {
               style={{
                 fontSize: "2rem",
               }}
+              onClick={handleSearch}
               className="lg:size-4 ml-12 lg:absolute md:absolute md:right-3 text-white cursor-pointer lg:text-black"
             />
           </div>

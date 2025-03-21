@@ -5,11 +5,10 @@ import { toast } from "react-toastify";
 const EditProduct = ({ product, setVisible, handleUpdateProduct }) => {
   const [editedProduct, setEditedProduct] = useState({
     ...product,
-    productImages: product.productImages || [],
+    productDescription: product.productDescription
+      ? product.productDescription.join(". ")
+      : "",
   });
-  const [imagePreviews, setImagePreviews] = useState(
-    product.productImages || []
-  );
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -19,36 +18,21 @@ const EditProduct = ({ product, setVisible, handleUpdateProduct }) => {
     });
   };
 
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    const previews = files.map((file) => URL.createObjectURL(file));
-
-    setImagePreviews((prev) => [...prev, ...previews]);
-    setEditedProduct((prev) => ({
-      ...prev,
-      productImages: [...prev.productImages, ...files],
-    }));
-  };
-
-  const handleRemoveImage = (index) => {
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
-    setEditedProduct((prev) => ({
-      ...prev,
-      productImages: prev.productImages.filter((_, i) => i !== index),
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const formData = new FormData();
       Object.keys(editedProduct).forEach((key) => {
-        if (key === "productImages") {
-          editedProduct.productImages.forEach((file) => {
-            formData.append("productImages", file);
-          });
-        } else {
-          formData.append(key, editedProduct[key]);
+        if (key === "productDescription") {
+          const descriptions = editedProduct[key]
+            .split(".")
+            .map((desc) => desc.trim())
+            .filter((desc) => desc !== "");
+          formData.append(key, JSON.stringify(descriptions));
+        } else if (Array.isArray(editedProduct[key])) {
+          formData.append(key, JSON.stringify(editedProduct[key]));
+        } else if (editedProduct[key] !== undefined) {
+          formData.append(key, String(editedProduct[key]));
         }
       });
 
@@ -64,7 +48,6 @@ const EditProduct = ({ product, setVisible, handleUpdateProduct }) => {
   return (
     <div className="p-6">
       <div className="flex flex-col gap-6 mb-5">
-        {/* Tên sản phẩm */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -232,6 +215,19 @@ const EditProduct = ({ product, setVisible, handleUpdateProduct }) => {
           </label>
         </FloatLabel>
 
+        <FloatLabel>
+          <textarea
+            className="border p-2 rounded w-full"
+            id="productDescription"
+            name="productDescription"
+            value={editedProduct.productDescription}
+            onChange={handleInputChange}
+          />
+          <label htmlFor="productDescription" className="text-sm -mt-3">
+            Mô tả sản phẩm
+          </label>
+        </FloatLabel>
+
         {/* Thông tin sản phẩm */}
         <FloatLabel>
           <InputText
@@ -245,7 +241,7 @@ const EditProduct = ({ product, setVisible, handleUpdateProduct }) => {
             Thông tin sản phẩm
           </label>
         </FloatLabel>
-        
+
         {/* Giới thiệu sản phẩm */}
         <FloatLabel>
           <InputText

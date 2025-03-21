@@ -1,45 +1,22 @@
+import { useEffect, useState } from "react";
 import "../../../index.css";
-
-const products = [
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-];
+import productsApi from "../../../api/productsApi";
+import formatCurrency from "../../Until/FotmatPrice";
 
 function Fruit() {
+  const [products, setProducts] = useState([]);
+
+  useEffect(() => {
+    const fetchProductCategory = async () => {
+      try {
+        const res = await productsApi.getProductByCategory("Trái");
+        setProducts(res);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    fetchProductCategory();
+  }, []);
   return (
     <div className="grid grid-cols-1 px-4">
       <h1 className="text-[14px] font-medium text-[#292929] uppercase lg:text-[35px]">
@@ -55,7 +32,7 @@ function Fruit() {
               >
                 <div className="relative overflow-hidden">
                   <img
-                    src={product.urlImage}
+                    src={`http://localhost:8080/uploads/${product.productImages[0]}`}
                     alt=""
                     className="w-[150px] h-[150px] lg:w-[350px] lg:h-[350px] object-cover hover-scale-up"
                   />
@@ -69,10 +46,12 @@ function Fruit() {
                   </div>
                 </div>
                 <div className="flex flex-col items-center mt-auto">
-                  <p className="font-medium text-[12px] hover:text-[#51aa1b] lg:text-sm">
-                    {product.title.slice(0, 25)}...
+                  <p className="font-medium text-[12px] hover:text-[#51aa1b] lg:text-[16px]">
+                    {product.productName}
                   </p>
-                  <p className="text-[#51aa1b] text-[12px] lg:text-sm">{product.price}đ</p>
+                  <p className="text-[#51aa1b] text-[12px] lg:text-[16px]">
+                    {formatCurrency(product.productPrice)}đ
+                  </p>
                 </div>
               </div>
             ))}

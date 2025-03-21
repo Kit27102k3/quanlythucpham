@@ -20,6 +20,7 @@ function ProductNew() {
 
   const handleClick = (id) => {
     navigate(`/chi-tiet-san-pham/${id}`);
+    window.location.reload();
   };
 
   return (

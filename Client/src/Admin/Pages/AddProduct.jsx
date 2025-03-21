@@ -29,7 +29,7 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
   const handleChange = (e) => {
     const value = e.target.value;
     const descriptions = value
-      .split(",")
+      .split(".")
       .map((desc) => desc.trim())
       .filter((desc) => desc !== "");
     setProductDescription(descriptions);

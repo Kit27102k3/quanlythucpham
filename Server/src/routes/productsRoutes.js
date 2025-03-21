@@ -6,6 +6,8 @@ import {
   updateProduct,
   getProductById,
   deleteProduct,
+  searchProducts,
+  getProductByCategory,
 } from "../Controller/productsController.js";
 import upload from "../config/multerConfig.js"; // Import cấu hình multer
 
@@ -16,6 +18,10 @@ router.post("/products", upload.array("productImages", 5), createProduct);
 
 // Route để lấy tất cả sản phẩm
 router.get("/products", getAllProducts);
+
+router.get("/products/search", searchProducts);
+
+router.get("/products/category/:category", getProductByCategory);
 
 router.get("/products/:id", getProductById);
 

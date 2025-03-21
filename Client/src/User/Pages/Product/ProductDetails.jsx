@@ -59,13 +59,14 @@ export default function ProductDetails() {
       : [];
 
   return (
-    <div className="p-2 lg:px-[120px] lg:mt-2 lg:mb-5">
-      <div className="text-sm text-[#333333]">
+    <div className="p-2 lg:mb-5">
+      <div className="text-sm text-[#333333] lg:px-[120px] p-2">
         <a href="">Trang chủ</a> {"> "}
         <span>Sản phẩm mới</span> {"> "}
         <span className="text-[#51bb1a]">{products?.productName}</span>
       </div>
-      <div className="lg:grid lg:grid-cols-[80%_20%] lg:mt-10 lg:gap-4">
+      <div className="border border-gray-100 lg:mt-2"></div>
+      <div className="lg:grid lg:grid-cols-[80%_20%] lg:mt-10 lg:gap-4 lg:px-[120px]">
         <div className="lg:grid lg:grid-cols-2">
           <div className=" bg-white gap-2 lg:grid lg:grid-cols-1">
             <img
@@ -335,7 +336,7 @@ export default function ProductDetails() {
         </div>
       </div>
 
-      <div className="lg:grid-cols-[70%_30%] lg:grid mt-10 lg:gap-10">
+      <div className="lg:grid-cols-[70%_30%] lg:grid mt-10 lg:gap-10 lg:px-[120px]">
         <div className=" hidden md:flex flex-col ">
           <div className="hidden md:flex border-b justify-center">
             <button

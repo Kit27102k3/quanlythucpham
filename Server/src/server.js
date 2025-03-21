@@ -18,24 +18,27 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 8081;
 
+// CORS configuration
 app.use(
   cors({
     origin: "http://localhost:3000",
     credentials: true,
-    method: ["GET", "POST", "PUT", "DELETE"],
-    maxAgeSeconds: 3600,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    maxAge: 3600,
   })
 );
 
 app.use(express.json());
 app.use(cookieParser());
 
+// Kết nối MongoDB
 const URI = process.env.MONGOOSE_URI;
 mongoose
   .connect(URI)
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
+// Routes
 app.use("/auth", authRoutes);
 app.use("/logout", authRoutes);
 app.use("/categories", categoryRoutes);
@@ -43,6 +46,7 @@ app.use("/api", scraperRoutes);
 app.use("/api", productsRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Khởi động server
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
