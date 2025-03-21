@@ -63,7 +63,7 @@ instance.interceptors.response.use(
       } catch (err) {
         processQueue(err, null);
         localStorage.clear();
-        window.location.href = "/login";
+        window.location.href = "/dang-nhap";
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
@@ -91,6 +91,7 @@ const refreshToken = async () => {
 
   throw new Error("Failed to refresh token");
 };
+const userId = localStorage.getItem("userId");
 
 const authApi = {
   register: (userData) => instance.post("/register", userData),
@@ -107,10 +108,10 @@ const authApi = {
 
   refreshToken: () => refreshToken(),
   getProfile: () => {
-    const userId = localStorage.getItem("userId");
     if (!userId) throw new Error("User not logged in");
     return instance.get(`/profile/${userId}`);
   },
+  updateProfile: (userId, data) => instance.put(`/update/${userId}`, data),
 };
 
 export default authApi;

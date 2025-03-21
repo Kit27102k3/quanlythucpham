@@ -125,38 +125,30 @@ function Customers() {
       <div className="overflow-x-auto">
         <table className="w-full bg-white shadow-md rounded-md overflow-hidden">
           <thead>
-            <tr className="bg-blue-600 text-white text-left">
+            <tr className="bg-blue-600 text-white text-left text-sm">
               <th className="p-3">Tên đăng nhập</th>
               <th className="p-3">Họ và tên</th>
               <th className="p-3">Email</th>
               <th className="p-3">Số điện thoại</th>
               <th className="p-3">Địa chỉ</th>
-              <th className="p-3">Ảnh đại diện</th>
+
               <th className="p-3">Hành động</th>
             </tr>
           </thead>
           <tbody>
             {filteredUsers.map((user) => (
               <tr key={user._id} className="border-b hover:bg-gray-100">
-                <td className="p-3">{user.userName || "Chưa có"}</td>
-                <td className="p-3">
+                <td className="p-3 text-[12px]">
+                  {user.userName || "Chưa có"}
+                </td>
+                <td className="p-3 text-[12px]">
                   {`${user.firstName || ""} ${user.lastName || ""}`.trim() ||
                     "Chưa có"}
                 </td>
-                <td className="p-3">{user.email || "Chưa có"}</td>
-                <td className="p-3">{user.phone || "Chưa có"}</td>
-                <td className="p-3">{user.address || "Chưa có"}</td>
-                <td className="p-3">
-                  {user.userImage ? (
-                    <img
-                      src={user.userImage}
-                      alt="Avatar"
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    "Chưa có ảnh"
-                  )}
-                </td>
+                <td className="p-3 text-[12px]">{user.email || "Chưa có"}</td>
+                <td className="p-3 text-[12px]">{user.phone || "Chưa có"}</td>
+                <td className="p-3 text-[12px]">{user.address || "Chưa có"}</td>
+
                 <td className="p-3 space-x-2 flex gap-2">
                   <button
                     onClick={() => handleDelete(user._id)}

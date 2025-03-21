@@ -1,21 +1,21 @@
 import { useState, useEffect } from "react";
 import UpdateAddress from "../../../Until/UpdateAddress";
 import authApi from "../../../api/authApi";
-import { useFetchUserProfile } from "../../Until/useFetchUserProfile";
 
 function Address() {
   const [isShow, setIsShow] = useState(false);
   const [users, setUsers] = useState([]);
 
+  const fetchUserProfile = async () => {
+    try {
+      const response = await authApi.getProfile();
+      setUsers(response.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const response = await authApi.getProfile();
-        setUsers(response.data);
-      } catch (error) {
-        console.log(error);
-      }
-    };
     fetchUserProfile();
   }, []);
 
@@ -63,7 +63,7 @@ function Address() {
           Chỉnh sửa địa chỉ
         </button>
       </div>
-      {isShow && <UpdateAddress />}
+      {isShow && <UpdateAddress onUpdate={fetchUserProfile} />}
     </div>
   );
 }

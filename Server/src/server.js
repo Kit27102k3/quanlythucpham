@@ -32,10 +32,7 @@ app.use(cookieParser());
 
 const URI = process.env.MONGOOSE_URI;
 mongoose
-  .connect(URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(URI)
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 

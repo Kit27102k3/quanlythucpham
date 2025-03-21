@@ -15,6 +15,7 @@ export const useFetchUserProfile = () => {
       const response = await axios.get(
         `http://localhost:8080/auth/profile/${userId}`
       );
+      console.log(response);
       setUsers(response.data);
     } catch (err) {
       setError(err.message);

@@ -23,9 +23,15 @@ const Products = () => {
   const fetchProducts = async () => {
     try {
       const data = await productsApi.getAllProducts();
-      setProducts(data);
+      if (Array.isArray(data)) {
+        setProducts(data);
+      } else {
+        console.error("Data is not an array:", data);
+        setProducts([]);
+      }
     } catch (error) {
       console.error("Failed to fetch products:", error);
+      setProducts([]);
     }
   };
 
@@ -49,20 +55,17 @@ const Products = () => {
     setEditVisible(true);
   };
 
-  const handleUpdateProduct = async (updatedProduct) => {
+  const handleUpdateProduct = async (id, data) => {
     try {
-      const response = await productsApi.updateProduct(
-        updatedProduct._id,
-        updatedProduct
-      );
-      setProducts((prev) =>
-        prev.map((p) => (p._id === updatedProduct._id ? response : p))
-      );
+      await productsApi.updateProduct(id, data);
+
+      const updatedProducts = await productsApi.getAllProducts();
+      setProducts(updatedProducts);
+
       toast.success("Cập nhật sản phẩm thành công!");
-      setEditVisible(false);
     } catch (error) {
       console.error("Lỗi khi cập nhật sản phẩm:", error);
-      toast.error("Cập nhật sản phẩm thất bại.");
+      toast.error("Có lỗi xảy ra khi cập nhật sản phẩm!");
     }
   };
 
@@ -81,10 +84,14 @@ const Products = () => {
         </IconField>
         <Dropdown
           value={selectedProduct}
-          options={products.map((product) => ({
-            label: product.productCode,
-            value: product._id,
-          }))}
+          options={
+            Array.isArray(products)
+              ? products.map((product) => ({
+                  label: product?.productCode,
+                  value: product?._id,
+                }))
+              : []
+          }
           onChange={handleProductChange}
           placeholder="Tất cả"
           className="w-[200px] text-[10px]"
@@ -120,58 +127,61 @@ const Products = () => {
           </tr>
         </thead>
         <tbody>
-          {products
-            .filter((product) =>
-              product.productName
-                ?.toLowerCase()
-                .includes(searchTerm.toLowerCase())
-            )
-            .map((product) => (
-              <tr key={product._id} className="border-b">
-                <td className="border border-gray-300 p-2">
-                  {product.productName}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {product.productBrand}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {product.productCategory}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {product.productPrice}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {product.productStatus}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {product.productDiscount}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {product.productStock}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {product.productCode}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {product.productTypeName}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  {product.productOrigin}
-                </td>
-                <td className="border border-gray-300 p-2">
-                  <Button
-                    label="Sửa"
-                    className="p-1 bg-blue-500 text-white rounded text-[12px] ml-2"
-                    onClick={() => handleEditProduct(product)}
-                  />
-                  <Button
-                    label="Xóa"
-                    className="p-1 bg-red-500 text-white rounded text-[12px] ml-2"
-                    onClick={() => handleDeleteProduct(product._id)}
-                  />
-                </td>
-              </tr>
-            ))}
+          {products?.length > 0 &&
+            products
+              .filter((product) =>
+                searchTerm
+                  ? product?.productName
+                      ?.toLowerCase()
+                      .includes(searchTerm.toLowerCase())
+                  : true
+              )
+              .map((product) => (
+                <tr key={product?._id} className="border-b">
+                  <td className="border border-gray-300 p-2">
+                    {product?.productName}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {product?.productBrand}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {product?.productCategory}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {product?.productPrice}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {product?.productStatus}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {product?.productDiscount}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {product?.productStock}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {product?.productCode}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {product?.productTypeName}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    {product?.productOrigin}
+                  </td>
+                  <td className="border border-gray-300 p-2">
+                    <Button
+                      label="Sửa"
+                      className="p-1 bg-blue-500 text-white rounded text-[12px] ml-2"
+                      onClick={() => handleEditProduct(product)}
+                    />
+                    <Button
+                      label="Xóa"
+                      className="p-1 bg-red-500 text-white rounded text-[12px] ml-2"
+                      onClick={() => handleDeleteProduct(product?._id)}
+                    />
+                  </td>
+                </tr>
+              ))}
         </tbody>
       </table>
 
@@ -203,6 +213,7 @@ const Products = () => {
           product={editingProduct}
           setVisible={setEditVisible}
           handleUpdateProduct={handleUpdateProduct}
+          setProducts={setProducts}
         />
       </Dialog>
 

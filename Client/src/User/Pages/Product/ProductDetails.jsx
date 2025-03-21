@@ -100,15 +100,22 @@ export default function ProductDetails() {
                   </p>
                   <p className="text-[12px] text-left">
                     Thương hiệu:{" "}
-                    <span className="text-[#51bb1a] ">{products?.productBrand}</span>
+                    <span className="text-[#51bb1a] ">
+                      {products?.productBrand}
+                    </span>
                   </p>
                 </div>
-                <p className="lg:text-[24px] lg:font-medium">{formatCurrency(products?.productPrice)}đ</p>
+                <p className="lg:text-[24px] lg:font-medium">
+                  {formatCurrency(products?.productPrice)}đ
+                </p>
               </div>
 
               <div className="lg:mt-1">
                 <p className="text-[12px] lg:text-sm lg:font-medium">
-                  Tình trạng: <span className="text-[#51bb1a] ">{products?.productStatus}</span>
+                  Tình trạng:{" "}
+                  <span className="text-[#51bb1a] ">
+                    {products?.productStatus}
+                  </span>
                 </p>
                 <ul className="flex flex-col text-sm gap-1 mt-2">
                   {descriptionArray.map((item, index) => (
@@ -190,8 +197,11 @@ export default function ProductDetails() {
                     />
                   </div>
                 </div>
-                <button className="bg-[#51bb1a] w-full cursor-pointer text-white text-sm p-2 mt-4 flex flex-col">
-                  <span className="uppercase"> MUA NGAY VỚI GIÁ 13.500đ</span>
+                <button className="bg-[#51bb1a] w-full cursor-pointer text-white text-sm p-2 mt-4 flex flex-col hover:opacity-90">
+                  <span className="uppercase">
+                    {" "}
+                    MUA NGAY VỚI GIÁ {formatCurrency(products?.productPrice)}đ
+                  </span>
                   <span className="text-[12px]">Đặt mua giao hàng tận nơi</span>
                 </button>
               </div>
@@ -230,6 +240,7 @@ export default function ProductDetails() {
                     <span className="text-black font-bold">
                       Nước dừa xiêm hương vị sen Cocoxim
                     </span>
+
                     <span className="text-[12px]">
                       được sản xuất theo công nghệ hiện đại, mọi khâu từ tuyển
                       chọn nguyên liệu tới chế biến, đóng bao bì đều diễn ra
@@ -328,7 +339,7 @@ export default function ProductDetails() {
         <div className=" hidden md:flex flex-col ">
           <div className="hidden md:flex border-b justify-center">
             <button
-              className={`px-4 py-2 font-semibold  ${
+              className={`px-4 py-2 font-semibold cursor-pointer  ${
                 activeTab === "description"
                   ? "border-b-2 border-black text-black"
                   : "text-gray-500"
@@ -338,7 +349,7 @@ export default function ProductDetails() {
               MÔ TẢ
             </button>
             <button
-              className={`px-4 py-2 font-semibold  ${
+              className={`px-4 py-2 font-semibold cursor-pointer  ${
                 activeTab === "introduction"
                   ? "border-b-2 border-black text-black"
                   : "text-gray-500"
@@ -352,24 +363,20 @@ export default function ProductDetails() {
             {activeTab === "description" ? (
               <div className="flex flex-col gap-2">
                 <p className="font-medium text-sm justify-between">
-                  Nước dừa xiêm hương vị sen Cocoxim{" "}
+                  {products?.productInfo}{" "}
                   <span className="font-normal">
-                    được sản xuất theo công nghệ hiện đại, mọi khâu từ tuyển
-                    chọn nguyên liệu tới chế biến, đóng bao bì đều diễn ra khép
-                    kín dưới sự giám sát và kiểm tra nghiêm ngặt. Sản phẩm không
-                    chứa hóa chất, chất bảo quản độc hại, đảm bảo an toàn cho
-                    sức khỏe người tiêu dùng. Sản phẩm có hương vị của những
-                    nguyên liệu tự nhiên được chọn lọc kỹ càng, sẽ mang lại cho
-                    bạn những phút giải trí và thưởng thức thật tuyệt vời bên
-                    cạnh bạn bè hoặc người thân.
+                    {products?.productIntroduction}
                   </span>
                 </p>
+                <img
+                  src={`http://localhost:8080/uploads/${selectedImage}`}
+                  alt={products?.productName}
+                  className="w-[200px] h-[220px] border-gray-600 mx-auto p-4 object-cover"
+                />
                 <p className="font-medium text-sm justify-between">
-                  Nước dừa xiêm hương vị sen Cocoxim{" "}
+                  {products?.productInfo}{" "}
                   <span className="font-normal">
-                    giúp bạn nhanh chóng xua tan cơn khát, giúp bù nước trong
-                    các hoạt động hàng ngày, ngoài ra sản phẩm được đóng hộp
-                    tiện lợi cho việc sử dụng và bảo quản.
+                    {products?.productDetails}
                   </span>
                 </p>
               </div>

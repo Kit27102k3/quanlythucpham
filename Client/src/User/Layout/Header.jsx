@@ -106,7 +106,7 @@ const Header = () => {
         <div className="flex lg:px-7 items-center ">
           {isLoggedIn ? (
             <a
-              href="tai-khoan"
+              href="/tai-khoan"
               className="grid items-center mr-2 cursor-pointer "
             >
               <img
