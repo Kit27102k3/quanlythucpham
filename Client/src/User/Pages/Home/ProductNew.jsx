@@ -25,7 +25,7 @@ function ProductNew() {
     if (!userId) {
       toast.warning("Bạn cần phải đăng nhập trước!");
       navigate("/dang-nhap");
-      return; // Thêm return để dừng hàm nếu chưa đăng nhập
+      return; 
     }
     try {
       await cartApi.addToCart(userId, productId);
@@ -37,7 +37,6 @@ function ProductNew() {
 
   const handleClick = (id) => {
     navigate(`/chi-tiet-san-pham/${id}`);
-    window.location.reload();
   };
 
   return (
@@ -73,11 +72,11 @@ function ProductNew() {
                 >
                   Thêm vào giỏ
                 </button>
-                <button 
+                <a 
                 onClick={() => handleClick(product._id)}
                 className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
                   Xem chi tiết
-                </button>
+                </a>
               </div>
             </div>
             <div className="flex flex-col items-center mt-2">

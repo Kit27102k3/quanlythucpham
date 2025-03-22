@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { DotFilledIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Card, CardContent } from "../../component/ui/card";
 import { ChevronDown, ChevronRight, DivideCircle } from "lucide-react";
@@ -19,6 +19,16 @@ export default function ProductDetails() {
   const [activeTab, setActiveTab] = useState("description");
   const [products, setProducts] = useState(null);
   const { id } = useParams();
+  const topElementRef = useRef(null);
+
+  useEffect(() => {
+    if (topElementRef.current) {
+      topElementRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -59,7 +69,7 @@ export default function ProductDetails() {
       : [];
 
   return (
-    <div className="p-2 lg:mb-5">
+    <div ref={topElementRef} className="p-2 lg:mb-5">
       <div className="text-sm text-[#333333] lg:px-[120px] p-2">
         <a href="/">Trang chủ</a> {"> "}
         <span>Sản phẩm mới</span> {"> "}
