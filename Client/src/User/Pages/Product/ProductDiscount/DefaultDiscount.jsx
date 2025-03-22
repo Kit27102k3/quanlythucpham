@@ -3,9 +3,9 @@ import { ChevronRightIcon } from "@radix-ui/react-icons";
 import { RadioButton } from "primereact/radiobutton";
 import { Checkbox } from "primereact/checkbox";
 import { Scrollbars } from "react-custom-scrollbars-2";
-import AllProducts from "./AllProducts";
-import PaginatorBasic from "../../../Until/Paginator";
-import "../../../index.css";
+import PaginatorBasic from "../../../../Until/Paginator";
+import PromotionProducts from "./PromotionProducts";
+import "../../../../index.css";
 
 const categories = [
   { name: "Giá dưới 100.000đ", key: "A" },
@@ -28,11 +28,12 @@ const typeProducts = [
   { name: "Rau củ", key: "I" },
 ];
 
-function ProductLayout() {
-
+function DefaultDiscount() {
   const [ingredient, setIngredient] = useState("");
   const [selectedCategories, setSelectedCategories] = useState([categories[0]]);
-  const [selectedTypeProduct, setSelectedTypeProduct] = useState([typeProducts[0]]);
+  const [selectedTypeProduct, setSelectedTypeProduct] = useState([
+    typeProducts[0],
+  ]);
 
   const onCategoryChange = (e) => {
     let _selectedCategories = [...selectedCategories];
@@ -65,7 +66,7 @@ function ProductLayout() {
           Trang chủ
         </a>
         <ChevronRightIcon />
-        <p className="font-medium "></p>
+        <p className="font-medium ">Sản phẩm khuyến mãi</p>
       </div>
       <p className="border-b mt-4 border-gray-300 "></p>
       <div className="flex flex-col md:flex-row p-4 bg-background lg:px-[120px] lg:gap-4">
@@ -207,7 +208,7 @@ function ProductLayout() {
 
         <main className="w-full">
           <h1 className="text-[16px] font-medium text-[#1e1e1e] mb-4 lg:text-[26px] uppercase">
-            Tất cả sản phẩm
+            Sản phẩm khuyến mãi
           </h1>
           <div className="bg-accent text-white rounded-lg ">
             <img
@@ -355,7 +356,7 @@ function ProductLayout() {
           </div>
 
           <div className="cursor-pointer text-[#1c1c1c] text-sm mb-5">
-            <AllProducts  />
+            <PromotionProducts />
           </div>
           <PaginatorBasic />
         </main>
@@ -364,4 +365,4 @@ function ProductLayout() {
   );
 }
 
-export default ProductLayout;
+export default DefaultDiscount;

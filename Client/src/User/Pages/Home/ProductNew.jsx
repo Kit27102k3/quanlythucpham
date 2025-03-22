@@ -2,9 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import productsApi from "../../../api/productsApi";
 import formatCurrency from "../../Until/FotmatPrice";
+import { toast } from "react-toastify";
+import cartApi from "../../../api/cartApi";
 
 function ProductNew() {
   const [products, setProducts] = useState([]);
+  const userId = localStorage.getItem("userId");
   const navigate = useNavigate();
   useEffect(() => {
     const fetchProducts = async () => {
@@ -18,6 +21,20 @@ function ProductNew() {
     fetchProducts();
   }, [setProducts]);
 
+  const handleAddToCart = async (productId) => {
+    if (!userId) {
+      toast.warning("Bạn cần phải đăng nhập trước!");
+      navigate("/dang-nhap");
+      return; // Thêm return để dừng hàm nếu chưa đăng nhập
+    }
+    try {
+      await cartApi.addToCart(userId, productId);
+      toast.success("Sản phẩm đã được thêm vào giỏ hàng");
+    } catch (error) {
+      console.log("Lỗi khi thêm sản phẩm vào giỏ hàng!", error);
+    }
+  }
+
   const handleClick = (id) => {
     navigate(`/chi-tiet-san-pham/${id}`);
     window.location.reload();
@@ -25,29 +42,40 @@ function ProductNew() {
 
   return (
     <>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-2">
         {products?.map((product) => (
           <div
             key={product._id}
-            className="relative flex flex-col items-center group cursor-pointer"
-            onClick={() => handleClick(product._id)}
+            className="relative flex flex-col items-center group cursor-pointer "
+            
           >
-            <div className="relative overflow-hidden">
+            <div className="relative overflow-hidden ">
               {product.productImages?.length > 0 && (
                 <img
                   src={`http://localhost:8080/uploads/${product.productImages[0]}`}
                   alt={product.title}
-                  className="w-64 h-64 object-cover hover-scale-up"
+                  className="w-64 h-64 object-cover hover-scale-up mx-auto"
                 />
               )}
-              <div className="lg:bg-red-500 w-10 p-1 text-white rounded lg:absolute top-2 left-2">
-                {product.productDiscount}%
+              <div
+                className={`${
+                  product?.productDiscount > 0
+                    ? "lg:bg-red-500 w-10 p-1 text-white rounded lg:absolute top-2 left-2 text-center"
+                    : "w-10 p-1 text-white rounded lg:absolute top-2 left-2 text-center"
+                }`}
+              >
+                {product?.productDiscount}%
               </div>
               <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                <button className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
+                <button
+                  onClick={() => handleAddToCart(product._id)}
+                  className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1"
+                >
                   Thêm vào giỏ
                 </button>
-                <button className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
+                <button 
+                onClick={() => handleClick(product._id)}
+                className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
                   Xem chi tiết
                 </button>
               </div>

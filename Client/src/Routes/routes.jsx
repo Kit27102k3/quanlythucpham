@@ -21,6 +21,7 @@ import Categories from "../Admin/Pages/Categories";
 import Customers from "../Admin/Pages/Customers";
 import CustomerDetails from "../Admin/Pages/CustomerDetails";
 import SearchProducts from "../User/Pages/Product/SearchProducts";
+import DefaultDiscount from "../User/Pages/Product/ProductDiscount/DefaultDiscount";
 
 const publicRoutes = [
   {
@@ -56,6 +57,10 @@ const publicRoutes = [
   {
     path: "/san-pham",
     page: DefaultProduct,
+  },
+  {
+    path: "/khuyen-mai",
+    page: DefaultDiscount, 
   },
   {
     path: "/tin-tuc",

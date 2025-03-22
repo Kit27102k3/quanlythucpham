@@ -50,8 +50,20 @@ const Header = () => {
   const [products, setProducts] = useState([]); // Danh sách sản phẩm từ API
   const [filteredProducts, setFilteredProducts] = useState([]); // Kết quả tìm kiếm
   const [searchTerm, setSearchTerm] = useState("");
+  const [showPromotion, setShowPromotion] = useState(false);
   const inputRef = useRef(null);
   const navigate = useNavigate();
+
+  const handleNavigate = (path) => {
+    navigate(path);
+
+    // Cập nhật state dựa trên path
+    if (path === "/khuyen-mai") {
+      setShowPromotion(true); // Hiển thị PromotionProducts
+    } else if (path === "/san-pham") {
+      setShowPromotion(false); // Hiển thị AllProducts
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -289,7 +301,7 @@ const Header = () => {
               } flex items-center gap-1`}
               onClick={() => {
                 setActiveIndex(index);
-                navigate(item.path);
+                handleNavigate(item.path);
               }}
               onMouseEnter={() =>
                 item.name === "Sản Phẩm" && setShowProduct(true)

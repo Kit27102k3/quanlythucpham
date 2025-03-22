@@ -1,56 +1,38 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../../../index.css";
-
-const products = [
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-  {
-    urlImage:
-      "https://bizweb.dktcdn.net/thumb/large/100/360/151/products/nuocdua.jpg?v=1562726113047",
-    title: "Nước dừa xiêm hương vị sen Cocoxim hộp 330ml",
-    price: "13.000",
-  },
-];
+import formatCurrency from "../../Until/FotmatPrice";
+import productsApi from "../../../api/productsApi";
 
 function AllProducts() {
+  const [products, setProducts] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchAllProducts = async () => {
+      const res = await productsApi.getAllProducts();
+      setProducts(res);
+    };
+    fetchAllProducts();
+  }, []);
+
+  const handleClick = (id) => {
+    navigate(`/chi-tiet-san-pham/${id}`);
+    window.location.reload();
+  };
+
   return (
     <div className="px-4 py-6">
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {products.map((product, index) => (
           <div
             key={index}
+            onClick={() => handleClick(product._id)}
             className="relative items-center justify-center group cursor-pointer bg-white rounded-md overflow-hidden"
           >
             <div className="relative overflow-hidden ">
               <img
-                src={product.urlImage}
+                src={`http://localhost:8080/uploads/${product.productImages[0]}`}
                 alt=""
                 className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px]"
               />
@@ -65,10 +47,10 @@ function AllProducts() {
             </div>
             <div className="flex flex-col items-center mt-auto p-4 text-center">
               <p className="font-medium text-[10px] hover:text-[#51aa1b] line-clamp-1 lg:text-[14px]">
-                {product.title}
+                {product.productName}
               </p>
               <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                {product.price}đ
+                {formatCurrency(product.productPrice)}đ
               </p>
             </div>
           </div>

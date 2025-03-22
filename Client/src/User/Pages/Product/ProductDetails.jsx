@@ -61,7 +61,7 @@ export default function ProductDetails() {
   return (
     <div className="p-2 lg:mb-5">
       <div className="text-sm text-[#333333] lg:px-[120px] p-2">
-        <a href="">Trang chủ</a> {"> "}
+        <a href="/">Trang chủ</a> {"> "}
         <span>Sản phẩm mới</span> {"> "}
         <span className="text-[#51bb1a]">{products?.productName}</span>
       </div>
@@ -91,7 +91,7 @@ export default function ProductDetails() {
           <div className="lg:grid lg:grid-cols-1">
             <div>
               <div className="grid grid-cols-1 place-items-center lg:place-items-start gap-2 ">
-                <p className="textx-[20px] text-[#000000] lg:text-[26px] lg:font-medium">
+                <p className="text-[20px] text-[#000000] lg:text-[26px] lg:font-medium">
                   {products?.productName}
                 </p>
                 <div className="lg:grid lg:grid-cols-2 lg:gap-4">

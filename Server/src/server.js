@@ -3,6 +3,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -13,6 +14,7 @@ import authRoutes from "./routes/authRoutes.js";
 import scraperRoutes from "./routes/scraperRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import productsRoutes from "./routes/productsRoutes.js";
+import cartRoutes from "./routes/cartRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -30,6 +32,8 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Kết nối MongoDB
 const URI = process.env.MONGOOSE_URI;
@@ -44,6 +48,7 @@ app.use("/logout", authRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/api", scraperRoutes);
 app.use("/api", productsRoutes);
+app.use("/api/cart", cartRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Khởi động server
