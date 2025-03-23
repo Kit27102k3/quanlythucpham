@@ -19,6 +19,7 @@ import SidebarLeft from "../Until/SidebarLeft";
 import "../../index.css";
 import Products from "../Cart/Products";
 import productsApi from "../../api/productsApi";
+import cartApi from "../../api/cartApi";
 
 const placeholders = [
   "Đồ uống các loại",
@@ -51,6 +52,7 @@ const Header = () => {
   const [filteredProducts, setFilteredProducts] = useState([]); // Kết quả tìm kiếm
   const [searchTerm, setSearchTerm] = useState("");
   const [showPromotion, setShowPromotion] = useState(false);
+  const [cartItemCount, setCartItemCount] = useState(0);
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -64,6 +66,25 @@ const Header = () => {
       setShowPromotion(false); // Hiển thị AllProducts
     }
   };
+
+  useEffect(() => {
+    const fetchCart = async () => {
+      try {
+        const userId = localStorage.getItem("userId");
+        if (userId) {
+          const res = await cartApi.getCart(userId);
+          const totalItems = res.cart.items.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          );
+          setCartItemCount(totalItems); // Cập nhật số lượng sản phẩm
+        }
+      } catch (error) {
+        console.log("Lỗi khi lấy giỏ hàng:", error);
+      }
+    };
+    fetchCart();
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
@@ -94,7 +115,7 @@ const Header = () => {
       } else {
         setFilteredProducts([]);
       }
-    }, 300); 
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [searchTerm, products]);
@@ -261,16 +282,14 @@ const Header = () => {
               <HoverCard.Root>
                 <HoverCard.Trigger>
                   <Link href="/gio-hang" className="text-white">
-                    {" "}
-                    {/* target="_blank" : chuyển tab mới nếu cần*/}
                     <Tooltip content="Giỏ hàng">
                       <i
                         className="pi pi-cart-minus"
-                        style={{ fontSize: "22px" }}
+                        style={{ fontSize: "22px", color: "white" }}
                       >
                         <Badge
-                          value="0"
-                          className="absolute top-21 right-4 lg:right-32 lg:top-16"
+                           value={cartItemCount}
+                          className="absolute top-21 right-4 lg:right-32 lg:top-16 text-white bg-[#F9C938]"
                         />
                       </i>
                     </Tooltip>

@@ -69,6 +69,7 @@ const Login = () => {
                 height: "40px",
                 border: "1px solid #ced4da",
               }}
+              className="px-2"
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -93,6 +94,7 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              className="px-2"
             />
             <label className="-mt-2" htmlFor="password">
               Password

@@ -3,6 +3,7 @@ import { MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Checkbox } from "@radix-ui/themes";
 import cartApi from "../../api/cartApi";
 import formatCurrency from "../Until/FotmatPrice";
+import { toast } from "react-toastify";
 
 const Cart = () => {
   const [cart, setCart] = useState(null);
@@ -58,6 +59,7 @@ const Cart = () => {
           (item) => item.productId._id !== productId
         ),
       }));
+      toast.success("Xóa sản phẩm ra khỏi giỏ hàng thành công!");
     } catch (error) {
       console.error("Lỗi khi xóa sản phẩm:", error);
     } finally {

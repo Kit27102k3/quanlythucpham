@@ -8,6 +8,7 @@ import { useParams } from "react-router-dom";
 import formatCurrency from "../../Until/FotmatPrice";
 import "../../../index.css";
 import Kitchen from "./Kitchen";
+import RelatedProducts from "./RelatedProducts";
 
 export default function ProductDetails() {
   const [selectedImage, setSelectedImage] = useState([]);
@@ -20,6 +21,18 @@ export default function ProductDetails() {
   const [products, setProducts] = useState(null);
   const { id } = useParams();
   const topElementRef = useRef(null);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const data = await productsApi.getProductById(id); // Lấy thông tin sản phẩm
+        setProducts(data);
+      } catch (error) {
+        console.error("Lỗi khi lấy thông tin sản phẩm:", error);
+      }
+    };
+    fetchProduct();
+  }, [id]);
 
   useEffect(() => {
     if (topElementRef.current) {
@@ -420,6 +433,9 @@ export default function ProductDetails() {
           <div className="border-b"></div>
           <Kitchen isHide={true} />
         </div>
+      </div>
+      <div className="mt-10 mx-auto">
+        <RelatedProducts currentProduct={products} />
       </div>
     </div>
   );

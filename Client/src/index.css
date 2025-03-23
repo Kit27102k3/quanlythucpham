@@ -164,3 +164,21 @@ html {
   color: #51bb1a;
   border: 1px solid #51bb1a;
 }
+
+/* Tùy chỉnh nút điều hướng */
+.p-carousel-prev,
+.p-carousel-next {
+  background-color: #51aa1b !important;
+  color: white !important;
+  border-radius: 50% !important;
+  width: 40px !important;
+  height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.p-carousel-prev:hover,
+.p-carousel-next:hover {
+  background-color: #3e8228 !important;
+}
