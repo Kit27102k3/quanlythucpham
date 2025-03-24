@@ -1,60 +1,102 @@
-// server/controllers/productController.js
+import cloudinary from "../config/cloudinary.js";
 import Product from "../Model/Products/Products.js";
+import fs from "fs";
+import path from "path";
 
-// Tạo sản phẩm mới
 export const createProduct = async (req, res) => {
   try {
-    const {
-      productName,
-      productPrice,
-      productCategory,
-      productDescription,
-      productBrand,
-      productStatus,
-      productDiscount,
-      productInfo,
-      productDetails,
-      productStock,
-      productCode,
-      productWeight,
-      productPromoPrice,
-      productWarranty,
-      productOrigin,
-      productIntroduction,
-    } = req.body;
-
-    const productImages = req.files
-      ? req.files.map((file) => file.filename)
-      : [];
-
-    if (!productName || !productPrice) {
-      return res.status(400).json({ message: "Thiếu thông tin sản phẩm" });
-    }
-
-    const newProduct = new Product({
-      productName,
-      productPrice,
-      productImages,
-      productCategory,
-      productDescription,
-      productBrand,
-      productStatus,
-      productDiscount,
-      productInfo,
-      productDetails,
-      productStock,
-      productCode,
-      productWeight,
-      productPromoPrice,
-      productWarranty,
-      productOrigin,
-      productIntroduction,
+    console.log("Current working directory:", process.cwd());
+    console.log("Environment variables:", {
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME
+        ? "***"
+        : "MISSING",
+      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? "***" : "MISSING",
+      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
+        ? "***"
+        : "MISSING",
     });
 
-    await newProduct.save();
-    res.status(201).json({ product: newProduct });
+    if (!req.files || req.files.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Vui lòng tải lên ít nhất một hình ảnh" });
+    }
+
+    // Upload tuần tự để dễ debug
+    const uploadedUrls = [];
+    for (const file of req.files) {
+      try {
+        console.log(`Uploading ${file.originalname} from ${file.path}`);
+
+        // Đảm bảo file tồn tại
+        if (!fs.existsSync(file.path)) {
+          throw new Error(`File not found: ${file.path}`);
+        }
+
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "products",
+          resource_type: "auto",
+          use_filename: true,
+          unique_filename: false,
+        });
+
+        uploadedUrls.push(result.secure_url);
+        console.log(`Upload thành công: ${result.secure_url}`);
+
+        // Xóa file tạm
+        fs.unlinkSync(file.path);
+      } catch (uploadError) {
+        console.error(`Lỗi upload ${file.originalname}:`, uploadError);
+        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        throw new Error(`Upload ảnh thất bại: ${uploadError.message}`);
+      }
+    }
+
+    // Xử lý productDescription
+    let descriptions = [];
+    try {
+      descriptions =
+        typeof req.body.productDescription === "string"
+          ? JSON.parse(req.body.productDescription)
+          : req.body.productDescription;
+    } catch (e) {
+      descriptions = req.body.productDescription.split(",");
+    }
+
+    // Tạo sản phẩm
+    const newProduct = new Product({
+      ...req.body,
+      productImages: uploadedUrls,
+      productDescription: descriptions,
+      productPrice: Number(req.body.productPrice),
+      productDiscount: Number(req.body.productDiscount) || 0,
+      productStock: Number(req.body.productStock) || 0,
+      productWeight: Number(req.body.productWeight) || 0,
+    });
+
+    const savedProduct = await newProduct.save();
+    return res.status(201).json(savedProduct);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Error in createProduct:", {
+      message: error.message,
+      stack: error.stack,
+      env: process.env.NODE_ENV,
+      cwd: process.cwd(),
+    });
+
+    // Xóa file tạm nếu có
+    if (req.files) {
+      req.files.forEach((file) => {
+        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+      errorDetails:
+        process.env.NODE_ENV === "development" ? error.stack : undefined,
+    });
   }
 };
 
@@ -68,19 +110,100 @@ export const getAllProducts = async (req, res) => {
   }
 };
 
-// Cập nhật sản phẩm
 export const updateProduct = async (req, res) => {
   const { id } = req.params;
   try {
-    const product = await Product.findByIdAndUpdate(id, req.body, {
-      new: true,
-    });
+    const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
-    res.status(200).json({ message: "Cập nhật sản phẩm thành công", product });
+
+    // Xử lý ảnh mới upload
+    let newImageUrls = [];
+    if (req.files && req.files.length > 0) {
+      // Upload đồng thời các ảnh mới lên Cloudinary
+      const uploadResults = await Promise.all(
+        req.files.map((file) => {
+          return cloudinary.uploader.upload(file.path, {
+            folder: "products",
+            resource_type: "image",
+          });
+        })
+      );
+      newImageUrls = uploadResults.map((result) => result.secure_url);
+
+      // Xóa file tạm sau khi upload
+      req.files.forEach((file) => {
+        fs.unlinkSync(file.path);
+      });
+    }
+
+    // Xử lý ảnh hiện tại (nếu có yêu cầu xóa ảnh cũ)
+    let existingImages = product.productImages || [];
+    if (req.body.keepImages) {
+      const keepImages = JSON.parse(req.body.keepImages);
+      existingImages = existingImages.filter((img) => keepImages.includes(img));
+
+      // Xóa ảnh không còn sử dụng khỏi Cloudinary
+      const imagesToDelete = product.productImages.filter(
+        (img) => !keepImages.includes(img)
+      );
+
+      await Promise.all(
+        imagesToDelete.map((img) => {
+          const publicId = img.split("/").pop().split(".")[0];
+          return cloudinary.uploader.destroy(`products/${publicId}`);
+        })
+      );
+    }
+
+    // Xử lý mô tả sản phẩm
+    let productDescription = product.productDescription;
+    if (req.body.productDescription) {
+      try {
+        productDescription = JSON.parse(req.body.productDescription);
+      } catch (e) {
+        productDescription = req.body.productDescription
+          .split(".")
+          .map((desc) => desc.trim())
+          .filter((desc) => desc !== "");
+      }
+    }
+
+    // Cập nhật thông tin sản phẩm
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      {
+        ...req.body,
+        productImages: [...existingImages, ...newImageUrls],
+        productDescription,
+        productPrice: Number(req.body.productPrice),
+        productDiscount: Number(req.body.productDiscount) || 0,
+        productStock: Number(req.body.productStock) || 0,
+      },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Cập nhật sản phẩm thành công",
+      product: updatedProduct,
+    });
   } catch (error) {
-    res.status(400).json({ message: "Cập nhật sản phẩm thất bại", error });
+    console.error("Lỗi khi cập nhật sản phẩm:", error);
+
+    // Xóa file tạm nếu có lỗi
+    if (req.files) {
+      req.files.forEach((file) => {
+        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Cập nhật sản phẩm thất bại",
+      error: error.message,
+    });
   }
 };
 
@@ -162,4 +285,3 @@ export const getProductByCategory = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-

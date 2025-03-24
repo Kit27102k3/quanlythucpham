@@ -77,10 +77,14 @@ export default function ProductDetails() {
   }, [productImages]);
 
   const descriptionArray =
-    products?.productDescription &&
-    typeof products?.productDescription[0] === "string"
-      ? JSON.parse(products?.productDescription[0])
-      : [];
+    typeof products?.productDescription === "string"
+      ? products.productDescription.includes("[")
+        ? JSON.parse(products.productDescription) // Nếu là JSON string
+        : products.productDescription
+            .split(".") // Nếu là plain string
+            .map((item) => item.trim())
+            .filter((item) => item)
+      : products?.productDescription || [];
 
   return (
     <div ref={topElementRef} className="p-2 lg:mb-5">
@@ -94,7 +98,7 @@ export default function ProductDetails() {
         <div className="lg:grid lg:grid-cols-2">
           <div className=" bg-white gap-2 lg:grid lg:grid-cols-1">
             <img
-              src={`http://localhost:8080/uploads/${selectedImage}`}
+              src={`${selectedImage}`}
               alt=""
               className="w-[280px] h-[300px] border-gray-600 mx-auto p-4 object-cover"
             />
@@ -102,7 +106,7 @@ export default function ProductDetails() {
               {productImages?.map((img, index) => (
                 <img
                   key={index}
-                  src={`http://localhost:8080/uploads/${img}`}
+                  src={`${img}`}
                   alt="Thumbnail"
                   className={`border-[#51bb1a] h-16 w-16 cursor-pointer transition-all duration-300 ${
                     selectedImage === img ? "border-2 border-[#51bb1a]" : ""
@@ -143,10 +147,10 @@ export default function ProductDetails() {
                   </span>
                 </p>
                 <ul className="flex flex-col text-sm gap-1 mt-2">
-                  {descriptionArray.map((item, index) => (
+                  {descriptionArray.map((desc, index) => (
                     <li key={index} className="flex items-center gap-2">
                       <DotFilledIcon />
-                      <span>{item}</span>
+                      <span>{desc}</span>
                     </li>
                   ))}
                 </ul>
@@ -394,7 +398,7 @@ export default function ProductDetails() {
                   </span>
                 </p>
                 <img
-                  src={`http://localhost:8080/uploads/${selectedImage}`}
+                  src={`${selectedImage}`}
                   alt={products?.productName}
                   className="w-[200px] h-[220px] border-gray-600 mx-auto p-4 object-cover"
                 />

@@ -28,11 +28,11 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
 
   const handleChange = (e) => {
     const value = e.target.value;
-    const descriptions = value
-      .split(".")
-      .map((desc) => desc.trim())
-      .filter((desc) => desc !== "");
-    setProductDescription(descriptions);
+    // const descriptions = value
+    //   .split(".")
+    //   .map((desc) => desc.trim())
+    //   .filter((desc) => desc !== "");
+    setProductDescription(value);
   };
 
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -73,36 +73,67 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    if (!product.productName || !product.productPrice) {
-      toast.error("Vui lòng điền đầy đủ thông tin sản phẩm!");
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
       const formData = new FormData();
-      Object.keys(product).forEach((key) => {
-        if (key === "productImages") {
-          product.productImages.forEach((file) => {
-            formData.append("productImages", file);
-          });
-        } else {
-          formData.append(key, product[key]);
-        }
+
+      // Thêm các trường dữ liệu cơ bản
+      formData.append("productName", product.productName);
+      formData.append("productPrice", product.productPrice);
+      formData.append("productCategory", product.productCategory);
+      formData.append("productBrand", product.productBrand);
+      formData.append("productStatus", product.productStatus || "Còn hàng");
+      formData.append("productDiscount", product.productDiscount || "0");
+      formData.append("productStock", product.productStock || "0");
+      formData.append("productCode", product.productCode);
+      formData.append("productWeight", product.productWeight || "0");
+      formData.append("productOrigin", product.productOrigin);
+      formData.append("productIntroduction", product.productIntroduction);
+      formData.append("productInfo", product.productInfo);
+      formData.append("productDetails", product.productDetails);
+
+      const descriptions = productDescription
+        .split(".")
+        .map((desc) => desc.trim())
+        .filter((desc) => desc !== "");
+
+      formData.append("productDescription", JSON.stringify(descriptions));
+
+      // Thêm các file ảnh
+      if (product.productImages && product.productImages.length > 0) {
+        product.productImages.forEach((file) => {
+          formData.append("productImages", file);
+        });
+      }
+
+      console.log("Dữ liệu gửi đi:", {
+        productName: product.productName,
+        productPrice: product.productPrice,
+        imageCount: product.productImages ? product.productImages.length : 0,
       });
-      formData.append("productDescription", JSON.stringify(productDescription));
-      const response = await productsApi.createProduct(formData);
+
+      const response = await productsApi.createProduct(formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
       toast.success("Thêm sản phẩm thành công!");
-      setProducts((prev) => [...prev, response]);
       setVisible(false);
     } catch (error) {
-      console.error(error);
-      toast.error("Thêm sản phẩm thất bại!");
+      console.error("Chi tiết lỗi:", {
+        message: error.message,
+        response: error.response?.data,
+      });
+
+      toast.error(
+        `Thêm sản phẩm thất bại: ${
+          error.response?.data?.message || error.message || "Lỗi không xác định"
+        }`
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
-
   useEffect(() => {
     return () => {
       imagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
@@ -235,7 +266,7 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
                   id="productDescription"
                   name="productDescription"
                   onChange={handleChange}
-                  value={productDescription.join(", ")}
+                  value={productDescription}
                 />
                 <label htmlFor="productDescription" className="text-sm -mt-3">
                   Mô tả sản phẩm

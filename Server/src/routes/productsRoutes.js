@@ -9,7 +9,9 @@ import {
   searchProducts,
   getProductByCategory,
 } from "../Controller/productsController.js";
-import upload from "../config/multerConfig.js";
+import multer from "multer";
+
+const upload = multer({ dest: "uploads/" });
 
 const router = express.Router();
 

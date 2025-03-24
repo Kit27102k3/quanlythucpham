@@ -1,14 +1,49 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, InputText, FloatLabel } from "primereact";
 import { toast } from "react-toastify";
 
-const EditProduct = ({ product, setVisible, handleUpdateProduct }) => {
+const EditProduct = ({
+  product,
+  setVisible,
+  handleUpdateProduct,
+  setProducts,
+}) => {
   const [editedProduct, setEditedProduct] = useState({
     ...product,
     productDescription: product.productDescription
       ? product.productDescription.join(". ")
       : "",
   });
+  const [imagePreviews, setImagePreviews] = useState(
+    product.productImages || []
+  );
+  const [newImages, setNewImages] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Hàm xử lý upload ảnh
+  const handleImageUpload = (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const filesArray = Array.from(files);
+    const previews = filesArray.map((file) => URL.createObjectURL(file));
+
+    setImagePreviews((prev) => [...prev, ...previews]);
+    setNewImages((prev) => [...prev, ...filesArray]);
+  };
+
+  // Hàm xử lý xóa ảnh
+  const handleRemoveImage = (index) => {
+    // Nếu là ảnh mới chưa upload
+    if (index >= imagePreviews.length - newImages.length) {
+      setNewImages((prev) =>
+        prev.filter(
+          (_, i) => i !== index - (imagePreviews.length - newImages.length)
+        )
+      );
+    }
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -20,30 +55,96 @@ const EditProduct = ({ product, setVisible, handleUpdateProduct }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
     try {
       const formData = new FormData();
-      Object.keys(editedProduct).forEach((key) => {
-        if (key === "productDescription") {
-          const descriptions = editedProduct[key]
-            .split(".")
-            .map((desc) => desc.trim())
-            .filter((desc) => desc !== "");
-          formData.append(key, JSON.stringify(descriptions));
-        } else if (Array.isArray(editedProduct[key])) {
-          formData.append(key, JSON.stringify(editedProduct[key]));
-        } else if (editedProduct[key] !== undefined) {
-          formData.append(key, String(editedProduct[key]));
+
+      // Thêm các trường dữ liệu cơ bản
+      const fieldsToUpdate = [
+        "productName",
+        "productPrice",
+        "productCategory",
+        "productBrand",
+        "productStatus",
+        "productDiscount",
+        "productStock",
+        "productCode",
+        "productWeight",
+        "productPromoPrice",
+        "productWarranty",
+        "productOrigin",
+        "productIntroduction",
+        "productInfo",
+        "productDetails",
+      ];
+
+      fieldsToUpdate.forEach((field) => {
+        if (editedProduct[field] !== undefined) {
+          formData.append(field, String(editedProduct[field]));
         }
       });
 
-      await handleUpdateProduct(editedProduct._id, formData);
+      // Xử lý mô tả sản phẩm
+      const descriptions = editedProduct.productDescription
+        ? editedProduct.productDescription
+            .split(".")
+            .map((desc) => desc.trim())
+            .filter((desc) => desc !== "")
+        : [];
+      formData.append("productDescription", JSON.stringify(descriptions));
+
+      // Thêm ảnh mới
+      newImages.forEach((file) => {
+        formData.append("productImages", file);
+      });
+
+      // Danh sách ảnh hiện tại muốn giữ lại
+      const currentImages = imagePreviews.filter(
+        (_, index) => index < imagePreviews.length - newImages.length
+      );
+      formData.append("keepImages", JSON.stringify(currentImages));
+
+      // Gọi API cập nhật
+      const response = await handleUpdateProduct(editedProduct._id, formData);
+
       toast.success("Cập nhật sản phẩm thành công!");
       setVisible(false);
+
+      // Cập nhật lại danh sách sản phẩm
+      if (response?.data?.product && setProducts) {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p._id === editedProduct._id ? response.data.product : p
+          )
+        );
+      }
     } catch (error) {
-      console.error("Lỗi khi cập nhật sản phẩm:", error);
-      toast.error("Có lỗi xảy ra khi cập nhật sản phẩm.");
+      console.error("Chi tiết lỗi:", {
+        message: error.message,
+        response: error.response?.data,
+      });
+
+      toast.error(
+        error.response?.data?.message || "Có lỗi xảy ra khi cập nhật sản phẩm"
+      );
+    } finally {
+      setIsSubmitting(false);
+      // Dọn dẹp URL tạm
+      newImages.forEach((file) => URL.revokeObjectURL(file.preview));
     }
   };
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((preview) => {
+        if (preview.startsWith("blob:")) {
+          URL.revokeObjectURL(preview);
+        }
+      });
+    };
+  }, [imagePreviews]);
 
   return (
     <div className="p-6">
@@ -269,6 +370,39 @@ const EditProduct = ({ product, setVisible, handleUpdateProduct }) => {
             Chi tiết sản phẩm
           </label>
         </FloatLabel>
+
+        <div>
+          <label className="block text-sm font-medium mb-2">Thêm ảnh mới</label>
+          <input
+            type="file"
+            multiple
+            onChange={handleImageUpload}
+            accept="image/*"
+            className="border p-2 rounded w-full"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Chọn nhiều ảnh bằng cách giữ Ctrl (Windows) hoặc Command (Mac)
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-4 mb-4">
+          {imagePreviews.map((preview, index) => (
+            <div key={index} className="relative group">
+              <img
+                src={preview}
+                alt={`Preview ${index}`}
+                className="w-32 h-32 object-cover rounded border"
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveImage(index)}
+                className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
 
         {/* Nút Cập nhật */}
         <Button

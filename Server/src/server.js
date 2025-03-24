@@ -18,7 +18,7 @@ import cartRoutes from "./routes/cartRoutes.js";
 import chatbotRoutes from "./routes/chatbotRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
-dotenv.config();
+dotenv.config({ path: ".env" });
 const app = express();
 const port = process.env.PORT || 8081;
 

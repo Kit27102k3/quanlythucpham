@@ -31,6 +31,7 @@
     "buffer": "^6.0.3",
     "chart.js": "^4.4.8",
     "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.6.0",
     "firebase": "^11.4.0",
     "framer-motion": "^12.4.7",
     "lodash.debounce": "^4.0.8",

@@ -12,7 +12,7 @@ function ProductList({ products, handleAddToCart, handleClick }) {
           <div className="relative overflow-hidden">
             {product.productImages?.length > 0 && (
               <img
-                src={`http://localhost:8080/uploads/${product.productImages[0]}`}
+                src={`${product.productImages[0]}`}
                 alt={product.productName}
                 className="w-64 h-64 object-cover hover-scale-up mx-auto"
               />
