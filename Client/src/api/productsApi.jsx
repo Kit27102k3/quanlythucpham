@@ -69,6 +69,18 @@ const productsApi = {
       throw error;
     }
   },
+
+  getProductInfoForChatbot: async (productId) => {
+    try {
+      const response = await axios.post(`${API_URL}/chatbot/product-info`, {
+        productId,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy thông tin sản phẩm cho chatbot:", error);
+      throw error;
+    }
+  },
 };
 
 export default productsApi;

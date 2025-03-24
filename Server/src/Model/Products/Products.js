@@ -23,7 +23,6 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// ✅ Thêm `productName` vào text index để tìm kiếm dễ dàng hơn
 productSchema.index({
   productName: "text",
   productInfo: "text",

@@ -9,6 +9,7 @@ import formatCurrency from "../../Until/FotmatPrice";
 import "../../../index.css";
 import Kitchen from "./Kitchen";
 import RelatedProducts from "./RelatedProducts";
+import Chatbot from "../../component/ChatBot";
 
 export default function ProductDetails() {
   const [selectedImage, setSelectedImage] = useState([]);
@@ -436,6 +437,9 @@ export default function ProductDetails() {
       </div>
       <div className="mt-10 mx-auto">
         <RelatedProducts currentProduct={products} />
+      </div>
+      <div>
+        <Chatbot productId={id} />
       </div>
     </div>
   );
