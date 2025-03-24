@@ -16,6 +16,7 @@ import categoryRoutes from "./routes/categoryRoutes.js";
 import productsRoutes from "./routes/productsRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
 import chatbotRoutes from "./routes/chatbotRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 dotenv.config();
 const app = express();
@@ -52,6 +53,7 @@ app.use("/api", productsRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api", chatbotRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Khởi động server
 app.listen(port, () => {

@@ -4,16 +4,21 @@ import { Checkbox } from "@radix-ui/themes";
 import cartApi from "../../api/cartApi";
 import formatCurrency from "../Until/FotmatPrice";
 import { toast } from "react-toastify";
+import paymentApi from "../../api/paymentApi";
+import { useNavigate } from "react-router-dom";
 
 const Cart = () => {
   const [cart, setCart] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const userId = localStorage.getItem("userId");
+  const navigate = useNavigate();
 
   const fetchCart = async () => {
     try {
       const res = await cartApi.getCart(userId);
       setCart(res.cart);
+      setSelectedItems(res.cart.items.map((item) => item.productId._id));
     } catch (error) {
       console.log("Lỗi khi tải giỏ hàng!", error);
     }
@@ -67,11 +72,47 @@ const Cart = () => {
     }
   };
 
+  const handleSelectItem = (productId) => {
+    setSelectedItems((prev) =>
+      prev.includes(productId)
+        ? prev.filter((id) => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
   const calculateTotal = () => {
     if (!cart || !cart.items) return 0;
     return cart.items.reduce((total, item) => {
-      return total + item.productId.productPrice * item.quantity;
+      if (selectedItems.includes(item.productId._id)) {
+        return total + item.productId.productPrice * item.quantity;
+      }
+      return total;
     }, 0);
+  };
+
+  const handleCheckout = async () => {
+    if (selectedItems.length === 0) {
+      toast.warning("Vui lòng chọn ít nhất một sản phẩm để thanh toán!");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const paymentData = {
+        userId,
+        selectedItems,
+      };
+      const res = await paymentApi.createPayment(paymentData);
+      const paymentId = res.payment?._id;
+      if (paymentId) {
+        navigate(`/thanh-toan/${paymentId}`);
+      } else {
+        toast.error("Không nhận được ID thanh toán");
+      }
+    } catch (error) {
+      console.error("Lỗi thanh toán:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -104,9 +145,12 @@ const Cart = () => {
             cart.items.map((item) => (
               <div
                 key={item.productId._id}
-                className="grid grid-cols-[25%_45%_25%] mt-5 lg:grid lg:grid-cols-[2%_20%_53%_25%] place-items-center"
+                className="grid grid-cols-[25%_45%_25%] mt-5 lg:grid lg:grid-cols-[2%_20%_53%_25%] place-items-center items-center"
               >
-                <Checkbox defaultChecked />
+                <Checkbox
+                  checked={selectedItems.includes(item.productId._id)}
+                  onCheckedChange={() => handleSelectItem(item.productId._id)}
+                />
                 {item?.productId?.productImages?.length > 0 && (
                   <img
                     src={`http://localhost:8080/uploads/${item.productId.productImages[0]}`}
@@ -114,7 +158,7 @@ const Cart = () => {
                     className="w-20 h-20 lg:w-[170px] lg:h-[170px] object-cover"
                   />
                 )}
-                <div className="text-[12px] lg:text-[16px]">
+                <div className="text-[12px] lg:text-[16px] ">
                   <p className="font-medium">{item?.productId?.productName}</p>
                   <p className="text-gray-500">
                     Giá:{" "}
@@ -182,7 +226,10 @@ const Cart = () => {
             </p>
           </div>
           <div className="grid grid-cols-1 gap-2 mt-2">
-            <button className="w-full text-white uppercase bg-[#51bb1a] text-sm p-3 cursor-pointer hover-animation-button">
+            <button
+              onClick={handleCheckout}
+              className="w-full text-white uppercase text-center bg-[#51bb1a] text-sm p-3 cursor-pointer hover-animation-button"
+            >
               Thanh toán ngay
             </button>
             <button className="w-full uppercase border text-sm p-3 cursor-pointer lg:font-medium hover:bg-[#51bb1a] hover:text-white">

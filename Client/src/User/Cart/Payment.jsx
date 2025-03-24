@@ -6,6 +6,9 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCar, faMoneyCheckDollar } from "@fortawesome/free-solid-svg-icons";
+import { useNavigate, useParams } from "react-router-dom";
+import paymentApi from "../../api/paymentApi";
+import { toast } from "react-toastify";
 
 const host = "https://provinces.open-api.vn/api/";
 
@@ -14,6 +17,7 @@ export default function Payment() {
     productCount: 1,
     totalPrice: 53500,
   });
+
   const [coupon, setCoupon] = useState("");
   const [showDetails, setShowDetails] = useState(false);
   const [cities, setCities] = useState([]);
@@ -21,6 +25,37 @@ export default function Payment() {
   const [wards, setWards] = useState([]);
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedDistrict, setSelectedDistrict] = useState("");
+  const { paymentId } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchPaymentDetails = async () => {
+      try {
+        if (!paymentId) {
+          navigate("/gio-hang");
+          return;
+        }
+        const response = await paymentApi.getPaymentById(paymentId);
+      } catch (error) {
+        console.error("Lỗi khi lấy thông tin thanh toán:", error);
+        toast.error("Không thể tải thông tin thanh toán");
+        navigate("/gio-hang");
+      }
+    };
+
+    fetchPaymentDetails();
+  }, [paymentId, navigate]);
+
+  const handleRemoveItem = async () => {
+    if (!paymentId) return;
+    try {
+      await paymentApi.deletePayment(paymentId);
+      navigate("/gio-hang");
+    } catch (error) {
+      console.log(error);
+      toast.error("Xoá đơn hàng thất bại");
+    }
+  };
 
   useEffect(() => {
     axios.get(`${host}?depth=1`).then((response) => {
@@ -60,7 +95,7 @@ export default function Payment() {
         <div className="bg-[#fafafa] border border-[#fafafa] rounded-lg lg:absolute lg:top-0 lg:right-0 lg:-mr-40 lg:w-[450px] lg:min-h-screen lg:border-l-gray-700">
           <div className="flex items-center justify-between p-3 border-b">
             <div className="flex items-center gap-1">
-              <div>Đơn hàng ({orderDetails.productCount} sản phẩm)</div>
+              <div>Đơn hàng ({orderDetails?.productCount} sản phẩm)</div>
               <ChevronDownIcon
                 className={`w-4 h-4 transition-transform lg-hide-chevron hide-on-pc ${
                   showDetails ? "rotate-180" : "rotate-0"
@@ -68,7 +103,7 @@ export default function Payment() {
                 onClick={() => setShowDetails(!showDetails)}
               />
             </div>
-            <div>{orderDetails.totalPrice.toLocaleString()}đ</div>
+            <div>{orderDetails?.totalPrice.toLocaleString()}đ</div>
           </div>
 
           <AnimatePresence>
@@ -209,7 +244,6 @@ export default function Payment() {
             className=" border border-gray-400 p-4 text-sm outline-none w-full lg:w-[400px]"
           />
         </div>
-        {/** CỘT 2 */}
         <div className="lg:absolute lg:left-[55%] lg:top-0 lg:right-0">
           <div className="mt-5">
             <FontAwesomeIcon icon={faCar} />
@@ -238,7 +272,7 @@ export default function Payment() {
             Đặt hàng
           </button>
           <a
-            href="gio-hang"
+            onClick={handleRemoveItem}
             className="text-center hover:text-[#51bb1a] cursor-pointer"
           >
             Quay về giỏ hàng

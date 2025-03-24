@@ -111,6 +111,10 @@ const authApi = {
     if (!userId) throw new Error("User not logged in");
     return instance.get(`/profile/${userId}`);
   },
+  getUserById: (id) => {
+    if (!id) throw new Error("User ID is required");
+    return instance.get(`/profile/${id}`);
+  },
   updateProfile: (userId, data) => instance.put(`/update/${userId}`, data),
 };
 

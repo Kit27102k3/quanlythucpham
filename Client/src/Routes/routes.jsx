@@ -92,7 +92,7 @@ const publicRoutes = [
     layout: null,
   },
   {
-    path: "/thanh-toan",
+    path: "/thanh-toan/:paymentId",
     page: Payment,
     layout: null,
   },
@@ -125,7 +125,7 @@ const privateRoutes = [
     page: Customers,
   },
   {
-    path: "/admin/customers/details",
+    path: "/admin/customers/details/:id",
     page: CustomerDetails,
     layout: null,
   },
