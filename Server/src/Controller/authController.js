@@ -2,6 +2,8 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import User from "../Model/Account/Register.js";
 import RefreshToken from "../Model/Account/RefreshToken.js";
+import { generateOTP } from "../Untils/otp.until.js";
+import { sendOTPEmail } from "../Services/email.service.js";
 
 export const register = async (req, res) => {
   try {
@@ -181,5 +183,37 @@ export const updateUser = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
+  }
+};
+
+export const requestPasswordReset = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Email chưa được đăng ký trong hệ thống",
+      });
+    }
+    const otp = generateOTP();
+    const otpExpires = new Date(Date.now() + 15 * 60 * 1000);
+
+    user.resetPasswordToken = otp;
+    user.resetPasswordExpires = otpExpires;
+    await user.save();
+
+    await sendOTPEmail(email, otp);
+
+    res.status(200).json({
+      success: true,
+      message: "Mã OTP đã được gửi đến email của bạn",
+    });
+  } catch (error) {
+    console.error("Error in requestPasswordReset:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi xử lý yêu cầu",
+    });
   }
 };

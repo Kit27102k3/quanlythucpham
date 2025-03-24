@@ -5,29 +5,51 @@ import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { InputOtp } from "primereact/inputotp";
 import { Toast } from "primereact/toast";
+import { classNames } from "primereact/utils";
 import "../../../App.css";
 
 export default function ForgotPassword() {
   const stepperRef = useRef(null);
-  const [token, setTokens] = useState();
   const toast = useRef(null);
+  const [token, setToken] = useState("");
+  const [loading, setLoading] = useState({
+    step1: false,
+    step2: false,
+    step3: false,
+  });
 
-  const showSuccess = () => {
-    toast.current.show({
-      severity: "success",
-      summary: "Success",
-      detail: "Message Content",
-      life: 1000,
-    });
-  };
   const [formData, setFormData] = useState({
     email: "",
     password: "",
     confirm: "",
   });
 
+  const [errors, setErrors] = useState({
+    email: false,
+    password: false,
+    confirm: false,
+    otp: false,
+  });
+
+  // Validate email format
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
+  // Validate password strength
+  const validatePassword = (password) => {
+    return password.length >= 8;
+  };
+
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: false }));
+    }
   };
 
   const handleNext = () => {
@@ -38,140 +60,291 @@ export default function ForgotPassword() {
     stepperRef.current.prevCallback();
   };
 
-  const handleSubmitStep1 = () => {
-    handleNext();
+  const showToast = (severity, summary, detail) => {
+    toast.current.show({ severity, summary, detail, life: 3000 });
   };
 
-  const handleSubmitStep2 = () => {
-    handleNext();
+  const handleSubmitStep1 = async () => {
+    if (!formData.email) {
+      setErrors((prev) => ({ ...prev, email: "Email không được để trống" }));
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      setErrors((prev) => ({ ...prev, email: "Email không hợp lệ" }));
+      return;
+    }
+
+    setLoading((prev) => ({ ...prev, step1: true }));
+
+    try {
+      const response = await fetch("http://localhost:8080/auth/forgot-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: formData.email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Yêu cầu OTP thất bại");
+      }
+
+      showToast("success", "Thành công", data.message);
+      handleNext();
+    } catch (error) {
+      showToast("error", "Lỗi", error.message);
+    } finally {
+      setLoading((prev) => ({ ...prev, step1: false }));
+    }
+  };
+
+  const handleSubmitStep2 = async () => {
+    if (!token || token.length < 6) {
+      setErrors((prev) => ({ ...prev, otp: "Mã OTP phải có 6 chữ số" }));
+      return;
+    }
+
+    setLoading((prev) => ({ ...prev, step2: true }));
+
+    try {
+      // Simulate OTP verification
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      showToast("success", "Thành công", "Xác thực OTP thành công");
+      handleNext();
+    } catch (error) {
+      showToast("error", "Lỗi", "Mã OTP không chính xác");
+    } finally {
+      setLoading((prev) => ({ ...prev, step2: false }));
+    }
+  };
+
+  const handleSubmitStep3 = async () => {
+    if (!formData.password) {
+      setErrors((prev) => ({
+        ...prev,
+        password: "Mật khẩu không được để trống",
+      }));
+      return;
+    }
+
+    if (!validatePassword(formData.password)) {
+      setErrors((prev) => ({
+        ...prev,
+        password: "Mật khẩu phải có ít nhất 8 ký tự",
+      }));
+      return;
+    }
+
+    if (formData.password !== formData.confirm) {
+      setErrors((prev) => ({ ...prev, confirm: "Mật khẩu không khớp" }));
+      return;
+    }
+
+    setLoading((prev) => ({ ...prev, step3: true }));
+
+    try {
+      // Simulate password reset API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      showToast("success", "Thành công", "Đổi mật khẩu thành công");
+
+      // Reset form after successful password change
+      setFormData({
+        email: "",
+        password: "",
+        confirm: "",
+      });
+      setToken("");
+      // navigate('/dang-nhap');
+    } catch (error) {
+      showToast("error", "Lỗi", "Đổi mật khẩu thất bại");
+    } finally {
+      setLoading((prev) => ({ ...prev, step3: false }));
+    }
   };
 
   return (
-    <div className="p-6">
-      <Toast ref={toast} />
-      <Stepper
-        ref={stepperRef}
-        orientation="horizontal"
-        style={{ maxWidth: "40rem", width: "100%" }}
-        className=" text-black "
-      >
-        <StepperPanel>
-          <div className=" border-dashed  border-round surface-ground font-medium p-5 w-full">
-            <div className="field mb-3">
-              <label htmlFor="email" className="font-bold block mb-2">
-                Email:
-              </label>
-              <InputText
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Nhập email của bạn"
-                className="w-full p-2 border border-gray-300 rounded-md"
-                style={{
-                  backgroundColor: "white",
-                  color: "black",
-                  outline: "none",
-                }}
+    <div className="p-6 flex justify-content-center">
+      <div style={{ maxWidth: "40rem", width: "100%" }}>
+        <Toast ref={toast} position="top-center" />
+        <Stepper
+          ref={stepperRef}
+          orientation="horizontal"
+          className="text-black mb-6"
+        >
+          {/* Step 1: Email Input */}
+          <StepperPanel header="Xác thực email">
+            <div className="border-dashed border-round surface-ground font-medium p-5 w-full">
+              <div className="field mb-3">
+                <label htmlFor="email" className="font-bold block mb-2">
+                  Email:
+                </label>
+                <InputText
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Nhập email của bạn"
+                  className={classNames("w-full p-3 border-round", {
+                    "p-invalid": errors.email,
+                  })}
+                  style={{
+                    backgroundColor: "white",
+                    color: "black",
+                  }}
+                />
+                {errors.email && (
+                  <small className="p-error block mt-1">{errors.email}</small>
+                )}
+              </div>
+            </div>
+            <div className="flex pt-4 justify-end w-full">
+              <Button
+                label="Tiếp theo"
+                icon="pi pi-arrow-right"
+                iconPos="right"
+                loading={loading.step1}
+                className="h-10 w-28 bg-blue-500 text-white"
+                onClick={handleSubmitStep1}
               />
             </div>
-          </div>
-          <div className="flex pt-4 justify-end w-full">
-            <Button
-              label="Next"
-              icon="pi pi-arrow-right"
-              iconPos="right"
-              className="h-10 w-28 bg-blue-500 text-black p-2"
-              onClick={handleSubmitStep1}
-            />
-          </div>
-        </StepperPanel>
+          </StepperPanel>
 
-        <StepperPanel>
-          <div className=" border-dashed  border-round surface-ground font-medium p-5 w-full">
-            <h2 className="mb-2">Nhập mã OTP:</h2>
-            <InputOtp
-              value={token}
-              onChange={(e) => setTokens(e.value)}
-              className="p-your-input-class border-2"
-            />
-          </div>
-          <div className="flex pt-4 justify-between w-full">
-            <Button
-              label="Back"
-              severity="secondary"
-              className="h-10 w-28 bg-blue-500 text-black p-2"
-              icon="pi pi-arrow-left"
-              onClick={handleBack}
-            />
-            <Button
-              label="Next"
-              icon="pi pi-arrow-right"
-              iconPos="right"
-              onClick={handleSubmitStep2}
-              className="h-10 w-28 bg-blue-500 text-black p-2"
-            />
-          </div>
-        </StepperPanel>
+          {/* Step 2: OTP Verification */}
+          <StepperPanel header="Xác thực OTP">
+            <div className="border-dashed border-round surface-ground font-medium p-5 w-full">
+              <h2 className="mb-4">Nhập mã OTP đã gửi đến email của bạn</h2>
+              <div className="flex justify-content-center mb-3">
+                <InputOtp
+                  value={token}
+                  onChange={(e) => {
+                    setToken(e.value);
+                    if (errors.otp)
+                      setErrors((prev) => ({ ...prev, otp: false }));
+                  }}
+                  length={6}
+                  integerOnly
+                  inputClassName={classNames("w-3rem h-3rem mx-1 text-xl", {
+                    "border-red-500": errors.otp,
+                  })}
+                  inputStyle={{
+                    border: errors.otp
+                      ? "1px solid #ff0000"
+                      : "1px solid #ced4da",
+                    borderRadius: "6px",
+                  }}
+                />
+              </div>
+              {errors.otp && (
+                <small className="p-error block text-center">
+                  {errors.otp}
+                </small>
+              )}
+              <div className="text-center mt-3">
+                <Button
+                  label="Gửi lại mã OTP"
+                  link
+                  className="p-0 text-sm"
+                  onClick={() =>
+                    showToast("info", "Thông báo", "Mã OTP mới đã được gửi")
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex pt-4 justify-between w-full">
+              <Button
+                label="Quay lại"
+                severity="secondary"
+                className="h-10 w-28 text-black border-1 "
+                icon="pi pi-arrow-left"
+                onClick={handleBack}
+              />
+              <Button
+                label="Tiếp theo"
+                icon="pi pi-arrow-right"
+                iconPos="right"
+                loading={loading.step2}
+                className="h-10 w-28 bg-blue-500 text-white"
+                onClick={handleSubmitStep2}
+              />
+            </div>
+          </StepperPanel>
 
-        <StepperPanel>
-          <div className=" border-dashed  border-round surface-ground font-medium p-5 w-full">
-            <div className="field mb-3">
-              <label htmlFor="password" className="font-bold block mb-2">
-                Mật khẩu mới:
-              </label>
-              <InputText
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Nhập mật khẩu"
-                className="w-full p-2 border border-gray-300 rounded-md"  
-                type="password"
-                style={{
-                  backgroundColor: "white",
-                  color: "black",
-                  outline: "none",
-                }}
+          {/* Step 3: New Password */}
+          <StepperPanel header="Đặt mật khẩu mới">
+            <div className="border-dashed border-round surface-ground font-medium p-5 w-full">
+              <div className="field mb-4">
+                <label htmlFor="password" className="font-bold block mb-2">
+                  Mật khẩu mới:
+                </label>
+                <InputText
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Nhập mật khẩu mới (ít nhất 8 ký tự)"
+                  className={classNames("w-full p-3 border-round", {
+                    "p-invalid": errors.password,
+                  })}
+                  type="password"
+                  style={{
+                    backgroundColor: "white",
+                    color: "black",
+                  }}
+                />
+                {errors.password && (
+                  <small className="p-error block mt-1">
+                    {errors.password}
+                  </small>
+                )}
+              </div>
+              <div className="field mb-4">
+                <label htmlFor="confirm" className="font-bold block mb-2">
+                  Xác nhận mật khẩu:
+                </label>
+                <InputText
+                  id="confirm"
+                  name="confirm"
+                  value={formData.confirm}
+                  onChange={handleChange}
+                  placeholder="Nhập lại mật khẩu mới"
+                  className={classNames("w-full p-3 border-round", {
+                    "p-invalid": errors.confirm,
+                  })}
+                  type="password"
+                  style={{
+                    backgroundColor: "white",
+                    color: "black",
+                  }}
+                />
+                {errors.confirm && (
+                  <small className="p-error block mt-1">{errors.confirm}</small>
+                )}
+              </div>
+            </div>
+            <div className="flex pt-4 justify-between w-full">
+              <Button
+                label="Quay lại"
+                severity="secondary"
+                className="h-10 w-28 text-black border-1 "
+                icon="pi pi-arrow-left"
+                onClick={handleBack}
+              />
+              <Button
+                label="Xác nhận"
+                icon="pi pi-check"
+                loading={loading.step3}
+                className="h-10 w-28 bg-green-500 text-white"
+                onClick={handleSubmitStep3}
               />
             </div>
-            <div className="field mb-3">
-              <label htmlFor="confirm" className="font-bold block mb-2">
-                Xác nhận mật khẩu:
-              </label>
-              <InputText
-                id="confirm"
-                name="confirm"
-                value={formData.confirm}
-                onChange={handleChange}
-                placeholder="Nhập lại mật khẩu"
-                className="w-full p-2 border border-gray-300 rounded-md"  
-                type="password"
-                style={{
-                  backgroundColor: "white",
-                  color: "black",
-                  outline: "none",
-                }}
-              />
-            </div>
-          </div>
-          <div className="flex pt-4 justify-around gap-90 w-full">
-            <Button
-              label="Xác nhận"
-              severity="secondary"
-              icon="pi pi-check"
-              onClick={showSuccess}
-              className="h-10 w-40 p-6 rounded-md"
-              style={{
-                backgroundColor: "#51bb1a",
-                color: "white",
-                outline: "none",
-                borderRadius: "none",
-              }}
-            />
-          </div>
-        </StepperPanel>
-      </Stepper>
+          </StepperPanel>
+        </Stepper>
+      </div>
     </div>
   );
 }
