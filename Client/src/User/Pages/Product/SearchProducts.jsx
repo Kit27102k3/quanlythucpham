@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import productsApi from "../../../api/productsApi";
 import formatCurrency from "../../Until/FotmatPrice";
+import useCartAndNavigation from "../../Until/useCartAndNavigation";
 
 function SearchProducts() {
   const [searchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [sliceLength, setSliceLength] = useState(40);
   const query = searchParams.get("query");
-  const navigate = useNavigate();
+  const { handleClick } = useCartAndNavigation();
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -24,11 +25,6 @@ function SearchProducts() {
     fetchProducts();
   }, [query]);
 
-  const handleClick = (id) => {
-    navigate(`/chi-tiet-san-pham/${id}`);
-    window.location.reload();
-  };
-
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
@@ -37,10 +33,8 @@ function SearchProducts() {
         setSliceLength(40);
       }
     };
-
     handleResize();
     window.addEventListener("resize", handleResize);
-
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 

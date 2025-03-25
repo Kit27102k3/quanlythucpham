@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 const messageSchema = new mongoose.Schema({
   sender: {
     type: String,
-    enum: ["user", "bot"], // Chỉ cho phép 'user' hoặc 'bot'
+    enum: ["user", "bot"],
     required: true,
   },
   message: {
@@ -13,53 +13,51 @@ const messageSchema = new mongoose.Schema({
   },
   timestamp: {
     type: Date,
-    default: Date.now, // Mặc định là thời gian hiện tại
+    default: Date.now,
   },
   productId: {
-    type: mongoose.Schema.Types.ObjectId, // ID sản phẩm liên quan
-    ref: "Product", // Tham chiếu đến collection Product (nếu có)
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Product",
   },
   type: {
     type: String,
-    enum: ["text", "image", "file"], // Phân loại tin nhắn
-    default: "text", // Mặc định là tin nhắn văn bản
+    enum: ["text", "image", "file"],
+    default: "text",
   },
 });
 
-// Định nghĩa schema cho cuộc trò chuyện
 const chatSchema = new mongoose.Schema({
   userId: {
-    type: mongoose.Schema.Types.ObjectId, // ID người dùng
-    ref: "User", // Tham chiếu đến collection User (nếu có)
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
     required: true,
   },
   userInfo: {
-    name: String, // Tên người dùng
-    email: String, // Email người dùng
-    phone: String, // Số điện thoại người dùng
+    name: String,
+    email: String,
+    phone: String,
   },
-  messages: [messageSchema], // Mảng các tin nhắn
+  messages: [messageSchema],
   status: {
     type: String,
-    enum: ["active", "closed"], // Trạng thái cuộc trò chuyện
-    default: "active", // Mặc định là 'active'
+    enum: ["active", "closed"],
+    default: "active",
   },
   rating: {
     type: Number,
     min: 1,
-    max: 5, // Đánh giá từ 1 đến 5 sao
+    max: 5,
   },
   createAt: {
     type: Date,
-    default: Date.now, // Mặc định là thời gian hiện tại
+    default: Date.now,
   },
   updateAt: {
     type: Date,
-    default: Date.now, // Mặc định là thời gian hiện tại
+    default: Date.now,
   },
 });
 
-// Tự động cập nhật trường updateAt mỗi khi document được cập nhật
 chatSchema.pre("save", function (next) {
   this.updateAt = Date.now();
   next();

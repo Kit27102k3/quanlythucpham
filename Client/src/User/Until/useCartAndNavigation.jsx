@@ -24,7 +24,25 @@ const useCartAndNavigation = () => {
     navigate(`/chi-tiet-san-pham/${id}`);
   };
 
-  return { handleAddToCart, handleClick };
+  const handleRemoveItem = async (productId) => {
+    setIsLoading(true);
+    try {
+      const response = await cartApi.removeFromCart(userId, productId);
+      setCart((prevCart) => ({
+        ...prevCart,
+        items: prevCart.items.filter(
+          (item) => item.productId._id !== productId
+        ),
+      }));
+      toast.success("Xóa sản phẩm ra khỏi giỏ hàng thành công!");
+    } catch (error) {
+      console.error("Lỗi khi xóa sản phẩm:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { handleAddToCart, handleClick, handleRemoveItem };
 };
 
 export default useCartAndNavigation;

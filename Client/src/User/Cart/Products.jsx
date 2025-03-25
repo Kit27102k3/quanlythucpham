@@ -6,15 +6,14 @@ import cartApi from "../../api/cartApi";
 import formatCurrency from "../Until/FotmatPrice";
 
 function Products() {
-  const [cart, setCart] = useState(null); // State để lưu trữ giỏ hàng
+  const [cart, setCart] = useState(null); 
   const userId = localStorage.getItem("userId");
 
-  // Hàm lấy giỏ hàng từ API
   useEffect(() => {
     const fetchCart = async () => {
       try {
         const res = await cartApi.getCart(userId);
-        setCart(res.cart); // Lưu giỏ hàng vào state
+        setCart(res.cart); 
       } catch (error) {
         console.log("Lỗi khi lấy giỏ hàng:", error);
       }
@@ -22,11 +21,9 @@ function Products() {
     fetchCart();
   }, [userId]);
 
-  // Hàm xóa sản phẩm khỏi giỏ hàng
   const removeItem = async (itemId) => {
     try {
       await cartApi.removeFromCart(userId, itemId);
-      // Cập nhật lại giỏ hàng sau khi xóa
       const res = await cartApi.getCart(userId);
       setCart(res.cart);
     } catch (error) {
@@ -34,11 +31,9 @@ function Products() {
     }
   };
 
-  // Hàm cập nhật số lượng sản phẩm
   const updateQuantity = async (itemId, newQuantity) => {
     try {
       await cartApi.updateCartItem(userId, itemId, { quantity: newQuantity });
-      // Cập nhật lại giỏ hàng sau khi thay đổi số lượng
       const res = await cartApi.getCart(userId);
       setCart(res.cart);
     } catch (error) {
@@ -46,7 +41,6 @@ function Products() {
     }
   };
 
-  // Tính tổng tiền giỏ hàng
   const total = cart?.items?.reduce(
     (sum, item) => sum + item.productId.productPrice * item.quantity,
     0
@@ -66,7 +60,7 @@ function Products() {
             {cart?.items?.map((item) => (
               <div key={item._id} className="flex justify-between mb-4">
                 <img
-                  src={`http://localhost:8080/uploads/${item.productId.productImages[0]}`}
+                  src={`${item.productId.productImages[0]}`}
                   alt={item.productId.productName}
                   className="w-20 h-20 object-cover"
                 />

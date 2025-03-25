@@ -47,7 +47,6 @@ export const handleMessage = async (userId, message, productId) => {
         "Xin lỗi, tôi không hiểu câu hỏi của bạn. Vui lòng hỏi lại.";
     }
 
-    // Lưu tin nhắn vào database
     chat.messages.push(
       { sender: "user", message, productId },
       { sender: "bot", message: responseMessage, productId }

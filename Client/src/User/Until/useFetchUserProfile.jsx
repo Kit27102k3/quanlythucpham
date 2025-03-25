@@ -1,32 +1,25 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 import authApi from "../../api/authApi";
-import axios from "axios";
 
-export const useFetchUserProfile = () => {
+const useFetchUserProfile = () => {
   const [users, setUsers] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  const fetchUserProfile = async () => {
-    const userId = localStorage.getItem("userId");
+  const fetchUserProfile = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const response = await axios.get(
-        `http://localhost:8080/auth/profile/${userId}`
-      );
-      console.log(response);
-      setUsers(response.data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      const response = await authApi.getProfile();
+      if (response.data !== users) {
+        setUsers(response.data);
+      }
+    } catch (error) {
+      console.log("Lỗi khi lấy thông tin người dùng:", error);
     }
-  };
+  }, [users]);
 
   useEffect(() => {
     fetchUserProfile();
-  }, []);
+  }, [fetchUserProfile]);
 
-  return { users, loading, error, fetchUserProfile };
+  return users;
 };
+
+export default useFetchUserProfile;

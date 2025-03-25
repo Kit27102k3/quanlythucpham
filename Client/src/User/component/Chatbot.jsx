@@ -9,25 +9,22 @@ const Chatbot = ({ productId }) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [isFirstOpen, setIsFirstOpen] = useState(true); // Trạng thái kiểm tra lần đầu mở
+  const [isFirstOpen, setIsFirstOpen] = useState(true); 
   const userId = localStorage.getItem("userId");
 
-  // Tham chiếu đến phần tử chứa danh sách tin nhắn
   const messagesEndRef = useRef(null);
 
-  // Tự động cuộn xuống dưới khi có tin nhắn mới
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]); // Kích hoạt mỗi khi `messages` thay đổi
+  }, [messages]); 
 
-  // Gửi lời chào khi mở cửa sổ chat lần đầu tiên
   useEffect(() => {
     if (isOpen && isFirstOpen) {
       const welcomeMessage = "Xin chào, tôi có thể giúp gì cho bạn?";
       setMessages((prev) => [...prev, { text: welcomeMessage, sender: "bot" }]);
-      setIsFirstOpen(false); // Đánh dấu đã mở cửa sổ chat
+      setIsFirstOpen(false); 
     }
   }, [isOpen, isFirstOpen]);
 
@@ -104,7 +101,6 @@ const Chatbot = ({ productId }) => {
                 </span>
               </div>
             ))}
-            {/* Tham chiếu đến phần tử cuối cùng để tự động cuộn */}
             <div ref={messagesEndRef} />
             {isLoading && (
               <div className="text-left">

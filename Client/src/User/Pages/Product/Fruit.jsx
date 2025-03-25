@@ -17,6 +17,7 @@ function Fruit() {
     };
     fetchProductCategory();
   }, []);
+
   return (
     <div className="grid grid-cols-1 px-4">
       <h1 className="text-[14px] font-medium text-[#292929] uppercase lg:text-[35px]">
@@ -32,7 +33,7 @@ function Fruit() {
               >
                 <div className="relative overflow-hidden">
                   <img
-                    src={`http://localhost:8080/uploads/${product.productImages[0]}`}
+                    src={`${product.productImages[0]}`}
                     alt=""
                     className="w-[150px] h-[150px] lg:w-[350px] lg:h-[350px] object-cover hover-scale-up"
                   />

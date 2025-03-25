@@ -10,35 +10,30 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
     productName: "",
     productPrice: "",
     productImages: [],
-    productCategory: "", // Danh mục sản phẩm
-    productBrand: "", // Thương hiệu
-    productStatus: "", // Tình trạng
-    productDiscount: "", // Giảm giá
-    productStock: "", // Số lượng trong kho
-    productCode: "", // Mã sản phẩm
-    productWeight: "", // Trọng lượng
-    productPromoPrice: "", // Giá khuyến mãi
-    productWarranty: "", // Bảo hành
-    productOrigin: "", // Xuất xứ
-    productIntroduction: "", // Giới thiệu sản phẩm
-    productInfo: "", // Thông tin sản phẩm
-    productDetails: "", // Chi tiết sản phẩm
+    productCategory: "",
+    productBrand: "",
+    productStatus: "",
+    productDiscount: "", 
+    productStock: "", 
+    productCode: "",
+    productWeight: "", 
+    productPromoPrice: "", 
+    productWarranty: "",
+    productOrigin: "", 
+    productIntroduction: "", 
+    productInfo: "",
+    productDetails: "", 
   });
   const [productDescription, setProductDescription] = useState([]);
 
   const handleChange = (e) => {
     const value = e.target.value;
-    // const descriptions = value
-    //   .split(".")
-    //   .map((desc) => desc.trim())
-    //   .filter((desc) => desc !== "");
     setProductDescription(value);
   };
 
   const [imagePreviews, setImagePreviews] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Xử lý thay đổi input
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setProduct({
@@ -75,8 +70,6 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
 
     try {
       const formData = new FormData();
-
-      // Thêm các trường dữ liệu cơ bản
       formData.append("productName", product.productName);
       formData.append("productPrice", product.productPrice);
       formData.append("productCategory", product.productCategory);
@@ -97,8 +90,6 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
         .filter((desc) => desc !== "");
 
       formData.append("productDescription", JSON.stringify(descriptions));
-
-      // Thêm các file ảnh
       if (product.productImages && product.productImages.length > 0) {
         product.productImages.forEach((file) => {
           formData.append("productImages", file);
@@ -145,7 +136,6 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
       <Scrollbars style={{ width: "100%", height: "550px" }}>
         <div className="p-4 card flex flex-col justify-content-center mt-2">
           <div className="flex flex-col gap-6 mb-5">
-            {/* Các trường nhập liệu */}
             <div className="grid grid-cols-2 gap-4">
               <FloatLabel>
                 <InputText
@@ -258,7 +248,6 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
               </FloatLabel>
             </div>
 
-            {/* Mô tả và thông tin chi tiết */}
             <div className="flex justify-between gap-4">
               <FloatLabel>
                 <InputText
@@ -315,7 +304,6 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
               </FloatLabel>
             </div>
 
-            {/* Upload ảnh */}
             <div>
               <label className="block text-sm font-medium mb-2">Hình ảnh</label>
               <input
@@ -346,7 +334,6 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
             </div>
           </div>
 
-          {/* Nút thêm sản phẩm */}
           <Button
             label="Thêm"
             onClick={handleSubmit}

@@ -153,7 +153,7 @@ const Cart = () => {
                 />
                 {item?.productId?.productImages?.length > 0 && (
                   <img
-                    src={`http://localhost:8080/uploads/${item.productId.productImages[0]}`}
+                    src={`${item.productId.productImages[0]}`}
                     alt={item.productId.productName}
                     className="w-20 h-20 lg:w-[170px] lg:h-[170px] object-cover"
                   />

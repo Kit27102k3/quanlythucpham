@@ -20,7 +20,6 @@ const EditProduct = ({
   const [newImages, setNewImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Hàm xử lý upload ảnh
   const handleImageUpload = (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -32,9 +31,7 @@ const EditProduct = ({
     setNewImages((prev) => [...prev, ...filesArray]);
   };
 
-  // Hàm xử lý xóa ảnh
   const handleRemoveImage = (index) => {
-    // Nếu là ảnh mới chưa upload
     if (index >= imagePreviews.length - newImages.length) {
       setNewImages((prev) =>
         prev.filter(
@@ -60,7 +57,6 @@ const EditProduct = ({
     try {
       const formData = new FormData();
 
-      // Thêm các trường dữ liệu cơ bản
       const fieldsToUpdate = [
         "productName",
         "productPrice",
@@ -85,7 +81,6 @@ const EditProduct = ({
         }
       });
 
-      // Xử lý mô tả sản phẩm
       const descriptions = editedProduct.productDescription
         ? editedProduct.productDescription
             .split(".")
@@ -98,20 +93,13 @@ const EditProduct = ({
       newImages.forEach((file) => {
         formData.append("productImages", file);
       });
-
-      // Danh sách ảnh hiện tại muốn giữ lại
       const currentImages = imagePreviews.filter(
         (_, index) => index < imagePreviews.length - newImages.length
       );
       formData.append("keepImages", JSON.stringify(currentImages));
-
-      // Gọi API cập nhật
       const response = await handleUpdateProduct(editedProduct._id, formData);
-
       toast.success("Cập nhật sản phẩm thành công!");
       setVisible(false);
-
-      // Cập nhật lại danh sách sản phẩm
       if (response?.data?.product && setProducts) {
         setProducts((prev) =>
           prev.map((p) =>
@@ -124,18 +112,15 @@ const EditProduct = ({
         message: error.message,
         response: error.response?.data,
       });
-
       toast.error(
         error.response?.data?.message || "Có lỗi xảy ra khi cập nhật sản phẩm"
       );
     } finally {
       setIsSubmitting(false);
-      // Dọn dẹp URL tạm
       newImages.forEach((file) => URL.revokeObjectURL(file.preview));
     }
   };
 
-  // Cleanup effect
   useEffect(() => {
     return () => {
       imagePreviews.forEach((preview) => {
@@ -176,7 +161,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Danh mục sản phẩm */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -190,7 +174,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Thương hiệu */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -204,7 +187,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Tình trạng */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -218,7 +200,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Giảm giá */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -232,7 +213,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Số lượng trong kho */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -246,7 +226,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Mã sản phẩm */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -260,7 +239,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Trọng lượng */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -274,7 +252,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Giá khuyến mãi */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -288,7 +265,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Bảo hành */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -302,7 +278,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Xuất xứ */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -329,7 +304,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Thông tin sản phẩm */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -343,7 +317,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Giới thiệu sản phẩm */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -357,7 +330,6 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        {/* Chi tiết sản phẩm */}
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
@@ -404,7 +376,6 @@ const EditProduct = ({
           ))}
         </div>
 
-        {/* Nút Cập nhật */}
         <Button
           label="Cập nhật"
           onClick={handleSubmit}

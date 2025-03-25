@@ -26,7 +26,7 @@ export default function ProductDetails() {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const data = await productsApi.getProductById(id); // Lấy thông tin sản phẩm
+        const data = await productsApi.getProductById(id); 
         setProducts(data);
       } catch (error) {
         console.error("Lỗi khi lấy thông tin sản phẩm:", error);
@@ -79,9 +79,9 @@ export default function ProductDetails() {
   const descriptionArray =
     typeof products?.productDescription === "string"
       ? products.productDescription.includes("[")
-        ? JSON.parse(products.productDescription) // Nếu là JSON string
+        ? JSON.parse(products.productDescription) 
         : products.productDescription
-            .split(".") // Nếu là plain string
+            .split(".") 
             .map((item) => item.trim())
             .filter((item) => item)
       : products?.productDescription || [];

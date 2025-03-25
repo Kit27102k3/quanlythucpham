@@ -2,10 +2,11 @@ import productsApi from "../../../../api/productsApi";
 import { memo, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import formatCurrency from "../../../Until/FotmatPrice";
+import useCartAndNavigation from "../../../Until/useCartAndNavigation";
 
 const PromotionProducts = memo(() => {
   const [products, setProducts] = useState([]);
-  const navigate = useNavigate();
+  const { handleClick } = useCartAndNavigation();
 
   useEffect(() => {
     const fetchAllProducts = async () => {
@@ -17,11 +18,6 @@ const PromotionProducts = memo(() => {
     };
     fetchAllProducts();
   }, []);
-
-  const handleClick = (id) => {
-    navigate(`/chi-tiet-san-pham/${id}`);
-    window.location.reload();
-  };
 
   return (
     <div>
@@ -36,7 +32,7 @@ const PromotionProducts = memo(() => {
               <div className="relative overflow-hidden">
                 {product.productImages?.length > 0 && (
                   <img
-                    src={`http://localhost:8080/uploads/${product.productImages[0]}`}
+                    src={`${product.productImages[0]}`}
                     alt={product.title}
                     className="w-64 h-64 object-cover hover-scale-up mx-auto"
                   />

@@ -3,7 +3,6 @@ import axios from "axios";
 const API_URL = "http://localhost:8080/api/cart";
 
 const cartApi = {
-  // Lấy giỏ hàng của người dùng
   getCart: async (userId) => {
     try {
       const response = await axios.get(`${API_URL}/${userId}`);
@@ -14,7 +13,6 @@ const cartApi = {
     }
   },
 
-  // Thêm sản phẩm vào giỏ hàng
   addToCart: async (userId, productId, quantity = 1) => {
     try {
       const response = await axios.post(
@@ -33,7 +31,6 @@ const cartApi = {
     }
   },
 
-  // Xóa sản phẩm khỏi giỏ hàng
   removeFromCart: async (userId, productId) => {
     try {
       const response = await axios.delete(`${API_URL}/remove-from-cart`, {
@@ -46,7 +43,6 @@ const cartApi = {
     }
   },
 
-  // Cập nhật số lượng sản phẩm trong giỏ hàng
   updateCartItem: async (userId, productId, quantity) => {
     try {
       const response = await axios.put(

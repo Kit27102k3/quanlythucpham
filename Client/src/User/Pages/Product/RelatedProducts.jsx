@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Carousel } from "primereact/carousel";
-import { Button } from "primereact/button";
-import { Tag } from "primereact/tag";
 import productsApi from "../../../api/productsApi";
-import { toast } from "react-toastify";
-import cartApi from "../../../api/cartApi";
 import formatCurrency from "../../Until/FotmatPrice";
+import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import "../../../index.css";
 
 function RelatedProducts({ currentProduct }) {
   const [relatedProducts, setRelatedProducts] = useState([]);
-  const userId = localStorage.getItem("userId");
-  const navigate = useNavigate();
+  const { handleAddToCart, handleClick } = useCartAndNavigation();
 
   const fetchRelatedProducts = async (category, currentProductId) => {
     try {
@@ -32,24 +27,6 @@ function RelatedProducts({ currentProduct }) {
     }
   }, [currentProduct]);
 
-  const handleAddToCart = async (productId) => {
-    if (!userId) {
-      toast.warning("Bạn cần phải đăng nhập trước!");
-      navigate("/dang-nhap");
-      return;
-    }
-    try {
-      await cartApi.addToCart(userId, productId);
-      toast.success("Sản phẩm đã được thêm vào giỏ hàng");
-    } catch (error) {
-      console.log("Lỗi khi thêm sản phẩm vào giỏ hàng!", error);
-    }
-  };
-
-  const handleClick = (id) => {
-    navigate(`/chi-tiet-san-pham/${id}`);
-  };
-
   const productTemplate = (product) => {
     return (
       <div className=" m-2 text-center py-5 px-3 ">
@@ -60,7 +37,7 @@ function RelatedProducts({ currentProduct }) {
           <div className="relative overflow-hidden">
             {product.productImages?.length > 0 && (
               <img
-                src={`http://localhost:8080/uploads/${product.productImages[0]}`}
+                src={`${product.productImages[0]}`}
                 alt={product.productName}
                 className="w-64 h-64 object-cover hover-scale-up mx-auto"
               />

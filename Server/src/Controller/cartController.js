@@ -1,6 +1,5 @@
 import Cart from "../Model/Cart/Cart.js";
 
-// Lấy giỏ hàng của người dùng
 export const getCart = async (req, res) => {
   const { userId } = req.params;
 
@@ -9,7 +8,7 @@ export const getCart = async (req, res) => {
     if (!cart) {
       return res
         .status(404)
-        .json({ success: false, message: "Giỏ hàng không tồn tại" });
+        .json({  message: "Giỏ hàng không tồn tại" });
     }
 
     res.status(200).json({ success: true, cart });
@@ -19,7 +18,6 @@ export const getCart = async (req, res) => {
   }
 };
 
-// Thêm sản phẩm vào giỏ hàng
 export const addToCart = async (req, res) => {
   const { userId, productId, quantity } = req.body;
 
@@ -58,7 +56,6 @@ export const addToCart = async (req, res) => {
   }
 };
 
-// Xóa sản phẩm khỏi giỏ hàng
 export const removeFromCart = async (req, res) => {
   const { userId, productId } = req.body;
 
@@ -88,7 +85,6 @@ export const removeFromCart = async (req, res) => {
   }
 };
 
-// Cập nhật số lượng sản phẩm trong giỏ hàng
 export const updateCartItem = async (req, res) => {
   const { userId, productId, quantity } = req.body;
 
@@ -114,7 +110,6 @@ export const updateCartItem = async (req, res) => {
         });
     }
 
-    // Cập nhật số lượng
     existingItem.quantity = quantity;
     existingItem.createdAt = new Date();
 

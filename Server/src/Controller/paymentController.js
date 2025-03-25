@@ -18,8 +18,6 @@ export const createPayment = async (req, res) => {
     if (!cart) {
       return res.status(404).json({ message: "Giỏ hàng không tồn tại" });
     }
-
-    // Lọc các sản phẩm được chọn để thanh toán
     const selectedProducts = cart.items.filter((item) =>
       selectedItems.includes(item.productId?._id?.toString())
     );
@@ -30,11 +28,10 @@ export const createPayment = async (req, res) => {
         .json({ message: "Không có sản phẩm nào được chọn" });
     }
 
-    // Tính tổng tiền và chuẩn bị dữ liệu để lưu vào thanh toán
     const productsToSave = selectedProducts.map((item) => ({
       productId: item.productId._id.toString(),
       quantity: item.quantity,
-      price: item.productId.productPrice, // Lưu giá sản phẩm vào đơn thanh toán
+      price: item.productId.productPrice, 
     }));
 
     const totalAmount = productsToSave.reduce(
@@ -42,7 +39,6 @@ export const createPayment = async (req, res) => {
       0
     );
 
-    // Tạo đơn thanh toán mới
     const newPayment = new Payment({
       userId,
       products: productsToSave,
@@ -58,12 +54,11 @@ export const createPayment = async (req, res) => {
   }
 };
 
-// Thêm vào file controller
 export const getPaymentById = async (req, res) => {
   try {
     const payment = await Payment.findById(req.params.paymentId).populate(
       "products.productId"
-    ); // Populate thông tin sản phẩm nếu cần
+    );
 
     if (!payment) {
       return res.status(404).json({ message: "Không tìm thấy đơn thanh toán" });

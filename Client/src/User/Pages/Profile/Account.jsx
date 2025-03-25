@@ -1,20 +1,7 @@
-import { useState, useEffect } from "react";
-import authApi from "../../../api/authApi";
+import useFetchUserProfile from "../../Until/useFetchUserProfile";
 
 function Account() {
-  const [users, setUsers] = useState([]);
-
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const response = await authApi.getProfile();
-        setUsers(response.data);
-      } catch (error) {
-        console.log(error);
-      }
-    };
-    fetchUserProfile();
-  }, []);
+  const users = useFetchUserProfile();
 
   return (
     <div>

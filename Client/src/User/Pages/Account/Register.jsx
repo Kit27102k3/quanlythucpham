@@ -114,8 +114,9 @@ export default function Register() {
                 value={formData.firstName}
                 onChange={handleChange}
                 required
+                className="border"
               />
-              <label htmlFor="firstName">First Name</label>
+              <label className="-mt-2" htmlFor="firstName">First Name</label>
             </FloatLabel>
             <FloatLabel>
               <InputText
@@ -130,8 +131,9 @@ export default function Register() {
                 value={formData.lastName}
                 onChange={handleChange}
                 required
+                className="border"
               />
-              <label htmlFor="lastName">Last Name</label>
+              <label className="-mt-2" htmlFor="lastName">Last Name</label>
             </FloatLabel>
           </div>
 
@@ -149,8 +151,9 @@ export default function Register() {
                 value={formData.phone}
                 onChange={handleChange}
                 required
+                className="border"
               />
-              <label htmlFor="phone">Phone</label>
+              <label className="-mt-2" htmlFor="phone">Phone</label>
             </FloatLabel>
             <FloatLabel>
               <InputText
@@ -166,8 +169,9 @@ export default function Register() {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                className="border"
               />
-              <label htmlFor="email">Email</label>
+              <label className="-mt-2" htmlFor="email">Email</label>
             </FloatLabel>
           </div>
 
@@ -186,8 +190,9 @@ export default function Register() {
                 value={formData.userName}
                 onChange={handleChange}
                 required
+                className="border"
               />
-              <label htmlFor="userName">Username</label>
+              <label className="-mt-2" htmlFor="userName">Username</label>
             </FloatLabel>
             <FloatLabel>
               <InputText
@@ -203,8 +208,9 @@ export default function Register() {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                className="border"
               />
-              <label htmlFor="password">Password</label>
+              <label className="-mt-2" htmlFor="password">Password</label>
             </FloatLabel>
           </div>
 

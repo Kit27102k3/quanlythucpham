@@ -22,13 +22,11 @@ export const createProduct = async (req, res) => {
         .json({ message: "Vui lòng tải lên ít nhất một hình ảnh" });
     }
 
-    // Upload tuần tự để dễ debug
     const uploadedUrls = [];
     for (const file of req.files) {
       try {
         console.log(`Uploading ${file.originalname} from ${file.path}`);
 
-        // Đảm bảo file tồn tại
         if (!fs.existsSync(file.path)) {
           throw new Error(`File not found: ${file.path}`);
         }
@@ -43,7 +41,6 @@ export const createProduct = async (req, res) => {
         uploadedUrls.push(result.secure_url);
         console.log(`Upload thành công: ${result.secure_url}`);
 
-        // Xóa file tạm
         fs.unlinkSync(file.path);
       } catch (uploadError) {
         console.error(`Lỗi upload ${file.originalname}:`, uploadError);
@@ -52,7 +49,6 @@ export const createProduct = async (req, res) => {
       }
     }
 
-    // Xử lý productDescription
     let descriptions = [];
     try {
       descriptions =
@@ -63,7 +59,6 @@ export const createProduct = async (req, res) => {
       descriptions = req.body.productDescription.split(",");
     }
 
-    // Tạo sản phẩm
     const newProduct = new Product({
       ...req.body,
       productImages: uploadedUrls,
@@ -84,7 +79,6 @@ export const createProduct = async (req, res) => {
       cwd: process.cwd(),
     });
 
-    // Xóa file tạm nếu có
     if (req.files) {
       req.files.forEach((file) => {
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
@@ -100,7 +94,6 @@ export const createProduct = async (req, res) => {
   }
 };
 
-// Lấy tất cả sản phẩm
 export const getAllProducts = async (req, res) => {
   try {
     const products = await Product.find();
@@ -132,19 +125,16 @@ export const updateProduct = async (req, res) => {
       );
       newImageUrls = uploadResults.map((result) => result.secure_url);
 
-      // Xóa file tạm sau khi upload
       req.files.forEach((file) => {
         fs.unlinkSync(file.path);
       });
     }
 
-    // Xử lý ảnh hiện tại (nếu có yêu cầu xóa ảnh cũ)
     let existingImages = product.productImages || [];
     if (req.body.keepImages) {
       const keepImages = JSON.parse(req.body.keepImages);
       existingImages = existingImages.filter((img) => keepImages.includes(img));
 
-      // Xóa ảnh không còn sử dụng khỏi Cloudinary
       const imagesToDelete = product.productImages.filter(
         (img) => !keepImages.includes(img)
       );
@@ -157,7 +147,6 @@ export const updateProduct = async (req, res) => {
       );
     }
 
-    // Xử lý mô tả sản phẩm
     let productDescription = product.productDescription;
     if (req.body.productDescription) {
       try {
@@ -170,7 +159,6 @@ export const updateProduct = async (req, res) => {
       }
     }
 
-    // Cập nhật thông tin sản phẩm
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       {
@@ -192,7 +180,6 @@ export const updateProduct = async (req, res) => {
   } catch (error) {
     console.error("Lỗi khi cập nhật sản phẩm:", error);
 
-    // Xóa file tạm nếu có lỗi
     if (req.files) {
       req.files.forEach((file) => {
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
@@ -207,7 +194,6 @@ export const updateProduct = async (req, res) => {
   }
 };
 
-// Xóa sản phẩm
 export const deleteProduct = async (req, res) => {
   const { id } = req.params;
   try {

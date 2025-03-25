@@ -31,13 +31,11 @@ export default function ForgotPassword() {
     otp: false,
   });
 
-  // Validate email format
   const validateEmail = (email) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   };
 
-  // Validate password strength
   const validatePassword = (password) => {
     return password.length >= 8;
   };
@@ -45,8 +43,6 @@ export default function ForgotPassword() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // Clear error when user types
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: false }));
     }
@@ -69,14 +65,11 @@ export default function ForgotPassword() {
       setErrors((prev) => ({ ...prev, email: "Email không được để trống" }));
       return;
     }
-
     if (!validateEmail(formData.email)) {
       setErrors((prev) => ({ ...prev, email: "Email không hợp lệ" }));
       return;
     }
-
     setLoading((prev) => ({ ...prev, step1: true }));
-
     try {
       const response = await fetch("http://localhost:8080/auth/forgot-password", {
         method: "POST",
@@ -85,13 +78,10 @@ export default function ForgotPassword() {
         },
         body: JSON.stringify({ email: formData.email }),
       });
-
       const data = await response.json();
-
       if (!response.ok) {
         throw new Error(data.message || "Yêu cầu OTP thất bại");
       }
-
       showToast("success", "Thành công", data.message);
       handleNext();
     } catch (error) {
@@ -106,13 +96,9 @@ export default function ForgotPassword() {
       setErrors((prev) => ({ ...prev, otp: "Mã OTP phải có 6 chữ số" }));
       return;
     }
-
     setLoading((prev) => ({ ...prev, step2: true }));
-
     try {
-      // Simulate OTP verification
       await new Promise((resolve) => setTimeout(resolve, 1000));
-
       showToast("success", "Thành công", "Xác thực OTP thành công");
       handleNext();
     } catch (error) {
@@ -130,7 +116,6 @@ export default function ForgotPassword() {
       }));
       return;
     }
-
     if (!validatePassword(formData.password)) {
       setErrors((prev) => ({
         ...prev,
@@ -138,28 +123,20 @@ export default function ForgotPassword() {
       }));
       return;
     }
-
     if (formData.password !== formData.confirm) {
       setErrors((prev) => ({ ...prev, confirm: "Mật khẩu không khớp" }));
       return;
     }
-
     setLoading((prev) => ({ ...prev, step3: true }));
-
     try {
-      // Simulate password reset API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
-
       showToast("success", "Thành công", "Đổi mật khẩu thành công");
-
-      // Reset form after successful password change
       setFormData({
         email: "",
         password: "",
         confirm: "",
       });
       setToken("");
-      // navigate('/dang-nhap');
     } catch (error) {
       showToast("error", "Lỗi", "Đổi mật khẩu thất bại");
     } finally {
@@ -174,9 +151,8 @@ export default function ForgotPassword() {
         <Stepper
           ref={stepperRef}
           orientation="horizontal"
-          className="text-black mb-6"
+          className="text-black mb-6 "
         >
-          {/* Step 1: Email Input */}
           <StepperPanel header="Xác thực email">
             <div className="border-dashed border-round surface-ground font-medium p-5 w-full">
               <div className="field mb-3">
@@ -189,7 +165,7 @@ export default function ForgotPassword() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Nhập email của bạn"
-                  className={classNames("w-full p-3 border-round", {
+                  className={classNames("w-full p-3 border-round border", {
                     "p-invalid": errors.email,
                   })}
                   style={{
@@ -208,13 +184,12 @@ export default function ForgotPassword() {
                 icon="pi pi-arrow-right"
                 iconPos="right"
                 loading={loading.step1}
-                className="h-10 w-28 bg-blue-500 text-white"
+                className="h-10 w-28 bg-blue-500 text-white mr-4 px-2 text-sm size-8"
                 onClick={handleSubmitStep1}
               />
             </div>
           </StepperPanel>
 
-          {/* Step 2: OTP Verification */}
           <StepperPanel header="Xác thực OTP">
             <div className="border-dashed border-round surface-ground font-medium p-5 w-full">
               <h2 className="mb-4">Nhập mã OTP đã gửi đến email của bạn</h2>
@@ -259,7 +234,7 @@ export default function ForgotPassword() {
               <Button
                 label="Quay lại"
                 severity="secondary"
-                className="h-10 w-28 text-black border-1 "
+                className="h-10 w-28 text-black border-1 px-2 text-sm"
                 icon="pi pi-arrow-left"
                 onClick={handleBack}
               />
@@ -268,13 +243,12 @@ export default function ForgotPassword() {
                 icon="pi pi-arrow-right"
                 iconPos="right"
                 loading={loading.step2}
-                className="h-10 w-28 bg-blue-500 text-white"
+                className="h-10 w-28 bg-blue-500 text-white px-2 text-sm"
                 onClick={handleSubmitStep2}
               />
             </div>
           </StepperPanel>
 
-          {/* Step 3: New Password */}
           <StepperPanel header="Đặt mật khẩu mới">
             <div className="border-dashed border-round surface-ground font-medium p-5 w-full">
               <div className="field mb-4">
@@ -287,7 +261,7 @@ export default function ForgotPassword() {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Nhập mật khẩu mới (ít nhất 8 ký tự)"
-                  className={classNames("w-full p-3 border-round", {
+                  className={classNames("w-full p-3 border-round border", {
                     "p-invalid": errors.password,
                   })}
                   type="password"
@@ -312,7 +286,7 @@ export default function ForgotPassword() {
                   value={formData.confirm}
                   onChange={handleChange}
                   placeholder="Nhập lại mật khẩu mới"
-                  className={classNames("w-full p-3 border-round", {
+                  className={classNames("w-full p-3 border-round border", {
                     "p-invalid": errors.confirm,
                   })}
                   type="password"
@@ -330,7 +304,7 @@ export default function ForgotPassword() {
               <Button
                 label="Quay lại"
                 severity="secondary"
-                className="h-10 w-28 text-black border-1 "
+                className="h-10 w-28 text-black border-1 px-2 text-sm"
                 icon="pi pi-arrow-left"
                 onClick={handleBack}
               />
@@ -338,7 +312,7 @@ export default function ForgotPassword() {
                 label="Xác nhận"
                 icon="pi pi-check"
                 loading={loading.step3}
-                className="h-10 w-28 bg-green-500 text-white"
+                className="h-10 w-28 bg-[#51bb1a] text-white px-2 text-sm size-8"
                 onClick={handleSubmitStep3}
               />
             </div>

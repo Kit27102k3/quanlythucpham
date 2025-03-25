@@ -55,30 +55,28 @@ const Header = () => {
   const [cartItemCount, setCartItemCount] = useState(0);
   const inputRef = useRef(null);
   const navigate = useNavigate();
+  const userId = localStorage.getItem("userId");
 
   const handleNavigate = (path) => {
     navigate(path);
-
-    // Cập nhật state dựa trên path
     if (path === "/khuyen-mai") {
-      setShowPromotion(true); // Hiển thị PromotionProducts
+      setShowPromotion(true);
     } else if (path === "/san-pham") {
-      setShowPromotion(false); // Hiển thị AllProducts
+      setShowPromotion(false);
     }
   };
 
   useEffect(() => {
     const fetchCart = async () => {
       try {
-        const userId = localStorage.getItem("userId");
         if (userId) {
           const res = await cartApi.getCart(userId);
           const totalItems = res.cart.items.reduce(
             (sum, item) => sum + item.quantity,
             0
           );
-          setCartItemCount(totalItems); // Cập nhật số lượng sản phẩm
-        }
+          setCartItemCount(totalItems);
+        } 
       } catch (error) {
         console.log("Lỗi khi lấy giỏ hàng:", error);
       }
@@ -288,7 +286,7 @@ const Header = () => {
                         style={{ fontSize: "22px", color: "white" }}
                       >
                         <Badge
-                           value={cartItemCount}
+                          value={cartItemCount}
                           className="absolute top-21 right-4 lg:right-32 lg:top-16 text-white bg-[#F9C938]"
                         />
                       </i>

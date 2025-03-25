@@ -1,13 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import productsApi from "../../../api/productsApi";
 import ProductList from "../../Until/ProductsList";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
 
 function ProductNew() {
   const [products, setProducts] = useState([]);
-  const userId = localStorage.getItem("userId");
-  const navigate = useNavigate();
   const { handleClick, handleAddToCart } = useCartAndNavigation();
 
   useEffect(() => {
