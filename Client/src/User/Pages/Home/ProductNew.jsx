@@ -11,10 +11,10 @@ function ProductNew() {
     const fetchProducts = async () => {
       try {
         const data = await productsApi.getAllProducts();
-        const sortedData = data.sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        setProducts(data);
+        const sortedData = data
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          .slice(0, 4);
+        setProducts(sortedData);
       } catch (error) {
         console.error("Lỗi khi lấy danh sách sản phẩm:", error);
       }

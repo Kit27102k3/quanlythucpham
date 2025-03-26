@@ -12,93 +12,129 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 function Footer() {
   return (
-    <div className="bg-white">
-      <div className="bg-yellow-500 text-white p-4 grid grid-cols-1 items-center justify-around lg:grid-cols-2 lg:px-[120px] lg:items-center">
-        <div className="grid grid-cols-1 lg:flex mb-2 text-center gap-6 items-center lg:items-center ">
-          <EnvelopeClosedIcon className="size-18 hide-on-mobile bg-white rounded-full text-black p-5 " />
-          <h2 className="text-[18px] lg:text-[24px] text-black font-semibold">
-            ĐĂNG KÝ NHẬN TIN
-            <p className="text-[13px] lg:text-[16px] font-normal text-black ">
+    <footer className="bg-white">
+      {/* Newsletter Section */}
+      <div className="bg-yellow-500 text-white p-4 grid grid-cols-1 items-center justify-around lg:grid-cols-2 lg:px-[120px]">
+        <div className="flex items-center space-x-4 mb-4 lg:mb-0 justify-center">
+          <EnvelopeClosedIcon className="w-16 h-16 bg-white text-black p-4 rounded-full" />
+          <div>
+            <h2 className="text-lg lg:text-xl font-semibold text-black">
+              ĐĂNG KÝ NHẬN TIN
+            </h2>
+            <p className="text-sm font-normal text-black">
               Hãy nhận ưu đãi hấp dẫn từ Dnc Food nào!
             </p>
-          </h2>
+          </div>
         </div>
-        <form className="flex items-center justify-center ">
+
+        <form className="flex justify-center">
           <input
             type="email"
             placeholder="Email của bạn"
-            className="p-2 border bg-white text-black border-none outline-none w-72 h-12 rounded-l-full px-5 lg:w-96"
+            className="p-3 bg-white text-black rounded-l-full px-5 w-72 lg:w-96 focus:outline-none focus:ring-2 focus:ring-green-500"
             required
           />
-          <button className="bg-[#51aa1b] p-[14px] w-24 text-[12px] h-12 cursor-pointer font-medium rounded-r-full">
+          <button
+            type="submit"
+            className="bg-[#51aa1b] text-white px-6 py-3 text-sm rounded-r-full hover:bg-green-600 transition-colors"
+          >
             ĐĂNG KÝ
           </button>
         </form>
       </div>
 
-      <div className="grid grid-cols-1 justify-around mt-4 px-5 lg:grid-cols-4 lg:px-[120px]">
-        <div className="w-full lg:px-4 ">
-          <h3 className="text-black text-center text-4xl font-bold ">
-            DNC<span className="text-green-400"> FO</span>OD
+      {/* Main Footer Content */}
+      <div className="grid grid-cols-1 gap-8 mt-8 px-5 lg:grid-cols-4 lg:px-[120px]">
+        {/* Company Info */}
+        <div>
+          <h3 className="text-center text-3xl font-bold">
+            DNC<span className="text-green-400">FO</span>OD
           </h3>
-          <p className="text-[14px] mt-2 text-[#666666]">
+          <p className="text-sm text-gray-600 mt-4 text-center lg:text-left">
             DNC FOOD bán lẻ thực phẩm tươi sống, bánh kẹp, đồ hộp, đồ dùng gia
             đình giá rẻ, sản phẩm tươi mới, nguồn gốc đảm bảo, dịch vụ chu đáo.
           </p>
-          <div className="flex items-center gap-2 mt-2">
-            <GitHubLogoIcon className="size-8 " />
-            <InstagramLogoIcon className="size-8 " />
-          </div>
-        </div>
-        <div className="w-full mt-5 lg:px-4">
-          <h4 className="text-sm text-[#222222] mb-2">THÔNG TIN LIÊN HỆ</h4>
-          <div className="flex gap-1 text-sm">
-            <FontAwesomeIcon icon={faLocationDot} className="mt-1" />
-            <p className="">
-              Trường Đại học Nam Cần Thơ, Nguyễn <br /> Văn Cừ nối dài, Cần Thơ
-              City
-            </p>
-          </div>
-          <div className="flex gap-1 items-center mt-2 text-sm">
-            <FontAwesomeIcon icon={faPhone} />
-            <p>0326 743 391</p>
-          </div>
-          <div className="flex items-center gap-1 mt-2 text-sm">
-            <FontAwesomeIcon icon={faEnvelope} />
-            <p>kit10012003@gmail.com</p>
+          <div className="flex justify-center lg:justify-start space-x-4 mt-4">
+            <GitHubLogoIcon className="w-8 h-8 text-gray-700 hover:text-black transition-colors" />
+            <InstagramLogoIcon className="w-8 h-8 text-gray-700 hover:text-black transition-colors" />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-1">
-          <div className="w-full mt-5 lg:px-4">
-            <h4 className="text-sm text-[#222222]">HỖ TRỢ KHÁCH HÀNG</h4>
-            <ul className="flex flex-col gap-2 mt-2 text-sm text-[#666666]">
-              <li>Trang chủ</li>
-              <li>Giới thiệu</li>
-              <li>Sản phẩm</li>
-              <li>Khuyến mãi</li>
-              <li>Tin tức</li>
-              <li>Mẹo hay</li>
-              <li>Liên hệ</li>
-              <li>Cửa hàng</li>
-            </ul>
+        {/* Contact Information */}
+        <div>
+          <h4 className="text-sm font-semibold text-gray-800 mb-4">
+            THÔNG TIN LIÊN HỆ
+          </h4>
+          <div className="space-y-3 flex flex-col gap-2 text-sm text-gray-600">
+            <div className="flex items-start space-x-2 gap-2">
+              <FontAwesomeIcon icon={faLocationDot} className="mt-1 w-4" />
+              <p>
+                Trường Đại học Nam Cần Thơ, Nguyễn Văn Cừ nối dài, Cần Thơ City
+              </p>
+            </div>
+            <div className="flex items-center space-x-2 gap-2">
+              <FontAwesomeIcon icon={faPhone} className="w-4" />
+              <p>0326 743 391</p>
+            </div>
+            <div className="flex items-center space-x-2 gap-2">
+              <FontAwesomeIcon icon={faEnvelope} className="w-4" />
+              <p>kit10012003@gmail.com</p>
+            </div>
           </div>
+        </div>
 
-          <div className="w-full mt-5 lg:px-4 lg:-mt-[245px] lg:ml-80">
-            <h4 className="text-sm text-[#222222]">DỊCH VỤ NỔI BẬT</h4>
-            <ul className="grid  gap-2 mt-2 text-sm text-[#666666]">
-              <li>Trang chủ</li>
-              <li>Giới thiệu</li>
-              <li>Sản phẩm</li>
-              <li>Khuyến mãi</li>
-              <li>Tin tức</li>
-              <li>Liên hệ</li>
-              <li>Cửa hàng</li>
-            </ul>
-          </div>
+        {/* Customer Support */}
+        <div>
+          <h4 className="text-sm font-semibold text-gray-800 mb-4">
+            HỖ TRỢ KHÁCH HÀNG
+          </h4>
+          <ul className="space-y-2 text-sm text-gray-600">
+            {[
+              "Trang chủ",
+              "Giới thiệu",
+              "Sản phẩm",
+              "Khuyến mãi",
+              "Tin tức",
+              "Mẹo hay",
+              "Liên hệ",
+              "Cửa hàng",
+            ].map((item) => (
+              <li
+                key={item}
+                className="hover:text-green-600 cursor-pointer transition-colors"
+              >
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Featured Services */}
+        <div>
+          <h4 className="text-sm font-semibold text-gray-800 mb-4">
+            DỊCH VỤ NỔI BẬT
+          </h4>
+          <ul className="space-y-2 text-sm text-gray-600 ">
+            {[
+              "Trang chủ",
+              "Giới thiệu",
+              "Sản phẩm",
+              "Khuyến mãi",
+              "Tin tức",
+              "Liên hệ",
+              "Cửa hàng",
+            ].map((item) => (
+              <li
+                key={item}
+                className="hover:text-green-600 cursor-pointer transition-colors"
+              >
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
-    </div>
+    </footer>
   );
 }
 
