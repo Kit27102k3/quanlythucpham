@@ -21,7 +21,7 @@ const information = [
 
 function Contact() {
   return (
-    <div className="px-4 mt-4 mb-4 lg:px-[120px]">
+    <div className="px-4 mt-4 mb-4 lg:px-[240px]">
       <div className=" border-b">
         <div className="">
           <div className="grid grid-cols-3 ">

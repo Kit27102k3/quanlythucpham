@@ -50,7 +50,7 @@ function Address() {
           Chỉnh sửa địa chỉ
         </button>
       </div>
-      {isShow && <UpdateAddress onUpdate={fetchUserProfile} />}
+      {isShow && <UpdateAddress onUpdate={users} />}
     </div>
   );
 }

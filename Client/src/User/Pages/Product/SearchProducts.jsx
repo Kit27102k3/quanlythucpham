@@ -61,7 +61,7 @@ function SearchProducts() {
               >
                 <div className="relative overflow-hidden">
                   <img
-                    src={`http://localhost:8080/uploads/${product?.productImages[0]}`}
+                    src={`${product?.productImages[0]}`}
                     alt={product.productName}
                     className="w-[160px] h-[160px] lg:w-64 lg:h-64 object-cover hover-scale-up mx-auto"
                   />

@@ -5,16 +5,16 @@ import path from "path";
 
 export const createProduct = async (req, res) => {
   try {
-    console.log("Current working directory:", process.cwd());
-    console.log("Environment variables:", {
-      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME
-        ? "***"
-        : "MISSING",
-      CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? "***" : "MISSING",
-      CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
-        ? "***"
-        : "MISSING",
-    });
+    // console.log("Current working directory:", process.cwd());
+    // console.log("Environment variables:", {
+    //   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME
+    //     ? "***"
+    //     : "MISSING",
+    //   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? "***" : "MISSING",
+    //   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
+    //     ? "***"
+    //     : "MISSING",
+    // });
 
     if (!req.files || req.files.length === 0) {
       return res
@@ -25,25 +25,21 @@ export const createProduct = async (req, res) => {
     const uploadedUrls = [];
     for (const file of req.files) {
       try {
-        console.log(`Uploading ${file.originalname} from ${file.path}`);
-
+        // console.log(`Uploading ${file.originalname} from ${file.path}`);
         if (!fs.existsSync(file.path)) {
           throw new Error(`File not found: ${file.path}`);
         }
-
         const result = await cloudinary.uploader.upload(file.path, {
           folder: "products",
           resource_type: "auto",
           use_filename: true,
           unique_filename: false,
         });
-
         uploadedUrls.push(result.secure_url);
-        console.log(`Upload thành công: ${result.secure_url}`);
-
+        // console.log(`Upload thành công: ${result.secure_url}`);
         fs.unlinkSync(file.path);
       } catch (uploadError) {
-        console.error(`Lỗi upload ${file.originalname}:`, uploadError);
+        // console.error(`Lỗi upload ${file.originalname}:`, uploadError);
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
         throw new Error(`Upload ảnh thất bại: ${uploadError.message}`);
       }
@@ -72,12 +68,7 @@ export const createProduct = async (req, res) => {
     const savedProduct = await newProduct.save();
     return res.status(201).json(savedProduct);
   } catch (error) {
-    console.error("Error in createProduct:", {
-      message: error.message,
-      stack: error.stack,
-      env: process.env.NODE_ENV,
-      cwd: process.cwd(),
-    });
+    console.error("Error in createProduct:", error);
 
     if (req.files) {
       req.files.forEach((file) => {

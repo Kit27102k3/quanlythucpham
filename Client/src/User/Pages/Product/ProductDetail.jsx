@@ -1,57 +1,108 @@
+import React from "react";
 import "../../../App.css";
+import "../../../index.css";
 
 function ProductDetail() {
   return (
-    <div className="text-black bg-white">
-      <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-2 px-4">
-        <div className="p-2 rounded-lg">
-          <h2 className="text-[16px] font-medium uppercase">
-            Đồ uống các loại
-          </h2>
-          <ul className="mt-2 text-[14px] flex flex-col font-extralight transition-none ">
-            <a className="li-list">Nước ngọt, giải khát</a>
-            <a className="li-list">Bia, nước uống có cồn</a>
-            <a className="li-list">Nước suối</a>
-            <a className="li-list">Nước trái cây ép</a>
-            <a className="li-list">Nước yến</a>
-            <a className="li-list">Cà phê, trà</a>
-            <a className="li-list">Nước sữa trái cây</a>
-          </ul>
-        </div>
-        <div className="p-2 rounded-lg">
-          <h2 className="text-[16px] font-medium uppercase ">
-            Sữa các loại, tã bỉm
-          </h2>
-          <ul className="mt-2 text-[14px] flex flex-col font-extralight transition-none ">
-            <a className="li-list">Sữa tươi</a>
-            <a className="li-list">Sữa đậu nành, sữa từ hạt</a>
-            <a className="li-list">Sữa đặc</a>
-            <a className="li-list">Sữa chua, phô mai</a>
-            <a className="li-list">Sữa bột, bột ăn dặm</a>
-          </ul>
-        </div>
-        <div className="p-2 rounded-lg">
-          <h2 className="text-[16px] font-medium uppercase ">
-            Mì, cháo, phở ăn liền
-          </h2>
-          <ul className="mt-2 text-[14px] flex flex-col font-extralight transition-none ">
-            <a className="li-list">Mì ăn liền</a>
-            <a className="li-list">Cháo ăn liền</a>
-            <a className="li-list">Phở ăn liền</a>
-            <a className="li-list">Thực phẩm ăn liền khác</a>
-          </ul>
-        </div>
-        <div className="p-2 rounded-lg">
-          <h2 className="text-[16px] font-medium uppercase ">
-            Dầu ăn, nước chấm, gia vị
-          </h2>
-          <ul className="mt-2 text-[14px] flex flex-col font-extralight transition-none ">
-            <a className="li-list">Dầu ăn</a>
-            <a className="li-list">Nước tương</a>
-            <a className="li-list">Nước mắm</a>
-            <a className="li-list">Tương ớt, tương cà, tương đen</a>
-            <a className="li-list">Đường, hạt nêm, bột ngọt, muối</a>
-          </ul>
+    <div className="product-dropdown-container">
+      <div className="product-dropdown-content text-black bg-white shadow-lg">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 py-4 px-6">
+          <div className="p-3 rounded-lg hover:bg-gray-50 transition-colors">
+            <h2 className="text-[16px] font-semibold uppercase text-[#51bb1a] mb-3">
+              Đồ uống các loại
+            </h2>
+            <ul className="space-y-2">
+              {[
+                "Nước ngọt, giải khát",
+                "Bia, nước uống có cồn",
+                "Nước suối",
+                "Nước trái cây ép",
+                "Nước yến",
+                "Cà phê, trà",
+                "Nước sữa trái cây",
+              ].map((item, index) => (
+                <li key={index}>
+                  <a
+                    href="#"
+                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors"
+                  >
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="p-3 rounded-lg hover:bg-gray-50 transition-colors">
+            <h2 className="text-[16px] font-semibold uppercase text-[#51bb1a] mb-3">
+              Sữa các loại, tã bỉm
+            </h2>
+            <ul className="space-y-2">
+              {[
+                "Sữa tươi",
+                "Sữa đậu nành, sữa từ hạt",
+                "Sữa đặc",
+                "Sữa chua, phô mai",
+                "Sữa bột, bột ăn dặm",
+              ].map((item, index) => (
+                <li key={index}>
+                  <a
+                    href="#"
+                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors"
+                  >
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="p-3 rounded-lg hover:bg-gray-50 transition-colors">
+            <h2 className="text-[16px] font-semibold uppercase text-[#51bb1a] mb-3">
+              Mì, cháo, phở ăn liền
+            </h2>
+            <ul className="space-y-2">
+              {[
+                "Mì ăn liền",
+                "Cháo ăn liền",
+                "Phở ăn liền",
+                "Thực phẩm ăn liền khác",
+              ].map((item, index) => (
+                <li key={index}>
+                  <a
+                    href="#"
+                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors"
+                  >
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="p-3 rounded-lg hover:bg-gray-50 transition-colors">
+            <h2 className="text-[16px] font-semibold uppercase text-[#51bb1a] mb-3">
+              Dầu ăn, nước chấm, gia vị
+            </h2>
+            <ul className="space-y-2">
+              {[
+                "Dầu ăn",
+                "Nước tương",
+                "Nước mắm",
+                "Tương ớt, tương cà, tương đen",
+                "Đường, hạt nêm, bột ngọt, muối",
+              ].map((item, index) => (
+                <li key={index}>
+                  <a
+                    href="#"
+                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors"
+                  >
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </div>

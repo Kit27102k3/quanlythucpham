@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { useNavigate, Outlet } from "react-router-dom";
-import { Pencil1Icon } from "@radix-ui/react-icons";
+import {
+  Trash2,
+  Lock,
+  Unlock,
+  Eye,
+  Search,
+  UserX,
+  UserCheck,
+} from "lucide-react";
 
 function Customers() {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredUsers, setFilteredUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [orders, setOrders] = useState([]);
-  const [showDetails, setShowDetails] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchUserProfile();
@@ -18,15 +20,23 @@ function Customers() {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await axios.get("http://localhost:8080/auth/profile");
-      const data = response.data;
-      if (Array.isArray(data)) {
-        setUsers(data);
-        setFilteredUsers(data);
-      } else {
-        setUsers([data]);
-        setFilteredUsers([data]);
+      const response = await fetch("http://localhost:8080/auth/profile", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          // Thêm token xác thực nếu cần
+          // 'Authorization': `Bearer ${token}`
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Lỗi khi lấy dữ liệu");
       }
+
+      const data = await response.json();
+      const processedUsers = Array.isArray(data) ? data : [data];
+      setUsers(processedUsers);
+      setFilteredUsers(processedUsers);
     } catch (error) {
       console.error("Lỗi khi lấy dữ liệu người dùng:", error);
     }
@@ -34,16 +44,17 @@ function Customers() {
 
   const handleSearch = (event) => {
     const term = event.target.value.toLowerCase();
-    setSearchTerm(event.target.value);
+    setSearchTerm(term);
 
     const filtered = users.filter((user) => {
+      const fullName = `${user.firstName || ""} ${
+        user.lastName || ""
+      }`.toLowerCase();
       return (
+        fullName.includes(term) ||
         (user.userName && user.userName.toLowerCase().includes(term)) ||
         (user.email && user.email.toLowerCase().includes(term)) ||
-        (user.phone && user.phone.toLowerCase().includes(term)) ||
-        `${user.firstName || ""} ${user.lastName || ""}`
-          .toLowerCase()
-          .includes(term)
+        (user.phone && user.phone.toLowerCase().includes(term))
       );
     });
 
@@ -53,9 +64,25 @@ function Customers() {
   const handleDelete = async (userId) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
       try {
-        await axios.delete(`http://localhost:8080/auth/profile/${userId}`);
-        setUsers((prev) => prev.filter((user) => user._id !== userId));
-        setFilteredUsers((prev) => prev.filter((user) => user._id !== userId));
+        const response = await fetch(
+          `http://localhost:8080/auth/profile/${userId}`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              // Thêm token xác thực nếu cần
+              // 'Authorization': `Bearer ${token}`
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Xóa người dùng thất bại");
+        }
+
+        const updatedUsers = users.filter((user) => user._id !== userId);
+        setUsers(updatedUsers);
+        setFilteredUsers(updatedUsers);
         alert("Xóa người dùng thành công!");
       } catch (error) {
         console.error("Lỗi khi xóa người dùng:", error);
@@ -69,21 +96,29 @@ function Customers() {
       const user = users.find((u) => u._id === userId);
       const isBlocked = !user.isBlocked;
 
-      await axios.put(`http://localhost:8080/auth/profile/block/${userId}`, {
-        isBlocked,
-      });
-
-      setUsers((prev) =>
-        prev.map((user) =>
-          user._id === userId ? { ...user, isBlocked } : user
-        )
+      const response = await fetch(
+        `http://localhost:8080/auth/profile/block/${userId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            // Thêm token xác thực nếu cần
+            // 'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ isBlocked }),
+        }
       );
 
-      setFilteredUsers((prev) =>
-        prev.map((user) =>
-          user._id === userId ? { ...user, isBlocked } : user
-        )
+      if (!response.ok) {
+        throw new Error("Thao tác thất bại");
+      }
+
+      const updatedUsers = users.map((user) =>
+        user._id === userId ? { ...user, isBlocked } : user
       );
+
+      setUsers(updatedUsers);
+      setFilteredUsers(updatedUsers);
 
       alert(
         isBlocked ? "Người dùng đã bị chặn!" : "Người dùng đã được bỏ chặn!"
@@ -94,88 +129,109 @@ function Customers() {
     }
   };
 
-  const handleViewDetails = async (userId) => {
-    try {
-      const response = await axios.get(
-        `http://localhost:8080/orders/user/${userId}`
-      );
-      setOrders(response.data);
-      setSelectedUser(filteredUsers.find((user) => user._id === userId));
-      setShowDetails(true);
-    } catch (error) {
-      console.error("Lỗi khi lấy thông tin chi tiết:", error);
-      alert("Không thể lấy thông tin chi tiết!");
-    }
-  };
-
   return (
-    <div className="p-5 font-sans bg-gray-100 min-h-screen">
-      <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">
-        Thông tin người dùng
-      </h1>
+    <div className="container mx-auto px-4 py-8 bg-gray-50">
+      <div className="bg-white shadow-xl rounded-lg overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6">
+          <h1 className="text-3xl font-bold text-white text-center">
+            Quản Lý Khách Hàng
+          </h1>
+        </div>
 
-      <input
-        type="text"
-        placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
-        value={searchTerm}
-        onChange={handleSearch}
-        className="w-full p-3 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-400"
-      />
+        <div className="p-6">
+          <div className="relative mb-6">
+            <input
+              type="text"
+              placeholder="Tìm kiếm khách hàng..."
+              value={searchTerm}
+              onChange={handleSearch}
+              className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300"
+            />
+            <Search className="absolute left-3 top-4 text-gray-400" />
+          </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full bg-white shadow-md rounded-md overflow-hidden">
-          <thead>
-            <tr className="bg-blue-600 text-white text-left text-sm">
-              <th className="p-3">Tên đăng nhập</th>
-              <th className="p-3">Họ và tên</th>
-              <th className="p-3">Email</th>
-              <th className="p-3">Số điện thoại</th>
-              <th className="p-3">Địa chỉ</th>
-
-              <th className="p-3">Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map((user) => (
-              <tr key={user._id} className="border-b hover:bg-gray-100">
-                <td className="p-3 text-[12px]">
-                  {user.userName || "Chưa có"}
-                </td>
-                <td className="p-3 text-[12px]">
-                  {`${user.firstName || ""} ${user.lastName || ""}`.trim() ||
-                    "Chưa có"}
-                </td>
-                <td className="p-3 text-[12px]">{user.email || "Chưa có"}</td>
-                <td className="p-3 text-[12px]">{user.phone || "Chưa có"}</td>
-                <td className="p-3 text-[12px]">{user.address || "Chưa có"}</td>
-
-                <td className="p-3 space-x-2 flex gap-2">
-                  <button
-                    onClick={() => handleDelete(user._id)}
-                    className="text-white bg-red-500 p-1 rounded hover:opacity-70 cursor-pointer text-[12px]"
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
+                  <th className="py-3 px-4 text-left">Thông Tin</th>
+                  <th className="py-3 px-4 text-center">Trạng Thái</th>
+                  <th className="py-3 px-4 text-right">Hành Động</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.map((user) => (
+                  <tr
+                    key={user._id}
+                    className="border-b border-gray-200 hover:bg-gray-100 transition duration-200"
                   >
-                    Xóa
-                  </button>
-                  <button
-                    onClick={() => handleBlock(user._id)}
-                    className="text-white bg-blue-500 rounded p-1 text-[12px] hover:opacity-70 cursor-pointer"
-                  >
-                    {user.isBlocked ? "Bỏ chặn" : "Chặn"}
-                  </button>
-                  <button
-                    onClick={() =>
-                      navigate(`/admin/customers/details/${user._id}`)
-                    }
-                    className="text-white text-[12px] bg-green-500 rounded p-1 hover:opacity-70 cursor-pointer"
-                  >
-                    Xem chi tiết
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <Outlet />
+                    <td className="py-4 px-4">
+                      <div className="flex items-center">
+                        <div className="mr-4">
+                          {user.isBlocked ? (
+                            <UserX className="text-red-500" />
+                          ) : (
+                            <UserCheck className="text-green-500" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-800">
+                            {`${user.firstName || ""} ${
+                              user.lastName || ""
+                            }`.trim() || "Chưa có tên"}
+                          </p>
+                          <p className="text-gray-500 text-sm">
+                            {user.email || "Chưa có email"}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs ${
+                          user.isBlocked
+                            ? "bg-red-200 text-red-800"
+                            : "bg-green-200 text-green-800"
+                        }`}
+                      >
+                        {user.isBlocked ? "Đã Chặn" : "Hoạt Động"}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="flex justify-end space-x-2">
+                        <button
+                          onClick={() => handleDelete(user._id)}
+                          className="text-red-500 hover:bg-red-100 p-2 rounded-full transition"
+                          title="Xóa người dùng"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleBlock(user._id)}
+                          className="text-blue-500 hover:bg-blue-100 p-2 rounded-full transition"
+                          title={user.isBlocked ? "Bỏ chặn" : "Chặn"}
+                        >
+                          {user.isBlocked ? (
+                            <Unlock size={18} />
+                          ) : (
+                            <Lock size={18} />
+                          )}
+                        </button>
+                        <a
+                        href={`/admin/customers/details/${user._id}`}
+                          className="text-green-500 hover:bg-green-100 p-2 rounded-full transition"
+                          title="Xem chi tiết"
+                        >
+                          <Eye size={18} />
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   );

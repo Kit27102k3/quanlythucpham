@@ -182,3 +182,23 @@ html {
 .p-carousel-next:hover {
   background-color: #3e8228 !important;
 }
+
+//Hover Product
+.product-dropdown-container {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  z-index: 50;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-20px);
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out,
+    visibility 0.3s;
+}
+
+.product-dropdown-container.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
