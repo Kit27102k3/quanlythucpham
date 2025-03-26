@@ -7,7 +7,11 @@ import "../../../index.css";
 import FilterByPrice from "../../component/FilterByPrice";
 
 function ProductLayout() {
-  const [ingredient, setIngredient] = useState("");
+  const [sortOption, setSortOption] = useState("default");
+
+  const handleSortChange = (option) => {
+    setSortOption(option);
+  };
 
   return (
     <div>
@@ -91,140 +95,45 @@ function ProductLayout() {
               Xếp theo:
             </span>
             <div className="p-2 grid grid-cols-1 gap-4">
-              <div className="card ">
-                <div className="flex gap-3 ">
-                  <div className="flex items-center hide-on-mobile">
-                    <div className="hide-on-mobile">
+              <div className="grid grid-cols-1 gap-4">
+                <div className="flex gap-3">
+                  {[
+                    { value: "a-z", label: "Tên A-Z" },
+                    { value: "z-a", label: "Tên Z-A" },
+                    { value: "productNew", label: "Hàng mới" },
+                    { value: "priceUp", label: "Giá thấp đến cao" },
+                    { value: "priceDown", label: "Giá cao đến thấp" },
+                  ].map((option) => (
+                    <div key={option.value} className="flex items-center">
                       <RadioButton
-                        inputId="ingredient1"
-                        name="pizza"
-                        value="a-z"
-                        onChange={(e) => setIngredient(e.value)}
-                        checked={ingredient === "a-z"}
+                        inputId={option.value}
+                        name="sort"
+                        value={option.value}
+                        onChange={(e) => handleSortChange(e.value)}
+                        checked={sortOption === option.value}
                         style={{
                           transform: "scale(0.6)",
                           transformOrigin: "left center",
-                          color: "black",
                           border: "1px solid",
                           borderRadius: "50%",
                           backgroundColor: "white",
                         }}
                       />
                       <label
-                        htmlFor="ingredient1"
-                        className="cursor-pointer text-[#1c1c1c] hide-on-mobile"
-                      >
-                        Tên A-Z
-                      </label>
-                    </div>
-                  </div>
-                  <div className="flex align-items-center">
-                    <div className="hide-on-mobile">
-                      <RadioButton
-                        inputId="ingredient2"
-                        name="pizza"
-                        value="z-a"
-                        onChange={(e) => setIngredient(e.value)}
-                        checked={ingredient === "z-a"}
-                        style={{
-                          transform: "scale(0.6)",
-                          transformOrigin: "left center",
-                          color: "black",
-                          border: "1px solid",
-                          borderRadius: "50%",
-                          backgroundColor: "white",
-                        }}
-                      />
-                      <label
-                        htmlFor="ingredient2"
+                        htmlFor={option.value}
                         className="cursor-pointer text-[#1c1c1c] text-sm"
                       >
-                        Tên Z-A
+                        {option.label}
                       </label>
                     </div>
-                  </div>
-                  <div className="flex align-items-center">
-                    <div className="hide-on-mobile">
-                      <RadioButton
-                        inputId="ingredient3"
-                        name="pizza"
-                        value="productNew"
-                        onChange={(e) => setIngredient(e.value)}
-                        checked={ingredient === "productNew"}
-                        style={{
-                          transform: "scale(0.6)",
-                          transformOrigin: "left center",
-                          color: "black",
-                          border: "1px solid",
-                          borderRadius: "50%",
-                          backgroundColor: "white",
-                        }}
-                      />
-                      <label
-                        htmlFor="ingredient3"
-                        className="cursor-pointer text-[#1c1c1c] text-sm"
-                      >
-                        Hàng mới
-                      </label>
-                    </div>
-                  </div>
-                  <div className="flex align-items-center">
-                    <div className="hide-on-mobile">
-                      <RadioButton
-                        inputId="ingredient4"
-                        name="pizza"
-                        value="priceUp"
-                        onChange={(e) => setIngredient(e.value)}
-                        checked={ingredient === "priceUp"}
-                        style={{
-                          transform: "scale(0.6)",
-                          transformOrigin: "left center",
-                          color: "black",
-                          border: "1px solid",
-                          borderRadius: "50%",
-                          backgroundColor: "white",
-                        }}
-                      />
-                      <label
-                        htmlFor="ingredient4"
-                        className="cursor-pointer text-[#1c1c1c] text-sm"
-                      >
-                        Giá thấp đến cao
-                      </label>
-                    </div>
-                  </div>
-                  <div className="flex align-items-center">
-                    <div className="hide-on-mobile">
-                      <RadioButton
-                        inputId="ingredient4"
-                        name="pizza"
-                        value="priceSort"
-                        onChange={(e) => setIngredient(e.value)}
-                        checked={ingredient === "priceSort"}
-                        style={{
-                          transform: "scale(0.6)",
-                          transformOrigin: "left center",
-                          color: "black",
-                          border: "1px solid",
-                          borderRadius: "50%",
-                          backgroundColor: "white",
-                        }}
-                      />
-                      <label
-                        htmlFor="ingredient4"
-                        className="cursor-pointer text-[#1c1c1c] text-sm"
-                      >
-                        Giá cao đến thấp
-                      </label>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
 
           <div className="cursor-pointer text-[#1c1c1c] text-sm mb-5">
-            <AllProducts />
+            <AllProducts sortOption={sortOption} />
           </div>
           <PaginatorBasic />
         </main>

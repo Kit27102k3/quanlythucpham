@@ -4,8 +4,9 @@ import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import "../../../index.css";
 
-function AllProducts() {
+function AllProducts({ category, sortOption }) {
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const { handleAddToCart, handleClick } = useCartAndNavigation();
 
   useEffect(() => {
@@ -16,10 +17,38 @@ function AllProducts() {
     fetchAllProducts();
   }, []);
 
+  useEffect(() => {
+    let sortedProducts = [...products];
+    
+    switch (sortOption) {
+      case "a-z":
+        sortedProducts.sort((a, b) => a.productName.localeCompare(b.productName));
+        break;
+      case "z-a":
+        sortedProducts.sort((a, b) => b.productName.localeCompare(a.productName));
+        break;
+      case "priceUp":
+        // Giá thấp đến cao
+        sortedProducts.sort((a, b) => a.productPrice - b.productPrice);
+        break;
+      case "priceDown":
+        // Giá cao đến thấp
+        sortedProducts.sort((a, b) => b.productPrice - a.productPrice);
+        break;
+      case "productNew":
+        sortedProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        break;
+      default:
+        break;
+    }
+    
+    setFilteredProducts(sortedProducts);
+  }, [products, sortOption]);
+
   return (
     <div className="px-4 py-6">
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        {products.map((product, index) => (
+        {filteredProducts.map((product, index) => (
           <div
             key={index}
             className="relative items-center justify-center group cursor-pointer bg-white rounded-md overflow-hidden"
