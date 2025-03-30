@@ -80,13 +80,13 @@ function AllProducts({ sortOption, priceFilters, typeFilters }) {
               <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
                 <button
                   onClick={() => handleAddToCart(product._id)}
-                  className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] hover:text-[#51aa1b] hover:bg-white hover:border hover:border-[#51aa1b]"
+                  className="px-4 py-2 cursor-pointer bg-[#51aa1b] text-white uppercase text-[12px] hover:text-[#51aa1b] hover:bg-white hover:border hover:border-[#51aa1b]"
                 >
                   Thêm vào giỏ
                 </button>
                 <button
                   onClick={() => handleClick(product._id)}
-                  className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] hover:text-[#51aa1b] hover:bg-white hover:border hover:border-[#51aa1b]"
+                  className="px-4 py-2 cursor-pointer bg-[#51aa1b] text-white uppercase text-[12px] hover:text-[#51aa1b] hover:bg-white hover:border hover:border-[#51aa1b]"
                 >
                   Xem chi tiết
                 </button>

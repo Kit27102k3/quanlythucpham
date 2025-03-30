@@ -1,0 +1,22 @@
+{
+  "orders": [
+    {
+      "id": "ORDER123",
+      "status": "shipping",
+      "history": [
+        {
+          "timestamp": "2023-12-10T10:00:00Z",
+          "status": "processed",
+          "location": "Kho Cần Thơ"
+        },
+        {
+          "timestamp": "2023-12-11T14:30:00Z",
+          "status": "shipping",
+          "location": "Đang trên đường giao"
+        }
+      ],
+      "currentLocation": "Cần Thơ",
+      "carrier": "GHN"
+    }
+  ]
+}

@@ -24,6 +24,7 @@ import SearchProducts from "../User/Pages/Product/SearchProducts";
 import DefaultDiscount from "../User/Pages/Product/ProductDiscount/DefaultDiscount";
 import OrderAdmin from "../Admin/Pages/Order";
 import Employees from "../Admin/Pages/AddEmployees";
+import OrderConfirmation from "../User/Cart/OrderConfirmation";
 
 const publicRoutes = [
   {
@@ -59,6 +60,10 @@ const publicRoutes = [
   {
     path: "/san-pham",
     page: DefaultProduct,
+  },
+  {
+    path: "/order-confirmation/:orderId",
+    page: OrderConfirmation,
   },
   {
     path: "/khuyen-mai",

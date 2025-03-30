@@ -1,13 +1,11 @@
-import { Router } from "express";
-const router = Router();
-import {
-  createPaymentUrl,
-  vnpayReturn,
-  momoReturn,
-} from "../Controller/order.js";
+import express from "express";
+const router = express.Router();
+import { orderCreate, orderGet, orderGetAll, orderUpdate } from "../Controller/order.js";
 
-router.post("/create-payment", createPaymentUrl);
-router.get("/vnpay-return", vnpayReturn);
-router.get("/momo-return", momoReturn);
+router.post("/", orderCreate);
+router.patch("/:id", orderUpdate);
+router.get("/user", orderGet);
+router.get("/", orderGetAll);
+
 
 export default router;

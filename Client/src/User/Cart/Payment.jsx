@@ -9,17 +9,26 @@ import paymentApi from "../../api/paymentApi";
 import { toast } from "react-toastify";
 import formatCurrency from "../Until/FotmatPrice";
 import useFetchUserProfile from "../Until/useFetchUserProfile";
+import orderApi from "../../api/orderApi";
 
 export default function Payment() {
   const [orderDetails, setOrderDetails] = useState({
-    productCount: 1,
-    totalPrice: 53500,
+    products: [],
+    totalAmount: 0,
+    productCount: 0,
   });
 
+  const [selectedOption, setSelectedOption] = useState("");
+  const [selectedDelivery, setSelectedDelivery] = useState("standard");
+  const [selectedMethod, setSelectedMethod] = useState("delivery");
   const [coupon, setCoupon] = useState("");
+
   const { paymentId } = useParams();
   const navigate = useNavigate();
   const users = useFetchUserProfile();
+
+  const deliveryFee = selectedDelivery === "standard" ? 40000 : 0;
+  const totalPayment = orderDetails.totalAmount + deliveryFee;
 
   useEffect(() => {
     const fetchPaymentDetails = async () => {
@@ -29,7 +38,11 @@ export default function Payment() {
           return;
         }
         const response = await paymentApi.getPaymentById(paymentId);
-        setOrderDetails(response);
+        setOrderDetails({
+          products: response.products || [],
+          totalAmount: response.totalAmount || 0,
+          productCount: response.products?.length || 0,
+        });
       } catch (error) {
         console.error("Lỗi khi lấy thông tin thanh toán:", error);
         toast.error("Không thể tải thông tin thanh toán");
@@ -53,6 +66,41 @@ export default function Payment() {
 
   const handleApplyCoupon = () => {
     console.log(`Applying coupon: ${coupon}`);
+  };
+
+  const handlePlaceOrder = async () => {
+    try {
+      // 1. Kiểm tra thông tin bắt buộc
+      if (!users?.phone || !users?.address) {
+        toast.error("Vui lòng điền đầy đủ thông tin nhận hàng");
+        return;
+      }
+
+      // 2. Tạo payload gửi lên server
+      const orderData = {
+        userId: users._id, // Lấy từ user profile
+        products: orderDetails.products,
+        totalAmount: totalPayment,
+        shippingInfo: {
+          address: users.address,
+          phone: users.phone,
+          method: selectedDelivery,
+        },
+        paymentMethod: selectedMethod,
+        coupon: coupon || null, // Lưu mã giảm giá nếu có
+        status: "pending", // Trạng thái ban đầu
+      };
+
+      // 3. Gọi API lưu đơn hàng
+      const response = await orderApi.createOrder(orderData);
+
+      // 4. Thông báo thành công & chuyển hướng
+      toast.success("Đặt hàng thành công!");
+      navigate(`/order-confirmation/${response._id}`); // Chuyển sang trang xác nhận
+    } catch (error) {
+      console.error("Lỗi khi đặt hàng:", error);
+      toast.error("Đặt hàng thất bại. Vui lòng thử lại!");
+    }
   };
 
   return (
@@ -81,7 +129,7 @@ export default function Payment() {
                 </label>
                 <input
                   type="text"
-                  value={`${users?.firstName} ${users?.lastName}`}
+                  value={`${users?.firstName || ""} ${users?.lastName || ""}`}
                   disabled
                   className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-800"
                 />
@@ -92,7 +140,7 @@ export default function Payment() {
                 </label>
                 <input
                   type="text"
-                  value={users?.phone}
+                  value={users?.phone || ""}
                   className="w-full p-2 border border-gray-300 rounded-md outline-none"
                 />
               </div>
@@ -103,7 +151,7 @@ export default function Payment() {
               </label>
               <input
                 type="text"
-                value={users?.address}
+                value={users?.address || ""}
                 className="w-full p-2 border border-gray-300 rounded-md outline-none"
               />
             </div>
@@ -120,6 +168,7 @@ export default function Payment() {
           </div>
 
           <div className="space-y-4 mt-2">
+            {/* Vận chuyển */}
             <div>
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-3 mb-3">
                 <FontAwesomeIcon icon={faCar} className="text-[#51bb1a]" />
@@ -129,7 +178,9 @@ export default function Payment() {
                 <label className="flex items-center p-3 hover:bg-gray-50 transition cursor-pointer">
                   <input
                     type="radio"
-                    name="delivery"
+                    name="paymentMethod"
+                    checked={selectedMethod === "delivery"}
+                    onChange={() => setSelectedMethod("delivery")}
                     className="mr-3 text-[#51bb1a] focus:ring-[#51bb1a]"
                   />
                   <span className="flex-grow">Giao hàng tiêu chuẩn</span>
@@ -138,6 +189,7 @@ export default function Payment() {
               </div>
             </div>
 
+            {/* Thanh toán */}
             <div>
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-3 mb-3 mt-2">
                 <FontAwesomeIcon
@@ -150,7 +202,10 @@ export default function Payment() {
                 <label className="flex items-center p-3 hover:bg-gray-50 transition cursor-pointer">
                   <input
                     type="radio"
-                    name="payment"
+                    name="paymentMethod" // Cùng name với cái trên
+                    value="payment"
+                    checked={selectedMethod === "payment"}
+                    onChange={() => setSelectedMethod("payment")}
                     className="mr-3 text-[#51bb1a] focus:ring-[#51bb1a]"
                   />
                   <span>Thanh toán khi nhận hàng (COD)</span>
@@ -158,9 +213,11 @@ export default function Payment() {
               </div>
             </div>
           </div>
-
           <div className="grid md:grid-cols-2 gap-4 mt-4">
-            <button className="w-full cursor-pointer bg-[#51bb1a] text-white py-3 rounded-lg hover:opacity-90  transition">
+            <button
+              onClick={handlePlaceOrder}
+              className="w-full cursor-pointer bg-[#51bb1a] text-white py-3 rounded-lg hover:opacity-90  transition"
+            >
               Đặt hàng
             </button>
             <button
@@ -175,10 +232,10 @@ export default function Payment() {
         <div className="bg-gray-100 p-6 space-y-4">
           <div className="flex justify-between items-center border-b pb-3">
             <span className="font-semibold text-gray-800">
-              Đơn hàng ({orderDetails?.products?.quantity} sản phẩm)
+              Đơn hàng ({orderDetails?.productCount} sản phẩm)
             </span>
             <span className="font-bold text-[#51bb1a]">
-              {orderDetails?.totalAmount?.toLocaleString()}đ
+              {formatCurrency(orderDetails?.totalAmount)}
             </span>
           </div>
 
@@ -190,7 +247,7 @@ export default function Payment() {
               >
                 <div className="flex items-center gap-3">
                   <Avatar
-                    image={product?.productId?.productImages[0]}
+                    image={product?.productId?.productImages?.[0]}
                     size="large"
                     className="rounded-md"
                   />
@@ -204,7 +261,7 @@ export default function Payment() {
                   </div>
                 </div>
                 <span className="font-semibold text-[#51bb1a]">
-                  {formatCurrency(product.productId?.productPrice)}đ
+                  {formatCurrency(product?.productId?.productPrice)}
                 </span>
               </div>
             ))}
@@ -213,15 +270,15 @@ export default function Payment() {
           <div className="space-y-2 border-t pt-3 flex flex-col gap-2">
             <div className="flex justify-between text-gray-700">
               <span>Tạm tính</span>
-              <span>13.500đ</span>
+              <span>{formatCurrency(orderDetails.totalAmount)}</span>
             </div>
             <div className="flex justify-between text-gray-700">
               <span>Phí vận chuyển</span>
-              <span>40.000đ</span>
+              <span>{formatCurrency(deliveryFee)}</span>
             </div>
             <div className="flex justify-between font-bold text-xl text-[#51bb1a] border-t pt-3">
               <span>Tổng cộng</span>
-              <span>{formatCurrency(orderDetails.totalAmount)}đ</span>
+              <span>{formatCurrency(totalPayment)}</span>
             </div>
           </div>
 
