@@ -69,6 +69,12 @@ const AdminSidebar = () => {
       key: "customers",
     },
     {
+      icon: <PersonIcon className="size-6" />,
+      text: "Quản lý Nhân viên",
+      path: "/admin/employees",
+      key: "employees",
+    },
+    {
       icon: <ReaderIcon className="size-6" />,
       text: "Báo cáo",
       path: "/admin/reports",

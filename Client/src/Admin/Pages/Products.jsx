@@ -35,6 +35,19 @@ const Products = () => {
     }
   };
 
+  const handleAddProduct = async (newProduct) => {
+    try {
+      setProducts(prevProducts => [newProduct, ...prevProducts]);
+      await fetchProducts();
+      toast.success("Thêm sản phẩm thành công!");
+    } catch (error) {
+      setProducts(prevProducts => 
+        prevProducts.filter(product => product._id !== newProduct._id)
+      );
+      toast.error("Thêm sản phẩm thất bại!");
+    }
+  };
+
   const handleDeleteProduct = async (_id) => {
     try {
       await productsApi.deleteProduct(_id);
@@ -197,6 +210,7 @@ const Products = () => {
           products={products}
           setProducts={setProducts}
           fetchProducts={fetchProducts}
+          onProductAdd={handleAddProduct}
         />
       </Dialog>
 

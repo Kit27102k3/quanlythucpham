@@ -8,6 +8,29 @@
   @tailwind utilities;
 }
 
+.background-login {
+  background: rgb(63, 94, 251);
+  background: radial-gradient(
+    circle,
+    rgba(63, 94, 251, 1) 0%,
+    rgba(252, 70, 107, 1) 100%
+  );
+}
+
+/* Ẩn scrollbar cho toàn bộ ứng dụng */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .li-list {
   font-size: "10px";
   text-transform: none;

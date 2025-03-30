@@ -83,7 +83,6 @@ function Footer() {
           </div>
         </div>
 
-        {/* Customer Support */}
         <div>
           <h4 className="text-sm font-semibold text-gray-800 mb-4">
             HỖ TRỢ KHÁCH HÀNG

@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import User from "../Model/Account/Register.js";
-import RefreshToken from "../Model/Account/RefreshToken.js";
+import User from "../Model/Register.js";
+import RefreshToken from "../Model/RefreshToken.js";
 import { generateOTP } from "../Untils/otp.until.js";
 import { sendOTPEmail } from "../Services/email.service.js";
 
@@ -160,29 +160,79 @@ export const getAllUser = async (req, res) => {
 };
 
 export const updateUser = async (req, res) => {
-  const userId = req.params.id;
-  const { phone, firstName, lastName, address } = req.body;
-
   try {
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      {
-        phone,
-        firstName,
-        lastName,
-        address,
-      },
-      { new: true }
-    );
+    const { userId } = req.params;
+    const { currentPassword, newPassword } = req.body;
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "Người dùng không tồn tại" });
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng",
+      });
     }
 
-    res.status(200).json(updatedUser);
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          success: false,
+          message: "Vui lòng cung cấp mật khẩu hiện tại",
+        });
+      }
+
+      const isMatch = await bcrypt.compare(currentPassword, user.password);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: "Mật khẩu hiện tại không chính xác",
+        });
+      }
+
+      if (newPassword.length < 8) {
+        return res.status(400).json({
+          success: false,
+          message: "Mật khẩu mới phải có ít nhất 8 ký tự",
+        });
+      }
+      if (!/[A-Z]/.test(newPassword)) {
+        return res.status(400).json({
+          success: false,
+          message: "Mật khẩu mới cần ít nhất 1 chữ hoa",
+        });
+      }
+      if (!/[0-9]/.test(newPassword)) {
+        return res.status(400).json({
+          success: false,
+          message: "Mật khẩu mới cần ít nhất 1 chữ số",
+        });
+      }
+      if (!/[!@#$%^&*]/.test(newPassword)) {
+        return res.status(400).json({
+          success: false,
+          message: "Mật khẩu mới cần ít nhất 1 ký tự đặc biệt",
+        });
+      }
+
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(newPassword, salt);
+    }
+
+    await user.save();
+    res.json({
+      success: true,
+      message: "Đổi mật khẩu thành công",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
+    console.error("Lỗi khi cập nhật người dùng:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi cập nhật thông tin",
+    });
   }
 };
 
@@ -214,6 +264,87 @@ export const requestPasswordReset = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi xử lý yêu cầu",
+    });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    console.log("Dữ liệu nhận được từ client:", req.body);
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin cần thiết",
+      });
+    }
+
+    // Tìm người dùng dựa trên email và OTP hợp lệ
+    const user = await User.findOne({
+      email,
+      resetPasswordToken: otp,
+      resetPasswordExpires: { $gt: Date.now() }, // OTP còn hạn sử dụng
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Mã OTP không hợp lệ hoặc đã hết hạn",
+      });
+    }
+
+    // Kiểm tra độ mạnh của mật khẩu mới
+    if (newPassword.length < 8) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Mật khẩu mới phải có ít nhất 8 ký tự",
+        });
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Mật khẩu mới cần ít nhất 1 chữ hoa",
+        });
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Mật khẩu mới cần ít nhất 1 chữ số" });
+    }
+    if (!/[!@#$%^&*]/.test(newPassword)) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Mật khẩu mới cần ít nhất 1 ký tự đặc biệt",
+        });
+    }
+
+    // Hash mật khẩu mới
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+
+    // Xóa OTP sau khi sử dụng
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Đặt lại mật khẩu thành công",
+    });
+  } catch (error) {
+    console.error("Lỗi khi đặt lại mật khẩu:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi đặt lại mật khẩu",
     });
   }
 };

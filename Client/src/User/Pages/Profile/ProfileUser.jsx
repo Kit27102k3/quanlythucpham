@@ -4,7 +4,7 @@ import DefaultProfile from "./DefaultProfile";
 function ProfileUser() {
   return (
     <div>
-      <div className="flex lg:px-[120px] px-[10px] items-center text-sm py-2 ">
+      <div className="flex lg:px-[120px] px-[10px] items-center text-sm py-3">
         <a href="/" className="hover:text-[#51bb1a]">
           Trang chủ
         </a>

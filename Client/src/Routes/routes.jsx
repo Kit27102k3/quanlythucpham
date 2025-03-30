@@ -23,6 +23,7 @@ import CustomerDetails from "../Admin/Pages/CustomerDetails";
 import SearchProducts from "../User/Pages/Product/SearchProducts";
 import DefaultDiscount from "../User/Pages/Product/ProductDiscount/DefaultDiscount";
 import OrderAdmin from "../Admin/Pages/Order";
+import Employees from "../Admin/Pages/AddEmployees";
 
 const publicRoutes = [
   {
@@ -128,6 +129,10 @@ const privateRoutes = [
   {
     path: "/admin/customers",
     page: Customers,
+  },
+  {
+    path: "/admin/employees",
+    page: Employees,
   },
   {
     path: "/admin/customers/details/:id",

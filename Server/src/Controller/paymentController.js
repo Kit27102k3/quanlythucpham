@@ -1,5 +1,5 @@
-import Payment from "../Model/Payment/Payment.js";
-import Cart from "../Model/Cart/Cart.js";
+import Payment from "../Model//Payment.js";
+import Cart from "../Model/Cart.js";
 
 export const createPayment = async (req, res) => {
   const { userId, selectedItems } = req.body;

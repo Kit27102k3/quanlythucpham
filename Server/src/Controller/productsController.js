@@ -1,31 +1,18 @@
 import cloudinary from "../config/cloudinary.js";
-import Product from "../Model/Products/Products.js";
+import Product from "../Model/Products.js";
 import fs from "fs";
 import path from "path";
 
 export const createProduct = async (req, res) => {
   try {
-    // console.log("Current working directory:", process.cwd());
-    // console.log("Environment variables:", {
-    //   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME
-    //     ? "***"
-    //     : "MISSING",
-    //   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ? "***" : "MISSING",
-    //   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET
-    //     ? "***"
-    //     : "MISSING",
-    // });
-
     if (!req.files || req.files.length === 0) {
       return res
         .status(400)
         .json({ message: "Vui lòng tải lên ít nhất một hình ảnh" });
     }
-
     const uploadedUrls = [];
     for (const file of req.files) {
       try {
-        // console.log(`Uploading ${file.originalname} from ${file.path}`);
         if (!fs.existsSync(file.path)) {
           throw new Error(`File not found: ${file.path}`);
         }
@@ -36,15 +23,12 @@ export const createProduct = async (req, res) => {
           unique_filename: false,
         });
         uploadedUrls.push(result.secure_url);
-        // console.log(`Upload thành công: ${result.secure_url}`);
         fs.unlinkSync(file.path);
       } catch (uploadError) {
-        // console.error(`Lỗi upload ${file.originalname}:`, uploadError);
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
         throw new Error(`Upload ảnh thất bại: ${uploadError.message}`);
       }
     }
-
     let descriptions = [];
     try {
       descriptions =
@@ -75,7 +59,6 @@ export const createProduct = async (req, res) => {
         if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       });
     }
-
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -101,11 +84,8 @@ export const updateProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
-
-    // Xử lý ảnh mới upload
     let newImageUrls = [];
     if (req.files && req.files.length > 0) {
-      // Upload đồng thời các ảnh mới lên Cloudinary
       const uploadResults = await Promise.all(
         req.files.map((file) => {
           return cloudinary.uploader.upload(file.path, {

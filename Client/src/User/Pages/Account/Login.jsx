@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { InputText } from "primereact/inputtext";
 import { FloatLabel } from "primereact/floatlabel";
 import { Dialog } from "primereact/dialog";
+import { FaFacebook, FaGoogle, FaLock, FaUser } from "react-icons/fa";
 import ForgotPassword from "./ForgotPassword";
 import authApi from "../../../api/authApi";
 import { ToastContainer, toast } from "react-toastify";
@@ -26,125 +27,110 @@ const Login = () => {
       toast.success("Đăng nhập thành công!");
       navigate("/");
     } catch (error) {
+      toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
       console.log(error);
     }
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8 background-login">
       <ToastContainer />
-      <div className="w-full md:w-1/2 flex flex-col justify-center items-center p-6 md:p-10 shadow-lg">
-        <a
-          href="/"
-          className="uppercase text-black text-center text-3xl md:text-4xl font-bold mb-6"
-        >
-          Welcome To{" "}
-          <h3 className="text-3xl md:text-4xl font-bold">
-            DNC<span className="text-green-500"> FO</span>OD
-          </h3>
-        </a>
-        <p className="mb-4 text-sm md:text-base text-center">
-          Vui lòng đăng nhập tài khoản của bạn!
-        </p>
+      <div className="w-full max-w-4xl bg-white shadow-2xl rounded-2xl overflow-hidden grid md:grid-cols-2">
+        <div className="p-10 flex flex-col justify-center">
+          <div className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">
+              DNC <span className="text-[#51bb1a]">FOOD</span>
+            </h1>
+            <p className="text-gray-600">Chào mừng quay trở lại!</p>
+          </div>
 
-        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-6 w-full md:w-[400px]">
-          <button className="p-2 w-full bg-blue-600 text-white cursor-pointer rounded">
-            Login with Facebook
-          </button>
-          <button className="p-2 w-full bg-red-600 text-white cursor-pointer rounded">
-            Login with Google
-          </button>
+          <div className="flex space-x-4 mb-6 gap-4">
+            <button className="flex-1 flex items-center cursor-pointer justify-center bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
+              <FaFacebook className="mr-2" /> Facebook
+            </button>
+            <button className="flex-1 flex items-center cursor-pointer justify-center bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition">
+              <FaGoogle className="mr-2" /> Google
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center my-4">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="px-4 text-gray-500 text-sm">
+              Hoặc đăng nhập bằng tài khoản
+            </span>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+
+          {/* Login Form */}
+          <form onSubmit={handleLogin} className="space-y-6 ">
+            <div className="relative mb-2">
+              <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Tên đăng nhập"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#51bb1a]"
+                required
+              />
+            </div>
+
+            <div className="relative mb-2">
+              <FaLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                type="password"
+                placeholder="Mật khẩu"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#51bb1a]"
+                required
+              />
+            </div>
+
+            <div className="flex justify-between items-center mb-4">
+              <a
+                href="/dang-ky"
+                className="text-sm text-blue-500 hover:underline"
+              >
+                Đăng ký tài khoản mới
+              </a>
+              <span
+                onClick={() => setVisible(true)}
+                className="text-sm text-blue-500 hover:underline cursor-pointer"
+              >
+                Quên mật khẩu?
+              </span>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-[#51bb1a] text-white py-3 rounded-lg hover:bg-[#51bb1a] transition font-semibold cursor-pointer"
+            >
+              ĐĂNG NHẬP
+            </button>
+          </form>
         </div>
 
-        <form
-          onSubmit={handleLogin}
-          className="w-full md:w-[400px] flex flex-col gap-6"
-        >
-          <FloatLabel>
-            <InputText
-              style={{
-                width: "100%",
-                color: "black",
-                backgroundColor: "white",
-                height: "40px",
-                border: "1px solid #ced4da",
-              }}
-              className="px-2"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-            <label className="-mt-2" htmlFor="username">
-              Username
-            </label>
-          </FloatLabel>
-
-          <FloatLabel>
-            <InputText
-              style={{
-                width: "100%",
-                color: "black",
-                backgroundColor: "white",
-                height: "40px",
-                border: "1px solid #ced4da",
-              }}
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="px-2"
-            />
-            <label className="-mt-2" htmlFor="password">
-              Password
-            </label>
-          </FloatLabel>
-
-          <div className="mt-5 flex flex-col md:flex-row items-center justify-between w-full text-sm">
-            <div>
-              Chưa có tài khoản?{" "}
-              <a href="dang-ky" className="text-blue-500 font-semibold">
-                Đăng ký tại đây
-              </a>
-            </div>
-            <div
-              onClick={() => setVisible(true)}
-              className="text-blue-500 font-semibold cursor-pointer"
-            >
-              Quên mật khẩu?
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className="p-3 w-full bg-[#51aa1b] text-white rounded mt-6 cursor-pointer text-[14px] hover:opacity-90"
-          >
-            ĐĂNG NHẬP
-          </button>
-        </form>
-
-        <Dialog
-          header="QUÊN MẬT KHẨU"
-          visible={visible}
-          style={{ width: "600px" }}
-          contentStyle={{ backgroundColor: "white" }}
-          headerStyle={{ backgroundColor: "white", color: "black" }}
-          onHide={() => setVisible(false)}
-          headerClassName="p-4"
-        >
-          <div className="mt-2">
-            <ForgotPassword />
-          </div>
-        </Dialog>
+        {/* Background Image Section */}
+        <div className="hidden md:block">
+          <img
+            src="https://imgs.search.brave.com/-iKO9iDdLIcHOwXs51kpeiQB7vWzM3DBw9Ph4mBZL3U/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWFn/ZWRlbGl2ZXJ5Lm5l/dC9aZUd0c0dTanVR/ZTFQM1VQX3prM2ZR/LzMxNzZlNjc0LTg1/NDgtNDJiMC05OWMz/LWViYTNjNmFlNzcw/MC9zdG9yZWRhdGE"
+            alt="Fresh Food Market"
+            className="w-full h-full object-cover"
+          />
+        </div>
       </div>
-      <div className="w-full md:w-1/2">
-        <img
-          src="https://imgs.search.brave.com/-iKO9iDdLIcHOwXs51kpeiQB7vWzM3DBw9Ph4mBZL3U/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWFn/ZWRlbGl2ZXJ5Lm5l/dC9aZUd0c0dTanVR/ZTFQM1VQX3prM2ZR/LzMxNzZlNjc0LTg1/NDgtNDJiMC05OWMz/LWViYTNjNmFlNzcw/MC9zdG9yZWRhdGE"
-          alt="Login Banner"
-          className="w-full h-full object-cover"
-        />
-      </div>
+
+      {/* Forgot Password Dialog */}
+      <Dialog
+        header="QUÊN MẬT KHẨU"
+        visible={visible}
+        style={{ width: "500px" }}
+        onHide={() => setVisible(false)}
+      >
+        <ForgotPassword />
+      </Dialog>
     </div>
   );
 };

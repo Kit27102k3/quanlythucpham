@@ -1,9 +1,8 @@
 import React, { useState } from "react";
-import authApi from "../../../api/authApi";
 import { InputText } from "primereact/inputtext";
-import { FloatLabel } from "primereact/floatlabel";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import authApi from "../../../api/authApi";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -12,34 +11,24 @@ export default function Register() {
     firstName: "",
     lastName: "",
     userName: "",
-    address: "",
     password: "",
-    userImage: "",
   });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const validateForm = () => {
-    const { email, phone, firstName, lastName, userName, password } = formData;
-    if (!email || !phone || !firstName || !lastName || !userName || !password) {
-      toast.error("Vui lòng điền đầy đủ thông tin!");
-      return false;
-    }
-    if (password.length < 6) {
-      toast.error("Mật khẩu phải có ít nhất 6 ký tự!");
-      return false;
-    }
-    return true;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    const { email, phone, firstName, lastName, userName, password } = formData;
+
+    if (!email || !phone || !firstName || !lastName || !userName || !password) {
+      toast.error("Vui lòng điền đầy đủ thông tin!");
+      return;
+    }
 
     try {
-      const response = await authApi.register(formData);
+      await authApi.register(formData);
       toast.success("Đăng ký thành công!");
       setFormData({
         email: "",
@@ -48,188 +37,146 @@ export default function Register() {
         lastName: "",
         userName: "",
         password: "",
-        address: "",
-        userImage: "",
       });
     } catch (error) {
-      if (error.response && error.response.data) {
-        const { message } = error.response.data;
-        if (message.includes("duplicate key error")) {
-          toast.error(
-            "Tên người dùng hoặc email đã tồn tại. Vui lòng chọn tên khác."
-          );
-        } else {
-          toast.error(message || "Đăng ký không thành công!");
-        }
-      } else {
-        toast.error("Đăng ký không thành công!");
-      }
+      toast.error(error.response?.data?.message || "Đăng ký không thành công!");
     }
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-screen">
+    <div className="min-h-screen flex items-center justify-center background-login p-4">
       <ToastContainer />
-      <div className="w-full md:w-1/2">
-        <img
-          src="https://imgs.search.brave.com/-iKO9iDdLIcHOwXs51kpeiQB7vWzM3DBw9Ph4mBZL3U/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWFn/ZWRlbGl2ZXJ5Lm5l/dC9aZUd0c0dTanVR/ZTFQM1VQX3prM2ZR/LzMxNzZlNjc0LTg1/NDgtNDJiMC05OWMz/LWViYTNjNmFlNzcw/MC9zdG9yZWRhdGE"
-          alt="Login Banner"
-          className="w-full h-full object-cover"
-        />
-      </div>
-      <div className="w-full md:w-1/2 flex flex-col justify-center items-center p-6 md:p-10 shadow-lg">
-        <a
-          href="/"
-          className="uppercase text-black text-center text-3xl md:text-4xl font-bold mb-6"
+
+      <div className="w-full max-w-5xl bg-white shadow-2xl rounded-3xl overflow-hidden grid md:grid-cols-2">
+        {/* Food Image Section */}
+        <div
+          className="hidden md:block bg-cover bg-center relative"
+          style={{
+            backgroundImage:
+              "url('https://img.freepik.com/free-photo/top-view-table-full-delicious-food_23-2149141463.jpg')",
+            backgroundSize: "cover",
+          }}
         >
-          Welcome To{" "}
-          <h3 className="text-3xl md:text-4xl font-bold">
-            DNC<span className="text-green-500"> FO</span>OD
-          </h3>
-        </a>
-        <p className="mb-4 text-sm md:text-base text-center">
-          Vui lòng đăng ký tài khoản của bạn!
-        </p>
-        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-6 mb-6 w-full md:w-[400px]">
-          <button className="p-2 w-full bg-blue-600 text-white cursor-pointer rounded">
-            Login with Facebook
-          </button>
-          <button className="p-2 w-full bg-red-600 text-white cursor-pointer rounded">
-            Login with Google
-          </button>
+          <div className="absolute inset-0 bg-[#51bb1a] bg-opacity-50 flex items-center justify-center">
+            <h2 className="text-4xl font-bold text-white text-center px-8">
+              Khám Phá Ẩm Thực <br />
+              <span className="text-[#51bb1a]">DNC FOOD</span>
+            </h2>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="w-full md:w-[400px]">
-          <div className="flex flex-col md:flex-row items-center mb-7 gap-7">
-            <FloatLabel>
-              <InputText
-                style={{
-                  width: "100%",
-                  color: "black",
-                  backgroundColor: "white",
-                  height: "40px",
-                }}
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                required
-                className="border"
-              />
-              <label className="-mt-2" htmlFor="firstName">First Name</label>
-            </FloatLabel>
-            <FloatLabel>
-              <InputText
-                style={{
-                  width: "100%",
-                  color: "black",
-                  backgroundColor: "white",
-                  height: "40px",
-                }}
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
-                onChange={handleChange}
-                required
-                className="border"
-              />
-              <label className="-mt-2" htmlFor="lastName">Last Name</label>
-            </FloatLabel>
-          </div>
+        {/* Registration Form Section */}
+        <div className="p-8 md:p-12 flex flex-col justify-center">
+          <h1 className="text-3xl font-bold text-center mb-6 text-[#51bb1a]">
+            Đăng Ký Tài Khoản
+          </h1>
 
-          <div className="flex flex-col gap-7 mb-7">
-            <FloatLabel>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên
+                </label>
+                <InputText
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#51bb1a]"
+                  placeholder="Nhập tên"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Họ
+                </label>
+                <InputText
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#51bb1a]"
+                  placeholder="Nhập họ"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Số Điện Thoại
+              </label>
               <InputText
-                style={{
-                  width: "100%",
-                  color: "black",
-                  backgroundColor: "white",
-                  height: "40px",
-                }}
-                id="phone"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#51bb1a]"
+                placeholder="Nhập số điện thoại"
                 required
-                className="border"
               />
-              <label className="-mt-2" htmlFor="phone">Phone</label>
-            </FloatLabel>
-            <FloatLabel>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
               <InputText
-                style={{
-                  width: "100%",
-                  color: "black",
-                  backgroundColor: "white",
-                  height: "40px",
-                }}
-                id="email"
-                type="email"
                 name="email"
+                type="email"
                 value={formData.email}
                 onChange={handleChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#51bb1a]"
+                placeholder="Nhập email"
                 required
-                className="border"
               />
-              <label className="-mt-2" htmlFor="email">Email</label>
-            </FloatLabel>
-          </div>
+            </div>
 
-          {/* Username and Password */}
-          <div className="flex flex-col gap-7">
-            <FloatLabel>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tên Đăng Nhập
+              </label>
               <InputText
-                style={{
-                  width: "100%",
-                  color: "black",
-                  backgroundColor: "white",
-                  height: "40px",
-                }}
-                id="userName"
                 name="userName"
                 value={formData.userName}
                 onChange={handleChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#51bb1a]"
+                placeholder="Chọn tên đăng nhập"
                 required
-                className="border"
               />
-              <label className="-mt-2" htmlFor="userName">Username</label>
-            </FloatLabel>
-            <FloatLabel>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Mật Khẩu
+              </label>
               <InputText
-                style={{
-                  width: "100%",
-                  color: "black",
-                  backgroundColor: "white",
-                  height: "40px",
-                }}
-                id="password"
-                type="password"
                 name="password"
+                type="password"
                 value={formData.password}
                 onChange={handleChange}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#51bb1a]"
+                placeholder="Tạo mật khẩu"
                 required
-                className="border"
               />
-              <label className="-mt-2" htmlFor="password">Password</label>
-            </FloatLabel>
-          </div>
+            </div>
 
-          <div className="mt-5 flex flex-col md:flex-row items-center justify-between text-sm">
-            <div>
-              Đã có tài khoản{" "}
-              <a href="dang-nhap" className="text-blue-500 font-semibold">
-                Đăng nhập tại đây
+            <button
+              type="submit"
+              className="w-full mt-4 p-3 bg-[#51bb1a] text-white rounded-lg hover:bg-[#51bb1a] transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#51bb1a]"
+            >
+              ĐĂNG KÝ
+            </button>
+
+            <div className="text-center mt-4 text-sm">
+              Đã có tài khoản?{" "}
+              <a
+                href="/dang-nhap"
+                className="text-[#51bb1a] font-semibold hover:underline"
+              >
+                Đăng nhập ngay
               </a>
             </div>
-          </div>
-
-          <button
-            type="submit"
-            className="p-3 w-full bg-[#51aa1b] text-white rounded mt-6 cursor-pointer text-[14px] hover:opacity-90"
-          >
-            ĐĂNG KÝ
-          </button>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

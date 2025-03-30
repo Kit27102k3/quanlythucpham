@@ -4,7 +4,7 @@ import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import "../../../index.css";
 
-function AllProducts({ category, sortOption }) {
+function AllProducts({ sortOption, priceFilters, typeFilters }) {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const { handleAddToCart, handleClick } = useCartAndNavigation();
@@ -18,32 +18,50 @@ function AllProducts({ category, sortOption }) {
   }, []);
 
   useEffect(() => {
-    let sortedProducts = [...products];
-    
+    let filtered = [...products];
+
+    // Lọc theo giá
+    if (priceFilters.length > 0) {
+      filtered = filtered.filter((product) => {
+        return priceFilters.some(
+          (range) =>
+            product.productPrice >= range.min &&
+            product.productPrice <= range.max
+        );
+      });
+    }
+
+    // Lọc theo loại sản phẩm
+    if (typeFilters.length > 0) {
+      filtered = filtered.filter((product) => {
+        return typeFilters.some(
+          (type) => product.productCategory === type.name
+        );
+      });
+    }
+
     switch (sortOption) {
       case "a-z":
-        sortedProducts.sort((a, b) => a.productName.localeCompare(b.productName));
+        filtered.sort((a, b) => a.productName.localeCompare(b.productName));
         break;
       case "z-a":
-        sortedProducts.sort((a, b) => b.productName.localeCompare(a.productName));
+        filtered.sort((a, b) => b.productName.localeCompare(a.productName));
         break;
       case "priceUp":
-        // Giá thấp đến cao
-        sortedProducts.sort((a, b) => a.productPrice - b.productPrice);
+        filtered.sort((a, b) => a.productPrice - b.productPrice);
         break;
       case "priceDown":
-        // Giá cao đến thấp
-        sortedProducts.sort((a, b) => b.productPrice - a.productPrice);
+        filtered.sort((a, b) => b.productPrice - a.productPrice);
         break;
       case "productNew":
-        sortedProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         break;
       default:
         break;
     }
-    
-    setFilteredProducts(sortedProducts);
-  }, [products, sortOption]);
+
+    setFilteredProducts(filtered);
+  }, [products, sortOption, priceFilters, typeFilters]);
 
   return (
     <div className="px-4 py-6">

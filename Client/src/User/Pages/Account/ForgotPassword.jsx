@@ -6,6 +6,7 @@ import { InputText } from "primereact/inputtext";
 import { InputOtp } from "primereact/inputotp";
 import { Toast } from "primereact/toast";
 import { classNames } from "primereact/utils";
+import authApi from "../../../api/authApi";
 import "../../../App.css";
 
 export default function ForgotPassword() {
@@ -71,21 +72,17 @@ export default function ForgotPassword() {
     }
     setLoading((prev) => ({ ...prev, step1: true }));
     try {
-      const response = await fetch("http://localhost:8080/auth/forgot-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: formData.email }),
+      const response = await authApi.requestPasswordReset({
+        email: formData.email,
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || "Yêu cầu OTP thất bại");
-      }
-      showToast("success", "Thành công", data.message);
+      showToast("success", "Thành công", response.message);
       handleNext();
     } catch (error) {
-      showToast("error", "Lỗi", error.message);
+      showToast(
+        "error",
+        "Lỗi",
+        error.response?.data?.message || "Yêu cầu OTP thất bại"
+      );
     } finally {
       setLoading((prev) => ({ ...prev, step1: false }));
     }
@@ -107,7 +104,6 @@ export default function ForgotPassword() {
       setLoading((prev) => ({ ...prev, step2: false }));
     }
   };
-
   const handleSubmitStep3 = async () => {
     if (!formData.password) {
       setErrors((prev) => ({
@@ -127,18 +123,34 @@ export default function ForgotPassword() {
       setErrors((prev) => ({ ...prev, confirm: "Mật khẩu không khớp" }));
       return;
     }
+
+    console.log("Token OTP gửi lên API:", token); // Debug xem token có bị null không
+
     setLoading((prev) => ({ ...prev, step3: true }));
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      showToast("success", "Thành công", "Đổi mật khẩu thành công");
-      setFormData({
-        email: "",
-        password: "",
-        confirm: "",
+      const response = await authApi.resetPassword({
+        email: formData.email,
+        newPassword: password,
+        otp, // Gửi OTP đã xác thực từ bước trước
       });
+
+      showToast(
+        "success",
+        "Thành công",
+        response.message || "Đổi mật khẩu thành công"
+      );
+
+      // Reset form sau khi đổi mật khẩu thành công
+      setFormData({ email: "", password: "", confirm: "" });
       setToken("");
     } catch (error) {
-      showToast("error", "Lỗi", "Đổi mật khẩu thất bại");
+      console.error("Lỗi đổi mật khẩu:", error.response?.data);
+      showToast(
+        "error",
+        "Lỗi",
+        error.response?.data?.message || "Đổi mật khẩu thất bại"
+      );
     } finally {
       setLoading((prev) => ({ ...prev, step3: false }));
     }

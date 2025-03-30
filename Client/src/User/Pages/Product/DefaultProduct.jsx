@@ -8,19 +8,29 @@ import FilterByPrice from "../../component/FilterByPrice";
 
 function ProductLayout() {
   const [sortOption, setSortOption] = useState("default");
+  const [priceFilters, setPriceFilters] = useState([]);
+  const [typeFilters, setTypeFilters] = useState([]);
 
   const handleSortChange = (option) => {
     setSortOption(option);
   };
 
+  const handlePriceFilterChange = (filters) => {
+    setPriceFilters(filters);
+  };
+
+  const handleTypeFilterChange = (filters) => {
+    setTypeFilters(filters);
+  };
+
   return (
     <div>
-      <div className="flex items-center px-4 mt-2 text-sm lg:px-[120px]">
+      <div className="flex items-center px-4 mt-2 text-sm lg:px-[120px] py-1">
         <a href="/" className="hover:text-[#51bb1a]">
           Trang chủ
         </a>
         <ChevronRightIcon />
-        <p className="font-medium "></p>
+        <p className="font-medium ">Tất cả sản phẩm</p>
       </div>
       <p className="border-b mt-4 border-gray-300 "></p>
       <div className="flex flex-col md:flex-row p-4 bg-background lg:px-[120px] lg:gap-4">
@@ -74,7 +84,10 @@ function ProductLayout() {
           </div>
 
           <div>
-            <FilterByPrice />
+            <FilterByPrice
+              onPriceFilterChange={handlePriceFilterChange}
+              onTypeFilterChange={handleTypeFilterChange}
+            />
           </div>
         </aside>
 
@@ -133,7 +146,11 @@ function ProductLayout() {
           </div>
 
           <div className="cursor-pointer text-[#1c1c1c] text-sm mb-5">
-            <AllProducts sortOption={sortOption} />
+            <AllProducts
+              sortOption={sortOption}
+              priceFilters={priceFilters}
+              typeFilters={typeFilters}
+            />
           </div>
           <PaginatorBasic />
         </main>

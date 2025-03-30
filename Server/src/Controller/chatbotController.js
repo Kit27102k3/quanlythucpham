@@ -1,5 +1,5 @@
-import Chat from "../Model/ChatBot/ChatBot.js";
-import Product from "../Model/Products/Products.js";
+import Chat from "../Model/ChatBot.js";
+import Product from "../Model/Products.js";
 
 export const handleMessage = async (userId, message, productId) => {
   let responseMessage = "";

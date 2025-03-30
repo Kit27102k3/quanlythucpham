@@ -1,58 +1,75 @@
-import { Scrollbars } from "react-custom-scrollbars-2";
 import React, { useState, useEffect } from "react";
-import { Button, InputText, FloatLabel } from "primereact";
+import { Scrollbars } from "react-custom-scrollbars-2";
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { FloatLabel } from "primereact/floatlabel";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
 import productsApi from "../../api/productsApi";
+import categoriesApi from "../../api/categoriesApi";
 
-const AddProduct = ({ setVisible, products, setProducts }) => {
-  const [product, setProduct] = useState({
-    productName: "",
-    productPrice: "",
-    productImages: [],
-    productCategory: "",
-    productBrand: "",
-    productStatus: "",
-    productDiscount: "", 
-    productStock: "", 
-    productCode: "",
-    productWeight: "", 
-    productPromoPrice: "", 
-    productWarranty: "",
-    productOrigin: "", 
-    productIntroduction: "", 
-    productInfo: "",
-    productDetails: "", 
-  });
-  const [productDescription, setProductDescription] = useState([]);
+const INITIAL_PRODUCT_STATE = {
+  productName: "",
+  productPrice: "",
+  productImages: [],
+  productCategory: "",
+  productBrand: "",
+  productStatus: "Còn hàng",
+  productDiscount: "0",
+  productStock: "0",
+  productCode: "",
+  productWeight: "0",
+  productPromoPrice: "",
+  productWarranty: "",
+  productOrigin: "",
+  productIntroduction: "",
+  productInfo: "",
+  productDetails: "",
+};
 
-  const handleChange = (e) => {
-    const value = e.target.value;
-    setProductDescription(value);
-  };
-
+const AddProduct = ({ setVisible, onProductAdd }) => {
+  const [product, setProduct] = useState(INITIAL_PRODUCT_STATE);
+  const [productDescription, setProductDescription] = useState("");
+  const [categories, setCategories] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoriesApi.getAllCategories();
+        setCategories(response);
+      } catch (error) {
+        toast.error("Không thể tải danh mục sản phẩm");
+        console.error("Lỗi khi lấy danh mục:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
+    };
+  }, [imagePreviews]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setProduct({
-      ...product,
+    setProduct((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
-  const handleImageUpload = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const filesArray = Array.from(files);
-    const previews = filesArray.map((file) => URL.createObjectURL(file));
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    const previews = files.map((file) => URL.createObjectURL(file));
 
     setImagePreviews((prev) => [...prev, ...previews]);
     setProduct((prev) => ({
       ...prev,
-      productImages: [...prev.productImages, ...filesArray],
+      productImages: [...prev.productImages, ...files],
     }));
   };
 
@@ -70,238 +87,120 @@ const AddProduct = ({ setVisible, products, setProducts }) => {
 
     try {
       const formData = new FormData();
-      formData.append("productName", product.productName);
-      formData.append("productPrice", product.productPrice);
-      formData.append("productCategory", product.productCategory);
-      formData.append("productBrand", product.productBrand);
-      formData.append("productStatus", product.productStatus || "Còn hàng");
-      formData.append("productDiscount", product.productDiscount || "0");
-      formData.append("productStock", product.productStock || "0");
-      formData.append("productCode", product.productCode);
-      formData.append("productWeight", product.productWeight || "0");
-      formData.append("productOrigin", product.productOrigin);
-      formData.append("productIntroduction", product.productIntroduction);
-      formData.append("productInfo", product.productInfo);
-      formData.append("productDetails", product.productDetails);
-
+      Object.entries(product).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          formData.append(key, value);
+        }
+      });
       const descriptions = productDescription
         .split(".")
         .map((desc) => desc.trim())
         .filter((desc) => desc !== "");
-
       formData.append("productDescription", JSON.stringify(descriptions));
-      if (product.productImages && product.productImages.length > 0) {
-        product.productImages.forEach((file) => {
-          formData.append("productImages", file);
-        });
-      }
-
-      console.log("Dữ liệu gửi đi:", {
-        productName: product.productName,
-        productPrice: product.productPrice,
-        imageCount: product.productImages ? product.productImages.length : 0,
+      product.productImages.forEach((file) => {
+        formData.append("productImages", file);
       });
 
-      const response = await productsApi.createProduct(formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      await productsApi.createProduct(formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       toast.success("Thêm sản phẩm thành công!");
+      if (onProductAdd) {
+        onProductAdd(response.data); 
+      }
       setVisible(false);
     } catch (error) {
-      console.error("Chi tiết lỗi:", {
-        message: error.message,
-        response: error.response?.data,
-      });
-
-      toast.error(
-        `Thêm sản phẩm thất bại: ${
-          error.response?.data?.message || error.message || "Lỗi không xác định"
-        }`
-      );
+      const errorMessage =
+        error.response?.data?.message || error.message || "Lỗi không xác định";
+      toast.error(`Thêm sản phẩm thất bại: ${errorMessage}`);
+      console.error("Chi tiết lỗi:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
-  useEffect(() => {
-    return () => {
-      imagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
-    };
-  }, [imagePreviews]);
 
   return (
     <>
-      <Scrollbars style={{ width: "100%", height: "550px" }}>
+      <Scrollbars
+        style={{ width: "100%", height: "600px" }}
+        renderThumbVertical={() => <div style={{ display: "none" }} />}
+        renderThumbHorizontal={() => <div style={{ display: "none" }} />}
+      >
         <div className="p-4 card flex flex-col justify-content-center mt-2">
-          <div className="flex flex-col gap-6 mb-5">
+          <div className="flex flex-col gap-4 mb-5">
             <div className="grid grid-cols-2 gap-4">
-              <FloatLabel>
-                <InputText
-                  id="productName"
-                  name="productName"
-                  value={product.productName}
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full"
-                />
-                <label htmlFor="productName">Tên sản phẩm</label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  id="productPrice"
-                  name="productPrice"
-                  value={product.productPrice}
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full"
-                />
-                <label htmlFor="productPrice">Giá sản phẩm</label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  id="productBrand"
-                  name="productBrand"
-                  value={product.productBrand}
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full"
-                />
-                <label htmlFor="productBrand">Thương hiệu</label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  id="productCategory"
-                  name="productCategory"
-                  value={product.productCategory}
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full"
-                />
-                <label htmlFor="productCategory">Danh mục sản phẩm</label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  id="productStatus"
-                  name="productStatus"
-                  value={product.productStatus}
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full"
-                />
-                <label htmlFor="productStatus">Tình trạng</label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  id="productDiscount"
-                  name="productDiscount"
-                  value={product.productDiscount}
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full"
-                />
-                <label htmlFor="productDiscount">Giảm giá (%)</label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  id="productStock"
-                  name="productStock"
-                  value={product.productStock}
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full"
-                />
-                <label htmlFor="productStock">Số lượng tồn kho</label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  id="productCode"
-                  name="productCode"
-                  value={product.productCode}
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full"
-                />
-                <label htmlFor="productCode">Mã sản phẩm</label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  id="productWeight"
-                  name="productWeight"
-                  value={product.productWeight}
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full"
-                />
-                <label htmlFor="productWeight">Trọng lượng</label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  id="productOrigin"
-                  name="productOrigin"
-                  value={product.productOrigin}
-                  onChange={handleInputChange}
-                  className="border p-2 rounded w-full"
-                />
-                <label htmlFor="productOrigin">Xuất xứ</label>
-              </FloatLabel>
+              {[
+                { name: "productName", label: "Tên sản phẩm" },
+                { name: "productPrice", label: "Giá sản phẩm" },
+                { name: "productBrand", label: "Thương hiệu" },
+                { name: "productCategory", label: "Danh mục sản phẩm" },
+                { name: "productStatus", label: "Tình trạng" },
+                { name: "productDiscount", label: "Giảm giá (%)" },
+                { name: "productStock", label: "Số lượng tồn kho" },
+                { name: "productCode", label: "Mã sản phẩm" },
+                { name: "productWeight", label: "Trọng lượng" },
+                { name: "productOrigin", label: "Xuất xứ" },
+              ].map(({ name, label }) => (
+                <FloatLabel key={name}>
+                  <InputText
+                    id={name}
+                    name={name}
+                    value={product[name]}
+                    onChange={handleInputChange}
+                    className="border p-2 rounded w-full"
+                  />
+                  <label htmlFor={name}>{label}</label>
+                </FloatLabel>
+              ))}
             </div>
 
             <div className="flex justify-between gap-4">
-              <FloatLabel>
-                <InputText
-                  className="border p-2 rounded w-[350px]"
-                  id="productDescription"
-                  name="productDescription"
-                  onChange={handleChange}
-                  value={productDescription}
-                />
-                <label htmlFor="productDescription" className="text-sm -mt-3">
-                  Mô tả sản phẩm
-                </label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  className="border p-2 rounded w-[350px]"
-                  id="productInfo"
-                  name="productInfo"
-                  value={product.productInfo}
-                  onChange={handleInputChange}
-                />
-                <label htmlFor="productInfo" className="text-sm -mt-3">
-                  Thông tin sản phẩm
-                </label>
-              </FloatLabel>
+              {[
+                {
+                  name: "productDescription",
+                  label: "Mô tả sản phẩm",
+                  value: productDescription,
+                  onChange: (e) => setProductDescription(e.target.value),
+                },
+                {
+                  name: "productInfo",
+                  label: "Thông tin sản phẩm",
+                },
+              ].map(({ name, label, value, onChange }) => (
+                <FloatLabel key={name}>
+                  <InputText
+                    className="border p-2 rounded w-[360px]"
+                    id={name}
+                    name={name}
+                    value={value || product[name]}
+                    onChange={onChange || handleInputChange}
+                  />
+                  <label htmlFor={name} className="text-sm -mt-3">
+                    {label}
+                  </label>
+                </FloatLabel>
+              ))}
             </div>
 
             <div className="flex justify-between gap-4">
-              <FloatLabel>
-                <InputText
-                  className="border p-2 rounded w-[350px]"
-                  id="productDetails"
-                  name="productDetails"
-                  value={product.productDetails}
-                  onChange={handleInputChange}
-                />
-                <label htmlFor="productDetails" className="text-sm -mt-3">
-                  Chi tiết sản phẩm
-                </label>
-              </FloatLabel>
-
-              <FloatLabel>
-                <InputText
-                  className="border p-2 rounded w-[350px]"
-                  id="productIntroduction"
-                  name="productIntroduction"
-                  value={product.productIntroduction}
-                  onChange={handleInputChange}
-                />
-                <label htmlFor="productIntroduction" className="text-sm -mt-3">
-                  Giới thiệu sản phẩm
-                </label>
-              </FloatLabel>
+              {[
+                { name: "productDetails", label: "Chi tiết sản phẩm" },
+                { name: "productIntroduction", label: "Giới thiệu sản phẩm" },
+              ].map(({ name, label }) => (
+                <FloatLabel key={name}>
+                  <InputText
+                    className="border p-2 rounded w-[360px]"
+                    id={name}
+                    name={name}
+                    value={product[name]}
+                    onChange={handleInputChange}
+                  />
+                  <label htmlFor={name} className="text-sm -mt-3">
+                    {label}
+                  </label>
+                </FloatLabel>
+              ))}
             </div>
 
             <div>

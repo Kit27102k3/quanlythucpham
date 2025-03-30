@@ -116,6 +116,12 @@ const authApi = {
     return instance.get(`/profile/${id}`);
   },
   updateProfile: (userId, data) => instance.put(`/update/${userId}`, data),
+  requestPasswordReset: (data) =>
+    instance.post("/request-password-reset", data),
+  resetPassword: async (data) => {
+    console.log("Dữ liệu gửi lên API:", data);
+    return instance.post("/reset-password", data);
+  },
 };
 
 export default authApi;
