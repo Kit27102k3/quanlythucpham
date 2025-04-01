@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Button, InputText, FloatLabel } from "primereact";
+import PropTypes from 'prop-types';
+import { Button, InputText, FloatLabel, Dropdown } from "primereact";
 import { toast } from "react-toastify";
+import categoriesApi from "../../api/categoriesApi";
 
 const EditProduct = ({
   product,
@@ -19,6 +21,24 @@ const EditProduct = ({
   );
   const [newImages, setNewImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoriesApi.getAllCategories();
+        if (Array.isArray(response)) {
+          setCategories(response);
+        } else {
+          toast.error("Dữ liệu danh mục không hợp lệ");
+        }
+      } catch (error) {
+        toast.error("Không thể tải danh mục sản phẩm");
+        console.error("Lỗi khi lấy danh mục:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleImageUpload = (e) => {
     const files = e.target.files;
@@ -161,18 +181,26 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
+        <div className="flex flex-col">
+          <label htmlFor="productCategory" className="text-sm mb-1">Danh mục sản phẩm</label>
+          <Dropdown
             id="productCategory"
-            name="productCategory"
-            value={editedProduct.productCategory ?? ""}
-            onChange={handleInputChange}
+            value={editedProduct.productCategory}
+            onChange={(e) => {
+              handleInputChange({ target: { name: 'productCategory', value: e.value } });
+            }}
+            options={categories}
+            optionLabel="nameCategory"
+            optionValue="nameCategory"
+            className="border p-2 rounded w-full"
+            placeholder="Chọn danh mục"
+            filter
+            showClear
+            emptyFilterMessage="Không tìm thấy danh mục"
+            emptyMessage="Không có danh mục nào"
+            appendTo="self"
           />
-          <label htmlFor="productCategory" className="text-sm -mt-3">
-            Danh mục sản phẩm
-          </label>
-        </FloatLabel>
+        </div>
 
         <FloatLabel>
           <InputText
@@ -384,6 +412,32 @@ const EditProduct = ({
       </div>
     </div>
   );
+};
+
+EditProduct.propTypes = {
+  product: PropTypes.shape({
+    _id: PropTypes.string.isRequired,
+    productName: PropTypes.string,
+    productPrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    productCategory: PropTypes.string,
+    productBrand: PropTypes.string,
+    productStatus: PropTypes.string,
+    productDiscount: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    productStock: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    productCode: PropTypes.string,
+    productWeight: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    productPromoPrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    productWarranty: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    productOrigin: PropTypes.string,
+    productDescription: PropTypes.arrayOf(PropTypes.string),
+    productInfo: PropTypes.string,
+    productIntroduction: PropTypes.string,
+    productDetails: PropTypes.string,
+    productImages: PropTypes.arrayOf(PropTypes.string)
+  }).isRequired,
+  setVisible: PropTypes.func.isRequired,
+  handleUpdateProduct: PropTypes.func.isRequired,
+  setProducts: PropTypes.func
 };
 
 export default EditProduct;

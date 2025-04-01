@@ -18,10 +18,12 @@ import cartRoutes from "./routes/cartRoutes.js";
 import chatbotRoutes from "./routes/chatbotRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 
 dotenv.config({ path: ".env" });
 const app = express();
-const port = process.env.PORT || 8081;
+const port = process.env.PORT || 8080;
 
 app.use(
   cors({
@@ -44,6 +46,8 @@ mongoose
   .catch((err) => console.error("MongoDB connection error:", err));
 
 app.use("/auth", authRoutes);
+app.use("/admin/auth", adminAuthRoutes);
+app.use("/api", adminRoutes);
 app.use("/logout", authRoutes);
 app.use("/categories", categoryRoutes);
 app.use("/api", scraperRoutes);

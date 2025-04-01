@@ -4,6 +4,7 @@ import User from "../Model/Register.js";
 import RefreshToken from "../Model/RefreshToken.js";
 import { generateOTP } from "../Untils/otp.until.js";
 import { sendOTPEmail } from "../Services/email.service.js";
+import Admin from "../Model/adminModel.js";
 
 export const register = async (req, res) => {
   try {
@@ -54,69 +55,148 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { userName, password } = req.body;
-    const user = await User.findOne({ userName });
 
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
+    // 1. Kiểm tra thông tin đăng nhập
+    if (!userName || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng cung cấp tên đăng nhập và mật khẩu",
+      });
     }
 
+    // 2. Tìm kiếm user trong cả User và Admin collections
+    let user = await User.findOne({ userName });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "Tài khoản không tồn tại",
+      });
+    }
+
+    // 3. Kiểm tra trạng thái tài khoản
+    if (user.isActive === false) {
+      return res.status(403).json({
+        success: false,
+        message: "Tài khoản đã bị vô hiệu hóa",
+      });
+    }
+
+    // 4. Xác thực mật khẩu
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(400).json({ message: "Invalid password" });
+      return res.status(401).json({
+        success: false,
+        message: "Mật khẩu không chính xác",
+      });
     }
 
-    const accessToken = jwt.sign({ id: user._id }, "SECRET_ACCESS", {
-      expiresIn: "15m",
-    });
-    const refreshToken = jwt.sign({ id: user._id }, "SECRET_REFRESH", {
-      expiresIn: "7d",
+    // 5. Tạo tokens
+    const accessToken = jwt.sign(
+      {
+        id: user._id,
+        role: "user",
+        permissions: ["Xem"]
+      },
+      process.env.JWT_SECRET_ACCESS,
+      { expiresIn: "1d" }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // 6. Quản lý refresh token
+    // Xóa tất cả refresh token cũ của user
+    await RefreshToken.deleteMany({
+      userId: user._id,
+      userModel: "User"
     });
 
-    await RefreshToken.deleteMany({ userId: user._id });
-    await RefreshToken.create({ userId: user._id, token: refreshToken });
+    // Lưu refresh token mới
+    await RefreshToken.create({
+      userId: user._id,
+      userModel: "User",
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    });
 
-    res.status(200).json({ accessToken, refreshToken, userId: user._id });
+    // 7. Cập nhật last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // 8. Trả về response
+    res.status(200).json({
+      success: true,
+      accessToken,
+      refreshToken,
+      userId: user._id,
+      role: "user",
+      permissions: ["Xem"],
+      fullName: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      message: "Đăng nhập thành công"
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi hệ thống. Vui lòng thử lại sau"
+    });
   }
 };
 
 export const refreshToken = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: "Refresh token is required" });
+  }
+
   try {
-    const { refreshToken } = req.body;
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
 
-    if (!refreshToken) {
-      return res.status(401).json({ message: "No refresh token provided" });
-    }
+    // Check if refresh token exists in database
+    const storedToken = await RefreshToken.findOne({
+      token: refreshToken,
+      userId: decoded.id,
+    });
 
-    const tokenRecord = await RefreshToken.findOne({ token: refreshToken });
-    if (!tokenRecord) {
+    if (!storedToken) {
       return res.status(403).json({ message: "Invalid refresh token" });
     }
 
-    jwt.verify(refreshToken, "SECRET_REFRESH", async (err, decoded) => {
-      if (err) {
-        return res
-          .status(403)
-          .json({ message: "Invalid or expired refresh token" });
-      }
+    // Find user (either User or Admin)
+    let user =
+      (await User.findById(decoded.id)) || (await Admin.findById(decoded.id));
 
-      const newAccessToken = jwt.sign({ id: decoded.id }, "SECRET_ACCESS", {
-        expiresIn: "15m",
-      });
-      const newRefreshToken = jwt.sign({ id: decoded.id }, "SECRET_REFRESH", {
-        expiresIn: "7d",
-      });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-      tokenRecord.token = newRefreshToken;
-      await tokenRecord.save();
+    // Generate new access token
+    const newAccessToken = jwt.sign(
+      {
+        id: user._id,
+        role: user.role,
+        permissions: user.permissions || [],
+      },
+      process.env.JWT_SECRET_ACCESS,
+      { expiresIn: "1h" }
+    );
 
-      res
-        .status(200)
-        .json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+    res.json({
+      accessToken: newAccessToken,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    if (error.name === "TokenExpiredError") {
+      // Remove expired refresh token from database
+      await RefreshToken.findOneAndDelete({ token: refreshToken });
+      return res.status(403).json({ message: "Refresh token expired" });
+    }
+    return res.status(403).json({ message: "Invalid refresh token" });
   }
 };
 
@@ -297,20 +377,16 @@ export const resetPassword = async (req, res) => {
 
     // Kiểm tra độ mạnh của mật khẩu mới
     if (newPassword.length < 8) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Mật khẩu mới phải có ít nhất 8 ký tự",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới phải có ít nhất 8 ký tự",
+      });
     }
     if (!/[A-Z]/.test(newPassword)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Mật khẩu mới cần ít nhất 1 chữ hoa",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới cần ít nhất 1 chữ hoa",
+      });
     }
     if (!/[0-9]/.test(newPassword)) {
       return res
@@ -318,12 +394,10 @@ export const resetPassword = async (req, res) => {
         .json({ success: false, message: "Mật khẩu mới cần ít nhất 1 chữ số" });
     }
     if (!/[!@#$%^&*]/.test(newPassword)) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Mật khẩu mới cần ít nhất 1 ký tự đặc biệt",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới cần ít nhất 1 ký tự đặc biệt",
+      });
     }
 
     // Hash mật khẩu mới

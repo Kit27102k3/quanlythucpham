@@ -1,159 +1,223 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
+import { Toast } from "primereact/toast";
+import { confirmDialog } from "primereact/confirmdialog";
+import adminApi from "../../api/adminApi";
 
 const Employees = () => {
-  const [employees, setEmployees] = useState([
-    {
-      id: 1,
-      username: "nva_staff",
-      fullName: "Nguyễn Văn A",
-      birthday: new Date(1990, 5, 15),
-      phone: "0912345678",
-      email: "nva@example.com",
-      position: "staff",
-      role: "staff",
-    },
-    {
-      id: 2,
-      username: "ttb_manager",
-      fullName: "Trần Thị B",
-      birthday: new Date(1985, 2, 20),
-      phone: "0987654321",
-      email: "ttb@example.com",
-      position: "manager",
-      role: "manager",
-    },
-  ]);
+  // State management
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const toastRef = React.useRef(null);
 
-  const [employeeForm, setEmployeeForm] = useState({
-    username: "",
+  // Form state
+  const initialFormState = {
+    userName: "",
     fullName: "",
     birthday: null,
     phone: "",
     email: "",
-    position: "",
     role: "",
     password: "",
-  });
-
-  const [isDialogVisible, setIsDialogVisible] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
-
-  const positions = [
-    { label: "Nhân Viên", value: "staff" },
-    { label: "Quản Lý", value: "manager" },
-    { label: "Giám Đốc", value: "director" },
-  ];
+  };
+  const [employeeForm, setEmployeeForm] = useState(initialFormState);
 
   const roles = [
-    { label: "Nhân Viên", value: "staff" },
-    { label: "Quản Lý", value: "manager" },
-    { label: "Quản Trị Viên", value: "admin" },
+    { label: "Quản trị viên", value: "admin" },
+    { label: "Quản lý", value: "manager" },
+    { label: "Nhân viên", value: "staff" },
   ];
 
+  const tableHeaders = [
+    "Tên Đăng Nhập",
+    "Họ Tên",
+    "Ngày Sinh",
+    "Số Điện Thoại",
+    "Email",
+    "Vai Trò",
+    "Thao Tác",
+  ];
+
+  // Fetch employees on component mount
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      const response = await adminApi.getAllAdmins();
+      setEmployees(response);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      showToast(
+        "error", 
+        "Lỗi", 
+        error.response?.data?.message || "Không thể tải danh sách nhân viên"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper functions
+  const showToast = (severity, summary, detail) => {
+    toastRef.current.show({ severity, summary, detail, life: 3000 });
+  };
+
+  const resetForm = () => {
+    setEmployeeForm(initialFormState);
+    setIsEditMode(false);
+  };
+
+  // Dialog handlers
   const openEmployeeDialog = (employee = null) => {
     if (employee) {
       setEmployeeForm({ ...employee });
       setIsEditMode(true);
     } else {
-      setEmployeeForm({
-        username: "",
-        fullName: "",
-        birthday: null,
-        phone: "",
-        email: "",
-        position: "",
-        role: "",
-        password: "",
-      });
-      setIsEditMode(false);
+      resetForm();
     }
     setIsDialogVisible(true);
   };
 
-  const handleSaveEmployee = () => {
-    const {
-      username,
-      fullName,
-      birthday,
-      phone,
-      email,
-      position,
-      role,
-      password,
-    } = employeeForm;
-
-    if (
-      !username ||
-      !fullName ||
-      !birthday ||
-      !phone ||
-      !email ||
-      !position ||
-      !role ||
-      !password
-    ) {
-      alert("Vui lòng điền đầy đủ thông tin");
-      return;
-    }
-
-    if (isEditMode) {
-      setEmployees(
-        employees.map((emp) =>
-          emp.id === employeeForm.id ? employeeForm : emp
-        )
-      );
-    } else {
-      const newEmployee = {
-        ...employeeForm,
-        id: employees.length + 1,
-      };
-      setEmployees([...employees, newEmployee]);
-    }
-
+  const closeDialog = () => {
     setIsDialogVisible(false);
+    resetForm();
   };
 
-  const handleDeleteEmployee = (id) => {
-    setEmployees(employees.filter((emp) => emp.id !== id));
+  // CRUD operations
+  const handleSaveEmployee = async () => {
+    try {
+      setLoading(true);
+
+      if (isEditMode) {
+        await adminApi.updateAdmin(employeeForm._id, employeeForm);
+        showToast("success", "Thành công", "Cập nhật nhân viên thành công");
+      } else {
+        await adminApi.createAdmin(employeeForm);
+        showToast("success", "Thành công", "Thêm nhân viên mới thành công");
+      }
+
+      fetchEmployees();
+      closeDialog();
+    } catch (error) {
+      showToast(
+        "error",
+        "Lỗi",
+        error.response?.data?.message || "Có lỗi xảy ra"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const confirmDelete = (id) => {
+    confirmDialog({
+      message: "Bạn có chắc chắn muốn xóa nhân viên này?",
+      header: "Xác nhận xóa",
+      icon: "pi pi-exclamation-triangle",
+      acceptLabel: "Xóa",
+      rejectLabel: "Hủy",
+      acceptClassName: "p-button-danger",
+      accept: () => handleDeleteEmployee(id),
+    });
+  };
+
+  const handleDeleteEmployee = async (id) => {
+    try {
+      setLoading(true);
+      await adminApi.deleteAdmin(id);
+      showToast("success", "Thành công", "Xóa nhân viên thành công");
+      fetchEmployees();
+    } catch (error) {
+      console.error("Error deleting employee:", error);
+      showToast(
+        "error", 
+        "Lỗi", 
+        error.response?.data?.message || "Không thể xóa nhân viên"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Form field components
+  const renderFormField = ({ id, label, type, icon, colSpan }) => (
+    <div key={id} className={`flex flex-col ${colSpan ? "col-span-2" : ""}`}>
+      <label
+        htmlFor={id}
+        className="text-sm font-medium text-emerald-800 mb-2 flex items-center"
+      >
+        <i className={`${icon} mr-2 text-emerald-600`} />
+        {label}
+      </label>
+      <InputText
+        id={id}
+        type={type}
+        value={employeeForm[id]}
+        onChange={(e) =>
+          setEmployeeForm({ ...employeeForm, [id]: e.target.value })
+        }
+        className="w-full p-inputtext-sm border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+        placeholder={`Nhập ${label.toLowerCase()}`}
+      />
+    </div>
+  );
+
+  const formFields = [
+    {
+      id: "userName",
+      label: "Tên Đăng Nhập",
+      type: "text",
+      icon: "pi pi-user",
+    },
+    { id: "password", label: "Mật Khẩu", type: "password", icon: "pi pi-lock" },
+    { id: "fullName", label: "Họ Tên", type: "text", icon: "pi pi-id-card" },
+    { id: "phone", label: "Số Điện Thoại", type: "text", icon: "pi pi-phone" },
+    {
+      id: "email",
+      label: "Email",
+      type: "email",
+      icon: "pi pi-envelope",
+      colSpan: 2,
+    },
+  ];
+
+  // Main render
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 p-8">
-      <div className="container mx-auto bg-white shadow-2xl rounded-2xl p-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-extrabold text-emerald-700">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 md:p-8">
+      <Toast ref={toastRef} position="top-right" />
+
+      <div className="container mx-auto bg-white shadow-xl rounded-xl p-4 md:p-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-emerald-700">
             Quản Lý Nhân Viên
           </h1>
-          <button
+          <Button
+            label="Thêm Nhân Viên"
+            icon="pi pi-plus"
             onClick={() => openEmployeeDialog()}
-            className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-semibold shadow-md"
-          >
-            Thêm Nhân Viên
-          </button>
+            className="p-button-success"
+          />
         </div>
 
+        {/* Employee Table */}
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse bg-white shadow-md rounded-lg overflow-hidden">
+          <table className="w-full border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
             <thead className="bg-emerald-50">
               <tr>
-                {[
-                  "Tên Đăng Nhập",
-                  "Họ Tên",
-                  "Ngày Sinh",
-                  "Số Điện Thoại",
-                  "Email",
-                  "Chức Vụ",
-                  "Quyền",
-                  "Thao Tác",
-                ].map((header) => (
+                {tableHeaders.map((header) => (
                   <th
                     key={header}
-                    className="px-4 py-3 text-left text-emerald-800 font-semibold"
+                    className="px-4 py-3 text-left text-emerald-800 font-semibold whitespace-nowrap"
                   >
                     {header}
                   </th>
@@ -161,143 +225,118 @@ const Employees = () => {
               </tr>
             </thead>
             <tbody>
-              {employees.map((employee) => (
-                <tr
-                  key={employee.id}
-                  className="border-b hover:bg-emerald-50/50 transition-colors"
-                >
-                  <td className="px-4 py-3">{employee.username}</td>
-                  <td className="px-4 py-3">{employee.fullName}</td>
-                  <td className="px-4 py-3">
-                    {employee.birthday.toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-3">{employee.phone}</td>
-                  <td className="px-4 py-3">{employee.email}</td>
-                  <td className="px-4 py-3">
-                    {
-                      positions.find((p) => p.value === employee.position)
-                        ?.label
-                    }
-                  </td>
-                  <td className="px-4 py-3">
-                    {roles.find((r) => r.value === employee.role)?.label}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex space-x-2 gap-2">
-                      <button
-                        onClick={() => openEmployeeDialog(employee)}
-                        className="px-3 cursor-pointer py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors text-sm"
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        onClick={() => handleDeleteEmployee(employee.id)}
-                        className="px-3 cursor-pointer py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm"
-                      >
-                        Xóa
-                      </button>
-                    </div>
+              {loading && !employees.length ? (
+                <tr>
+                  <td
+                    colSpan={tableHeaders.length}
+                    className="text-center py-8"
+                  >
+                    <i className="pi pi-spinner pi-spin text-2xl text-emerald-500"></i>
                   </td>
                 </tr>
-              ))}
+              ) : employees.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={tableHeaders.length}
+                    className="text-center py-8 text-gray-500"
+                  >
+                    Không có nhân viên nào
+                  </td>
+                </tr>
+              ) : (
+                employees.map((employee) => (
+                  <tr
+                    key={employee._id}
+                    className="border-b hover:bg-emerald-50/50 transition-colors"
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.userName}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.fullName}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.birthday
+                        ? new Date(employee.birthday).toLocaleDateString()
+                        : "N/A"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.phone}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.email}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {roles.find((r) => r.value === employee.role)?.label}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        <Button
+                          icon="pi pi-pencil"
+                          className="p-button-rounded p-button-warning p-button-text"
+                          onClick={() => openEmployeeDialog(employee)}
+                          tooltip="Sửa"
+                          tooltipOptions={{ position: "top" }}
+                        />
+                        <Button
+                          icon="pi pi-trash"
+                          className="p-button-rounded p-button-danger p-button-text"
+                          onClick={() => confirmDelete(employee._id)}
+                          tooltip="Xóa"
+                          tooltipOptions={{ position: "top" }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
+        {/* Add/Edit Dialog */}
         <Dialog
           header={isEditMode ? "Chỉnh Sửa Nhân Viên" : "Thêm Nhân Viên Mới"}
           visible={isDialogVisible}
-          style={{ width: "600px" }}
+          style={{ width: "90vw", maxWidth: "600px" }}
           modal
-          onHide={() => setIsDialogVisible(false)}
+          onHide={closeDialog}
           headerClassName="bg-emerald-50 border-b border-emerald-200 p-4 rounded-t-lg"
           contentClassName="p-0"
           footer={
             <div className="flex justify-end gap-3 p-4 border-t border-emerald-200 bg-emerald-50/50">
               <Button
                 label="Hủy"
-                onClick={() => setIsDialogVisible(false)}
-                className="p-button-text p-button-secondary p-2 border w-[100px] bg-red-600 text-white rounded"
-                outlined
+                onClick={closeDialog}
+                className="p-button-text p-button-secondary"
+                disabled={loading}
               />
               <Button
                 label={isEditMode ? "Cập Nhật" : "Thêm"}
                 onClick={handleSaveEmployee}
-                className="p-button-success  p-2 border w-[100px] bg-[#51bb1a] text-white rounded"
-                icon={isEditMode ? "" : ""}
+                className="p-button-success"
+                icon={
+                  loading
+                    ? "pi pi-spinner pi-spin"
+                    : isEditMode
+                    ? "pi pi-check"
+                    : "pi pi-plus"
+                }
+                disabled={loading}
               />
             </div>
           }
         >
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-5">
-              {[
-                {
-                  id: "username",
-                  label: "Tên Đăng Nhập",
-                  type: "text",
-                  icon: "pi pi-user",
-                },
-                {
-                  id: "password",
-                  label: "Mật Khẩu",
-                  type: "password",
-                  icon: "pi pi-lock",
-                },
-                {
-                  id: "fullName",
-                  label: "Họ Tên",
-                  type: "text",
-                  icon: "pi pi-id-card",
-                },
-                {
-                  id: "phone",
-                  label: "Số Điện Thoại",
-                  type: "text",
-                  icon: "pi pi-phone",
-                },
-                {
-                  id: "email",
-                  label: "Email",
-                  type: "email",
-                  icon: "pi pi-envelope",
-                  colSpan: 2,
-                },
-              ].map(({ id, label, type, icon, colSpan }) => (
-                <div
-                  key={id}
-                  className={`flex flex-col ${colSpan ? "col-span-2" : ""}`}
-                >
-                  <label
-                    htmlFor={id}
-                    className=" text-sm font-medium text-emerald-800 mb-2 flex items-center"
-                  >
-                    <i className={`${icon} mr-2 text-emerald-600`} />
-                    {label}
-                  </label>
-                  <InputText
-                    id={id}
-                    type={type}
-                    value={employeeForm[id]}
-                    onChange={(e) =>
-                      setEmployeeForm({ ...employeeForm, [id]: e.target.value })
-                    }
-                    className="w-full p-inputtext-sm border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
-                    placeholder={`Nhập ${label.toLowerCase()}`}
-                  />
-                </div>
-              ))}
+          <div className="p-4 md:p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {formFields.map(renderFormField)}
 
               <div className="flex flex-col col-span-2">
-                <label
-                  htmlFor="birthday"
-                  className=" text-sm font-medium text-emerald-800 mb-2 flex items-center"
-                >
+                <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
                   <i className="pi pi-calendar mr-2 text-emerald-600" />
                   Ngày Sinh
                 </label>
                 <Calendar
-                  id="birthday"
                   value={employeeForm.birthday}
                   onChange={(e) =>
                     setEmployeeForm({ ...employeeForm, birthday: e.value })
@@ -307,30 +346,25 @@ const Employees = () => {
                   showIcon
                   icon="pi pi-calendar"
                   placeholder="Chọn ngày sinh"
-                  touchUI={false}
+                  maxDate={new Date()}
                   inputClassName="p-inputtext-sm rounded-lg border p-2 border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
                 />
               </div>
 
               <div className="flex flex-col col-span-2">
-                <label
-                  htmlFor="role"
-                  className=" text-sm font-medium text-emerald-800 mb-2 flex items-center"
-                >
+                <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
                   <i className="pi pi-users mr-2 text-emerald-600" />
-                  Quyền
+                  Vai Trò
                 </label>
                 <Dropdown
-                  id="role"
                   value={employeeForm.role}
                   options={roles}
                   onChange={(e) =>
                     setEmployeeForm({ ...employeeForm, role: e.value })
                   }
-                  placeholder="Chọn quyền"
-                  className="w-full  border p-2"
-                  panelClassName="shadow-lg p-4 py-2"
-                  optionClassName="hover:bg-emerald-50 p-2"
+                  placeholder="Chọn vai trò"
+                  className="w-full"
+                  optionLabel="label"
                 />
               </div>
             </div>

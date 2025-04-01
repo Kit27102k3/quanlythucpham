@@ -1,5 +1,6 @@
 import cloudinary from "../config/cloudinary.js";
 import Product from "../Model/Products.js";
+import Category from "../Model/Categories.js";
 import fs from "fs";
 import path from "path";
 
@@ -10,6 +11,13 @@ export const createProduct = async (req, res) => {
         .status(400)
         .json({ message: "Vui lòng tải lên ít nhất một hình ảnh" });
     }
+
+    // Kiểm tra category tồn tại
+    const category = await Category.findById(req.body.productCategory);
+    if (!category) {
+      return res.status(400).json({ message: "Danh mục sản phẩm không tồn tại" });
+    }
+
     const uploadedUrls = [];
     for (const file of req.files) {
       try {
@@ -29,6 +37,7 @@ export const createProduct = async (req, res) => {
         throw new Error(`Upload ảnh thất bại: ${uploadError.message}`);
       }
     }
+
     let descriptions = [];
     try {
       descriptions =
@@ -47,6 +56,7 @@ export const createProduct = async (req, res) => {
       productDiscount: Number(req.body.productDiscount) || 0,
       productStock: Number(req.body.productStock) || 0,
       productWeight: Number(req.body.productWeight) || 0,
+      productCategory: category._id // Sử dụng _id của category
     });
 
     const savedProduct = await newProduct.save();
@@ -235,10 +245,19 @@ export const searchProducts = async (req, res) => {
 
 export const getProductByCategory = async (req, res) => {
   try {
-    const category = decodeURIComponent(req.params.category);
-    const products = await Product.find({ productCategory: category });
+    const categoryName = decodeURIComponent(req.params.category);
+    
+    // Tìm category theo tên
+    const category = await Category.findOne({ categoryName: categoryName });
+    if (!category) {
+      return res.status(404).json({ message: "Không tìm thấy danh mục" });
+    }
+
+    // Tìm sản phẩm theo category ID
+    const products = await Product.find({ productCategory: category._id });
     res.json(products);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error in getProductByCategory:", err);
+    res.status(500).json({ message: "Lỗi khi lấy sản phẩm theo danh mục", error: err.message });
   }
 };

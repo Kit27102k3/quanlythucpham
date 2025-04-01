@@ -22,7 +22,7 @@ export const orderGet = async (req, res) => {
 
 export const orderGetAll = async (req, res) => {
   try {
-    const orders = await Order.find().populate("userId");
+    const orders = await Order.find().populate("userId").sort({ createdAt: -1 });;
     res.json(orders);
   } catch (err) {
     res.status(500).json({ error: err.message });

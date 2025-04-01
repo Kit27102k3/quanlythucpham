@@ -12,7 +12,7 @@ function DefaultLayout({ children }) {
   return (
     <div className="w-full mb-5">
       <Header />
-      <div className="">{children}</div>
+      <div>{children}</div>
       <Footer />
     </div>
   );

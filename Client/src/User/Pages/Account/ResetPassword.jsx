@@ -48,20 +48,17 @@ export default function ResetPassword() {
       confirmPassword: "",
     };
 
-    // Validate old password
     if (!passwords.oldPassword) {
       newErrors.oldPassword = "Vui lòng nhập mật khẩu cũ";
       isValid = false;
     }
 
-    // Validate new password
     const newPasswordErrors = validatePassword(passwords.newPassword);
     if (newPasswordErrors.length > 0) {
       newErrors.newPassword = newPasswordErrors.join(", ");
       isValid = false;
     }
 
-    // Validate confirm password
     if (!passwords.confirmPassword) {
       newErrors.confirmPassword = "Vui lòng xác nhận mật khẩu";
       isValid = false;
@@ -74,7 +71,6 @@ export default function ResetPassword() {
 
     if (!isValid) return;
 
-    // Thực hiện đổi mật khẩu
     setIsSubmitting(true);
     try {
       const userId = localStorage.getItem("userId");
@@ -130,13 +126,13 @@ export default function ResetPassword() {
             className="block text-sm font-medium text-gray-700 mb-2"
             htmlFor="oldPassword"
           >
-            Mật khẩu cũ *
+            Mật khẩu cũ
           </label>
           <input
             className={`w-full p-2 border rounded-md outline-none focus:ring-2 ${
               passwordErrors.oldPassword
                 ? "border-red-500 focus:ring-red-500"
-                : "border-gray-300 focus:ring-green-500"
+                : "border-gray-300 focus:ring-[#51bb1a]"
             }`}
             type="password"
             id="oldPassword"
@@ -158,13 +154,13 @@ export default function ResetPassword() {
             className="block text-sm font-medium text-gray-700 mb-2 mt-2"
             htmlFor="newPassword"
           >
-            Mật khẩu mới *
+            Mật khẩu mới
           </label>
           <input
             className={`w-full p-2 border rounded-md outline-none focus:ring-2 ${
               passwordErrors.newPassword
                 ? "border-red-500 focus:ring-red-500"
-                : "border-gray-300 focus:ring-green-500"
+                : "border-gray-300 focus:ring-[#51bb1a]"
             }`}
             type="password"
             id="newPassword"
@@ -186,13 +182,13 @@ export default function ResetPassword() {
             className="block text-sm font-medium text-gray-700 mb-2 mt-2"
             htmlFor="confirmPassword"
           >
-            Xác nhận lại mật khẩu *
+            Xác nhận lại mật khẩu
           </label>
           <input
             className={`w-full p-2 border rounded-md outline-none focus:ring-2 ${
               passwordErrors.confirmPassword
                 ? "border-red-500 focus:ring-red-500"
-                : "border-gray-300 focus:ring-green-500"
+                : "border-gray-300 focus:ring-[#51bb1a]"
             }`}
             type="password"
             id="confirmPassword"
@@ -211,7 +207,7 @@ export default function ResetPassword() {
 
         <button
           type="submit"
-          className={`w-full mt-5 py-2 rounded-md text grounding-colors duration-300 flex items-center justify-center gap-2 ${
+          className={`w-full cursor-pointer mt-5 py-2 rounded-md text grounding-colors duration-300 flex items-center justify-center gap-2 ${
             isSubmitting
               ? "bg-gray-400 cursor-not-allowed"
               : "bg-[#51bb1a] hover:bg-[#3fa312]"
@@ -243,10 +239,10 @@ export default function ResetPassword() {
               Đang xử lý...
             </>
           ) : (
-            <>
-              <CheckIcon className="w-5 h-5" />
+            <div className="text-white flex items-center gap-1">
+              <CheckIcon className="w-5 h-5 text-white" />
               Đặt lại mật khẩu
-            </>
+            </div>
           )}
         </button>
       </form>

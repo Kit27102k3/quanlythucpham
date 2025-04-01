@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import  { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
 import { Scrollbars } from "react-custom-scrollbars-2";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { FloatLabel } from "primereact/floatlabel";
+import { Dropdown } from 'primereact/dropdown';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -39,7 +41,11 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
     const fetchCategories = async () => {
       try {
         const response = await categoriesApi.getAllCategories();
-        setCategories(response);
+        if (Array.isArray(response)) {
+          setCategories(response);
+        } else {
+          toast.error("Dữ liệu danh mục không hợp lệ");
+        }
       } catch (error) {
         toast.error("Không thể tải danh mục sản phẩm");
         console.error("Lỗi khi lấy danh mục:", error);
@@ -101,7 +107,7 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
         formData.append("productImages", file);
       });
 
-      await productsApi.createProduct(formData, {
+      const response = await productsApi.createProduct(formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -114,14 +120,13 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
       const errorMessage =
         error.response?.data?.message || error.message || "Lỗi không xác định";
       toast.error(`Thêm sản phẩm thất bại: ${errorMessage}`);
-      console.error("Chi tiết lỗi:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <>
+    <div className="relative">
       <Scrollbars
         style={{ width: "100%", height: "600px" }}
         renderThumbVertical={() => <div style={{ display: "none" }} />}
@@ -134,7 +139,6 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                 { name: "productName", label: "Tên sản phẩm" },
                 { name: "productPrice", label: "Giá sản phẩm" },
                 { name: "productBrand", label: "Thương hiệu" },
-                { name: "productCategory", label: "Danh mục sản phẩm" },
                 { name: "productStatus", label: "Tình trạng" },
                 { name: "productDiscount", label: "Giảm giá (%)" },
                 { name: "productStock", label: "Số lượng tồn kho" },
@@ -153,6 +157,27 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                   <label htmlFor={name}>{label}</label>
                 </FloatLabel>
               ))}
+              
+              <div className="flex flex-col">
+                <label htmlFor="productCategory" className="text-sm mb-1">Danh mục sản phẩm</label>
+                <Dropdown
+                  id="productCategory"
+                  value={product.productCategory}
+                  onChange={(e) => {
+                    handleInputChange({ target: { name: 'productCategory', value: e.value } });
+                  }}
+                  options={categories}
+                  optionLabel="nameCategory"
+                  optionValue="_id"
+                  className="border p-2 rounded w-full"
+                  placeholder="Chọn danh mục"
+                  filter
+                  showClear
+                  emptyFilterMessage="Không tìm thấy danh mục"
+                  emptyMessage="Không có danh mục nào"
+                  appendTo="self"
+                />
+              </div>
             </div>
 
             <div className="flex justify-between gap-4">
@@ -242,8 +267,13 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
         </div>
       </Scrollbars>
       <ToastContainer />
-    </>
+    </div>
   );
+};
+
+AddProduct.propTypes = {
+  setVisible: PropTypes.func.isRequired,
+  onProductAdd: PropTypes.func
 };
 
 export default AddProduct;
