@@ -7,15 +7,15 @@ const productSchema = new mongoose.Schema(
     productImages: { type: [String], default: [] },
     productCategory: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Category',
-      required: true
+      ref: "Category",
+      required: true,
     },
     productDescription: { type: [String], required: true },
     productBrand: { type: String, required: true, trim: true },
-    productStatus: { 
-      type: String, 
-      enum: ['Còn hàng', 'Hết hàng', 'Ngừng kinh doanh'],
-      default: 'Còn hàng'
+    productStatus: {
+      type: String,
+      enum: ["Còn hàng", "Hết hàng", "Ngừng kinh doanh"],
+      default: "Còn hàng",
     },
     productDiscount: { type: Number, default: 0, min: 0 },
     productInfo: { type: String, trim: true },
@@ -42,6 +42,7 @@ productSchema.index({
   productOrigin: "text",
 });
 
-const Product = mongoose.model("Product", productSchema);
+const Product =
+  mongoose.models.Product || mongoose.model("Product", productSchema);
 
 export default Product;

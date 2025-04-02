@@ -5,7 +5,7 @@ const API_URL = "http://localhost:8080/api";
 const adminApi = {
   createAdmin: async (adminData) => {
     try {
-      const response = await axios.post(`${API_URL}/createAdmin`, adminData);
+      const response = await axios.post(`${API_URL}/admin/create`, adminData);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi tạo admin:", error);
@@ -15,7 +15,7 @@ const adminApi = {
 
   getAllAdmins: async () => {
     try {
-      const response = await axios.get(`${API_URL}/admins`);
+      const response = await axios.get(`${API_URL}/admin/list`);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi lấy danh sách admin:", error);
@@ -25,7 +25,7 @@ const adminApi = {
 
   updateAdmin: async (id, adminData) => {
     try {
-      const response = await axios.put(`${API_URL}/admins/${id}`, adminData);
+      const response = await axios.put(`${API_URL}/admin/${id}`, adminData);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi cập nhật admin:", error);
@@ -35,7 +35,7 @@ const adminApi = {
 
   deleteAdmin: async (id) => {
     try {
-      const response = await axios.delete(`${API_URL}/admins/${id}`);
+      const response = await axios.delete(`${API_URL}/admin/${id}`);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi xóa admin:", error);

@@ -23,8 +23,10 @@ const Employees = () => {
     birthday: null,
     phone: "",
     email: "",
-    role: "",
+    role: null,
     password: "",
+    isActive: true,
+    permissions: ["Xem"]
   };
   const [employeeForm, setEmployeeForm] = useState(initialFormState);
 

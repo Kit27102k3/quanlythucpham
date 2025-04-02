@@ -20,6 +20,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import adminAuthRoutes from "./routes/adminAuthRoutes.js";
+import dashboardRoutes from "./routes/dashboardRoutes.js";
 
 dotenv.config({ path: ".env" });
 const app = express();
@@ -48,8 +49,8 @@ mongoose
 app.use("/auth", authRoutes);
 app.use("/admin/auth", adminAuthRoutes);
 app.use("/api", adminRoutes);
+app.use("/api/categories", categoryRoutes);
 app.use("/logout", authRoutes);
-app.use("/categories", categoryRoutes);
 app.use("/api", scraperRoutes);
 app.use("/api", productsRoutes);
 app.use("/api/cart", cartRoutes);
@@ -57,6 +58,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api", chatbotRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/orders", orderRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
