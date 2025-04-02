@@ -55,3 +55,16 @@ export const deleteCategory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const getCategoryById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const category = await Category.findById(id);
+    if (!category) {
+      return res.status(404).json({ message: "Không tìm thấy danh mục" });
+    }
+    res.status(200).json(category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

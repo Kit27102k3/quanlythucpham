@@ -9,20 +9,23 @@ function RelatedProducts({ currentProduct }) {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const { handleAddToCart, handleClick } = useCartAndNavigation();
 
-  const fetchRelatedProducts = async (category, currentProductId) => {
+  const fetchRelatedProducts = async (categoryId, currentProductId) => {
     try {
-      const data = await productsApi.getProductByCategory(category);
-      const filteredProducts = data.filter(
-        (product) => product._id !== currentProductId
-      );
-      setRelatedProducts(filteredProducts);
+      const category = await productsApi.getCategoryById(categoryId);
+      if (category) {
+        const data = await productsApi.getProductByCategory(
+          category.nameCategory,
+          currentProductId
+        );
+        setRelatedProducts(data);
+      }
     } catch (error) {
       console.error("Lỗi khi lấy sản phẩm liên quan:", error);
     }
   };
 
   useEffect(() => {
-    if (currentProduct) {
+    if (currentProduct?.productCategory) {
       fetchRelatedProducts(currentProduct.productCategory, currentProduct._id);
     }
   }, [currentProduct]);

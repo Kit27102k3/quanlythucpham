@@ -21,6 +21,7 @@ import orderRoutes from "./routes/orderRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import seedCategories from "./Model/seedCategories.js";
 
 dotenv.config({ path: ".env" });
 const app = express();
@@ -43,7 +44,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const URI = process.env.MONGOOSE_URI;
 mongoose
   .connect(URI)
-  .then(() => console.log("Connected to MongoDB"))
+  .then(async () => {
+    console.log("Connected to MongoDB");
+    await seedCategories();
+  })
   .catch((err) => console.error("MongoDB connection error:", err));
 
 app.use("/auth", authRoutes);

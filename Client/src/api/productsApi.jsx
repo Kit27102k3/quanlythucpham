@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const API_URL = "http://localhost:8080/api/products";
+const CATEGORY_API_URL = "http://localhost:8080/api/categories";
 
 const productsApi = {
   getAllProducts: async () => {
@@ -53,9 +54,22 @@ const productsApi = {
     return response.data;
   },
 
-  getProductByCategory: async (category) => {
-    const response = await axios.get(`${API_URL}/category/${category}`);
+  getProductByCategory: async (category, excludeId = null) => {
+    const url = excludeId 
+      ? `${API_URL}/category/${encodeURIComponent(category)}?excludeId=${excludeId}`
+      : `${API_URL}/category/${encodeURIComponent(category)}`;
+    const response = await axios.get(url);
     return response.data;
+  },
+
+  getCategoryById: async (id) => {
+    try {
+      const response = await axios.get(`${CATEGORY_API_URL}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy thông tin danh mục:", error);
+      throw error;
+    }
   },
 
   searchProducts: async (query) => {

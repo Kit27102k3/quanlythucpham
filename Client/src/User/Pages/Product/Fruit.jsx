@@ -2,14 +2,16 @@ import { useEffect, useState } from "react";
 import "../../../index.css";
 import productsApi from "../../../api/productsApi";
 import formatCurrency from "../../Until/FotmatPrice";
+import useCartAndNavigation from "../../Until/useCartAndNavigation";
 
 function Fruit() {
   const [products, setProducts] = useState([]);
+  const { handleAddToCart, handleClick } = useCartAndNavigation();
 
   useEffect(() => {
     const fetchProductCategory = async () => {
       try {
-        const res = await productsApi.getProductByCategory("Trái");
+        const res = await productsApi.getProductByCategory("TRAI");
         setProducts(res);
       } catch (error) {
         console.log(error);
@@ -38,10 +40,16 @@ function Fruit() {
                     className="w-[150px] h-[150px] lg:w-[350px] lg:h-[350px] object-cover hover-scale-up"
                   />
                   <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                    <button className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
+                    <button 
+                      onClick={() => handleAddToCart(product._id)}
+                      className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1"
+                    >
                       Thêm vào giỏ
                     </button>
-                    <button className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
+                    <button 
+                      onClick={() => handleClick(product._id)}
+                      className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1"
+                    >
                       Xem chi tiết
                     </button>
                   </div>

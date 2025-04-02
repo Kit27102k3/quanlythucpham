@@ -12,7 +12,6 @@ export const createProduct = async (req, res) => {
         .json({ message: "Vui lòng tải lên ít nhất một hình ảnh" });
     }
 
-    // Kiểm tra category tồn tại
     const category = await Category.findById(req.body.productCategory);
     if (!category) {
       return res.status(400).json({ message: "Danh mục sản phẩm không tồn tại" });
@@ -56,7 +55,7 @@ export const createProduct = async (req, res) => {
       productDiscount: Number(req.body.productDiscount) || 0,
       productStock: Number(req.body.productStock) || 0,
       productWeight: Number(req.body.productWeight) || 0,
-      productCategory: category._id // Sử dụng _id của category
+      productCategory: category._id 
     });
 
     const savedProduct = await newProduct.save();
@@ -245,19 +244,52 @@ export const searchProducts = async (req, res) => {
 
 export const getProductByCategory = async (req, res) => {
   try {
-    const categoryName = decodeURIComponent(req.params.category);
+    const categoryName = req.params.category;
+    const excludeId = req.query.excludeId;
+    const category = await Category.findOne({ nameCategory: categoryName });
+    if (!category) {
+      return res.status(404).json({ message: "Không tìm thấy danh mục" });
+    }
     
-    // Tìm category theo tên
-    const category = await Category.findOne({ categoryName: categoryName });
+    let query = { productCategory: category._id };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+    
+    const products = await Product.find(query);
+    res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({ message: "Lấy sản phẩm theo danh mục thất bại", error });
+  }
+};
+
+export const updateProductCategory = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { categoryId } = req.body;
+
+    const category = await Category.findById(categoryId);
     if (!category) {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
     }
 
-    // Tìm sản phẩm theo category ID
-    const products = await Product.find({ productCategory: category._id });
-    res.json(products);
-  } catch (err) {
-    console.error("Error in getProductByCategory:", err);
-    res.status(500).json({ message: "Lỗi khi lấy sản phẩm theo danh mục", error: err.message });
+    const product = await Product.findByIdAndUpdate(
+      productId,
+      { productCategory: categoryId },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Cập nhật danh mục sản phẩm thành công",
+      product
+    });
+  } catch (error) {
+    console.error("Error in updateProductCategory:", error);
+    res.status(500).json({ message: "Cập nhật danh mục sản phẩm thất bại", error });
   }
 };
