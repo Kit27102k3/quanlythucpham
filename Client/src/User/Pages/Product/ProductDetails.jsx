@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { DotFilledIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Card, CardContent } from "../../component/ui/card";
-import { ChevronDown, ChevronRight, DivideCircle } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import productsApi from "../../../api/productsApi";
 import { useParams } from "react-router-dom";
@@ -20,20 +20,27 @@ export default function ProductDetails() {
   const [introduce, setIntroduce] = useState(false);
   const [activeTab, setActiveTab] = useState("description");
   const [products, setProducts] = useState(null);
-  const { id } = useParams();
+  const { slug } = useParams();
   const topElementRef = useRef(null);
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const data = await productsApi.getProductById(id);
-        setProducts(data);
+        const allProducts = await productsApi.getAllProducts();
+        const product = allProducts.find(p => 
+          p.productName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") === slug
+        );
+        if (product) {
+          setProducts(product);
+          setProductImages(product.productImages);
+          setSelectedImage(product.productImages[0] || null);
+        }
       } catch (error) {
         console.error("Lỗi khi lấy thông tin sản phẩm:", error);
       }
     };
     fetchProduct();
-  }, [id]);
+  }, [slug]);
 
   useEffect(() => {
     if (topElementRef.current) {
@@ -45,18 +52,10 @@ export default function ProductDetails() {
   }, []);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const data = await productsApi.getProductById(id);
-        setProducts(data);
-        setProductImages(data.productImages);
-        setSelectedImage(data?.productImages[0] || null);
-      } catch (error) {
-        console.error("Lỗi khi lấy danh sách sản phẩm:", error);
-      }
-    };
-    fetchProducts();
-  }, [id]);
+    if (productImages?.length > 0) {
+      setSelectedImage(productImages[0]);
+    }
+  }, [productImages]);
 
   const toggleOpen = () => {
     setIsOpen(!isOpen);
@@ -69,12 +68,6 @@ export default function ProductDetails() {
   const toggleIntroduce = () => {
     setIntroduce(!introduce);
   };
-
-  useEffect(() => {
-    if (productImages?.length > 0) {
-      setSelectedImage(productImages[0]);
-    }
-  }, [productImages]);
 
   const descriptionArray =
     typeof products?.productDescription === "string"
@@ -443,7 +436,7 @@ export default function ProductDetails() {
         <RelatedProducts currentProduct={products} />
       </div>
       <div>
-        <Chatbot productId={id} />
+        <Chatbot productId={slug} />
       </div>
     </div>
   );

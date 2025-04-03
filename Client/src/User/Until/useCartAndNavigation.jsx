@@ -6,6 +6,16 @@ const useCartAndNavigation = () => {
   const navigate = useNavigate();
   const userId = localStorage.getItem("userId");
 
+  const createSlug = (name) => {
+    if (!name) return '';
+    return name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+  };
+
   const handleAddToCart = async (productId) => {
     if (!userId) {
       toast.warning("Bạn cần phải đăng nhập trước!");
@@ -20,14 +30,28 @@ const useCartAndNavigation = () => {
     }
   };
 
-  const handleClick = (id) => {
-    navigate(`/chi-tiet-san-pham/${id}`);
+  const handleClick = (product) => {
+    if (typeof product === 'string') {
+      navigate(`/chi-tiet-san-pham/${product}`);
+      return;
+    }
+    if (!product || !product.productName) {
+      console.error("Invalid product data:", product);
+      return;
+    }
+    const slug = createSlug(product.productName);
+    navigate(`/chi-tiet-san-pham/${slug}`);
   };
 
-  const handleRemoveItem = async (productId) => {
+  const handleRemoveItem = async (productId, setCart, setIsLoading) => {
+    if (!setIsLoading || !setCart) {
+      console.error("Missing required state setters");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const response = await cartApi.removeFromCart(userId, productId);
+      await cartApi.removeFromCart(userId, productId);
       setCart((prevCart) => ({
         ...prevCart,
         items: prevCart.items.filter(

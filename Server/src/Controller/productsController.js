@@ -43,7 +43,7 @@ export const createProduct = async (req, res) => {
         typeof req.body.productDescription === "string"
           ? JSON.parse(req.body.productDescription)
           : req.body.productDescription;
-    } catch (e) {
+    } catch {
       descriptions = req.body.productDescription.split(",");
     }
 
@@ -83,6 +83,23 @@ export const getAllProducts = async (req, res) => {
     res.status(200).json(products);
   } catch (error) {
     res.status(500).json({ message: "Lấy danh sách sản phẩm thất bại", error });
+  }
+};
+
+export const getProductBySlug = async (req, res) => {
+  const { slug } = req.params;
+  try {
+    const products = await Product.find();
+    const product = products.find(p => 
+      p.productName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") === slug
+    );
+    
+    if (!product) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json({ message: "Lấy chi tiết sản phẩm thất bại", error });
   }
 };
 
@@ -141,7 +158,7 @@ export const updateProduct = async (req, res) => {
     if (req.body.productDescription) {
       try {
         productDescription = JSON.parse(req.body.productDescription);
-      } catch (e) {
+      } catch {
         productDescription = req.body.productDescription
           .split(".")
           .map((desc) => desc.trim())

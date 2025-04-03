@@ -8,6 +8,7 @@ import {
   deleteProduct,
   searchProducts,
   getProductByCategory,
+  getProductBySlug,
 } from "../Controller/productsController.js";
 import multer from "multer";
 
@@ -25,6 +26,10 @@ router.get("/products/search", searchProducts);
 
 router.get("/products/category/:category", getProductByCategory);
 
+// Route để lấy sản phẩm theo slug
+router.get("/products/slug/:slug", getProductBySlug);
+
+// Route để lấy sản phẩm theo ID
 router.get("/products/:id", getProductById);
 
 // Route để cập nhật sản phẩm

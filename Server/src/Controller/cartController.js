@@ -11,6 +11,8 @@ export const getCart = async (req, res) => {
         .json({  message: "Giỏ hàng không tồn tại" });
     }
 
+    cart.items.sort((a, b) => b.createdAt - a.createdAt);
+
     res.status(200).json({ success: true, cart });
   } catch (error) {
     console.error("Lỗi khi lấy giỏ hàng:", error);

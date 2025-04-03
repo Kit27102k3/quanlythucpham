@@ -56,7 +56,7 @@ function SearchProducts() {
             products.map((product) => (
               <div
                 key={product._id}
-                onClick={() => handleClick(product._id)}
+                onClick={() => handleClick(product._id, product.productName)}
                 className="relative cursor-pointer group"
               >
                 <div className="relative overflow-hidden">

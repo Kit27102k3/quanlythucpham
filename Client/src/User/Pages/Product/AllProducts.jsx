@@ -85,7 +85,7 @@ function AllProducts({ sortOption, priceFilters, typeFilters }) {
                   Thêm vào giỏ
                 </button>
                 <button
-                  onClick={() => handleClick(product._id)}
+                  onClick={() => handleClick(product)}
                   className="px-4 py-2 cursor-pointer bg-[#51aa1b] text-white uppercase text-[12px] hover:text-[#51aa1b] hover:bg-white hover:border hover:border-[#51aa1b]"
                 >
                   Xem chi tiết

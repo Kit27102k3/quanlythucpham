@@ -88,7 +88,7 @@ const publicRoutes = [
     page: FetchProductData,
   },
   {
-    path: "/chi-tiet-san-pham/:id",
+    path: "/chi-tiet-san-pham/:slug",
     page: ProductDetails,
   },
   {

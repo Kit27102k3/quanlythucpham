@@ -47,7 +47,7 @@ function Fruit() {
                       Thêm vào giỏ
                     </button>
                     <button 
-                      onClick={() => handleClick(product._id)}
+                      onClick={() => handleClick(product)}
                       className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1"
                     >
                       Xem chi tiết

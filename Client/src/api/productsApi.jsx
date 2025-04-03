@@ -50,16 +50,36 @@ const productsApi = {
   },
 
   getProductById: async (id) => {
-    const response = await axios.get(`${API_URL}/${id}`);
-    return response.data;
+    try {
+      const response = await axios.get(`${API_URL}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy thông tin sản phẩm theo ID:", error);
+      throw error;
+    }
+  },
+
+  getProductBySlug: async (slug) => {
+    try {
+      const response = await axios.get(`${API_URL}/slug/${encodeURIComponent(slug)}`);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy thông tin sản phẩm theo slug:", error);
+      throw error;
+    }
   },
 
   getProductByCategory: async (category, excludeId = null) => {
-    const url = excludeId 
-      ? `${API_URL}/category/${encodeURIComponent(category)}?excludeId=${excludeId}`
-      : `${API_URL}/category/${encodeURIComponent(category)}`;
-    const response = await axios.get(url);
-    return response.data;
+    try {
+      const url = excludeId 
+        ? `${API_URL}/category/${encodeURIComponent(category)}?excludeId=${excludeId}`
+        : `${API_URL}/category/${encodeURIComponent(category)}`;
+      const response = await axios.get(url);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy sản phẩm theo danh mục:", error);
+      throw error;
+    }
   },
 
   getCategoryById: async (id) => {

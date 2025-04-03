@@ -26,7 +26,7 @@ const PromotionProducts = memo(() => {
           {products.map((product, index) => (
             <div
               key={index}
-              onClick={() => handleClick(product._id)}
+              onClick={() => handleClick(product)}
               className="relative items-center justify-center group cursor-pointer bg-white rounded-md overflow-hidden"
             >
               <div className="relative overflow-hidden">
