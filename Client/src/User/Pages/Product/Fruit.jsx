@@ -9,7 +9,7 @@ function Fruit() {
   useEffect(() => {
     const fetchProductCategory = async () => {
       try {
-        const res = await productsApi.getProductByCategory("Trái");
+        const res = await productsApi.getProductByCategory("Trái cây");
         setProducts(res);
       } catch (error) {
         console.log(error);

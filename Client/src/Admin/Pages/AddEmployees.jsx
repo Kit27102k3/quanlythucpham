@@ -1,59 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
+import axios from "axios";
+import { toast } from "react-toastify";
 
 const Employees = () => {
-  const [employees, setEmployees] = useState([
-    {
-      id: 1,
-      username: "nva_staff",
-      fullName: "Nguyễn Văn A",
-      birthday: new Date(1990, 5, 15),
-      phone: "0912345678",
-      email: "nva@example.com",
-      position: "staff",
-      role: "staff",
-    },
-    {
-      id: 2,
-      username: "ttb_manager",
-      fullName: "Trần Thị B",
-      birthday: new Date(1985, 2, 20),
-      phone: "0987654321",
-      email: "ttb@example.com",
-      position: "manager",
-      role: "manager",
-    },
-  ]);
-
+  const [employees, setEmployees] = useState([]);
   const [employeeForm, setEmployeeForm] = useState({
     username: "",
     fullName: "",
     birthday: null,
     phone: "",
     email: "",
-    position: "",
     role: "",
     password: "",
   });
 
   const [isDialogVisible, setIsDialogVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-
-  const positions = [
-    { label: "Nhân Viên", value: "staff" },
-    { label: "Quản Lý", value: "manager" },
-    { label: "Giám Đốc", value: "director" },
-  ];
+  const [loading, setLoading] = useState(false);
 
   const roles = [
     { label: "Nhân Viên", value: "staff" },
     { label: "Quản Lý", value: "manager" },
     { label: "Quản Trị Viên", value: "admin" },
   ];
+
+  // Fetch all employees
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("http://localhost:8080/api/admin");
+      setEmployees(response.data);
+    } catch (error) {
+      console.error("Chi tiết lỗi:", error);
+      toast.error(error.response?.data?.message || "Lỗi khi tải danh sách nhân viên");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
 
   const openEmployeeDialog = (employee = null) => {
     if (employee) {
@@ -66,7 +58,6 @@ const Employees = () => {
         birthday: null,
         phone: "",
         email: "",
-        position: "",
         role: "",
         password: "",
       });
@@ -75,51 +66,49 @@ const Employees = () => {
     setIsDialogVisible(true);
   };
 
-  const handleSaveEmployee = () => {
-    const {
-      username,
-      fullName,
-      birthday,
-      phone,
-      email,
-      position,
-      role,
-      password,
-    } = employeeForm;
-
-    if (
-      !username ||
-      !fullName ||
-      !birthday ||
-      !phone ||
-      !email ||
-      !position ||
-      !role ||
-      !password
-    ) {
-      alert("Vui lòng điền đầy đủ thông tin");
-      return;
-    }
-
-    if (isEditMode) {
-      setEmployees(
-        employees.map((emp) =>
-          emp.id === employeeForm.id ? employeeForm : emp
-        )
-      );
-    } else {
-      const newEmployee = {
+  const handleSaveEmployee = async () => {
+    try {
+      setLoading(true);
+      const data = {
         ...employeeForm,
-        id: employees.length + 1,
+        birthday: employeeForm.birthday.toISOString(),
       };
-      setEmployees([...employees, newEmployee]);
-    }
 
-    setIsDialogVisible(false);
+      if (isEditMode) {
+        await axios.put(
+          `http://localhost:8080/api/admin/${employeeForm._id}`,
+          data
+        );
+        toast.success("Cập nhật nhân viên thành công");
+      } else {
+        await axios.post("http://localhost:8080/api/admin", data);
+        toast.success("Thêm nhân viên thành công");
+      }
+
+      setIsDialogVisible(false);
+      fetchEmployees();
+    } catch (error) {
+      console.error("Chi tiết lỗi:", error);
+      toast.error(error.response?.data?.message || "Lỗi khi lưu thông tin nhân viên");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteEmployee = (id) => {
-    setEmployees(employees.filter((emp) => emp.id !== id));
+  const handleDeleteEmployee = async (id) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa nhân viên này?")) {
+      try {
+        setLoading(true);
+        await axios.delete(`http://localhost:8080/api/admin/${id}`);
+        toast.success("Xóa nhân viên thành công");
+        fetchEmployees();
+      } catch (error) {
+        console.error("Chi tiết lỗi:", error);
+        toast.error(error.response?.data?.message || "Lỗi khi xóa nhân viên");
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   return (
@@ -147,8 +136,8 @@ const Employees = () => {
                   "Ngày Sinh",
                   "Số Điện Thoại",
                   "Email",
-                  "Chức Vụ",
                   "Quyền",
+                  "Trạng Thái",
                   "Thao Tác",
                 ].map((header) => (
                   <th
@@ -163,24 +152,29 @@ const Employees = () => {
             <tbody>
               {employees.map((employee) => (
                 <tr
-                  key={employee.id}
+                  key={employee._id}
                   className="border-b hover:bg-emerald-50/50 transition-colors"
                 >
                   <td className="px-4 py-3">{employee.username}</td>
                   <td className="px-4 py-3">{employee.fullName}</td>
                   <td className="px-4 py-3">
-                    {employee.birthday.toLocaleDateString()}
+                    {new Date(employee.birthday).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">{employee.phone}</td>
                   <td className="px-4 py-3">{employee.email}</td>
                   <td className="px-4 py-3">
-                    {
-                      positions.find((p) => p.value === employee.position)
-                        ?.label
-                    }
+                    {roles.find((r) => r.value === employee.role)?.label}
                   </td>
                   <td className="px-4 py-3">
-                    {roles.find((r) => r.value === employee.role)?.label}
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        employee.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {employee.isActive ? "Hoạt động" : "Đã khóa"}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex space-x-2 gap-2">
@@ -191,7 +185,7 @@ const Employees = () => {
                         Sửa
                       </button>
                       <button
-                        onClick={() => handleDeleteEmployee(employee.id)}
+                        onClick={() => handleDeleteEmployee(employee._id)}
                         className="px-3 cursor-pointer py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm"
                       >
                         Xóa
@@ -223,8 +217,8 @@ const Employees = () => {
               <Button
                 label={isEditMode ? "Cập Nhật" : "Thêm"}
                 onClick={handleSaveEmployee}
-                className="p-button-success  p-2 border w-[100px] bg-[#51bb1a] text-white rounded"
-                icon={isEditMode ? "" : ""}
+                className="p-button-success p-2 border w-[100px] bg-[#51bb1a] text-white rounded"
+                loading={loading}
               />
             </div>
           }
@@ -237,12 +231,14 @@ const Employees = () => {
                   label: "Tên Đăng Nhập",
                   type: "text",
                   icon: "pi pi-user",
+                  disabled: isEditMode,
                 },
                 {
                   id: "password",
                   label: "Mật Khẩu",
                   type: "password",
                   icon: "pi pi-lock",
+                  required: !isEditMode,
                 },
                 {
                   id: "fullName",
@@ -263,17 +259,18 @@ const Employees = () => {
                   icon: "pi pi-envelope",
                   colSpan: 2,
                 },
-              ].map(({ id, label, type, icon, colSpan }) => (
+              ].map(({ id, label, type, icon, disabled, required, colSpan }) => (
                 <div
                   key={id}
                   className={`flex flex-col ${colSpan ? "col-span-2" : ""}`}
                 >
                   <label
                     htmlFor={id}
-                    className=" text-sm font-medium text-emerald-800 mb-2 flex items-center"
+                    className="text-sm font-medium text-emerald-800 mb-2 flex items-center"
                   >
                     <i className={`${icon} mr-2 text-emerald-600`} />
                     {label}
+                    {required && <span className="text-red-500 ml-1">*</span>}
                   </label>
                   <InputText
                     id={id}
@@ -284,55 +281,61 @@ const Employees = () => {
                     }
                     className="w-full p-inputtext-sm border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
                     placeholder={`Nhập ${label.toLowerCase()}`}
+                    disabled={disabled}
+                    required={required}
                   />
                 </div>
               ))}
+            </div>
 
-              <div className="flex flex-col col-span-2">
-                <label
-                  htmlFor="birthday"
-                  className=" text-sm font-medium text-emerald-800 mb-2 flex items-center"
-                >
-                  <i className="pi pi-calendar mr-2 text-emerald-600" />
-                  Ngày Sinh
-                </label>
-                <Calendar
-                  id="birthday"
-                  value={employeeForm.birthday}
-                  onChange={(e) =>
-                    setEmployeeForm({ ...employeeForm, birthday: e.value })
-                  }
-                  dateFormat="dd/mm/yy"
-                  className="w-full"
-                  showIcon
-                  icon="pi pi-calendar"
-                  placeholder="Chọn ngày sinh"
-                  touchUI={false}
-                  inputClassName="p-inputtext-sm rounded-lg border p-2 border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
-                />
-              </div>
+            <div className="flex flex-col col-span-2">
+              <label
+                htmlFor="birthday"
+                className="text-sm font-medium text-emerald-800 mb-2 flex items-center"
+              >
+                <i className="pi pi-calendar mr-2 text-emerald-600" />
+                Ngày Sinh
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <Calendar
+                id="birthday"
+                value={employeeForm.birthday}
+                onChange={(e) =>
+                  setEmployeeForm({ ...employeeForm, birthday: e.value })
+                }
+                dateFormat="dd/mm/yy"
+                className="w-full"
+                showIcon
+                icon="pi pi-calendar"
+                placeholder="Chọn ngày sinh"
+                touchUI={false}
+                inputClassName="p-inputtext-sm rounded-lg border p-2 border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                required
+              />
+            </div>
 
-              <div className="flex flex-col col-span-2">
-                <label
-                  htmlFor="role"
-                  className=" text-sm font-medium text-emerald-800 mb-2 flex items-center"
-                >
-                  <i className="pi pi-users mr-2 text-emerald-600" />
-                  Quyền
-                </label>
-                <Dropdown
-                  id="role"
-                  value={employeeForm.role}
-                  options={roles}
-                  onChange={(e) =>
-                    setEmployeeForm({ ...employeeForm, role: e.value })
-                  }
-                  placeholder="Chọn quyền"
-                  className="w-full  border p-2"
-                  panelClassName="shadow-lg p-4 py-2"
-                  optionClassName="hover:bg-emerald-50 p-2"
-                />
-              </div>
+            <div className="flex flex-col col-span-2">
+              <label
+                htmlFor="role"
+                className="text-sm font-medium text-emerald-800 mb-2 flex items-center"
+              >
+                <i className="pi pi-users mr-2 text-emerald-600" />
+                Quyền
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <Dropdown
+                id="role"
+                value={employeeForm.role}
+                options={roles}
+                onChange={(e) =>
+                  setEmployeeForm({ ...employeeForm, role: e.value })
+                }
+                placeholder="Chọn quyền"
+                className="w-full border p-2"
+                panelClassName="shadow-lg p-4 py-2"
+                optionClassName="hover:bg-emerald-50 p-2"
+                required
+              />
             </div>
           </div>
         </Dialog>

@@ -67,7 +67,7 @@ const publicRoutes = [
   },
   {
     path: "/khuyen-mai",
-    page: DefaultDiscount, 
+    page: DefaultDiscount,
   },
   {
     path: "/tin-tuc",
@@ -113,7 +113,7 @@ const publicRoutes = [
 const privateRoutes = [
   {
     path: "/admin",
-    page: HeadlessSidebar,
+    page: Dashboard,
   },
   {
     path: "/admin/dashboard",

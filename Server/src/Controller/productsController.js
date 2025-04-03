@@ -1,5 +1,6 @@
 import cloudinary from "../config/cloudinary.js";
 import Product from "../Model/Products.js";
+import Category from "../Model/Categories.js";
 import fs from "fs";
 import path from "path";
 
@@ -10,6 +11,12 @@ export const createProduct = async (req, res) => {
         .status(400)
         .json({ message: "Vui lòng tải lên ít nhất một hình ảnh" });
     }
+
+    const category = await Category.findOne({ nameCategory: req.body.productCategory });
+    if (!category) {
+      return res.status(400).json({ message: "Danh mục sản phẩm không tồn tại" });
+    }
+
     const uploadedUrls = [];
     for (const file of req.files) {
       try {
@@ -29,6 +36,7 @@ export const createProduct = async (req, res) => {
         throw new Error(`Upload ảnh thất bại: ${uploadError.message}`);
       }
     }
+
     let descriptions = [];
     try {
       descriptions =
@@ -47,6 +55,7 @@ export const createProduct = async (req, res) => {
       productDiscount: Number(req.body.productDiscount) || 0,
       productStock: Number(req.body.productStock) || 0,
       productWeight: Number(req.body.productWeight) || 0,
+      productCategory: category.nameCategory
     });
 
     const savedProduct = await newProduct.save();
@@ -84,6 +93,16 @@ export const updateProduct = async (req, res) => {
     if (!product) {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
+
+    // Kiểm tra danh mục mới nếu có thay đổi
+    if (req.body.productCategory && req.body.productCategory !== product.productCategory) {
+      const category = await Category.findOne({ nameCategory: req.body.productCategory });
+      if (!category) {
+        return res.status(400).json({ message: "Danh mục sản phẩm không tồn tại" });
+      }
+      req.body.productCategory = category.nameCategory;
+    }
+
     let newImageUrls = [];
     if (req.files && req.files.length > 0) {
       const uploadResults = await Promise.all(
@@ -139,6 +158,9 @@ export const updateProduct = async (req, res) => {
         productPrice: Number(req.body.productPrice),
         productDiscount: Number(req.body.productDiscount) || 0,
         productStock: Number(req.body.productStock) || 0,
+        productWeight: Number(req.body.productWeight) || 0,
+        productPromoPrice: Number(req.body.productPromoPrice) || 0,
+        productWarranty: Number(req.body.productWarranty) || 0,
       },
       { new: true }
     );
@@ -235,10 +257,52 @@ export const searchProducts = async (req, res) => {
 
 export const getProductByCategory = async (req, res) => {
   try {
-    const category = decodeURIComponent(req.params.category);
-    const products = await Product.find({ productCategory: category });
-    res.json(products);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const categoryName = req.params.category;
+    const excludeId = req.query.excludeId;
+    const category = await Category.findOne({ nameCategory: categoryName });
+    if (!category) {
+      return res.status(404).json({ message: "Không tìm thấy danh mục" });
+    }
+    
+    let query = { productCategory: category.nameCategory };
+    if (excludeId) {
+      query._id = { $ne: excludeId };
+    }
+    
+    const products = await Product.find(query);
+    res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({ message: "Lấy sản phẩm theo danh mục thất bại", error });
+  }
+};
+
+export const updateProductCategory = async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const { categoryId } = req.body;
+
+    const category = await Category.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: "Không tìm thấy danh mục" });
+    }
+
+    const product = await Product.findByIdAndUpdate(
+      productId,
+      { productCategory: categoryId },
+      { new: true }
+    );
+
+    if (!product) {
+      return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Cập nhật danh mục sản phẩm thành công",
+      product
+    });
+  } catch (error) {
+    console.error("Error in updateProductCategory:", error);
+    res.status(500).json({ message: "Cập nhật danh mục sản phẩm thất bại", error });
   }
 };

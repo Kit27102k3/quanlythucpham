@@ -18,6 +18,7 @@ import cartRoutes from "./routes/cartRoutes.js";
 import chatbotRoutes from "./routes/chatbotRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 dotenv.config({ path: ".env" });
 const app = express();
@@ -53,6 +54,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api", chatbotRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/orders", orderRoutes);
+app.use("/api", adminRoutes);
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);

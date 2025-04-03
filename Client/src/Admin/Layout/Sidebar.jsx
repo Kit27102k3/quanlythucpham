@@ -147,7 +147,7 @@ const AdminSidebar = () => {
           className="flex items-center mt-4 p-2 w-full text-red-400 hover:bg-gray-700 rounded-md transition-colors"
         >
           <ExitIcon className="size-6" />
-          {isSidebarOpen && <span className="ml-3 font-medium">Đăng xuất</span>}
+          {isSidebarOpen && <a href="/dang-nhap" className="ml-3 font-medium">Đăng xuất</a>}
         </button>
       </div>
     </div>

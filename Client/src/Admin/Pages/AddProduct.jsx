@@ -5,6 +5,7 @@ import { InputText } from "primereact/inputtext";
 import { FloatLabel } from "primereact/floatlabel";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Dropdown } from "primereact/dropdown";
 
 import productsApi from "../../api/productsApi";
 import categoriesApi from "../../api/categoriesApi";
@@ -62,6 +63,13 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
     }));
   };
 
+  const handleDropdownChange = (e, name) => {
+    setProduct((prev) => ({
+      ...prev,
+      [name]: e.value,
+    }));
+  };
+
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files || []);
     const previews = files.map((file) => URL.createObjectURL(file));
@@ -89,7 +97,11 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
       const formData = new FormData();
       Object.entries(product).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
-          formData.append(key, value);
+          if (key === 'productCategory') {
+            formData.append(key, value);
+          } else {
+            formData.append(key, value);
+          }
         }
       });
       const descriptions = productDescription
@@ -101,7 +113,7 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
         formData.append("productImages", file);
       });
 
-      await productsApi.createProduct(formData, {
+      const response = await productsApi.createProduct(formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -129,19 +141,31 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
       >
         <div className="p-4 card flex flex-col justify-content-center mt-2">
           <div className="flex flex-col gap-4 mb-5">
+            <div className="mb-4 relative z-50">
+              <label htmlFor="productCategory" className="block text-sm font-medium mb-2">Danh mục sản phẩm</label>
+              <Dropdown
+                id="productCategory"
+                value={product.productCategory}
+                onChange={(e) => handleDropdownChange(e, 'productCategory')}
+                options={categories.map(cat => ({ label: cat.nameCategory, value: cat.nameCategory }))}
+                className="border p-2 rounded w-full"
+                placeholder="Chọn danh mục"
+                appendTo="self"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               {[
-                { name: "productName", label: "Tên sản phẩm" },
-                { name: "productPrice", label: "Giá sản phẩm" },
-                { name: "productBrand", label: "Thương hiệu" },
-                { name: "productCategory", label: "Danh mục sản phẩm" },
-                { name: "productStatus", label: "Tình trạng" },
-                { name: "productDiscount", label: "Giảm giá (%)" },
-                { name: "productStock", label: "Số lượng tồn kho" },
-                { name: "productCode", label: "Mã sản phẩm" },
-                { name: "productWeight", label: "Trọng lượng" },
-                { name: "productOrigin", label: "Xuất xứ" },
-              ].map(({ name, label }) => (
+                { name: "productName", label: "Tên sản phẩm", type: "text" },
+                { name: "productPrice", label: "Giá sản phẩm", type: "text" },
+                { name: "productBrand", label: "Thương hiệu", type: "text" },
+                { name: "productStatus", label: "Tình trạng", type: "text" },
+                { name: "productDiscount", label: "Giảm giá (%)", type: "text" },
+                { name: "productStock", label: "Số lượng tồn kho", type: "text" },
+                { name: "productCode", label: "Mã sản phẩm", type: "text" },
+                { name: "productWeight", label: "Trọng lượng", type: "text" },
+                { name: "productOrigin", label: "Xuất xứ", type: "text" },
+              ].map(({ name, label, type }) => (
                 <FloatLabel key={name}>
                   <InputText
                     id={name}

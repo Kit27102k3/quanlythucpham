@@ -20,12 +20,22 @@ const Login = () => {
     e.preventDefault();
     try {
       const response = await authApi.login({ userName: username, password });
+      
+      // Lưu thông tin đăng nhập
       localStorage.setItem("accessToken", response.data.accessToken);
       localStorage.setItem("refreshToken", response.data.refreshToken);
       localStorage.setItem("userId", response.data.userId);
+      localStorage.setItem("userRole", response.data.role); // Lưu role của user
+      
       setIsLoggedIn(true);
       toast.success("Đăng nhập thành công!");
-      navigate("/");
+
+      // Kiểm tra role và chuyển hướng
+      if (response.data.role === "admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/");
+      }
     } catch (error) {
       toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
       console.log(error);

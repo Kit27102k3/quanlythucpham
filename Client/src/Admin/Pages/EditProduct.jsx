@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Button, InputText, FloatLabel } from "primereact";
+import { Button, InputText, FloatLabel, Dropdown } from "primereact";
 import { toast } from "react-toastify";
+import categoriesApi from "../../api/categoriesApi";
 
 const EditProduct = ({
   product,
@@ -8,6 +9,7 @@ const EditProduct = ({
   handleUpdateProduct,
   setProducts,
 }) => {
+  const [categories, setCategories] = useState([]);
   const [editedProduct, setEditedProduct] = useState({
     ...product,
     productDescription: product.productDescription
@@ -50,6 +52,13 @@ const EditProduct = ({
     });
   };
 
+  const handleDropdownChange = (e, name) => {
+    setEditedProduct(prev => ({
+      ...prev,
+      [name]: e.value
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -76,8 +85,12 @@ const EditProduct = ({
       ];
 
       fieldsToUpdate.forEach((field) => {
-        if (editedProduct[field] !== undefined) {
-          formData.append(field, String(editedProduct[field]));
+        if (editedProduct[field] !== undefined && editedProduct[field] !== null) {
+          if (field === "productCategory") {
+            formData.append(field, editedProduct[field]);
+          } else {
+            formData.append(field, String(editedProduct[field]));
+          }
         }
       });
 
@@ -97,6 +110,7 @@ const EditProduct = ({
         (_, index) => index < imagePreviews.length - newImages.length
       );
       formData.append("keepImages", JSON.stringify(currentImages));
+
       const response = await handleUpdateProduct(editedProduct._id, formData);
       toast.success("Cập nhật sản phẩm thành công!");
       setVisible(false);
@@ -131,6 +145,19 @@ const EditProduct = ({
     };
   }, [imagePreviews]);
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoriesApi.getAllCategories();
+        setCategories(response);
+      } catch (error) {
+        toast.error("Không thể tải danh mục sản phẩm");
+        console.error("Lỗi khi lấy danh mục:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
+
   return (
     <div className="p-6">
       <div className="flex flex-col gap-6 mb-5">
@@ -161,18 +188,18 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
+        <div className="mb-4 relative z-50">
+          <label htmlFor="productCategory" className="block text-sm font-medium mb-2">Danh mục sản phẩm</label>
+          <Dropdown
             id="productCategory"
-            name="productCategory"
-            value={editedProduct.productCategory ?? ""}
-            onChange={handleInputChange}
+            value={editedProduct.productCategory}
+            onChange={(e) => handleDropdownChange(e, 'productCategory')}
+            options={categories.map(cat => ({ label: cat.nameCategory, value: cat.nameCategory }))}
+            className="border p-2 rounded w-full"
+            placeholder="Chọn danh mục"
+            appendTo="self"
           />
-          <label htmlFor="productCategory" className="text-sm -mt-3">
-            Danh mục sản phẩm
-          </label>
-        </FloatLabel>
+        </div>
 
         <FloatLabel>
           <InputText
