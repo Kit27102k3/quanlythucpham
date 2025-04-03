@@ -4,14 +4,14 @@ import {
     getAllAdmins, 
     updateAdmin, 
     deleteAdmin,
-    loginAdmin,
+    adminLogin,
     getAdminById
 } from "../Controller/adminController.js";
 
 const router = express.Router();
 
 // Public routes
-router.post("/login", loginAdmin);
+router.post("/login", adminLogin);
 
 // Admin management routes
 router.post("/admin/create", createAdmin);

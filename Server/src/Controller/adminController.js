@@ -196,3 +196,18 @@ export const deleteAdmin = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const getAdminById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const admin = await Admin.findById(id).select('-password');
+        
+        if (!admin) {
+            return res.status(404).json({ message: "Không tìm thấy admin" });
+        }
+
+        res.status(200).json(admin);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
