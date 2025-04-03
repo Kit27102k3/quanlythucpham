@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
 import { Scrollbars } from "react-custom-scrollbars-2";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { FloatLabel } from "primereact/floatlabel";
+import { Dropdown } from "primereact/dropdown";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { Dropdown } from "primereact/dropdown";
 
 import productsApi from "../../api/productsApi";
 import categoriesApi from "../../api/categoriesApi";
@@ -40,7 +41,11 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
     const fetchCategories = async () => {
       try {
         const response = await categoriesApi.getAllCategories();
-        setCategories(response);
+        if (Array.isArray(response)) {
+          setCategories(response);
+        } else {
+          toast.error("Dữ liệu danh mục không hợp lệ");
+        }
       } catch (error) {
         toast.error("Không thể tải danh mục sản phẩm");
         console.error("Lỗi khi lấy danh mục:", error);
@@ -97,11 +102,7 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
       const formData = new FormData();
       Object.entries(product).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
-          if (key === 'productCategory') {
-            formData.append(key, value);
-          } else {
-            formData.append(key, value);
-          }
+          formData.append(key, value);
         }
       });
       const descriptions = productDescription
@@ -126,14 +127,13 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
       const errorMessage =
         error.response?.data?.message || error.message || "Lỗi không xác định";
       toast.error(`Thêm sản phẩm thất bại: ${errorMessage}`);
-      console.error("Chi tiết lỗi:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <>
+    <div className="relative">
       <Scrollbars
         style={{ width: "100%", height: "600px" }}
         renderThumbVertical={() => <div style={{ display: "none" }} />}
@@ -147,9 +147,13 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                 id="productCategory"
                 value={product.productCategory}
                 onChange={(e) => handleDropdownChange(e, 'productCategory')}
-                options={categories.map(cat => ({ label: cat.nameCategory, value: cat.nameCategory }))}
+                options={categories.map(cat => ({ label: cat.nameCategory, value: cat._id }))}
                 className="border p-2 rounded w-full"
                 placeholder="Chọn danh mục"
+                filter
+                showClear
+                emptyFilterMessage="Không tìm thấy danh mục"
+                emptyMessage="Không có danh mục nào"
                 appendTo="self"
               />
             </div>
@@ -173,6 +177,7 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                     value={product[name]}
                     onChange={handleInputChange}
                     className="border p-2 rounded w-full"
+                    type={type}
                   />
                   <label htmlFor={name}>{label}</label>
                 </FloatLabel>
@@ -207,67 +212,63 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
               ))}
             </div>
 
-            <div className="flex justify-between gap-4">
-              {[
-                { name: "productDetails", label: "Chi tiết sản phẩm" },
-                { name: "productIntroduction", label: "Giới thiệu sản phẩm" },
-              ].map(({ name, label }) => (
-                <FloatLabel key={name}>
-                  <InputText
-                    className="border p-2 rounded w-[360px]"
-                    id={name}
-                    name={name}
-                    value={product[name]}
-                    onChange={handleInputChange}
-                  />
-                  <label htmlFor={name} className="text-sm -mt-3">
-                    {label}
-                  </label>
-                </FloatLabel>
-              ))}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Hình ảnh</label>
-              <input
-                type="file"
-                multiple
-                onChange={handleImageUpload}
-                accept="image/*"
-                className="border p-2 rounded w-full"
-              />
-              <div className="flex flex-wrap mt-2">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Hình ảnh sản phẩm</label>
+              <div className="flex flex-wrap gap-2">
                 {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative mr-2 mb-2">
+                  <div key={index} className="relative">
                     <img
                       src={preview}
-                      alt={`Preview ${index}`}
-                      className="w-24 h-24 object-cover"
+                      alt={`Preview ${index + 1}`}
+                      className="w-24 h-24 object-cover rounded"
                     />
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(index)}
-                      className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
                     >
-                      &times;
+                      ×
                     </button>
                   </div>
                 ))}
+                <label className="w-24 h-24 border-2 border-dashed rounded flex items-center justify-center cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <span className="text-2xl">+</span>
+                </label>
               </div>
             </div>
-          </div>
 
-          <Button
-            label="Thêm"
-            onClick={handleSubmit}
-            className="p-3 bg-blue-500 text-white rounded"
-            disabled={isSubmitting}
-          />
+            <div className="flex justify-end gap-2 mt-4">
+              <Button
+                label="Hủy"
+                icon="pi pi-times"
+                className="p-button-text"
+                onClick={() => setVisible(false)}
+              />
+              <Button
+                label="Lưu"
+                icon="pi pi-check"
+                onClick={handleSubmit}
+                loading={isSubmitting}
+              />
+            </div>
+          </div>
         </div>
       </Scrollbars>
       <ToastContainer />
-    </>
+    </div>
   );
+};
+
+AddProduct.propTypes = {
+  setVisible: PropTypes.func.isRequired,
+  onProductAdd: PropTypes.func,
 };
 
 export default AddProduct;

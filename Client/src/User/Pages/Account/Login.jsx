@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { InputText } from "primereact/inputtext";
-import { FloatLabel } from "primereact/floatlabel";
 import { Dialog } from "primereact/dialog";
 import { FaFacebook, FaGoogle, FaLock, FaUser } from "react-icons/fa";
 import ForgotPassword from "./ForgotPassword";
@@ -13,38 +12,84 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleAdminLogin = async () => {
     try {
-      const response = await authApi.login({ userName: username, password });
-      
-      // Lưu thông tin đăng nhập
-      localStorage.setItem("accessToken", response.data.accessToken);
-      localStorage.setItem("refreshToken", response.data.refreshToken);
-      localStorage.setItem("userId", response.data.userId);
-      localStorage.setItem("userRole", response.data.role); // Lưu role của user
-      
-      setIsLoggedIn(true);
-      toast.success("Đăng nhập thành công!");
+      const response = await authApi.adminLogin({
+        userName: username,
+        password,
+      });
 
-      // Kiểm tra role và chuyển hướng
-      if (response.data.role === "admin") {
+      if (response.data && response.data.accessToken) {
+        saveAuthData(response.data);
+        toast.success("Đăng nhập admin thành công!");
         navigate("/admin/dashboard");
       } else {
-        navigate("/");
+        throw new Error("Không phải tài khoản admin");
       }
     } catch (error) {
-      toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
-      console.log(error);
+      toast.error("Lỗi đăng nhập admin. Thử đăng nhập user...");
+      console.error(error);
+      handleUserLogin();
     }
+  };
+
+  const handleUserLogin = async () => {
+    try {
+      const response = await authApi.login({ userName: username, password });
+
+      if (response.data && response.data.accessToken) {
+        saveAuthData(response.data);
+        toast.success("Đăng nhập thành công!");
+        
+        // Kiểm tra role và chuyển hướng
+        if (response.data.role === "admin") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/");
+        }
+      } else {
+        toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+      }
+    } catch (userError) {
+      toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+      console.error(
+        "Lỗi đăng nhập user:",
+        userError.response?.data || userError.message
+      );
+    }
+  };
+
+  const saveAuthData = (data) => {
+    if (!data.accessToken || !data.refreshToken || !data.userId) {
+      throw new Error("Dữ liệu đăng nhập không hợp lệ");
+    }
+
+    localStorage.setItem("accessToken", data.accessToken);
+    localStorage.setItem("refreshToken", data.refreshToken);
+    localStorage.setItem("userId", data.userId);
+    localStorage.setItem("userRole", data.role || "user");
+
+    if (data.permissions) {
+      localStorage.setItem("permissions", JSON.stringify(data.permissions));
+    }
+
+    if (data.fullName) {
+      localStorage.setItem("fullName", data.fullName);
+    }
+  };
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    handleAdminLogin();
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8 background-login">
-      <ToastContainer />
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="w-full max-w-4xl bg-white shadow-2xl rounded-2xl overflow-hidden grid md:grid-cols-2">
         <div className="p-10 flex flex-col justify-center">
           <div className="text-center mb-8">
@@ -55,15 +100,20 @@ const Login = () => {
           </div>
 
           <div className="flex space-x-4 mb-6 gap-4">
-            <button className="flex-1 flex items-center cursor-pointer justify-center bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition">
+            <button
+              type="button"
+              className="flex-1 flex items-center justify-center bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
+            >
               <FaFacebook className="mr-2" /> Facebook
             </button>
-            <button className="flex-1 flex items-center cursor-pointer justify-center bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition">
+            <button
+              type="button"
+              className="flex-1 flex items-center justify-center bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition"
+            >
               <FaGoogle className="mr-2" /> Google
             </button>
           </div>
 
-          {/* Divider */}
           <div className="flex items-center my-4">
             <div className="flex-grow border-t border-gray-300"></div>
             <span className="px-4 text-gray-500 text-sm">
@@ -72,29 +122,30 @@ const Login = () => {
             <div className="flex-grow border-t border-gray-300"></div>
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-6 ">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div className="relative mb-2">
               <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
+              <InputText
                 type="text"
                 placeholder="Tên đăng nhập"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#51bb1a]"
                 required
+                disabled={isLoading}
               />
             </div>
 
             <div className="relative mb-2">
               <FaLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-              <input
+              <InputText
                 type="password"
                 placeholder="Mật khẩu"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#51bb1a]"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -115,31 +166,38 @@ const Login = () => {
 
             <button
               type="submit"
-              className="w-full bg-[#51bb1a] text-white py-3 rounded-lg hover:bg-[#51bb1a] transition font-semibold cursor-pointer"
+              className="w-full bg-[#51bb1a] text-white py-3 rounded-lg hover:bg-[#51bb1a] transition font-semibold flex justify-center items-center"
+              disabled={isLoading}
             >
+              {isLoading ? (
+                <i className="pi pi-spinner pi-spin mr-2"></i>
+              ) : null}
               ĐĂNG NHẬP
             </button>
           </form>
         </div>
 
-        {/* Background Image Section */}
         <div className="hidden md:block">
           <img
-            src="https://imgs.search.brave.com/-iKO9iDdLIcHOwXs51kpeiQB7vWzM3DBw9Ph4mBZL3U/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9pbWFn/ZWRlbGl2ZXJ5Lm5l/dC9aZUd0c0dTanVR/ZTFQM1VQX3prM2ZR/LzMxNzZlNjc0LTg1/NDgtNDJiMC05OWMz/LWViYTNjNmFlNzcw/MC9zdG9yZWRhdGE"
+            src="/images/login-bg.jpg"
             alt="Fresh Food Market"
             className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.src =
+                "https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80";
+            }}
           />
         </div>
       </div>
 
-      {/* Forgot Password Dialog */}
       <Dialog
         header="QUÊN MẬT KHẨU"
         visible={visible}
         style={{ width: "500px" }}
         onHide={() => setVisible(false)}
+        modal
       >
-        <ForgotPassword />
+        <ForgotPassword onClose={() => setVisible(false)} />
       </Dialog>
     </div>
   );

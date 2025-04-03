@@ -12,7 +12,7 @@ export default function Order() {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await orderApi.getUserOrders(); // API lấy danh sách đơn hàng
+        const response = await orderApi.getUserOrders(); 
         setOrders(response);
       } catch (error) {
         console.error("Lỗi khi lấy đơn hàng:", error);

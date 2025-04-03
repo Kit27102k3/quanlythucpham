@@ -12,7 +12,7 @@ export const createProduct = async (req, res) => {
         .json({ message: "Vui lòng tải lên ít nhất một hình ảnh" });
     }
 
-    const category = await Category.findOne({ nameCategory: req.body.productCategory });
+    const category = await Category.findById(req.body.productCategory);
     if (!category) {
       return res.status(400).json({ message: "Danh mục sản phẩm không tồn tại" });
     }
@@ -55,7 +55,7 @@ export const createProduct = async (req, res) => {
       productDiscount: Number(req.body.productDiscount) || 0,
       productStock: Number(req.body.productStock) || 0,
       productWeight: Number(req.body.productWeight) || 0,
-      productCategory: category.nameCategory
+      productCategory: category._id
     });
 
     const savedProduct = await newProduct.save();
@@ -264,7 +264,7 @@ export const getProductByCategory = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy danh mục" });
     }
     
-    let query = { productCategory: category.nameCategory };
+    let query = { productCategory: category._id };
     if (excludeId) {
       query._id = { $ne: excludeId };
     }

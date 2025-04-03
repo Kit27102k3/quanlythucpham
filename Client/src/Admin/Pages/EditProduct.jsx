@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { Button, InputText, FloatLabel, Dropdown } from "primereact";
+import { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
+import { Button } from "primereact/button";
+import { InputText } from "primereact/inputtext";
+import { FloatLabel } from "primereact/floatlabel";
+import { Dropdown } from "primereact/dropdown";
 import { toast } from "react-toastify";
 import categoriesApi from "../../api/categoriesApi";
 
@@ -21,6 +25,23 @@ const EditProduct = ({
   );
   const [newImages, setNewImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoriesApi.getAllCategories();
+        if (Array.isArray(response)) {
+          setCategories(response);
+        } else {
+          toast.error("Dữ liệu danh mục không hợp lệ");
+        }
+      } catch (error) {
+        toast.error("Không thể tải danh mục sản phẩm");
+        console.error("Lỗi khi lấy danh mục:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleImageUpload = (e) => {
     const files = e.target.files;
@@ -86,11 +107,7 @@ const EditProduct = ({
 
       fieldsToUpdate.forEach((field) => {
         if (editedProduct[field] !== undefined && editedProduct[field] !== null) {
-          if (field === "productCategory") {
-            formData.append(field, editedProduct[field]);
-          } else {
-            formData.append(field, String(editedProduct[field]));
-          }
+          formData.append(field, String(editedProduct[field]));
         }
       });
 
@@ -145,19 +162,6 @@ const EditProduct = ({
     };
   }, [imagePreviews]);
 
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await categoriesApi.getAllCategories();
-        setCategories(response);
-      } catch (error) {
-        toast.error("Không thể tải danh mục sản phẩm");
-        console.error("Lỗi khi lấy danh mục:", error);
-      }
-    };
-    fetchCategories();
-  }, []);
-
   return (
     <div className="p-6">
       <div className="flex flex-col gap-6 mb-5">
@@ -194,9 +198,13 @@ const EditProduct = ({
             id="productCategory"
             value={editedProduct.productCategory}
             onChange={(e) => handleDropdownChange(e, 'productCategory')}
-            options={categories.map(cat => ({ label: cat.nameCategory, value: cat.nameCategory }))}
+            options={categories.map(cat => ({ label: cat.nameCategory, value: cat._id }))}
             className="border p-2 rounded w-full"
             placeholder="Chọn danh mục"
+            filter
+            showClear
+            emptyFilterMessage="Không tìm thấy danh mục"
+            emptyMessage="Không có danh mục nào"
             appendTo="self"
           />
         </div>
@@ -236,7 +244,7 @@ const EditProduct = ({
             onChange={handleInputChange}
           />
           <label htmlFor="productDiscount" className="text-sm -mt-3">
-            Giảm giá
+            Giảm giá (%)
           </label>
         </FloatLabel>
 
@@ -249,7 +257,7 @@ const EditProduct = ({
             onChange={handleInputChange}
           />
           <label htmlFor="productStock" className="text-sm -mt-3">
-            Số lượng trong kho
+            Số lượng tồn kho
           </label>
         </FloatLabel>
 
@@ -282,32 +290,6 @@ const EditProduct = ({
         <FloatLabel>
           <InputText
             className="border p-2 rounded w-full"
-            id="productPromoPrice"
-            name="productPromoPrice"
-            value={editedProduct.productPromoPrice ?? ""}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productPromoPrice" className="text-sm -mt-3">
-            Giá khuyến mãi
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productWarranty"
-            name="productWarranty"
-            value={editedProduct.productWarranty ?? ""}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productWarranty" className="text-sm -mt-3">
-            Bảo hành
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
             id="productOrigin"
             name="productOrigin"
             value={editedProduct.productOrigin ?? ""}
@@ -318,99 +300,81 @@ const EditProduct = ({
           </label>
         </FloatLabel>
 
-        <FloatLabel>
-          <textarea
-            className="border p-2 rounded w-full"
-            id="productDescription"
-            name="productDescription"
-            value={editedProduct.productDescription}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productDescription" className="text-sm -mt-3">
-            Mô tả sản phẩm
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productInfo"
-            name="productInfo"
-            value={editedProduct.productInfo ?? ""}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productInfo" className="text-sm -mt-3">
-            Thông tin sản phẩm
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productIntroduction"
-            name="productIntroduction"
-            value={editedProduct.productIntroduction ?? ""}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productIntroduction" className="text-sm -mt-3">
-            Giới thiệu sản phẩm
-          </label>
-        </FloatLabel>
-
-        <FloatLabel>
-          <InputText
-            className="border p-2 rounded w-full"
-            id="productDetails"
-            name="productDetails"
-            value={editedProduct.productDetails ?? ""}
-            onChange={handleInputChange}
-          />
-          <label htmlFor="productDetails" className="text-sm -mt-3">
-            Chi tiết sản phẩm
-          </label>
-        </FloatLabel>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">Thêm ảnh mới</label>
-          <input
-            type="file"
-            multiple
-            onChange={handleImageUpload}
-            accept="image/*"
-            className="border p-2 rounded w-full"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Chọn nhiều ảnh bằng cách giữ Ctrl (Windows) hoặc Command (Mac)
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-4 mb-4">
-          {imagePreviews.map((preview, index) => (
-            <div key={index} className="relative group">
-              <img
-                src={preview}
-                alt={`Preview ${index}`}
-                className="w-32 h-32 object-cover rounded border"
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium">Hình ảnh sản phẩm</label>
+          <div className="flex flex-wrap gap-2">
+            {imagePreviews.map((preview, index) => (
+              <div key={index} className="relative">
+                <img
+                  src={preview}
+                  alt={`Preview ${index + 1}`}
+                  className="w-24 h-24 object-cover rounded"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(index)}
+                  className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            <label className="w-24 h-24 border-2 border-dashed rounded flex items-center justify-center cursor-pointer">
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                className="hidden"
               />
-              <button
-                type="button"
-                onClick={() => handleRemoveImage(index)}
-                className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+              <span className="text-2xl">+</span>
+            </label>
+          </div>
         </div>
 
-        <Button
-          label="Cập nhật"
-          onClick={handleSubmit}
-          className="p-3 bg-blue-500 text-white rounded text-[12px] gap-2"
-        />
+        <div className="flex justify-end gap-2 mt-4">
+          <Button
+            label="Hủy"
+            icon="pi pi-times"
+            className="p-button-text"
+            onClick={() => setVisible(false)}
+          />
+          <Button
+            label="Lưu"
+            icon="pi pi-check"
+            onClick={handleSubmit}
+            loading={isSubmitting}
+          />
+        </div>
       </div>
     </div>
   );
+};
+
+EditProduct.propTypes = {
+  product: PropTypes.shape({
+    _id: PropTypes.string.isRequired,
+    productName: PropTypes.string,
+    productPrice: PropTypes.string,
+    productCategory: PropTypes.string,
+    productBrand: PropTypes.string,
+    productStatus: PropTypes.string,
+    productDiscount: PropTypes.string,
+    productStock: PropTypes.string,
+    productCode: PropTypes.string,
+    productWeight: PropTypes.string,
+    productPromoPrice: PropTypes.string,
+    productWarranty: PropTypes.string,
+    productOrigin: PropTypes.string,
+    productIntroduction: PropTypes.string,
+    productInfo: PropTypes.string,
+    productDetails: PropTypes.string,
+    productDescription: PropTypes.arrayOf(PropTypes.string),
+    productImages: PropTypes.arrayOf(PropTypes.string),
+  }).isRequired,
+  setVisible: PropTypes.func.isRequired,
+  handleUpdateProduct: PropTypes.func.isRequired,
+  setProducts: PropTypes.func,
 };
 
 export default EditProduct;

@@ -1,7 +1,7 @@
 import axios from "axios";
 import { toast } from "react-toastify";
 
-const API_URL = "http://localhost:8080/auth";
+const API_URL = "http://localhost:8080";
 
 const instance = axios.create({
   baseURL: API_URL,
@@ -34,7 +34,7 @@ instance.interceptors.response.use(
 
     if (originalRequest.url === "/logout") {
       localStorage.clear();
-      window.location.href = "/";
+      window.location.href = "/dang-nhap";
       return Promise.reject(error);
     }
 
@@ -63,7 +63,10 @@ instance.interceptors.response.use(
       } catch (err) {
         processQueue(err, null);
         localStorage.clear();
-        window.location.href = "/dang-nhap";
+        toast.error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại!");
+        setTimeout(() => {
+          window.location.href = "/dang-nhap";
+        }, 500); // Đợi thông báo hiển thị rồi mới chuyển hướng
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
@@ -78,7 +81,7 @@ const refreshToken = async () => {
   const refreshToken = localStorage.getItem("refreshToken");
   if (!refreshToken) throw new Error("No refresh token found");
 
-  const response = await axios.post(`${API_URL}/refresh-token`, {
+  const response = await axios.post(`${API_URL}/auth/refresh-token`, {
     refreshToken,
   });
   const { accessToken } = response.data;
@@ -91,36 +94,45 @@ const refreshToken = async () => {
 
   throw new Error("Failed to refresh token");
 };
+
 const userId = localStorage.getItem("userId");
 
 const authApi = {
-  register: (userData) => instance.post("/register", userData),
-  login: (credentials) => instance.post("/login", credentials),
+  register: (userData) => instance.post("/auth/register", userData),
+  login: (credentials) =>
+    instance.post("/auth/login", {
+      userName: credentials.userName,
+      password: credentials.password,
+    }),
+  adminLogin: (credentials) =>
+    instance.post("/admin/auth/login", {
+      userName: credentials.userName,
+      password: credentials.password,
+    }),
   logout: async () => {
     try {
-      await instance.post("/logout").catch(() => {});
+      await instance.post("/auth/logout").catch(() => {});
     } finally {
       localStorage.clear();
       toast.success("Đăng xuất thành công!");
       window.location.href = "/";
     }
   },
-
   refreshToken: () => refreshToken(),
   getProfile: () => {
     if (!userId) throw new Error("User not logged in");
-    return instance.get(`/profile/${userId}`);
+    return instance.get(`/auth/profile/${userId}`);
   },
   getUserById: (id) => {
     if (!id) throw new Error("User ID is required");
-    return instance.get(`/profile/${id}`);
+    return instance.get(`/auth/profile/${id}`);
   },
-  updateProfile: (userId, data) => instance.put(`/update/${userId}`, data),
+  updateProfile: (userId, data) => instance.put(`/auth/update/${userId}`, data),
   requestPasswordReset: (data) =>
-    instance.post("/request-password-reset", data),
+    instance.post("/auth/request-password-reset", data),
   resetPassword: async (data) => {
     console.log("Dữ liệu gửi lên API:", data);
-    return instance.post("/reset-password", data);
+    return instance.post("/auth/reset-password", data);
   },
 };
 

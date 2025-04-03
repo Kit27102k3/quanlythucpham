@@ -16,16 +16,11 @@ const OrderAdmin = () => {
   useEffect(() => {
     const fetchAndUpdateOrders = async () => {
       try {
-        // Lấy danh sách đơn hàng
         const response = await fetch("http://localhost:8080/orders");
         const data = await response.json();
-
-        // Cập nhật trạng thái cho từng đơn hàng
         const updatedOrders = await Promise.all(
           data.map(async (order) => {
             const newStatus = determineStatus(order.createdAt);
-
-            // Nếu trạng thái thay đổi, cập nhật lên server
             if (order.status !== newStatus) {
               await updateOrderStatus(order._id, newStatus);
               return { ...order, status: newStatus };
@@ -34,7 +29,6 @@ const OrderAdmin = () => {
           })
         );
 
-        // Sắp xếp theo ngày tạo mới nhất
         const sortedOrders = updatedOrders.sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
@@ -80,7 +74,6 @@ const OrderAdmin = () => {
     }
   };
 
- 
   const handleViewOrder = (orderId) => {
     console.log("Xem đơn hàng:", orderId);
   };
@@ -156,7 +149,6 @@ const OrderAdmin = () => {
     return matchesSearch && matchesStatus;
   });
 
-
   if (loading) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
@@ -196,7 +188,6 @@ const OrderAdmin = () => {
           </div>
         </div>
 
-        {/* Order Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-100 border-b">

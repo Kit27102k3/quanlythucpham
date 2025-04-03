@@ -25,6 +25,8 @@ import DefaultDiscount from "../User/Pages/Product/ProductDiscount/DefaultDiscou
 import OrderAdmin from "../Admin/Pages/Order";
 import Employees from "../Admin/Pages/AddEmployees";
 import OrderConfirmation from "../User/Cart/OrderConfirmation";
+import NewsPage from "../User/Pages/NewsPage/NewsPage";
+import TipsPage from "../User/Pages/TipsPage/TipsPage";
 
 const publicRoutes = [
   {
@@ -71,7 +73,11 @@ const publicRoutes = [
   },
   {
     path: "/tin-tuc",
-    page: News,
+    page: NewsPage,
+  },
+  {
+    path: "/meo-hay",
+    page: TipsPage,
   },
   {
     path: "/gio-hang",
