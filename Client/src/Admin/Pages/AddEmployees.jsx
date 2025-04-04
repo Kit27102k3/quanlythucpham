@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
@@ -6,8 +7,6 @@ import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
 import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
-import { DataTable } from "primereact/datatable";
-import { Column } from "primereact/column";
 import adminApi from "../../api/adminApi";
 
 const Employees = () => {
@@ -38,17 +37,6 @@ const Employees = () => {
     { label: "Nhân viên", value: "staff" },
   ];
 
-  const tableHeaders = [
-    "Tên Đăng Nhập",
-    "Họ Tên",
-    "Ngày Sinh",
-    "Số Điện Thoại",
-    "Email",
-    "Vai Trò",
-    "Thao Tác",
-  ];
-
-  // Fetch employees on component mount
   useEffect(() => {
     fetchEmployees();
   }, []);
@@ -57,9 +45,16 @@ const Employees = () => {
     try {
       setLoading(true);
       const response = await adminApi.getAllAdmins();
-      setEmployees(response);
+
+      const normalizedEmployees = response.map(emp => {
+        return {
+          ...emp,
+          userName: emp.userName || emp.username || emp.user_name || emp.user || "N/A"
+        };
+      });
+      
+      setEmployees(normalizedEmployees);
     } catch (error) {
-      console.error("Error fetching employees:", error);
       showToast(
         "error", 
         "Lỗi", 
@@ -70,20 +65,26 @@ const Employees = () => {
     }
   };
 
-  // Helper functions
   const showToast = (severity, summary, detail) => {
     toastRef.current.show({ severity, summary, detail, life: 3000 });
   };
 
   const resetForm = () => {
-    setEmployeeForm(initialFormState);
+    setEmployeeForm({...initialFormState});
     setIsEditMode(false);
   };
 
-  // Dialog handlers
   const openEmployeeDialog = (employee = null) => {
     if (employee) {
-      setEmployeeForm({ ...employee });
+      setEmployeeForm({
+        ...initialFormState,
+        ...employee,
+        userName: employee.userName || "",
+        fullName: employee.fullName || "",
+        phone: employee.phone || "",
+        email: employee.email || "",
+        password: ""
+      });
       setIsEditMode(true);
     } else {
       resetForm();
@@ -100,12 +101,17 @@ const Employees = () => {
   const handleSaveEmployee = async () => {
     try {
       setLoading(true);
+      
+      const formData = {
+        ...employeeForm,
+        userName: employeeForm.userName || employeeForm.userName || "",
+      };
 
       if (isEditMode) {
-        await adminApi.updateAdmin(employeeForm._id, employeeForm);
+        await adminApi.updateAdmin(formData._id, formData);
         showToast("success", "Thành công", "Cập nhật nhân viên thành công");
       } else {
-        await adminApi.createAdmin(employeeForm);
+        await adminApi.createAdmin(formData);
         showToast("success", "Thành công", "Thêm nhân viên mới thành công");
       }
 
@@ -141,7 +147,6 @@ const Employees = () => {
       showToast("success", "Thành công", "Xóa nhân viên thành công");
       fetchEmployees();
     } catch (error) {
-      console.error("Error deleting employee:", error);
       showToast(
         "error", 
         "Lỗi", 
@@ -154,149 +159,258 @@ const Employees = () => {
 
   // Form field components
   const renderFormField = ({ id, label, type, colSpan }) => (
-    <div className={`col-${colSpan || 6} mb-3`}>
-      <label htmlFor={id} className="block text-sm font-medium text-gray-700">
+    <div className={`col-${colSpan || 6} mb-4`}>
+      <label htmlFor={id} className="text-sm font-medium text-emerald-800 mb-1 flex items-center">
+        <i className={`pi ${type === 'text' ? 'pi-user' : type === 'email' ? 'pi-envelope' : type === 'tel' ? 'pi-phone' : type === 'password' ? 'pi-lock' : 'pi-calendar'} mr-2 text-emerald-600`} />
         {label}
       </label>
       {type === "dropdown" ? (
         <Dropdown
           id={id}
-          value={employeeForm[id]}
+          value={employeeForm[id] || null}
           onChange={(e) => setEmployeeForm({ ...employeeForm, [id]: e.value })}
           options={roles}
           optionLabel="label"
           optionValue="value"
-          className="w-full"
+          className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+          placeholder="Chọn vai trò"
         />
       ) : type === "calendar" ? (
         <Calendar
           id={id}
-          value={employeeForm[id]}
+          value={employeeForm[id] || null}
           onChange={(e) => setEmployeeForm({ ...employeeForm, [id]: e.value })}
-          className="w-full"
+          className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
           dateFormat="dd/mm/yy"
           showIcon
+          maxDate={new Date()}
+          placeholder="Chọn ngày sinh"
         />
       ) : (
         <InputText
           id={id}
           type={type}
-          value={employeeForm[id]}
+          value={employeeForm[id] || ""}
           onChange={(e) => setEmployeeForm({ ...employeeForm, [id]: e.target.value })}
-          className="w-full"
+          className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+          placeholder={`Nhập ${label.toLowerCase()}`}
         />
       )}
     </div>
   );
 
   return (
-    <div className="p-4">
-      <Toast ref={toastRef} />
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Quản lý nhân viên</h2>
-        <Button
-          label="Thêm nhân viên"
-          icon="pi pi-plus"
-          onClick={() => openEmployeeDialog()}
-        />
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 md:p-8">
+      <Toast ref={toastRef} position="top-right" />
 
-      {/* Table */}
-      <div className="card">
-        <DataTable
-          value={employees}
-          loading={loading}
-          paginator
-          rows={10}
-          rowsPerPageOptions={[5, 10, 20, 50]}
-          className="p-datatable-striped"
+      <div className="container mx-auto bg-white shadow-xl rounded-xl p-4 md:p-8">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-emerald-700">
+            Quản Lý Nhân Viên
+          </h1>
+          <Button
+            label="Thêm Nhân Viên"
+            icon="pi pi-plus"
+            onClick={() => openEmployeeDialog()}
+            className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-semibold shadow-md"
+          />
+        </div>
+
+        {/* Employee Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
+            <thead className="bg-emerald-50">
+              <tr>
+                {[
+                  "Tên Đăng Nhập",
+                  "Họ Tên",
+                  "Ngày Sinh",
+                  "Số Điện Thoại",
+                  "Email",
+                  "Vai Trò",
+                  "Thao Tác",
+                ].map((header) => (
+                  <th
+                    key={header}
+                    className="px-4 py-3 text-left text-emerald-800 font-semibold whitespace-nowrap"
+                  >
+                    {header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading && !employees.length ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="text-center py-8"
+                  >
+                    <i className="pi pi-spinner pi-spin text-2xl text-emerald-500"></i>
+                  </td>
+                </tr>
+              ) : employees.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="text-center py-8 text-gray-500"
+                  >
+                    Không có nhân viên nào
+                  </td>
+                </tr>
+              ) : (
+                employees.map((employee) => (
+                  <tr
+                    key={employee._id}
+                    className="border-b hover:bg-emerald-50/50 transition-colors"
+                  >
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.userName}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.fullName || "N/A"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.birthday
+                        ? new Date(employee.birthday).toLocaleDateString()
+                        : "N/A"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.phone || "N/A"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.email || "N/A"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.role ? roles.find((r) => r.value === employee.role)?.label || employee.role : "N/A"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex gap-2">
+                        <Button
+                          icon="pi pi-pencil"
+                          className="p-button-rounded p-button-warning p-button-text"
+                          onClick={() => openEmployeeDialog(employee)}
+                          tooltip="Sửa"
+                          tooltipOptions={{ position: "top" }}
+                        />
+                        <Button
+                          icon="pi pi-trash"
+                          className="p-button-rounded p-button-danger p-button-text"
+                          onClick={() => confirmDelete(employee._id)}
+                          tooltip="Xóa"
+                          tooltipOptions={{ position: "top" }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <Dialog
+          header={isEditMode ? "Chỉnh Sửa Nhân Viên" : "Thêm Nhân Viên Mới"}
+          visible={isDialogVisible}
+          style={{ width: "90vw", maxWidth: "600px" }}
+          modal
+          onHide={closeDialog}
+          headerClassName="bg-emerald-50 border-b border-emerald-200 p-4 rounded-t-lg"
+          contentClassName="p-0"
+          footer={
+            <div className="flex justify-end gap-3 p-4 border-t border-emerald-200 bg-emerald-50/50">
+              <Button
+                label="Hủy"
+                onClick={closeDialog}
+                className="p-button-text p-button-secondary bg-red-600 text-white  p-2 rounded px-4"
+                disabled={loading}
+              />
+              <Button
+                label={isEditMode ? "Cập Nhật" : "Thêm"}
+                onClick={handleSaveEmployee}
+                className="p-button-success bg-[#51bb1a] p-2 text-white text-[14px] gap-2 rounded"
+                icon={
+                  loading
+                    ? "pi pi-spinner pi-spin"
+                    : isEditMode
+                    ? "pi pi-check"
+                    : "pi pi-plus"
+                }
+                disabled={loading}
+              />
+            </div>
+          }
         >
-          {tableHeaders.map((header) => (
-            <Column
-              key={header}
-              field={header.toLowerCase().replace(/\s+/g, "")}
-              header={header}
-            />
-          ))}
-          <Column
-            body={(rowData) => (
-              <div className="flex gap-2">
-                <Button
-                  icon="pi pi-pencil"
-                  className="p-button-rounded p-button-text"
-                  onClick={() => openEmployeeDialog(rowData)}
-                />
-                <Button
-                  icon="pi pi-trash"
-                  className="p-button-rounded p-button-text p-button-danger"
-                  onClick={() => confirmDelete(rowData._id)}
-                />
-              </div>
-            )}
-            header="Thao tác"
-          />
-        </DataTable>
+          <div className="p-6 space-y-6">
+            <div className="grid grid-cols-2 gap-5">
+              {[
+                {
+                  id: "userName",
+                  label: "Tên Đăng Nhập",
+                  type: "text",
+                },
+                {
+                  id: "password",
+                  label: "Mật Khẩu",
+                  type: "password",
+                },
+                {
+                  id: "fullName",
+                  label: "Họ Tên",
+                  type: "text",
+                },
+                {
+                  id: "phone",
+                  label: "Số Điện Thoại",
+                  type: "tel",
+                },
+                {
+                  id: "email",
+                  label: "Email",
+                  type: "email",
+                  colSpan: 2,
+                },
+              ].map((field) => (
+                <div key={field.id} className={field.colSpan ? `col-span-${field.colSpan}` : ''}>
+                  {renderFormField({ ...field })}
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col col-span-2">
+              <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                <i className="pi pi-calendar mr-2 text-emerald-600" />
+                Ngày Sinh
+              </label>
+              <Calendar
+                id="birthday"
+                value={employeeForm.birthday || null}
+                onChange={(e) => setEmployeeForm({ ...employeeForm, birthday: e.value })}
+                dateFormat="dd/mm/yy"
+                showIcon
+                maxDate={new Date()}
+                className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                placeholder="Chọn ngày sinh"
+              />
+            </div>
+            <div className="flex flex-col col-span-2">
+              <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                <i className="pi pi-users mr-2 text-emerald-600" />
+                Vai Trò
+              </label>
+              <Dropdown
+                id="role"
+                value={employeeForm.role || null}
+                options={roles}
+                onChange={(e) => setEmployeeForm({ ...employeeForm, role: e.value })}
+                optionLabel="label"
+                className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                placeholder="Chọn vai trò"
+              />
+            </div>
+          </div>
+        </Dialog>
       </div>
-
-      {/* Dialog */}
-      <Dialog
-        visible={isDialogVisible}
-        onHide={closeDialog}
-        header={isEditMode ? "Chỉnh sửa nhân viên" : "Thêm nhân viên mới"}
-        className="w-8"
-      >
-        <div className="grid">
-          {renderFormField({
-            id: "userName",
-            label: "Tên đăng nhập",
-            type: "text",
-          })}
-          {renderFormField({
-            id: "fullName",
-            label: "Họ tên",
-            type: "text",
-          })}
-          {renderFormField({
-            id: "birthday",
-            label: "Ngày sinh",
-            type: "calendar",
-          })}
-          {renderFormField({
-            id: "phone",
-            label: "Số điện thoại",
-            type: "tel",
-          })}
-          {renderFormField({
-            id: "email",
-            label: "Email",
-            type: "email",
-          })}
-          {renderFormField({
-            id: "role",
-            label: "Vai trò",
-            type: "dropdown",
-          })}
-          {!isEditMode && renderFormField({
-            id: "password",
-            label: "Mật khẩu",
-            type: "password",
-          })}
-        </div>
-        <div className="flex justify-end gap-2 mt-4">
-          <Button
-            label="Hủy"
-            icon="pi pi-times"
-            className="p-button-text"
-            onClick={closeDialog}
-          />
-          <Button
-            label="Lưu"
-            icon="pi pi-check"
-            onClick={handleSaveEmployee}
-            loading={loading}
-          />
-        </div>
-      </Dialog>
     </div>
   );
 };
