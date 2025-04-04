@@ -1,4 +1,4 @@
-import React from "react";
+/* eslint-disable react/prop-types */
 import formatCurrency from "../Until/FotmatPrice";
 
 function ProductList({ products, handleAddToCart, handleClick }) {

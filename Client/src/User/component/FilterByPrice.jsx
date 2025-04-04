@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useState } from "react";
 import { RadioButton } from "primereact/radiobutton";
 import { Checkbox } from "primereact/checkbox";
@@ -15,7 +16,7 @@ const priceRanges = [
 const typeProducts = [
   { name: "Muối", key: "A" },
   { name: "Nước", key: "B" },
-  { name: "Trái", key: "C" },
+  { name: "Trái cây", key: "C" },
   { name: "Rau", key: "D" },
   // Thêm các loại khác nếu có
 ];

@@ -1,10 +1,16 @@
+/* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
 import formatCurrency from "../../Until/FotmatPrice";
 import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import "../../../index.css";
 
-function AllProducts({ sortOption, priceFilters, typeFilters }) {
+function AllProducts({
+  sortOption,
+  priceFilters,
+  typeFilters,
+  showPromotional = false,
+}) {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const { handleAddToCart, handleClick } = useCartAndNavigation();
@@ -12,15 +18,17 @@ function AllProducts({ sortOption, priceFilters, typeFilters }) {
   useEffect(() => {
     const fetchAllProducts = async () => {
       const res = await productsApi.getAllProducts();
-      setProducts(res);
+      const filteredRes = showPromotional
+        ? res.filter((product) => product?.productDiscount > 0)
+        : res;
+      setProducts(filteredRes);
     };
     fetchAllProducts();
-  }, []);
+  }, [showPromotional]);
 
   useEffect(() => {
     let filtered = [...products];
 
-    // Lọc theo giá
     if (priceFilters.length > 0) {
       filtered = filtered.filter((product) => {
         return priceFilters.some(
@@ -77,6 +85,11 @@ function AllProducts({ sortOption, priceFilters, typeFilters }) {
                 alt=""
                 className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px]"
               />
+              {showPromotional && product.productDiscount > 0 && (
+                <div className="lg:bg-red-500 w-10 p-1 text-white rounded lg:absolute top-2 left-2 text-center">
+                  {product.productDiscount}%
+                </div>
+              )}
               <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
                 <button
                   onClick={() => handleAddToCart(product._id)}

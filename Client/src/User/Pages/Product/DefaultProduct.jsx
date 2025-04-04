@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useState } from "react";
 import { ChevronRightIcon } from "@radix-ui/react-icons";
 import { RadioButton } from "primereact/radiobutton";
@@ -6,7 +7,7 @@ import PaginatorBasic from "../../../Until/Paginator";
 import "../../../index.css";
 import FilterByPrice from "../../component/FilterByPrice";
 
-function ProductLayout() {
+function ProductLayout({ showPromotional = false }) {
   const [sortOption, setSortOption] = useState("default");
   const [priceFilters, setPriceFilters] = useState([]);
   const [typeFilters, setTypeFilters] = useState([]);
@@ -30,7 +31,7 @@ function ProductLayout() {
           Trang chủ
         </a>
         <ChevronRightIcon />
-        <p className="font-medium ">Tất cả sản phẩm</p>
+        <p className="font-medium ">{showPromotional ? "Sản phẩm khuyến mãi" : "Tất cả sản phẩm"}</p>
       </div>
       <p className="border-b mt-4 border-gray-300 "></p>
       <div className="flex flex-col md:flex-row p-4 bg-background lg:px-[120px] lg:gap-4">
@@ -93,7 +94,7 @@ function ProductLayout() {
 
         <main className="w-full">
           <h1 className="text-[16px] font-medium text-[#1e1e1e] mb-4 lg:text-[26px] uppercase">
-            Tất cả sản phẩm
+            {showPromotional ? "Sản phẩm khuyến mãi" : "Tất cả sản phẩm"}
           </h1>
           <div className="bg-accent text-white rounded-lg ">
             <img
@@ -150,6 +151,7 @@ function ProductLayout() {
               sortOption={sortOption}
               priceFilters={priceFilters}
               typeFilters={typeFilters}
+              showPromotional={showPromotional}
             />
           </div>
           <PaginatorBasic />
