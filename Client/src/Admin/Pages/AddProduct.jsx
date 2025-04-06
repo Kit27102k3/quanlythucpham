@@ -248,7 +248,7 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
               <Button
                 label="Hủy"
                 icon="pi pi-times"
-                className="p-button-text"
+                className="p-button-text bg-red-500 text-white hover:bg-red-600 p-2 px-4 text-[16px] gap-2 rounded"
                 onClick={() => setVisible(false)}
               />
               <Button
@@ -256,6 +256,7 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                 icon="pi pi-check"
                 onClick={handleSubmit}
                 loading={isSubmitting}
+                className="bg-[#51bb1a] text-white hover:bg-[#45a116] p-2 px-4 text-[16px] gap-2 rounded"
               />
             </div>
           </div>

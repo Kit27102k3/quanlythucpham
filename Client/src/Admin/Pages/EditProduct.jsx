@@ -20,6 +20,10 @@ const EditProduct = ({
       ? product.productDescription.join(". ")
       : "",
   });
+  
+  console.log("Product data:", product);
+  console.log("Edited product category:", editedProduct.productCategory);
+  
   const [imagePreviews, setImagePreviews] = useState(
     product.productImages || []
   );
@@ -30,6 +34,7 @@ const EditProduct = ({
     const fetchCategories = async () => {
       try {
         const response = await categoriesApi.getAllCategories();
+        console.log("Danh mục sản phẩm:", response);
         if (Array.isArray(response)) {
           setCategories(response);
         } else {
@@ -198,7 +203,7 @@ const EditProduct = ({
             id="productCategory"
             value={editedProduct.productCategory}
             onChange={(e) => handleDropdownChange(e, 'productCategory')}
-            options={categories.map(cat => ({ label: cat.nameCategory, value: cat._id }))}
+            options={categories.map(cat => ({ label: cat.nameCategory, value: cat.nameCategory }))}
             className="border p-2 rounded w-full"
             placeholder="Chọn danh mục"
             filter
@@ -336,7 +341,7 @@ const EditProduct = ({
           <Button
             label="Hủy"
             icon="pi pi-times"
-            className="p-button-text"
+            className="p-button-text bg-red-500 text-white hover:bg-red-600 p-2 gap-2 px-4 rounded text-[16px]"
             onClick={() => setVisible(false)}
           />
           <Button
@@ -344,6 +349,7 @@ const EditProduct = ({
             icon="pi pi-check"
             onClick={handleSubmit}
             loading={isSubmitting}
+            className="bg-[#51bb1a] text-white hover:bg-[#45a116] p-2 gap-2 px-4 rounded text-[16px]"
           />
         </div>
       </div>

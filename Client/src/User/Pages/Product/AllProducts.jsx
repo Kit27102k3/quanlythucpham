@@ -65,6 +65,8 @@ function AllProducts({
         filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         break;
       default:
+        // Mặc định sắp xếp theo sản phẩm mới nhất
+        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         break;
     }
 
@@ -109,9 +111,20 @@ function AllProducts({
               <p className="font-medium text-[10px] hover:text-[#51aa1b] line-clamp-1 lg:text-[14px]">
                 {product.productName}
               </p>
-              <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                {formatCurrency(product.productPrice)}đ
-              </p>
+              {product.productDiscount > 0 ? (
+                <div className="flex items-center gap-2">
+                  <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
+                    {formatCurrency(product.productPromoPrice)}đ
+                  </p>
+                  <p className="text-gray-400 text-[10px] mt-1 lg:text-[14px] line-through">
+                    {formatCurrency(product.productPrice)}đ
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
+                  {formatCurrency(product.productPrice)}đ
+                </p>
+              )}
             </div>
           </div>
         ))}
