@@ -41,6 +41,12 @@ const Login = () => {
       const response = await authApi.login({ userName: username, password });
 
       if (response.data && response.data.accessToken) {
+        // Kiểm tra người dùng có bị chặn hay không
+        if (response.data.isBlocked) {
+          toast.error("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.");
+          return;
+        }
+        
         saveAuthData(response.data);
         toast.success("Đăng nhập thành công!");
         
@@ -54,7 +60,12 @@ const Login = () => {
         toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
       }
     } catch (userError) {
-      toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+      // Kiểm tra nếu lỗi là do tài khoản bị chặn
+      if (userError.response?.data?.message === "Account is blocked") {
+        toast.error("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ.");
+      } else {
+        toast.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+      }
       console.error(
         "Lỗi đăng nhập user:",
         userError.response?.data || userError.message
@@ -71,6 +82,11 @@ const Login = () => {
     localStorage.setItem("refreshToken", data.refreshToken);
     localStorage.setItem("userId", data.userId);
     localStorage.setItem("userRole", data.role || "user");
+    
+    // Lưu trạng thái isBlocked
+    if (data.isBlocked !== undefined) {
+      localStorage.setItem("isBlocked", data.isBlocked);
+    }
 
     if (data.permissions) {
       localStorage.setItem("permissions", JSON.stringify(data.permissions));

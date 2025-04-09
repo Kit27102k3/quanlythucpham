@@ -1,12 +1,20 @@
-import express from "express";
-const router = express.Router();
-import { orderCreate, orderGet, orderGetAll, orderUpdate, orderDelete, orderGetById } from "../Controller/order.js";
+import { Router } from "express";
+import { 
+  orderCreate, 
+  orderGet, 
+  orderGetAll,
+  orderGetById, 
+  orderDelete,
+  cancelOrder
+} from "../Controller/orderController.js";
+
+const router = Router();
 
 router.post("/", orderCreate);
-router.patch("/:id", orderUpdate);
-router.get("/user", orderGet);
 router.get("/", orderGetAll);
+router.get("/user", orderGet);
 router.get("/:id", orderGetById);
 router.delete("/:id", orderDelete);
+router.post("/:id/cancel", cancelOrder);
 
 export default router;

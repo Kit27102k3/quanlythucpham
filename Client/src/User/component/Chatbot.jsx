@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+/* eslint-disable react/prop-types */
+import { useState, useEffect, useRef } from "react";
 import { Send, MessageCircle, Minus } from "lucide-react";
 import axios from "axios"; // Thêm import axios
 

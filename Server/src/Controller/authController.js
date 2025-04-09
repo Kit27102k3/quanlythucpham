@@ -81,6 +81,14 @@ export const login = async (req, res) => {
       });
     }
 
+    // Kiểm tra nếu tài khoản bị chặn
+    if (user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Account is blocked",
+      });
+    }
+
     // 4. Xác thực mật khẩu
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -133,13 +141,13 @@ export const login = async (req, res) => {
       refreshToken,
       userId: user._id,
       role: "user",
+      isBlocked: user.isBlocked || false,
       permissions: ["Xem"],
       fullName: `${user.firstName} ${user.lastName}`,
       email: user.email,
       message: "Đăng nhập thành công"
     });
   } catch (error) {
-    console.error("Login error:", error);
     res.status(500).json({
       success: false,
       message: "Lỗi hệ thống. Vui lòng thử lại sau"
@@ -308,7 +316,6 @@ export const updateUser = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Lỗi khi cập nhật người dùng:", error);
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi cập nhật thông tin",
@@ -351,8 +358,6 @@ export const requestPasswordReset = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
-
-    console.log("Dữ liệu nhận được từ client:", req.body);
 
     if (!email || !otp || !newPassword) {
       return res.status(400).json({
@@ -415,10 +420,50 @@ export const resetPassword = async (req, res) => {
       message: "Đặt lại mật khẩu thành công",
     });
   } catch (error) {
-    console.error("Lỗi khi đặt lại mật khẩu:", error);
     return res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi đặt lại mật khẩu",
+    });
+  }
+};
+
+// Xử lý chặn/bỏ chặn người dùng
+export const blockUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { isBlocked } = req.body;
+
+    if (isBlocked === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin trạng thái chặn người dùng"
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng"
+      });
+    }
+
+    // Cập nhật trạng thái chặn
+    user.isBlocked = isBlocked;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: isBlocked ? "Đã chặn người dùng thành công" : "Đã bỏ chặn người dùng thành công",
+      user: {
+        _id: user._id,
+        isBlocked: user.isBlocked
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi xử lý yêu cầu"
     });
   }
 };

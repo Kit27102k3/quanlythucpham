@@ -80,6 +80,20 @@ const orderApi = {
     }
   },
   getOrderById,
+  
+  // Thêm hàm hủy đơn hàng
+  cancelOrder: async (orderId) => {
+    try {
+      // Thêm tham số để tránh cache
+      const timestamp = new Date().getTime();
+      const response = await axios.post(`${API_URL}/orders/${orderId}/cancel?_t=${timestamp}`);
+      console.log("Hủy đơn hàng thành công:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi hủy đơn hàng:", error);
+      throw error;
+    }
+  }
 };
 
 export default orderApi;

@@ -4,11 +4,13 @@ import DefaultLayout from "./User/Layout/DefaultLayout";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import HeaderAdmin from "./Admin/Layout/HeaderAdmin";
+import BlockedAccountAlert from "./User/component/BlockedAccountAlert";
 
 function App() {
   return (
     <>
       <Router>
+        <BlockedAccountAlert />
         <nav>
           <ul>
             {publicRoutes.map((route, index) => (

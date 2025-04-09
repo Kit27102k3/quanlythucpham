@@ -1,8 +1,14 @@
-import React from "react";
 import "../../../App.css";
 import "../../../index.css";
+import { useNavigate } from "react-router-dom";
 
 function ProductDetail() {
+  const navigate = useNavigate();
+
+  const handleCategoryClick = (category) => {
+    navigate(`/products/category/${encodeURIComponent(category)}`);
+  };
+
   return (
     <div className="product-dropdown-container">
       <div className="product-dropdown-content text-black bg-white shadow-lg">
@@ -23,8 +29,8 @@ function ProductDetail() {
               ].map((item, index) => (
                 <li key={index}>
                   <a
-                    href="#"
-                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors"
+                    onClick={() => handleCategoryClick(item)}
+                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors cursor-pointer"
                   >
                     {item}
                   </a>
@@ -47,8 +53,8 @@ function ProductDetail() {
               ].map((item, index) => (
                 <li key={index}>
                   <a
-                    href="#"
-                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors"
+                    onClick={() => handleCategoryClick(item)}
+                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors cursor-pointer"
                   >
                     {item}
                   </a>
@@ -70,8 +76,8 @@ function ProductDetail() {
               ].map((item, index) => (
                 <li key={index}>
                   <a
-                    href="#"
-                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors"
+                    onClick={() => handleCategoryClick(item)}
+                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors cursor-pointer"
                   >
                     {item}
                   </a>
@@ -94,8 +100,8 @@ function ProductDetail() {
               ].map((item, index) => (
                 <li key={index}>
                   <a
-                    href="#"
-                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors"
+                    onClick={() => handleCategoryClick(item)}
+                    className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors cursor-pointer"
                   >
                     {item}
                   </a>

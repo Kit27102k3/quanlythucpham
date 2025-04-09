@@ -24,10 +24,10 @@ const seedCategories = async () => {
         { upsert: true }
       );
     }
-
-    console.log("Categories seeded successfully");
+    
+    // Đã cập nhật xong categories
   } catch (error) {
-    console.error("Error seeding categories:", error);
+    // Xử lý lỗi nếu có
   }
 };
 

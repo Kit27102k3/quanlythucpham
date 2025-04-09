@@ -32,36 +32,49 @@ const OrderAdmin = () => {
   useEffect(() => {
     const fetchAndUpdateOrders = async () => {
       try {
-        const response = await fetch("http://localhost:8080/orders");
-        const data = await response.json();
-        const updatedOrders = await Promise.all(
-          data.map(async (order) => {
-            const newStatus = determineStatus(order.createdAt);
-            if (order.status !== newStatus) {
-              await updateOrderStatus(order._id, newStatus);
-              return { ...order, status: newStatus };
-            }
-            return order;
-          })
-        );
-
-        const sortedOrders = updatedOrders.sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-
-        setOrders(sortedOrders);
-        calculateOrderStats(sortedOrders);
+        setLoading(true);
+        // Thêm tham số để tránh cache
+        const timestamp = new Date().getTime();
+        
+        // Sửa URL cho phù hợp với API server
+        const response = await fetch(`http://localhost:8080/orders?_cache=${timestamp}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            // API chưa có dữ liệu đơn hàng hoặc endpoint không tồn tại
+            setOrders([]);
+            calculateOrderStats([]);
+          } else {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+        } else {
+          const data = await response.json();
+          
+          const sortedOrders = data.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          );
+  
+          setOrders(sortedOrders);
+          calculateOrderStats(sortedOrders);
+        }
+        setLoading(false);
       } catch (error) {
-        console.error("Lỗi khi xử lý đơn hàng:", error);
-      } finally {
+        setOrders([]);
+        calculateOrderStats([]);
         setLoading(false);
       }
     };
 
     fetchAndUpdateOrders();
 
-    // Kiểm tra cập nhật mỗi giờ
-    const interval = setInterval(fetchAndUpdateOrders, 3600000);
+    // Làm mới dữ liệu mỗi 10 giây
+    const interval = setInterval(fetchAndUpdateOrders, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -396,9 +409,9 @@ const OrderAdmin = () => {
                           onClick={() => handleViewOrder(order)}
                           tooltip="Xem chi tiết"
                           tooltipOptions={{ position: 'top' }}
-                          className="w-10 h-10 hover:bg-blue-50"
+                          className="w-10 h-10 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-all"
                           pt={{ 
-                            root: { className: 'flex items-center justify-center' },
+                            root: { className: 'flex items-center justify-center shadow-sm' },
                             icon: { className: 'text-blue-600' } 
                           }}
                         />
@@ -410,9 +423,9 @@ const OrderAdmin = () => {
                           onClick={() => confirmDeleteOrder(order._id)}
                           tooltip="Xóa đơn hàng"
                           tooltipOptions={{ position: 'top' }}
-                          className="w-10 h-10 hover:bg-red-50"
+                          className="w-10 h-10 hover:bg-red-50 border border-transparent hover:border-red-200 transition-all"
                           pt={{ 
-                            root: { className: 'flex items-center justify-center' },
+                            root: { className: 'flex items-center justify-center shadow-sm' },
                             icon: { className: 'text-red-600' } 
                           }}
                         />
@@ -522,17 +535,17 @@ const OrderAdmin = () => {
                       <tr key={index} className="border-b">
                         <td className="px-6 py-4">
                           <div className="flex items-center">
-                            {item.product?.productImages && item.product.productImages[0] && (
+                            {item.productId?.productImages && item.productId.productImages[0] && (
                               <img 
-                                src={item.product.productImages[0]} 
-                                alt={item.product.productName} 
+                                src={item.productId.productImages[0]} 
+                                alt={item.productId.productName} 
                                 className="w-14 h-14 object-cover rounded mr-4"
                               />
                             )}
                             <div>
-                              <p className="font-medium">{item.product?.productName || "Sản phẩm không có sẵn"}</p>
-                              {item.product?.productCode && (
-                                <p className="text-xs text-gray-500 mt-1">Mã: {item.product.productCode}</p>
+                              <p className="font-medium">{item.productId?.productName || "Sản phẩm không có sẵn"}</p>
+                              {item.productId?.productCode && (
+                                <p className="text-xs text-gray-500 mt-1">Mã: {item.productId.productCode}</p>
                               )}
                             </div>
                           </div>
@@ -558,7 +571,7 @@ const OrderAdmin = () => {
                 label="Đóng" 
                 icon="pi pi-times" 
                 onClick={() => setViewOrder(null)} 
-                className="p-button-outlined px-4 py-2"
+                className="px-4 py-2.5 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg transition-colors flex items-center gap-2"
               />
             </div>
           </div>
@@ -572,23 +585,37 @@ const OrderAdmin = () => {
         style={{ width: '450px' }}
         modal
         footer={
-          <div className="pt-3">
-            <Button label="Không" icon="pi pi-times" onClick={() => setDeleteDialog(false)} className="p-button-text mr-3" />
-            <Button label="Có" icon="pi pi-check" onClick={handleDeleteOrder} autoFocus className="p-button-danger" />
+          <div className="pt-3 flex justify-end gap-3">
+            <Button 
+              label="Không" 
+              icon="pi pi-times" 
+              onClick={() => setDeleteDialog(false)} 
+              className="px-4 py-2.5 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg transition-colors" 
+            />
+            <Button 
+              label="Có, xóa" 
+              icon="pi pi-trash" 
+              onClick={handleDeleteOrder} 
+              autoFocus 
+              className="px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 font-medium rounded-lg transition-colors flex items-center gap-2" 
+            />
           </div>
         }
         onHide={() => setDeleteDialog(false)}
         contentClassName="p-5"
         pt={{
-          root: { className: 'rounded-lg border border-gray-200' },
-          header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg' },
-          closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full' },
-          content: { className: 'p-4' }
+          root: { className: 'rounded-lg border border-gray-200 shadow-lg' },
+          header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg text-lg font-semibold' },
+          closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full transition-colors' },
+          content: { className: 'p-5' }
         }}
       >
-        <div className="flex items-center justify-center pt-3">
-          <i className="pi pi-exclamation-triangle mr-4" style={{ fontSize: '2rem', color: '#ff5757' }} />
-          <span className="text-lg">Bạn có chắc chắn muốn xóa đơn hàng này?</span>
+        <div className="flex flex-col items-center justify-center p-3">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <i className="pi pi-exclamation-triangle text-red-500" style={{ fontSize: '1.75rem' }} />
+          </div>
+          <h3 className="text-xl font-medium text-gray-800 mb-2">Xóa đơn hàng</h3>
+          <p className="text-gray-600 text-center">Bạn có chắc chắn muốn xóa đơn hàng này? Hành động này không thể hoàn tác.</p>
         </div>
       </Dialog>
     </div>

@@ -28,6 +28,7 @@ import OrderConfirmation from "../User/Cart/OrderConfirmation";
 import NewsPage from "../User/Pages/NewsPage/NewsPage";
 import TipsPage from "../User/Pages/TipsPage/TipsPage";
 import PaymentResult from "../User/Pages/PaymentResult";
+import CategoryProducts from "../User/Pages/Product/CategoryProducts";
 
 const publicRoutes = [
   {
@@ -63,6 +64,10 @@ const publicRoutes = [
   {
     path: "/san-pham",
     page: DefaultProduct,
+  },
+  {
+    path: "/products/category/:category",
+    page: CategoryProducts,
   },
   {
     path: "/order-confirmation/:orderId",

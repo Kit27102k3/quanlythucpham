@@ -2,8 +2,6 @@ import Order from "../Model/Order.js";
 
 export const orderCreate = async (req, res) => {
   try {
-    console.log("Creating order with data:", req.body);
-    
     // Validate required fields
     const { userId, products, totalAmount, paymentMethod } = req.body;
     if (!userId || !products || !Array.isArray(products) || products.length === 0 || !totalAmount) {
@@ -26,12 +24,10 @@ export const orderCreate = async (req, res) => {
     
     // Save the order
     await order.save();
-    console.log("Order created successfully:", order._id);
 
     // Return success response with order data
     res.status(201).json(order);
   } catch (err) {
-    console.error("Error creating order:", err);
     res.status(500).json({ 
       success: false,
       error: err.message 
@@ -41,26 +37,18 @@ export const orderCreate = async (req, res) => {
 
 export const orderGet = async (req, res) => {
   try {
-    console.log("Query params:", req.query);
-    console.log("User from token:", req.user);
-    
     const userId = req.query.userId || req.user?._id;
-    console.log("Using userId:", userId);
     
     // Sử dụng userId nếu có, nếu không trả về tất cả đơn hàng
     const query = userId ? { userId } : {};
-    console.log("Query filter:", query);
     
     const orders = await Order.find(query)
       .populate('userId')
       .populate('products.productId')
       .sort({ createdAt: -1 });
-      
-    console.log(`Trả về ${orders.length} đơn hàng${userId ? ` cho userId: ${userId}` : ''}`);
     
     res.status(200).json(orders);
   } catch (err) {
-    console.error("Lỗi khi lấy đơn hàng:", err);
     res.status(500).json({ 
       success: false,
       error: err.message 
@@ -122,3 +110,52 @@ export const orderDelete = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Hàm hủy đơn hàng
+export const cancelOrder = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    
+    // Tìm đơn hàng theo ID
+    const order = await Order.findById(orderId);
+    
+    // Kiểm tra nếu đơn hàng không tồn tại
+    if (!order) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Không tìm thấy đơn hàng" 
+      });
+    }
+    
+    // Kiểm tra xem đơn hàng có thể hủy không (chỉ được hủy khi đang ở trạng thái "pending" hoặc "awaiting_payment")
+    if (order.status !== "pending" && order.status !== "awaiting_payment") {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Chỉ có thể hủy đơn hàng ở trạng thái chờ xử lý hoặc chờ thanh toán" 
+      });
+    }
+    
+    // Cập nhật trạng thái đơn hàng thành "cancelled"
+    order.status = "cancelled";
+    
+    // Thêm ghi chú về việc đơn hàng bị hủy
+    order.notes = order.notes ? 
+      `${order.notes}, Đơn hàng đã bị hủy bởi người dùng` : 
+      "Đơn hàng đã bị hủy bởi người dùng";
+    
+    // Lưu các thay đổi vào đơn hàng
+    await order.save();
+    
+    return res.status(200).json({
+      success: true,
+      message: "Hủy đơn hàng thành công",
+      data: order
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi server khi hủy đơn hàng",
+      error: error.message
+    });
+  }
+}; 

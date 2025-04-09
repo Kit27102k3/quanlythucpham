@@ -10,6 +10,10 @@ const UserSchema = new mongoose.Schema(
     password: { type: String, required: true },
     address: { type: String, require: false, default: "" },
     userImage: { type: String, required: false, default: "" },
+    isBlocked: { type: Boolean, default: false },
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
+    lastLogin: { type: Date, default: null },
   },
   { timestamps: true }
 );

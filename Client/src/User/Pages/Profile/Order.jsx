@@ -1,43 +1,44 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState } from "react";
-import { ClipboardListIcon, PackageIcon, CreditCardIcon } from "lucide-react";
+import { ClipboardListIcon, PackageIcon, CreditCardIcon, XCircleIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import orderApi from "../../../api/orderApi"; // Giả sử bạn có file API này
-import formatCurrency  from "../../Until/FotmatPrice"; // Hàm định dạng tiền tệ
+import formatCurrency from "../../Until/FotmatPrice"; // Hàm định dạng tiền tệ
+import { toast } from "react-toastify";
 
 export default function Order() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const navigate = useNavigate();
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await orderApi.getUserOrders();
+      // Sắp xếp đơn hàng mới nhất lên đầu
+      const sortedOrders = response.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+
+      setOrders(sortedOrders);
+      setLoading(false);
+    } catch (error) {
+      console.error("Lỗi khi lấy đơn hàng:", error);
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
-    
-    const fetchOrders = async () => {
+
+    const getOrders = async () => {
       if (!isMounted) return;
-      
-      try {
-        setLoading(true);
-        const response = await orderApi.getUserOrders(); 
-        // Sắp xếp đơn hàng mới nhất lên đầu
-        const sortedOrders = response.sort((a, b) => 
-          new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        
-        if (isMounted) {
-          setOrders(sortedOrders);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error("Lỗi khi lấy đơn hàng:", error);
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
+      await fetchOrders();
     };
 
-    fetchOrders();
-    
+    getOrders();
+
     // Cleanup function
     return () => {
       isMounted = false;
@@ -48,6 +49,47 @@ export default function Order() {
     pending: orders.filter((o) => o.status === "pending").length,
     paid: orders.filter((o) => o.status === "paid").length,
     completed: orders.filter((o) => o.status === "completed").length,
+  };
+
+  const handleCancelOrder = async (orderId, event) => {
+    event.stopPropagation(); // Ngăn không cho event click truyền lên row
+    
+    if (cancelLoading) return;
+    
+    try {
+      setCancelLoading(true);
+      console.log("Đang gửi yêu cầu hủy đơn hàng ID:", orderId);
+      
+      // Gọi API để hủy đơn hàng
+      const response = await orderApi.cancelOrder(orderId);
+      console.log("Kết quả hủy đơn hàng:", response);
+      
+      if (response && response.success) {
+        // Cập nhật UI ngay lập tức
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order._id === orderId 
+              ? { ...order, status: "cancelled" } 
+              : order
+          )
+        );
+        
+        toast.success("Đơn hàng đã được hủy thành công");
+        
+        // Tải lại dữ liệu đơn hàng sau 1 giây
+        setTimeout(() => {
+          fetchOrders();
+        }, 1000);
+      } else {
+        console.error("Không nhận được phản hồi thành công");
+        toast.error("Không thể hủy đơn hàng. Vui lòng thử lại sau");
+      }
+    } catch (error) {
+      console.error("Lỗi khi hủy đơn hàng:", error);
+      toast.error("Không thể hủy đơn hàng. Vui lòng thử lại sau");
+    } finally {
+      setCancelLoading(false);
+    }
   };
 
   if (loading) return <div className="text-center py-8">Đang tải...</div>;
@@ -73,6 +115,7 @@ export default function Order() {
                   "Giá trị đơn hàng",
                   "TT thanh toán",
                   "TT vận chuyển",
+                  "Thao tác"
                 ].map((header, index) => (
                   <th
                     key={index}
@@ -87,7 +130,7 @@ export default function Order() {
               {orders.length === 0 ? (
                 <tr className="text-center">
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-6 text-center text-gray-500 bg-gray-50"
                   >
                     <div className="flex flex-col items-center justify-center space-y-4">
@@ -96,7 +139,7 @@ export default function Order() {
                         Không có đơn hàng nào.
                       </p>
                       <button
-                        onClick={() => navigate("/products")}
+                        onClick={() => navigate("/san-pham")}
                         className="px-4 py-2 bg-[#51bb1a] text-white rounded-md hover:bg-[#51bb1a] transition-colors"
                       >
                         Bắt đầu mua sắm
@@ -141,11 +184,25 @@ export default function Order() {
                         className={`px-2 py-1 text-xs rounded-full ${
                           order.status === "completed"
                             ? "bg-purple-100 text-purple-800"
+                            : order.status === "cancelled"
+                            ? "bg-red-100 text-red-800"
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
                         {getShippingStatus(order.status)}
                       </span>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      {(order.status === "pending" || order.status === "awaiting_payment") && (
+                        <button
+                          onClick={(e) => handleCancelOrder(order._id, e)}
+                          className="text-red-500 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1 text-sm transition-colors"
+                          disabled={cancelLoading}
+                        >
+                          <XCircleIcon className="w-4 h-4" />
+                          Hủy đơn
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -185,6 +242,8 @@ function getShippingStatus(status) {
       return "Đang giao hàng";
     case "completed":
       return "Đã giao";
+    case "cancelled":
+      return "Đã hủy";
     default:
       return status;
   }

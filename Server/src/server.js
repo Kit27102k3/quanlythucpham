@@ -42,17 +42,6 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Debug middleware
-app.use((req, res, next) => {
-  console.log('------------------------------------------------------------');
-  console.log(`${req.method} ${req.url}`);
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('Body:', JSON.stringify(req.body, null, 2));
-  console.log('Query:', JSON.stringify(req.query, null, 2));
-  console.log('------------------------------------------------------------');
-  next();
-});
-
 // Middleware kiểm tra token và trích xuất thông tin người dùng
 app.use((req, res, next) => {
   try {
@@ -65,14 +54,12 @@ app.use((req, res, next) => {
       try {
         const decoded = jwt.verify(token, secretKey);
         req.user = decoded;
-        console.log(`Xác thực thành công: userId=${decoded._id}`);
       } catch (error) {
-        console.log('Token không hợp lệ hoặc hết hạn');
+        // Xử lý token không hợp lệ
       }
     }
     next();
   } catch (error) {
-    console.error('Lỗi middleware xác thực:', error);
     next();
   }
 });
@@ -81,7 +68,6 @@ const URI = process.env.MONGOOSE_URI;
 mongoose
   .connect(URI)
   .then(async () => {
-    console.log("Connected to MongoDB");
     await seedCategories();
   })
   .catch((err) => console.error("MongoDB connection error:", err));
@@ -110,5 +96,5 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  // Server đã khởi động
 });
