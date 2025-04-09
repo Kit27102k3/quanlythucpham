@@ -1,8 +1,12 @@
-import express from "express";
-import { getProductInfoForChatbot } from "../Controller/chatbotController.js";
+import express from 'express';
+import { handleMessage, handleRasaWebhook } from '../Controller/chatbotController.js';
 
 const router = express.Router();
 
-router.post("/chat", getProductInfoForChatbot);
+// Route cho chatbot
+router.post('/', handleMessage);
 
-export default router;
+// Route cho webhook từ Rasa
+router.post('/webhook', handleRasaWebhook);
+
+export const chatbotRoutes = router;

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable no-undef */
 import express from "express";
 import cors from "cors";
@@ -16,7 +17,7 @@ import scraperRoutes from "./routes/scraperRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
 import productsRoutes from "./routes/productsRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
-import chatbotRoutes from "./routes/chatbotRoutes.js";
+import { chatbotRoutes } from "./routes/chatbotRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
@@ -81,7 +82,7 @@ app.use("/api", scraperRoutes);
 app.use("/api", productsRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use("/api", chatbotRoutes);
+app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/orders", orderRoutes);
 app.use("/api/dashboard", dashboardRoutes);

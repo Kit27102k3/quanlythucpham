@@ -77,53 +77,34 @@ export const createSepayPaymentUrl = async (req, res) => {
 // Xử lý callback từ SePay
 export const handleSepayCallback = async (req, res) => {
   try {
-    const { orderId, transactionId, amount, status, redirectUrl } = req.body;
-    console.log("SePay callback data:", req.body);
+    const { orderId, amount, resultCode, message } = req.body;
 
-    // Tìm payment dựa trên orderId
+    // Find the payment by orderId
     const payment = await Payment.findOne({ orderId });
     if (!payment) {
       console.error("Không tìm thấy thông tin thanh toán cho orderId:", orderId);
-      // Nếu có redirectUrl, vẫn redirect về đó với trạng thái thất bại
-      if (redirectUrl) {
-        const failureUrl = redirectUrl.replace("status=success", "status=failed");
-        return res.redirect(failureUrl);
-      }
-      return res.status(404).json({ message: "Không tìm thấy thông tin thanh toán" });
+      return res.status(404).send("Không tìm thấy thông tin thanh toán");
     }
 
-    // Cập nhật trạng thái thanh toán
-    payment.status = status === "success" ? "completed" : "failed";
-    payment.transactionId = transactionId;
+    // Update payment status
+    payment.paymentStatus = resultCode === '0' ? 'completed' : 'failed';
+    payment.responseCode = resultCode;
+    payment.responseMessage = message;
     await payment.save();
-    console.log("Đã cập nhật trạng thái thanh toán:", payment._id, payment.status);
 
-    // Cập nhật trạng thái đơn hàng
-    const order = await Order.findById(orderId);
-    if (order) {
-      order.status = status === "success" ? "paid" : "payment_failed";
-      await order.save();
-      console.log("Đã cập nhật trạng thái đơn hàng:", order._id, order.status);
-    } else {
+    // Update order status
+    const order = await Order.findById(payment.orderId);
+    if (!order) {
       console.error("Không tìm thấy đơn hàng:", orderId);
+      return res.status(404).send("Không tìm thấy đơn hàng");
     }
 
-    // Nếu có redirectUrl, chuyển hướng về đó
-    if (redirectUrl) {
-      console.log("Chuyển hướng đến:", redirectUrl);
-      return res.redirect(redirectUrl);
-    }
+    order.status = resultCode === '0' ? 'paid' : 'unpaid';
+    await order.save();
 
-    // Nếu không có redirectUrl, trả về JSON response
-    res.json({ 
-      success: true,
-      message: "Cập nhật trạng thái thanh toán thành công",
-      data: {
-        orderId,
-        paymentId: payment._id,
-        status: payment.status
-      }
-    });
+    // Redirect to client result page
+    const redirectUrl = `${process.env.CLIENT_URL}/payment-result?orderId=${order._id}&status=${payment.paymentStatus}&amount=${amount}`;
+    res.redirect(redirectUrl);
   } catch (error) {
     console.error("Lỗi khi xử lý callback SePay:", error);
     

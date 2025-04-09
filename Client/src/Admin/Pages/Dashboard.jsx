@@ -593,7 +593,7 @@ const Dashboard = () => {
                   onMouseEnter={onOrderPieEnter}
                 >
                   {orderStatusData.map((entry, index) => (
-                    <Cell 
+                    <Cell
                       key={`cell-order-${index}`} 
                       fill={`url(#color-order-${index})`}
                       stroke="#fff"
@@ -694,7 +694,7 @@ const Dashboard = () => {
 
   return (
     <div className="flex-1 bg-gray-50 overflow-y-auto min-h-screen">
-      {renderContent()}
+        {renderContent()}
     </div>
   );
 };

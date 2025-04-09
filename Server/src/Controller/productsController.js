@@ -356,12 +356,8 @@ export const getProductByCategory = async (req, res) => {
   try {
     const categoryName = req.params.category;
     const excludeId = req.query.excludeId;
-    const category = await Category.findOne({ nameCategory: categoryName });
-    if (!category) {
-      return res.status(404).json({ message: "Không tìm thấy danh mục" });
-    }
     
-    let query = { productCategory: category.nameCategory };
+    let query = { productCategory: categoryName };
     if (excludeId) {
       query._id = { $ne: excludeId };
     }

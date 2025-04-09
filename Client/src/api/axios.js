@@ -1,62 +1,91 @@
 import axios from "axios";
 import { API_BASE_URL } from "../config/apiConfig";
 
-const instance = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
-  withCredentials: true,
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8081',
+  timeout: 10000, // 10 seconds
   headers: {
     "Content-Type": "application/json",
-  },
+  }
 });
 
-// Add a request interceptor
-instance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+// Request interceptor
+apiClient.interceptors.request.use((config) => {
+  // Tự động thêm token nếu có
+  const token = localStorage.getItem("access_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-);
 
-// Add a response interceptor
-instance.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+  // Thêm cache buster cho GET requests để tránh cache không mong muốn
+  if (config.method === "get") {
+    config.params = {
+      ...config.params,
+      _t: Date.now() // cache buster
+    };
+  }
 
-    // If the error status is 401 and there is no originalRequest._retry flag,
-    // it means the token has expired and we need to refresh it
-    if (error.response.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+  return config;
+}, (error) => {
+  return Promise.reject(error);
+});
 
-      try {
-        const refreshToken = localStorage.getItem("refreshToken");
-        const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
-          refreshToken,
+// Response interceptor
+apiClient.interceptors.response.use((response) => {
+  return response;
+}, async (error) => {
+  const originalRequest = error.config;
+
+  // Xử lý token hết hạn (401)
+  if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    originalRequest._retry = true;
+    
+    try {
+      // Lấy refresh token
+      const refreshToken = localStorage.getItem("refresh_token");
+      
+      if (refreshToken) {
+        // Gọi API để refresh token
+        const res = await axios.post("http://localhost:8081/api/auth/refresh-token", {
+          refreshToken
         });
-
-        const { accessToken } = response.data;
-        localStorage.setItem("accessToken", accessToken);
-
-        // Retry the original request
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return instance(originalRequest);
-      } catch (refreshError) {
-        // If refresh token fails, logout the user
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        window.location.href = "/login";
-        return Promise.reject(refreshError);
+        
+        // Lưu token mới
+        if (res.data && res.data.accessToken) {
+          localStorage.setItem("access_token", res.data.accessToken);
+          
+          // Cập nhật token trong header
+          apiClient.defaults.headers.common["Authorization"] = `Bearer ${res.data.accessToken}`;
+          originalRequest.headers["Authorization"] = `Bearer ${res.data.accessToken}`;
+          
+          // Thử lại request ban đầu
+          return apiClient(originalRequest);
+        }
       }
+    } catch (refreshError) {
+      // Xử lý lỗi refresh token
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user");
+      
+      // Chuyển hướng tới trang đăng nhập nếu cần
+      window.location.href = "/dang-nhap";
     }
-
-    return Promise.reject(error);
   }
-);
+  
+  // Xử lý các lỗi khác
+  if (error.response) {
+    // Lỗi từ server
+    console.error("Server error:", error.response.status, error.response.data);
+  } else if (error.request) {
+    // Không nhận được phản hồi từ server
+    console.error("Network error, no response received");
+  } else {
+    // Lỗi trong quá trình thiết lập request
+    console.error("Error setting up request:", error.message);
+  }
+  
+  return Promise.reject(error);
+});
 
-export default instance; 
+export default apiClient; 

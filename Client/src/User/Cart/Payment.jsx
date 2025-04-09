@@ -74,7 +74,7 @@ export default function Payment() {
   };
 
   const handleApplyCoupon = () => {
-    console.log(`Applying coupon: ${couponCode}`);
+    // console.log(`Applying coupon: ${couponCode}`);
   };
 
   const handlePlaceOrder = async () => {

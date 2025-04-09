@@ -24,9 +24,6 @@ const EditProduct = ({
       : "",
   });
   
-  console.log("Product data:", product);
-  console.log("Edited product category:", editedProduct.productCategory);
-  
   const [imagePreviews, setImagePreviews] = useState(
     product.productImages || []
   );
@@ -37,7 +34,6 @@ const EditProduct = ({
     const fetchCategories = async () => {
       try {
         const response = await categoriesApi.getAllCategories();
-        console.log("Danh mục sản phẩm:", response);
         if (Array.isArray(response)) {
           setCategories(response);
         } else {
@@ -45,7 +41,6 @@ const EditProduct = ({
         }
       } catch (error) {
         toast.error("Không thể tải danh mục sản phẩm");
-        console.error("Lỗi khi lấy danh mục:", error);
       }
     };
     fetchCategories();
@@ -176,6 +171,14 @@ const EditProduct = ({
       });
     };
   }, [imagePreviews]);
+
+  useEffect(() => {
+    if (product) {
+      setEditedProduct({
+        ...product,
+      });
+    }
+  }, [product]);
 
   return (
     <div className="relative p-3">

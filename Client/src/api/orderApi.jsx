@@ -28,49 +28,49 @@ const orderApi = {
   },
   getUserOrders: async () => {
     try {
-      // Kiểm tra các khóa trong localStorage
-      console.log("All localStorage keys:", Object.keys(localStorage));
-      
-      // Thử lấy từ các khóa phổ biến
+      // Get the access token
+      // All localStorage keys: ["access_token", "refresh_token", "auth_user", "user"]
+      // console.log("All localStorage keys:", Object.keys(localStorage));
+
+      // Try to find user ID from user data
       const userString = localStorage.getItem("user");
-      const authString = localStorage.getItem("auth");
-      const tokenString = localStorage.getItem("token");
-      
-      console.log("User data from localStorage:", userString);
-      console.log("Auth data from localStorage:", authString);
-      console.log("Token data from localStorage:", tokenString);
-      
-      // Phân tích cú pháp dữ liệu người dùng
+      // console.log("User data from localStorage:", userString);
+      const authString = localStorage.getItem("auth_user");
+      // console.log("Auth data from localStorage:", authString);
+      const tokenString = localStorage.getItem("access_token");
+      // console.log("Token data from localStorage:", tokenString);
+
       let userId = null;
-      
-      // Thử lấy từ user
-      try {
-        if (userString) {
+
+      // First, try to get userId from user object
+      if (userString) {
+        try {
           const userData = JSON.parse(userString);
           userId = userData._id;
-          console.log("UserId from user object:", userId);
+          // console.log("UserId from user object:", userId);
+        } catch (e) {
+          // Invalid JSON, continue to next method
         }
-      } catch (parseError) {
-        console.error("Error parsing user data:", parseError);
       }
-      
-      // Thử lấy từ auth nếu chưa có userId
+
+      // If userId is still null, try to get it from auth_user
       if (!userId && authString) {
         try {
           const authData = JSON.parse(authString);
-          userId = authData.user?._id || authData._id;
-          console.log("UserId from auth object:", userId);
-        } catch (parseError) {
-          console.error("Error parsing auth data:", parseError);
+          userId = authData.user?._id;
+          // console.log("UserId from auth object:", userId);
+        } catch (e) {
+          // Invalid JSON, continue to next method
         }
       }
-      
-      // Nếu có userId, truyền vào query parameter
-      const url = userId 
-        ? `${API_URL}/orders/user?userId=${userId}`
-        : `${API_URL}/orders/user`;
-      
-      console.log("Calling API with URL:", url);  
+
+      // If we have a user ID, use it to filter orders
+      let url = API_URL;
+      if (userId) {
+        url = `${API_URL}/orders/user?userId=${userId}`;
+      }
+
+      // console.log("Calling API with URL:", url);
       const response = await axios.get(url);
       return response.data;
     } catch (error) {
@@ -87,7 +87,7 @@ const orderApi = {
       // Thêm tham số để tránh cache
       const timestamp = new Date().getTime();
       const response = await axios.post(`${API_URL}/orders/${orderId}/cancel?_t=${timestamp}`);
-      console.log("Hủy đơn hàng thành công:", response.data);
+      // console.log("Hủy đơn hàng thành công:", response.data);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi hủy đơn hàng:", error);

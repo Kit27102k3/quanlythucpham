@@ -29,7 +29,7 @@ const Categories = () => {
       const response = await categoriesApi.getAllCategories();
       setCategories(response);
     } catch (error) {
-      console.log("Lỗi khi tải danh mục:", error);
+      // console.log("Lỗi khi tải danh mục:", error);
     }
   };
 
@@ -105,7 +105,7 @@ const Categories = () => {
       setNewCategory({ codeCategory: "", nameCategory: "" });
       toast.success("Thêm danh mục thành công");
     } catch (error) {
-      console.log("Lỗi khi thêm danh mục:", error);
+      // console.log("Lỗi khi thêm danh mục:", error);
     }
   };
 
@@ -115,7 +115,7 @@ const Categories = () => {
       setCategories(categories.filter((category) => category._id !== _id));
       toast.success("Xóa danh mục thành công");
     } catch (error) {
-      console.log("Lỗi khi xóa danh mục:", error);
+      // console.log("Lỗi khi xóa danh mục:", error);
     }
   };
 
@@ -138,7 +138,7 @@ const Categories = () => {
       setEditVisible(false);
       toast.success("Cập nhật danh mục thành công");
     } catch (error) {
-      console.log("Lỗi khi cập nhật danh mục:", error);
+      // console.log("Lỗi khi cập nhật danh mục:", error);
     }
   };
 

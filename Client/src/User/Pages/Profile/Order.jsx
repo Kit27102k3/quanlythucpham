@@ -58,11 +58,11 @@ export default function Order() {
     
     try {
       setCancelLoading(true);
-      console.log("Đang gửi yêu cầu hủy đơn hàng ID:", orderId);
+      // console.log("Đang gửi yêu cầu hủy đơn hàng ID:", orderId);
       
       // Gọi API để hủy đơn hàng
       const response = await orderApi.cancelOrder(orderId);
-      console.log("Kết quả hủy đơn hàng:", response);
+      // console.log("Kết quả hủy đơn hàng:", response);
       
       if (response && response.success) {
         // Cập nhật UI ngay lập tức

@@ -84,10 +84,20 @@ const productsApi = {
 
   getCategoryById: async (id) => {
     try {
-      const response = await axios.get(`${CATEGORY_API_URL}/name/${encodeURIComponent(id)}`);
+      const response = await axios.get(`${CATEGORY_API_URL}/${id}`);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi lấy thông tin danh mục:", error);
+      throw error;
+    }
+  },
+
+  getCategoryByName: async (name) => {
+    try {
+      const response = await axios.get(`${CATEGORY_API_URL}/name/${encodeURIComponent(name)}`);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy thông tin danh mục theo tên:", error);
       throw error;
     }
   },

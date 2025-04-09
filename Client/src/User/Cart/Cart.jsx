@@ -20,7 +20,7 @@ const Cart = () => {
       setCart(res.cart);
       setSelectedItems(res.cart.items.map((item) => item.productId._id));
     } catch (error) {
-      console.log("Lỗi khi tải giỏ hàng!", error);
+      console.error("Lỗi khi tải giỏ hàng!", error);
     }
   };
 

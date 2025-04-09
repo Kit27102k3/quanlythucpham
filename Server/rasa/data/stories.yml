@@ -1,0 +1,42 @@
+version: "3.1"
+
+stories:
+- story: greet path
+  steps:
+  - intent: greet
+  - action: utter_greet
+
+- story: goodbye path
+  steps:
+  - intent: goodbye
+  - action: utter_goodbye
+
+- story: help path
+  steps:
+  - intent: help
+  - action: utter_help
+
+- story: product info path
+  steps:
+  - intent: product_info
+  - action: action_product_info
+
+- story: category products path
+  steps:
+  - intent: category_products
+  - action: action_category_products
+
+- story: order status path
+  steps:
+  - intent: order_status
+  - action: action_order_status
+
+- story: mood great path
+  steps:
+  - intent: mood_great
+  - action: utter_mood_great
+
+- story: mood unhappy path
+  steps:
+  - intent: mood_unhappy
+  - action: utter_mood_unhappy 

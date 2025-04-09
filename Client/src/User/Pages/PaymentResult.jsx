@@ -16,7 +16,7 @@ const PaymentResult = () => {
     const status = searchParams.get("status") || searchParams.get("vnp_ResponseCode");
     const amount = searchParams.get("amount");
     
-    console.log("URL Parameters:", { orderId, status, amount });
+    // console.log("URL Parameters:", { orderId, status, amount });
 
     // Create a minimal order object from URL parameters
     setOrderData({

@@ -15,7 +15,7 @@ function Products() {
         const res = await cartApi.getCart(userId);
         setCart(res.cart); 
       } catch (error) {
-        console.log("Lỗi khi lấy giỏ hàng:", error);
+        // console.log("Lỗi khi lấy giỏ hàng:", error);
       }
     };
     fetchCart();
@@ -27,7 +27,7 @@ function Products() {
       const res = await cartApi.getCart(userId);
       setCart(res.cart);
     } catch (error) {
-      console.log("Lỗi khi xóa sản phẩm khỏi giỏ hàng:", error);
+      // console.log("Lỗi khi xóa sản phẩm khỏi giỏ hàng:", error);
     }
   };
 
@@ -37,7 +37,7 @@ function Products() {
       const res = await cartApi.getCart(userId);
       setCart(res.cart);
     } catch (error) {
-      console.log("Lỗi khi cập nhật số lượng sản phẩm:", error);
+      // console.log("Lỗi khi cập nhật số lượng sản phẩm:", error);
     }
   };
 

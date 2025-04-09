@@ -1,0 +1,124 @@
+version: "3.1"
+
+nlu:
+- intent: greet
+  examples: |
+    - xin chào
+    - chào bạn
+    - chào buổi sáng
+    - chào buổi tối
+    - hi
+    - hello
+    - chào shop
+    - chào cửa hàng
+    - chào admin
+    - xin chào shop
+
+- intent: goodbye
+  examples: |
+    - tạm biệt
+    - chào tạm biệt
+    - hẹn gặp lại
+    - tạm biệt bạn
+    - bye
+    - goodbye
+    - tạm biệt shop
+    - tạm biệt cửa hàng
+
+- intent: affirm
+  examples: |
+    - vâng
+    - đúng rồi
+    - đúng vậy
+    - ok
+    - được
+    - ừ
+    - ừm
+    - yes
+    - yep
+    - chắc chắn rồi
+
+- intent: deny
+  examples: |
+    - không
+    - không phải
+    - không đúng
+    - không phải vậy
+    - nope
+    - no
+    - không cần
+    - thôi
+
+- intent: mood_great
+  examples: |
+    - tôi rất vui
+    - tôi cảm thấy tuyệt vời
+    - tôi rất hài lòng
+    - tôi rất thích
+    - tuyệt vời
+    - rất tốt
+    - rất hay
+    - rất ưng ý
+
+- intent: mood_unhappy
+  examples: |
+    - tôi không vui
+    - tôi buồn
+    - tôi không hài lòng
+    - tôi không thích
+    - tệ quá
+    - không tốt
+    - không hay
+    - không ưng ý
+
+- intent: help
+  examples: |
+    - giúp tôi
+    - tôi cần giúp đỡ
+    - bạn có thể giúp tôi không
+    - làm sao để
+    - hướng dẫn tôi
+    - tôi không biết
+    - tôi cần hỗ trợ
+    - hỗ trợ tôi
+    - tư vấn
+    - tư vấn giúp tôi
+
+- intent: product_info
+  examples: |
+    - thông tin sản phẩm [sản phẩm](product)
+    - cho tôi biết về [sản phẩm](product)
+    - [sản phẩm](product) có những thông tin gì
+    - [sản phẩm](product) giá bao nhiêu
+    - [sản phẩm](product) còn hàng không
+    - [sản phẩm](product) có giảm giá không
+    - tôi muốn biết thông tin về [sản phẩm](product)
+    - [sản phẩm](product) có mô tả gì
+    - [sản phẩm](product) có nguồn gốc từ đâu
+    - [sản phẩm](product) có bảo hành không
+
+- intent: category_products
+  examples: |
+    - sản phẩm trong danh mục [danh mục](category)
+    - cho tôi xem sản phẩm [danh mục](category)
+    - [danh mục](category) có những sản phẩm gì
+    - tôi muốn xem sản phẩm [danh mục](category)
+    - liệt kê sản phẩm [danh mục](category)
+    - danh mục [danh mục](category) có gì
+    - [danh mục](category) có những món gì
+    - [danh mục](category) có những hàng gì
+    - [danh mục](category) có những sản phẩm nào
+    - [danh mục](category) có những mặt hàng gì
+
+- intent: order_status
+  examples: |
+    - trạng thái đơn hàng [mã đơn hàng](order_id)
+    - đơn hàng [mã đơn hàng](order_id) của tôi thế nào
+    - đơn hàng [mã đơn hàng](order_id) đã giao chưa
+    - đơn hàng [mã đơn hàng](order_id) đã xử lý chưa
+    - đơn hàng [mã đơn hàng](order_id) đang ở đâu
+    - tôi muốn kiểm tra đơn hàng [mã đơn hàng](order_id)
+    - cho tôi biết trạng thái đơn hàng [mã đơn hàng](order_id)
+    - đơn hàng [mã đơn hàng](order_id) có gì
+    - đơn hàng [mã đơn hàng](order_id) có những sản phẩm gì
+    - đơn hàng [mã đơn hàng](order_id) có tổng tiền bao nhiêu 

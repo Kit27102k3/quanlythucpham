@@ -81,7 +81,7 @@ const Header = () => {
           setCartItemCount(totalItems);
         } 
       } catch (error) {
-        console.log("Lỗi khi lấy giỏ hàng:", error);
+        // console.log("Lỗi khi lấy giỏ hàng:", error);
       }
     };
     fetchCart();
@@ -100,7 +100,7 @@ const Header = () => {
         const res = await productsApi.getAllProducts();
         setProducts(res);
       } catch (error) {
-        console.log(error);
+        // console.log(error);
       }
     };
     fetchProducts();
@@ -183,7 +183,7 @@ const Header = () => {
       toast.success("Đăng xuất thành công!");
       navigate("/");
     } catch (error) {
-      console.log(error);
+      // console.log(error);
     }
   };
 

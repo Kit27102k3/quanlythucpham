@@ -1,0 +1,53 @@
+version: "3.1"
+
+intents:
+  - greet
+  - goodbye
+  - affirm
+  - deny
+  - mood_great
+  - mood_unhappy
+  - product_info
+  - category_products
+  - order_status
+  - help
+
+entities:
+  - product
+  - category
+  - order_id
+
+slots:
+  product:
+    type: text
+    mappings:
+    - type: from_entity
+      entity: product
+  category:
+    type: text
+    mappings:
+    - type: from_entity
+      entity: category
+  order_id:
+    type: text
+    mappings:
+    - type: from_entity
+      entity: order_id
+
+responses:
+  utter_greet:
+    - text: "Xin chào! Tôi là trợ lý ảo của cửa hàng. Tôi có thể giúp gì cho bạn?"
+  utter_goodbye:
+    - text: "Tạm biệt! Hẹn gặp lại bạn!"
+  utter_help:
+    - text: "Tôi có thể giúp bạn tìm thông tin sản phẩm, xem sản phẩm theo danh mục, hoặc kiểm tra trạng thái đơn hàng. Bạn cần gì?"
+  utter_mood_great:
+    - text: "Tuyệt vời! Tôi rất vui khi nghe điều đó."
+  utter_mood_unhappy:
+    - text: "Tôi xin lỗi vì điều đó. Tôi có thể giúp gì không?"
+  utter_default:
+    - text: "Xin lỗi, tôi không hiểu. Bạn có thể nói rõ hơn không?"
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true 

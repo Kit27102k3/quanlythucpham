@@ -8,7 +8,6 @@ const cartApi = {
       const response = await axios.get(`${API_URL}/${userId}`);
       return response.data;
     } catch (error) {
-      console.log(error);
       throw error;
     }
   },
@@ -26,7 +25,6 @@ const cartApi = {
       );
       return response.data;
     } catch (error) {
-      console.log(error);
       throw error;
     }
   },
@@ -38,7 +36,6 @@ const cartApi = {
       });
       return response.data;
     } catch (error) {
-      console.log(error);
       throw error;
     }
   },
@@ -56,7 +53,6 @@ const cartApi = {
       );
       return response.data;
     } catch (error) {
-      console.log(error);
       throw error;
     }
   },
@@ -68,7 +64,6 @@ const cartApi = {
       });
       return response.data;
     } catch (error) {
-      console.log(error);
       throw error;
     }
   },

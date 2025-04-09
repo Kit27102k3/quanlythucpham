@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Carousel } from "primereact/carousel";
 import productsApi from "../../../api/productsApi";
+import categoriesApi from "../../../api/categoriesApi";
 import formatCurrency from "../../Until/FotmatPrice";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import "../../../index.css";
@@ -9,16 +10,13 @@ function RelatedProducts({ currentProduct }) {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const { handleAddToCart, handleClick } = useCartAndNavigation();
 
-  const fetchRelatedProducts = async (categoryId, currentProductId) => {
+  const fetchRelatedProducts = async (categoryName, currentProductId) => {
     try {
-      const category = await productsApi.getCategoryById(categoryId);
-      if (category) {
-        const data = await productsApi.getProductByCategory(
-          category.nameCategory,
-          currentProductId
-        );
-        setRelatedProducts(data);
-      }
+      const data = await productsApi.getProductByCategory(
+        categoryName,
+        currentProductId
+      );
+      setRelatedProducts(data);
     } catch (error) {
       console.error("Lỗi khi lấy sản phẩm liên quan:", error);
     }

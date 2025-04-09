@@ -42,6 +42,26 @@ const categoriesApi = {
       throw error;
     }
   },
+
+  getCategoryById: async (id) => {
+    try {
+      const response = await axios.get(`${API_URL}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy thông tin danh mục theo ID:", error);
+      throw error;
+    }
+  },
+
+  getCategoryByName: async (name) => {
+    try {
+      const response = await axios.get(`${API_URL}/name/${encodeURIComponent(name)}`);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy thông tin danh mục theo tên:", error);
+      throw error;
+    }
+  },
 };
 
 export default categoriesApi;

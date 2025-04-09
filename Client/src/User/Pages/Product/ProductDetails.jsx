@@ -436,7 +436,9 @@ export default function ProductDetails() {
         <RelatedProducts currentProduct={products} />
       </div>
       <div>
-        <Chatbot productId={slug} />
+        {products && (
+          <Chatbot productId={products._id || slug} />
+        )}
       </div>
     </div>
   );
