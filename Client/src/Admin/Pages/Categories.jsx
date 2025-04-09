@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
 import { InputText } from "primereact/inputtext";
@@ -37,6 +37,39 @@ const Categories = () => {
     fetchCategories();
   }, []);
 
+  // Tạo mã loại tự động khi mở dialog thêm mới
+  const handleOpenAddDialog = () => {
+    // Tìm mã lớn nhất hiện tại
+    const generateNewCode = () => {
+      if (categories.length === 0) return "CAT001";
+      
+      // Lọc ra các mã có định dạng CATxxx
+      const codePrefixPattern = /^CAT(\d{3})$/;
+      const existingCodes = categories
+        .map(cat => cat.codeCategory)
+        .filter(code => codePrefixPattern.test(code))
+        .map(code => {
+          const match = code.match(codePrefixPattern);
+          return match ? parseInt(match[1], 10) : 0;
+        });
+      
+      // Nếu không có mã nào phù hợp với pattern
+      if (existingCodes.length === 0) return "CAT001";
+      
+      // Tìm số lớn nhất và tăng lên 1
+      const maxCodeNumber = Math.max(...existingCodes);
+      const newCodeNumber = maxCodeNumber + 1;
+      return `CAT${newCodeNumber.toString().padStart(3, '0')}`;
+    };
+    
+    const newCode = generateNewCode();
+    setNewCategory({
+      codeCategory: newCode,
+      nameCategory: "",
+    });
+    setVisible(true);
+  };
+
   const filteredCategories = categories.filter(
     (category) =>
       category.codeCategory.toLowerCase().includes(searchCode.toLowerCase()) &&
@@ -60,6 +93,12 @@ const Categories = () => {
 
   const handleAddCategory = async () => {
     try {
+      // Kiểm tra xem đã nhập tên danh mục chưa
+      if (!newCategory.nameCategory.trim()) {
+        toast.error("Vui lòng nhập tên danh mục");
+        return;
+      }
+      
       const response = await categoriesApi.createCategory(newCategory);
       setCategories([...categories, response]);
       setVisible(false);
@@ -147,7 +186,7 @@ const Categories = () => {
           <Button
             label="Thêm Danh Mục"
             icon="pi pi-plus"
-            onClick={() => setVisible(true)}
+            onClick={handleOpenAddDialog}
             className="p-3 bg-blue-500 text-white rounded text-[12px] gap-2"
             style={{
               fontSize: "12px",
@@ -197,18 +236,10 @@ const Categories = () => {
       >
         <div className="p-4 card flex flex-col justify-content-center mt-2">
           <div className="flex flex-col gap-8 mb-5">
-            <FloatLabel>
-              <InputText
-                className="border p-2 rounded w-full"
-                id="codeCategory"
-                name="codeCategory"
-                value={newCategory.codeCategory}
-                onChange={handleInputChange}
-              />
-              <label htmlFor="codeCategory" className="text-sm -mt-3">
-                Mã loại
-              </label>
-            </FloatLabel>
+            <div className="border p-3 rounded bg-gray-50 text-sm">
+              <p className="font-medium text-gray-700">Mã loại: <span className="font-bold text-blue-600">{newCategory.codeCategory}</span></p>
+              <p className="text-xs text-gray-500 mt-1">Mã loại được tạo tự động</p>
+            </div>
             <FloatLabel>
               <InputText
                 className="border p-2 rounded w-full"
@@ -218,7 +249,7 @@ const Categories = () => {
                 onChange={handleInputChange}
               />
               <label htmlFor="nameCategory" className="text-sm -mt-3">
-                Tên loại
+                Tên loại <span className="text-red-500">*</span>
               </label>
             </FloatLabel>
           </div>
@@ -239,18 +270,10 @@ const Categories = () => {
       >
         <div className="p-4 card flex flex-col justify-content-center mt-2">
           <div className="flex flex-col gap-8 mb-5">
-            <FloatLabel>
-              <InputText
-                className="border p-2 rounded w-full"
-                id="codeCategory"
-                name="codeCategory"
-                value={editCategory?.codeCategory || ""}
-                onChange={handleInputChange}
-              />
-              <label htmlFor="codeCategory" className="text-sm -mt-3">
-                Mã loại
-              </label>
-            </FloatLabel>
+            <div className="border p-3 rounded bg-gray-50 text-sm">
+              <p className="font-medium text-gray-700">Mã loại: <span className="font-bold text-blue-600">{editCategory?.codeCategory}</span></p>
+              <p className="text-xs text-gray-500 mt-1">Mã loại không thể chỉnh sửa</p>
+            </div>
             <FloatLabel>
               <InputText
                 className="border p-2 rounded w-full"
@@ -260,7 +283,7 @@ const Categories = () => {
                 onChange={handleInputChange}
               />
               <label htmlFor="nameCategory" className="text-sm -mt-3">
-                Tên loại
+                Tên loại <span className="text-red-500">*</span>
               </label>
             </FloatLabel>
           </div>

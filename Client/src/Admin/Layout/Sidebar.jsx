@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+/* eslint-disable react/prop-types */
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CardStackIcon,
@@ -131,7 +132,7 @@ const AdminSidebar = () => {
       <div className="p-4 bg-gray-900 border-t border-gray-700">
         <div className="flex items-center space-x-3">
           <img
-            src="https://scontent.fsgn5-12.fna.fbcdn.net/v/t39.30808-6/481456016_1231192658376202_738067928430088828_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeGvtO3WvuAtPyTXjbwJ7dFv5gipTJpZ4ODmCKlMmlng4GSv5lrR8EWLC0Dh64gktUtMbQJaJKREsRlVQj8YgHU3&_nc_ohc=mie_r2QnTEYQ7kNvgF3m1_d&_nc_oc=AdiCKJ27_IkzjGsN5srbikGCVaOm4dhzDCSLmn0Jo9XT6q8TbGjj4fZOExoWLvBprWpzKSun1DF3BxQdJYsn51rg&_nc_zt=23&_nc_ht=scontent.fsgn5-12.fna&_nc_gid=A9cxFYb5KgmRlPrBg3e5wA&oh=00_AYGnKlzSLSRIB6xihIJO5pjZtFsbqK7icgdO2T8WLn9RxA&oe=67DC8A9C"
+            src="https://scontent.fsgn5-10.fna.fbcdn.net/v/t39.30808-6/481456016_1231192658376202_738067928430088828_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeGvtO3WvuAtPyTXjbwJ7dFv5gipTJpZ4ODmCKlMmlng4GSv5lrR8EWLC0Dh64gktUtMbQJaJKREsRlVQj8YgHU3&_nc_ohc=zKWou0iuSL4Q7kNvwEDpG7E&_nc_oc=AdmvRXPpd9GT98oZ-wZ1k9p7mwfaXWh6WLQ8ybBuo7IPNzguehpoeANFdqjDkflCOrWR6exsPiXUxBC6BpaML2nP&_nc_zt=23&_nc_ht=scontent.fsgn5-10.fna&_nc_gid=UwDtT7VeVKA70Sjo6VnSFg&oh=00_AfFAH7OZYZ01fBtiEIkOnjXreS9ctcC-lqy6tLDvARGZ6A&oe=67FB4D9C"
             alt="Admin"
             className="w-10 h-10 rounded-full object-cover border-2 border-gray-600"
           />

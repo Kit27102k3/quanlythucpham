@@ -1,12 +1,21 @@
 import axios from "axios";
+import { API_URLS } from "../config/apiConfig";
 
-const API_URL = "http://localhost:8080/api/payments";
+export const getPaymentById = async (paymentId) => {
+  try {
+    const response = await axios.get(`${API_URLS.PAYMENTS}/${paymentId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin thanh toán:", error);
+    throw error;
+  }
+};
 
 const paymentApi = {
   // Lấy tất cả thanh toán của người dùng
   getAllPayments: async (userId) => {
     try {
-      const response = await axios.get(`${API_URL}/user/${userId}`);
+      const response = await axios.get(`${API_URLS.PAYMENTS}/user/${userId}`);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi lấy danh sách thanh toán:", error);
@@ -17,7 +26,7 @@ const paymentApi = {
   // Tạo thanh toán mới
   createPayment: async (data) => {
     try {
-      const response = await axios.post(`${API_URL}/create`, data, {
+      const response = await axios.post(`${API_URLS.PAYMENTS}`, data, {
         headers: {
           "Content-Type": "application/json",
         },
@@ -30,11 +39,56 @@ const paymentApi = {
     }
   },
 
+  // Tạo URL thanh toán SePay
+  createSepayPaymentUrl: async (orderId, amount, orderInfo) => {
+    try {
+      // Lấy URL hiện tại để tạo URL callback
+      const baseUrl = window.location.origin;
+      const redirectUrl = `${baseUrl}/payment-result?orderId=${orderId}&status=success&amount=${amount}`;
+      
+      const response = await axios.post(
+        `${API_URLS.PAYMENTS}/sepay/create-payment-url`, 
+        { 
+          orderId, 
+          amount, 
+          orderInfo,
+          redirectUrl 
+        }, 
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      // Check if we got a valid payment URL
+      if (response.data && response.data.data) {
+        // If it's a fallback URL (code 01), log a message
+        if (response.data.code === "01") {
+          console.log("Đang sử dụng cổng thanh toán mẫu để kiểm tra");
+        }
+        return response.data;
+      } else {
+        throw new Error("Không nhận được URL thanh toán");
+      }
+    } catch (error) {
+      console.error("Lỗi khi tạo URL thanh toán SePay:", error);
+      throw error;
+    }
+  },
+
   // Cập nhật trạng thái thanh toán
   updatePaymentStatus: async (paymentId, status) => {
     try {
-      const response = await axios.put(`${API_URL}/${paymentId}`, { status });
-      console.log("Cập nhật trạng thái thành công:", response.data);
+      const response = await axios.patch(
+        `${API_URLS.PAYMENTS}/${paymentId}/status`,
+        { status },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
       return response.data;
     } catch (error) {
       console.error("Lỗi khi cập nhật trạng thái thanh toán:", error);
@@ -45,7 +99,7 @@ const paymentApi = {
   // Xóa thanh toán
   deletePayment: async (paymentId) => {
     try {
-      const response = await axios.delete(`${API_URL}/${paymentId}`);
+      const response = await axios.delete(`${API_URLS.PAYMENTS}/${paymentId}`);
       console.log("Xóa thanh toán thành công:", response.data);
       return response.data;
     } catch (error) {
@@ -55,21 +109,13 @@ const paymentApi = {
   },
 
   // Lấy thông tin chi tiết thanh toán theo ID
-  getPaymentById: async (paymentId) => {
-    try {
-      const response = await axios.get(`${API_URL}/${paymentId}`);
-      return response.data;
-    } catch (error) {
-      console.error("Lỗi khi lấy thông tin thanh toán:", error);
-      throw error;
-    }
-  },
+  getPaymentById,
 
   // Tìm kiếm thanh toán theo trạng thái hoặc ngày thanh toán
   searchPayments: async (query) => {
     try {
       const response = await axios.get(
-        `${API_URL}/search?query=${encodeURIComponent(query)}`
+        `${API_URLS.PAYMENTS}/search?query=${encodeURIComponent(query)}`
       );
       return response.data;
     } catch (error) {
@@ -81,7 +127,7 @@ const paymentApi = {
   // Lấy thông tin thanh toán cho chatbot
   getPaymentInfoForChatbot: async (paymentId) => {
     try {
-      const response = await axios.post(`${API_URL}/chatbot/payment-info`, {
+      const response = await axios.post(`${API_URLS.PAYMENTS}/chatbot/payment-info`, {
         paymentId,
       });
       return response.data;

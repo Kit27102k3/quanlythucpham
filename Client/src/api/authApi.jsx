@@ -1,10 +1,9 @@
 import axios from "axios";
 import { toast } from "react-toastify";
-
-const API_URL = "http://localhost:8080";
+import { API_BASE_URL } from "../config/apiConfig";
 
 const instance = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
 
@@ -66,7 +65,7 @@ instance.interceptors.response.use(
         toast.error("Phiên đăng nhập hết hạn, vui lòng đăng nhập lại!");
         setTimeout(() => {
           window.location.href = "/dang-nhap";
-        }, 500); // Đợi thông báo hiển thị rồi mới chuyển hướng
+        }, 500);
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
@@ -81,21 +80,24 @@ const refreshToken = async () => {
   const refreshToken = localStorage.getItem("refreshToken");
   if (!refreshToken) throw new Error("No refresh token found");
 
-  const response = await axios.post(`${API_URL}/auth/refresh-token`, {
-    refreshToken,
-  });
-  const { accessToken } = response.data;
+  try {
+    const response = await axios.post(`${API_BASE_URL}/auth/refresh-token`, {
+      refreshToken,
+    });
+    const { accessToken } = response.data;
 
-  if (accessToken) {
-    localStorage.setItem("accessToken", accessToken);
-    instance.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
-    return accessToken;
+    if (accessToken) {
+      localStorage.setItem("accessToken", accessToken);
+      instance.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+      return accessToken;
+    }
+
+    throw new Error("Failed to refresh token");
+  } catch (error) {
+    console.error("Error refreshing token:", error);
+    throw error;
   }
-
-  throw new Error("Failed to refresh token");
 };
-
-const userId = localStorage.getItem("userId");
 
 const authApi = {
   register: (userData) => instance.post("/auth/register", userData),
@@ -120,6 +122,7 @@ const authApi = {
   },
   refreshToken: () => refreshToken(),
   getProfile: () => {
+    const userId = localStorage.getItem("userId");
     if (!userId) throw new Error("User not logged in");
     return instance.get(`/auth/profile/${userId}`);
   },

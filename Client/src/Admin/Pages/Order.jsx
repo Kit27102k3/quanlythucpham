@@ -1,10 +1,17 @@
-import React, { useState, useEffect } from "react";
+/* eslint-disable no-unused-vars */
+import { useState, useEffect } from "react";
 import {
   EyeOpenIcon,
   TrashIcon,
   MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
-import authApi from "../../api/authApi";
+import { Card } from "primereact/card";
+import { Button } from "primereact/button";
+import { Dropdown } from "primereact/dropdown";
+import { Dialog } from "primereact/dialog";
+import { Tooltip } from "primereact/tooltip";
+import { PackageIcon, ClockIcon, CheckIcon, XIcon, EyeIcon, Trash2Icon } from "lucide-react";
+
 
 const OrderAdmin = () => {
   const [orders, setOrders] = useState([]);
@@ -12,6 +19,15 @@ const OrderAdmin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("Tất cả");
   const [loading, setLoading] = useState(true);
+  const [orderStats, setOrderStats] = useState({
+    total: 0,
+    pending: 0,
+    completed: 0,
+    cancelled: 0,
+  });
+  const [viewOrder, setViewOrder] = useState(null);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
 
   useEffect(() => {
     const fetchAndUpdateOrders = async () => {
@@ -34,6 +50,7 @@ const OrderAdmin = () => {
         );
 
         setOrders(sortedOrders);
+        calculateOrderStats(sortedOrders);
       } catch (error) {
         console.error("Lỗi khi xử lý đơn hàng:", error);
       } finally {
@@ -48,16 +65,26 @@ const OrderAdmin = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const calculateOrderStats = (ordersList) => {
+    const stats = {
+      total: ordersList.length,
+      pending: ordersList.filter(order => order.status === "pending").length,
+      completed: ordersList.filter(order => order.status === "completed").length,
+      cancelled: ordersList.filter(order => order.status === "cancelled").length,
+    };
+    setOrderStats(stats);
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case "pending":
-        return "text-yellow-600 bg-yellow-100";
+        return "text-yellow-600 bg-yellow-100 border-yellow-200";
       case "completed":
-        return "text-green-600 bg-green-100";
+        return "text-green-600 bg-green-100 border-green-200";
       case "cancelled":
-        return "text-red-600 bg-red-100";
+        return "text-red-600 bg-red-100 border-red-200";
       default:
-        return "text-gray-600 bg-gray-100";
+        return "text-gray-600 bg-gray-100 border-gray-200";
     }
   };
 
@@ -74,8 +101,21 @@ const OrderAdmin = () => {
     }
   };
 
-  const handleViewOrder = (orderId) => {
-    console.log("Xem đơn hàng:", orderId);
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "pending":
+        return <ClockIcon size={16} className="mr-1" />;
+      case "completed":
+        return <CheckIcon size={16} className="mr-1" />;
+      case "cancelled":
+        return <XIcon size={16} className="mr-1" />;
+      default:
+        return null;
+    }
+  };
+
+  const handleViewOrder = (order) => {
+    setViewOrder(order);
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
@@ -102,15 +142,25 @@ const OrderAdmin = () => {
     return "completed";
   };
 
-  const handleDeleteOrder = async (orderId) => {
+  const confirmDeleteOrder = (orderId) => {
+    setSelectedOrderId(orderId);
+    setDeleteDialog(true);
+  };
+
+  const handleDeleteOrder = async () => {
     try {
       // Gọi API xóa đơn hàng
-      await fetch(`http://localhost:3001/orders/${orderId}`, {
+      await fetch(`http://localhost:8080/orders/${selectedOrderId}`, {
         method: "DELETE",
       });
 
       // Cập nhật state
-      setOrders(orders.filter((order) => order._id !== orderId));
+      const updatedOrders = orders.filter(
+        (order) => order._id !== selectedOrderId
+      );
+      setOrders(updatedOrders);
+      calculateOrderStats(updatedOrders);
+      setDeleteDialog(false);
     } catch (error) {
       console.error("Lỗi khi xóa đơn hàng:", error);
     }
@@ -130,15 +180,21 @@ const OrderAdmin = () => {
   };
 
   const formatDate = (dateString) => {
-    const options = { year: "numeric", month: "numeric", day: "numeric" };
+    const options = { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" };
     return new Date(dateString).toLocaleDateString("vi-VN", options);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
 
   const filteredOrders = orders.filter((order) => {
     const customerName = getCustomerName(order).toLowerCase();
-    const matchesSearch =
-      order._id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customerName.includes(searchTerm.toLowerCase());
+    const orderIdMatch = order._id?.toLowerCase().includes(searchTerm.toLowerCase());
+    const customerNameMatch = customerName.includes(searchTerm.toLowerCase());
+    const phoneMatch = order.shippingInfo?.phone?.includes(searchTerm);
+    
+    const matchesSearch = orderIdMatch || customerNameMatch || phoneMatch;
 
     const matchesStatus =
       filterStatus === "Tất cả" ||
@@ -152,53 +208,136 @@ const OrderAdmin = () => {
   if (loading) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center">Đang tải đơn hàng...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="text-xl font-medium text-gray-700">Đang tải đơn hàng...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="bg-white shadow-md rounded-lg">
-        <div className="p-6 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h1 className="text-2xl font-bold text-gray-800">Quản lý Đơn hàng</h1>
-
-          <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-4 gap-4 w-full md:w-auto">
-            <div className="relative w-full md:w-64">
-              <input
-                type="text"
-                placeholder="Tìm kiếm đơn hàng..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 border rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <MagnifyingGlassIcon className="absolute left-3 top-3 text-gray-400" />
+    <div className="p-4 md:p-5 bg-gray-50 min-h-screen">
+      <h1 className="text-2xl font-bold text-gray-800 mb-8">Quản lý Đơn hàng</h1>
+      
+      {/* Thống kê đơn hàng */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        <Card className="shadow-sm bg-white p-4 border border-gray-100 rounded-lg hover:shadow-md transition-shadow"
+          pt={{ 
+            root: { className: 'overflow-hidden' },
+            content: { className: 'p-0' }
+          }}>
+          <div className="flex items-center">
+            <div className="p-3.5 bg-blue-100 rounded-lg">
+              <PackageIcon size={26} className="text-blue-600" />
             </div>
-
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-auto"
-            >
-              <option value="Tất cả">Tất cả trạng thái</option>
-              <option value="Đang xử lý">Đang xử lý</option>
-              <option value="Đã giao">Đã giao</option>
-              <option value="Đã hủy">Đã hủy</option>
-            </select>
+            <div className="ml-5">
+              <h3 className="text-lg font-semibold text-gray-700">Tất cả đơn hàng</h3>
+              <p className="text-2xl font-bold text-blue-600">{orderStats.total}</p>
+            </div>
           </div>
+        </Card>
+        
+        <Card className="shadow-sm bg-white p-4 border border-gray-100 rounded-lg hover:shadow-md transition-shadow"
+          pt={{ 
+            root: { className: 'overflow-hidden' },
+            content: { className: 'p-0' }
+          }}>
+          <div className="flex items-center">
+            <div className="p-3.5 bg-yellow-100 rounded-lg">
+              <ClockIcon size={26} className="text-yellow-600" />
+            </div>
+            <div className="ml-5">
+              <h3 className="text-lg font-semibold text-gray-700">Đang xử lý</h3>
+              <p className="text-2xl font-bold text-yellow-600">{orderStats.pending}</p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="shadow-sm bg-white p-4 border border-gray-100 rounded-lg hover:shadow-md transition-shadow"
+          pt={{ 
+            root: { className: 'overflow-hidden' },
+            content: { className: 'p-0' }
+          }}>
+          <div className="flex items-center">
+            <div className="p-3.5 bg-green-100 rounded-lg">
+              <CheckIcon size={26} className="text-green-600" />
+            </div>
+            <div className="ml-5">
+              <h3 className="text-lg font-semibold text-gray-700">Đã giao</h3>
+              <p className="text-2xl font-bold text-green-600">{orderStats.completed}</p>
+            </div>
+          </div>
+        </Card>
+        
+        <Card className="shadow-sm bg-white p-4 border border-gray-100 rounded-lg hover:shadow-md transition-shadow"
+          pt={{ 
+            root: { className: 'overflow-hidden' },
+            content: { className: 'p-0' }
+          }}>
+          <div className="flex items-center">
+            <div className="p-3.5 bg-red-100 rounded-lg">
+              <XIcon size={26} className="text-red-600" />
+            </div>
+            <div className="ml-5">
+              <h3 className="text-lg font-semibold text-gray-700">Đã hủy</h3>
+              <p className="text-2xl font-bold text-red-600">{orderStats.cancelled}</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Card 
+        className="shadow-sm mb-8 p-0 border border-gray-200 rounded-lg"
+        pt={{ 
+          root: { className: 'overflow-hidden' },
+          content: { className: 'p-0' }
+        }}>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 p-5 border-b border-gray-100">
+          <div className="relative w-full md:w-64 flex items-center">
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo mã đơn hoặc tên khách..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-11 pr-4 py-2.5 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          </div>
+
+          <Dropdown
+            value={filterStatus}
+            options={[
+              {label: 'Tất cả trạng thái', value: 'Tất cả'},
+              {label: 'Đang xử lý', value: 'Đang xử lý'},
+              {label: 'Đã giao', value: 'Đã giao'},
+              {label: 'Đã hủy', value: 'Đã hủy'}
+            ]}
+            onChange={(e) => setFilterStatus(e.value)}
+            placeholder="Chọn trạng thái"
+            className="w-full md:w-64 h-10"
+            pt={{
+              root: { className: 'w-full border border-gray-300 rounded-md' },
+              input: { className: 'p-2.5 flex items-center' },
+              trigger: { className: 'p-2.5' },
+              panel: { className: 'border border-gray-200 shadow-md rounded-md mt-1' },
+              item: { className: 'p-3 hover:bg-gray-50' },
+              itemgroup: { className: 'p-3 font-medium text-gray-700 bg-gray-50 border-b border-gray-200' }
+            }}
+          />
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto px-4">
           <table className="w-full">
-            <thead className="bg-gray-100 border-b">
+            <thead className="bg-gray-50 border-y border-gray-200">
               <tr>
-                <th className="p-4 text-left">Mã Đơn hàng</th>
-                <th className="p-4 text-left">Khách hàng</th>
-                <th className="p-4 text-left">Sản phẩm</th>
-                <th className="p-4 text-left">Tổng tiền</th>
-                <th className="p-4 text-left">Ngày đặt</th>
-                <th className="p-4 text-left">Trạng thái</th>
-                <th className="p-4 text-center">Hành động</th>
+                <th className="px-6 py-4 text-left font-medium text-gray-700 text-sm">Mã Đơn hàng</th>
+                <th className="px-6 py-4 text-left font-medium text-gray-700 text-sm">Khách hàng</th>
+                <th className="px-6 py-4 text-left font-medium text-gray-700 text-sm">Sản phẩm</th>
+                <th className="px-6 py-4 text-left font-medium text-gray-700 text-sm">Tổng tiền</th>
+                <th className="px-6 py-4 text-left font-medium text-gray-700 text-sm">Ngày đặt</th>
+                <th className="px-6 py-4 text-left font-medium text-gray-700 text-sm">Trạng thái</th>
+                <th className="px-6 py-4 text-center font-medium text-gray-700 text-sm">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -208,56 +347,82 @@ const OrderAdmin = () => {
                     key={order._id}
                     className="border-b hover:bg-gray-50 transition-colors"
                   >
-                    <td className="p-4 font-medium">
+                    <td className="px-6 py-4 font-medium text-blue-600">
                       #{order._id.slice(-6).toUpperCase()}
                     </td>
-                    <td className="p-4">
-                      {getCustomerName(order)}{" "}
-                      {order.userId && (
-                        <span className="text-gray-500">
-                          ({order.userId.email})
-                        </span>
-                      )}
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="font-medium">{getCustomerName(order)}</div>
+                        {order.userId?.email && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {order.userId.email}
+                          </div>
+                        )}
+                        {order.shippingInfo?.phone && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            SĐT: {order.shippingInfo.phone}
+                          </div>
+                        )}
+                      </div>
                     </td>
-                    <td className="p-4">
-                      {order.products?.length || 0} sản phẩm
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {order.products?.length || 0} sản phẩm
+                      </span>
                     </td>
-                    <td className="p-4">
-                      {order.totalAmount?.toLocaleString("vi-VN")} đ
+                    <td className="px-6 py-4 font-medium">
+                      {formatCurrency(order.totalAmount || 0)}
                     </td>
-                    <td className="p-4">{formatDate(order.createdAt)}</td>
-                    <td className="p-4">
+                    <td className="px-6 py-4 text-sm">
+                      {formatDate(order.createdAt)}
+                    </td>
+                    <td className="px-6 py-4">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(
                           order.status
                         )}`}
                       >
+                        {getStatusIcon(order.status)}
                         {getStatusText(order.status)}
                       </span>
                     </td>
-                    <td className="p-4">
-                      <div className="flex justify-center space-x-2">
-                        <button
-                          onClick={() => handleViewOrder(order._id)}
-                          className="text-blue-600 hover:bg-blue-100 p-2 rounded-full"
-                          title="Xem chi tiết"
-                        >
-                          <EyeOpenIcon />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteOrder(order._id)}
-                          className="text-red-600 hover:bg-red-100 p-2 rounded-full"
-                          title="Xóa đơn hàng"
-                        >
-                          <TrashIcon />
-                        </button>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-center space-x-3">
+                        <Button
+                          icon={<EyeIcon size={18} />}
+                          rounded
+                          text
+                          severity="info"
+                          onClick={() => handleViewOrder(order)}
+                          tooltip="Xem chi tiết"
+                          tooltipOptions={{ position: 'top' }}
+                          className="w-10 h-10 hover:bg-blue-50"
+                          pt={{ 
+                            root: { className: 'flex items-center justify-center' },
+                            icon: { className: 'text-blue-600' } 
+                          }}
+                        />
+                        <Button
+                          icon={<Trash2Icon size={18} />}
+                          rounded
+                          text
+                          severity="danger"
+                          onClick={() => confirmDeleteOrder(order._id)}
+                          tooltip="Xóa đơn hàng"
+                          tooltipOptions={{ position: 'top' }}
+                          className="w-10 h-10 hover:bg-red-50"
+                          pt={{ 
+                            root: { className: 'flex items-center justify-center' },
+                            icon: { className: 'text-red-600' } 
+                          }}
+                        />
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center p-8 text-gray-500">
+                  <td colSpan={7} className="text-center py-10 text-gray-500">
                     Không có đơn hàng nào phù hợp
                   </td>
                 </tr>
@@ -266,21 +431,166 @@ const OrderAdmin = () => {
           </table>
         </div>
 
-        {/* Footer with summary */}
-        <div className="p-6 bg-gray-50 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <span className="text-sm text-gray-600">
-              Hiển thị {filteredOrders.length} trong tổng số {orders.length} đơn
-              hàng
-            </span>
-          </div>
-          <div>
-            <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-              Xuất báo cáo
-            </button>
+        <div className="p-5 mt-4 bg-gray-50 rounded-b-lg border-t border-gray-100">
+          <div className="text-sm text-gray-600">
+            Hiển thị <span className="font-medium text-blue-600">{filteredOrders.length}</span> trong tổng số <span className="font-medium text-blue-600">{orders.length}</span> đơn hàng
           </div>
         </div>
-      </div>
+      </Card>
+      
+      {/* Dialog xem chi tiết đơn hàng */}
+      <Dialog 
+        header="Chi tiết đơn hàng" 
+        visible={viewOrder !== null} 
+        onHide={() => setViewOrder(null)}
+        style={{ width: '70vw' }}
+        breakpoints={{ '960px': '80vw', '640px': '90vw' }}
+        contentClassName="p-5"
+        pt={{
+          root: { className: 'rounded-lg border border-gray-200' },
+          header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg' },
+          closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full' },
+          content: { className: 'p-5' }
+        }}
+      >
+        {viewOrder && (
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Thông tin khách hàng</h3>
+                <Card 
+                  className="shadow-sm p-4 border border-gray-100 rounded-lg"
+                  pt={{ 
+                    root: { className: 'overflow-hidden' },
+                    content: { className: 'p-0' }
+                  }}>
+                  <p className="mb-3"><span className="font-medium">Tên khách hàng:</span> {getCustomerName(viewOrder)}</p>
+                  {viewOrder.userId?.email && (
+                    <p className="mb-3"><span className="font-medium">Email:</span> {viewOrder.userId.email}</p>
+                  )}
+                  {viewOrder.shippingInfo?.phone && (
+                    <p className="mb-3"><span className="font-medium">Số điện thoại:</span> {viewOrder.shippingInfo.phone}</p>
+                  )}
+                  {viewOrder.shippingInfo?.address && (
+                    <p className="mb-3"><span className="font-medium">Địa chỉ:</span> {viewOrder.shippingInfo.address}</p>
+                  )}
+                </Card>
+              </div>
+              
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Thông tin đơn hàng</h3>
+                <Card 
+                  className="shadow-sm p-4 border border-gray-100 rounded-lg"
+                  pt={{ 
+                    root: { className: 'overflow-hidden' },
+                    content: { className: 'p-0' }
+                  }}>
+                  <p className="mb-3"><span className="font-medium">Mã đơn hàng:</span> #{viewOrder._id.slice(-6).toUpperCase()}</p>
+                  <p className="mb-3"><span className="font-medium">Ngày đặt:</span> {formatDate(viewOrder.createdAt)}</p>
+                  <p className="mb-3">
+                    <span className="font-medium">Trạng thái:</span> 
+                    <span className={`inline-flex items-center ml-2 px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(viewOrder.status)}`}>
+                      {getStatusIcon(viewOrder.status)}
+                      {getStatusText(viewOrder.status)}
+                    </span>
+                  </p>
+                  <p className="mb-3"><span className="font-medium">Phương thức thanh toán:</span> {viewOrder.paymentMethod || "COD"}</p>
+                  <p><span className="font-medium">Ghi chú:</span> {viewOrder.note || "Không có"}</p>
+                </Card>
+              </div>
+            </div>
+            
+            <h3 className="text-lg font-semibold mb-3">Sản phẩm đã đặt</h3>
+            <Card 
+              className="shadow-sm mb-6 p-0 border border-gray-100 rounded-lg"
+              pt={{ 
+                root: { className: 'overflow-hidden' },
+                content: { className: 'p-0' }
+              }}>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">Tên sản phẩm</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-700">Đơn giá</th>
+                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-700">Số lượng</th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-700">Thành tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {viewOrder.products && viewOrder.products.map((item, index) => (
+                      <tr key={index} className="border-b">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            {item.product?.productImages && item.product.productImages[0] && (
+                              <img 
+                                src={item.product.productImages[0]} 
+                                alt={item.product.productName} 
+                                className="w-14 h-14 object-cover rounded mr-4"
+                              />
+                            )}
+                            <div>
+                              <p className="font-medium">{item.product?.productName || "Sản phẩm không có sẵn"}</p>
+                              {item.product?.productCode && (
+                                <p className="text-xs text-gray-500 mt-1">Mã: {item.product.productCode}</p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">{formatCurrency(item.price)}</td>
+                        <td className="px-6 py-4 text-center">{item.quantity}</td>
+                        <td className="px-6 py-4 text-right font-medium">{formatCurrency(item.price * item.quantity)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50 border-t border-gray-200">
+                    <tr>
+                      <td colSpan="3" className="px-6 py-4 text-right font-medium">Tổng cộng:</td>
+                      <td className="px-6 py-4 text-right font-bold text-lg">{formatCurrency(viewOrder.totalAmount)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </Card>
+            
+            <div className="flex justify-end">
+              <Button 
+                label="Đóng" 
+                icon="pi pi-times" 
+                onClick={() => setViewOrder(null)} 
+                className="p-button-outlined px-4 py-2"
+              />
+            </div>
+          </div>
+        )}
+      </Dialog>
+      
+      {/* Dialog xác nhận xóa */}
+      <Dialog
+        header="Xác nhận xóa"
+        visible={deleteDialog}
+        style={{ width: '450px' }}
+        modal
+        footer={
+          <div className="pt-3">
+            <Button label="Không" icon="pi pi-times" onClick={() => setDeleteDialog(false)} className="p-button-text mr-3" />
+            <Button label="Có" icon="pi pi-check" onClick={handleDeleteOrder} autoFocus className="p-button-danger" />
+          </div>
+        }
+        onHide={() => setDeleteDialog(false)}
+        contentClassName="p-5"
+        pt={{
+          root: { className: 'rounded-lg border border-gray-200' },
+          header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg' },
+          closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full' },
+          content: { className: 'p-4' }
+        }}
+      >
+        <div className="flex items-center justify-center pt-3">
+          <i className="pi pi-exclamation-triangle mr-4" style={{ fontSize: '2rem', color: '#ff5757' }} />
+          <span className="text-lg">Bạn có chắc chắn muốn xóa đơn hàng này?</span>
+        </div>
+      </Dialog>
     </div>
   );
 };

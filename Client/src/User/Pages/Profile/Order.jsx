@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+/* eslint-disable react/prop-types */
+import { useEffect, useState } from "react";
 import { ClipboardListIcon, PackageIcon, CreditCardIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import orderApi from "../../../api/orderApi"; // Giả sử bạn có file API này
@@ -10,18 +11,37 @@ export default function Order() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchOrders = async () => {
+      if (!isMounted) return;
+      
       try {
+        setLoading(true);
         const response = await orderApi.getUserOrders(); 
-        setOrders(response);
+        // Sắp xếp đơn hàng mới nhất lên đầu
+        const sortedOrders = response.sort((a, b) => 
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        
+        if (isMounted) {
+          setOrders(sortedOrders);
+          setLoading(false);
+        }
       } catch (error) {
         console.error("Lỗi khi lấy đơn hàng:", error);
-      } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchOrders();
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const statusCounts = {
@@ -98,7 +118,7 @@ export default function Order() {
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-500">
-                      {order.shippingInfo.address}
+                      {order.shippingInfo?.address || "Chưa có địa chỉ"}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatCurrency(order.totalAmount)}

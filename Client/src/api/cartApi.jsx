@@ -60,6 +60,18 @@ const cartApi = {
       throw error;
     }
   },
+  
+  clearCart: async (userId) => {
+    try {
+      const response = await axios.delete(`${API_URL}/clear-cart`, {
+        data: { userId },
+      });
+      return response.data;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  },
 };
 
 export default cartApi;

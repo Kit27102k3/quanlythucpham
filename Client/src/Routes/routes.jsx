@@ -27,6 +27,7 @@ import Employees from "../Admin/Pages/AddEmployees";
 import OrderConfirmation from "../User/Cart/OrderConfirmation";
 import NewsPage from "../User/Pages/NewsPage/NewsPage";
 import TipsPage from "../User/Pages/TipsPage/TipsPage";
+import PaymentResult from "../User/Pages/PaymentResult";
 
 const publicRoutes = [
   {
@@ -108,6 +109,10 @@ const publicRoutes = [
     path: "/thanh-toan/:paymentId",
     page: Payment,
     layout: null,
+  },
+  {
+    path: "/payment-result",
+    page: PaymentResult,
   },
   {
     path: "/dang-ky",

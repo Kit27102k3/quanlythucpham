@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { Button, Dialog, InputText, FloatLabel, Dropdown } from "primereact";
+import { useState, useEffect } from "react";
+import { Button, Dialog, InputText, Dropdown } from "primereact";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
+import { Paginator } from "primereact/paginator";
 import productsApi from "../../api/productsApi";
 import AddProduct from "./AddProduct";
 import EditProduct from "./EditProduct";
@@ -12,13 +13,33 @@ const Products = () => {
   const [visible, setVisible] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editVisible, setEditVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  
+  // Pagination states
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
     fetchProducts();
   }, []);
+  
+  useEffect(() => {
+    // Filter products based on search term
+    const filtered = products.filter((product) =>
+      searchTerm
+        ? product?.productName?.toLowerCase().includes(searchTerm.toLowerCase())
+        : true
+    );
+    
+    setFilteredProducts(filtered);
+    setTotalRecords(filtered.length);
+    // Reset to first page when filter changes
+    setFirst(0);
+  }, [products, searchTerm]);
 
   const fetchProducts = async () => {
     try {
@@ -40,7 +61,8 @@ const Products = () => {
       setProducts(prevProducts => [newProduct, ...prevProducts]);
       await fetchProducts();
       toast.success("Thêm sản phẩm thành công!");
-    } catch (error) {
+    } catch (err) {
+      console.error("Lỗi khi thêm sản phẩm:", err);
       setProducts(prevProducts => 
         prevProducts.filter(product => product._id !== newProduct._id)
       );
@@ -80,6 +102,17 @@ const Products = () => {
       console.error("Lỗi khi cập nhật sản phẩm:", error);
       toast.error("Có lỗi xảy ra khi cập nhật sản phẩm!");
     }
+  };
+  
+  // Handle pagination change
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+  
+  // Get current page products
+  const getCurrentPageProducts = () => {
+    return filteredProducts.slice(first, first + rows);
   };
 
   return (
@@ -140,63 +173,85 @@ const Products = () => {
           </tr>
         </thead>
         <tbody>
-          {products?.length > 0 &&
-            products
-              .filter((product) =>
-                searchTerm
-                  ? product?.productName
-                      ?.toLowerCase()
-                      .includes(searchTerm.toLowerCase())
-                  : true
-              )
-              .map((product) => (
-                <tr key={product?._id} className="border-b">
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    {product?.productName}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    {product?.productBrand}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    {product?.productCategory}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    {product?.productPrice}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    {product?.productStatus}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    {product?.productDiscount}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    {product?.productStock}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    {product?.productCode}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    {product?.productTypeName}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    {product?.productOrigin}
-                  </td>
-                  <td className="border border-gray-300 p-2 text-[14px]">
-                    <Button
-                      label="Sửa"
-                      className="p-1 bg-blue-500 text-white rounded text-[12px] ml-2"
-                      onClick={() => handleEditProduct(product)}
-                    />
-                    <Button
-                      label="Xóa"
-                      className="p-1 bg-red-500 text-white rounded text-[12px] ml-2"
-                      onClick={() => handleDeleteProduct(product?._id)}
-                    />
-                  </td>
-                </tr>
-              ))}
+          {getCurrentPageProducts().map((product) => (
+            <tr key={product?._id} className="border-b">
+              <td className="border border-gray-300 p-2 text-[14px]">
+                {product?.productName}
+              </td>
+              <td className="border border-gray-300 p-2 text-[14px]">
+                {product?.productBrand}
+              </td>
+              <td className="border border-gray-300 p-2 text-[14px]">
+                {product?.productCategory}
+              </td>
+              <td className="border border-gray-300 p-2 text-[14px]">
+                {product?.productPrice}
+              </td>
+              <td className="border border-gray-300 p-2 text-[14px]">
+                {product?.productStatus}
+              </td>
+              <td className="border border-gray-300 p-2 text-[14px]">
+                {product?.productDiscount}
+              </td>
+              <td className="border border-gray-300 p-2 text-[14px]">
+                {product?.productStock}
+              </td>
+              <td className="border border-gray-300 p-2 text-[14px]">
+                {product?.productCode}
+              </td>
+              <td className="border border-gray-300 p-2 text-[14px]">
+                {product?.productTypeName}
+              </td>
+              <td className="border border-gray-300 p-2 text-[14px]">
+                {product?.productOrigin}
+              </td>
+              <td className="border border-gray-300 p-2 text-[14px]">
+                <Button
+                  label="Sửa"
+                  className="p-1 bg-blue-500 text-white rounded text-[12px] ml-2"
+                  onClick={() => handleEditProduct(product)}
+                />
+                <Button
+                  label="Xóa"
+                  className="p-1 bg-red-500 text-white rounded text-[12px] ml-2"
+                  onClick={() => handleDeleteProduct(product?._id)}
+                />
+              </td>
+            </tr>
+          ))}
+          {filteredProducts.length === 0 && (
+            <tr>
+              <td colSpan="11" className="text-center p-4 text-gray-500">
+                Không có sản phẩm nào
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
+      
+      <div className="mt-6 flex flex-col items-center">
+        <Paginator
+          first={first}
+          rows={rows}
+          totalRecords={totalRecords}
+          rowsPerPageOptions={[10, 20, 30]}
+          onPageChange={onPageChange}
+          template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink"
+          className="border-0 shadow-sm"
+          pt={{
+            root: { className: 'bg-white rounded-lg p-2' },
+            firstPageButton: { className: 'border rounded-md p-2 hover:bg-blue-50 text-blue-600 mx-1' },
+            previousPageButton: { className: 'border rounded-md p-2 hover:bg-blue-50 text-blue-600 mx-1' },
+            nextPageButton: { className: 'border rounded-md p-2 hover:bg-blue-50 text-blue-600 mx-1' },
+            lastPageButton: { className: 'border rounded-md p-2 hover:bg-blue-50 text-blue-600 mx-1' },
+            pageButton: { className: 'border rounded-md p-2 hover:bg-blue-50 mx-1' },
+            currentPageReport: { className: 'text-sm text-gray-600 mx-2' }
+          }}
+        />
+        <div className="text-sm text-gray-600 mt-3 mb-2">
+          Hiển thị <span className="font-medium text-blue-600">{Math.min(first + 1, totalRecords)}</span> - <span className="font-medium text-blue-600">{Math.min(first + rows, totalRecords)}</span> trên tổng số <span className="font-medium text-blue-600">{totalRecords}</span> sản phẩm
+        </div>
+      </div>
 
       <Dialog
         header="Thêm Sản Phẩm"
@@ -218,15 +273,20 @@ const Products = () => {
         header="Chỉnh Sửa Sản Phẩm"
         visible={editVisible}
         style={{ width: "50vw" }}
-        onHide={() => setEditVisible(false)}
+        onHide={() => {
+          setEditVisible(false);
+          setEditingProduct(null);
+        }}
         headerClassName="p-4"
       >
-        <EditProduct
-          product={editingProduct}
-          setVisible={setEditVisible}
-          handleUpdateProduct={handleUpdateProduct}
-          setProducts={setProducts}
-        />
+        {editingProduct && (
+          <EditProduct
+            product={editingProduct}
+            setVisible={setEditVisible}
+            handleUpdateProduct={handleUpdateProduct}
+            setProducts={setProducts}
+          />
+        )}
       </Dialog>
 
       <ToastContainer />

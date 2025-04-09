@@ -97,12 +97,24 @@ const Cart = () => {
     }
     setIsLoading(true);
     try {
+      // Prepare products data from selected items
+      const selectedProducts = cart.items
+        .filter(item => selectedItems.includes(item.productId._id))
+        .map(item => ({
+          productId: item.productId._id,
+          quantity: item.quantity,
+          price: item.productId.productPrice
+        }));
+
       const paymentData = {
         userId,
-        selectedItems,
+        amount: calculateTotal(),
+        products: selectedProducts,
+        paymentMethod: "cod" // Default to COD, can be changed later in payment page
       };
+      
       const res = await paymentApi.createPayment(paymentData);
-      const paymentId = res.payment?._id;
+      const paymentId = res.data?._id;
       if (paymentId) {
         navigate(`/thanh-toan/${paymentId}`);
       } else {
@@ -110,6 +122,7 @@ const Cart = () => {
       }
     } catch (error) {
       console.error("Lỗi thanh toán:", error);
+      toast.error("Không thể tạo thanh toán. Vui lòng thử lại!");
     } finally {
       setIsLoading(false);
     }

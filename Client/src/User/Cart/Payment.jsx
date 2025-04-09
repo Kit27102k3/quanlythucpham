@@ -1,31 +1,31 @@
-import { ChevronDownIcon, ExitIcon } from "@radix-ui/react-icons";
-import { Badge } from "primereact/badge";
+/* eslint-disable no-unused-vars */
+import { ExitIcon } from "@radix-ui/react-icons";
 import { Avatar } from "primereact/avatar";
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCar, faMoneyCheckDollar } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams } from "react-router-dom";
 import paymentApi from "../../api/paymentApi";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import formatCurrency from "../Until/FotmatPrice";
-import useFetchUserProfile from "../Until/useFetchUserProfile";
 import orderApi from "../../api/orderApi";
+import authApi from "../../api/authApi";
 
 export default function Payment() {
+  const [users, setUsers] = useState(null);
   const [orderDetails, setOrderDetails] = useState({
     products: [],
     totalAmount: 0,
     productCount: 0,
   });
-
-  const [selectedOption, setSelectedOption] = useState("");
-  const [selectedDelivery, setSelectedDelivery] = useState("standard");
+  const [note, setNote] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [selectedMethod, setSelectedMethod] = useState("delivery");
-  const [coupon, setCoupon] = useState("");
-
-  const { paymentId } = useParams();
+  const [selectedDelivery, setSelectedDelivery] = useState("standard");
+  const [selectedPayment, setSelectedPayment] = useState("cod");
   const navigate = useNavigate();
-  const users = useFetchUserProfile();
+  const { paymentId } = useParams();
 
   const deliveryFee = selectedDelivery === "standard" ? 40000 : 0;
   const totalPayment = orderDetails.totalAmount + deliveryFee;
@@ -43,6 +43,15 @@ export default function Payment() {
           totalAmount: response.totalAmount || 0,
           productCount: response.products?.length || 0,
         });
+
+        try {
+          const userResponse = await authApi.getProfile();
+          
+          setUsers(userResponse.data);
+        } catch (userError) {
+          console.error("Lỗi khi lấy thông tin người dùng:", userError);
+          toast.error("Không thể tải thông tin người dùng");
+        }
       } catch (error) {
         console.error("Lỗi khi lấy thông tin thanh toán:", error);
         toast.error("Không thể tải thông tin thanh toán");
@@ -65,53 +74,127 @@ export default function Payment() {
   };
 
   const handleApplyCoupon = () => {
-    console.log(`Applying coupon: ${coupon}`);
+    console.log(`Applying coupon: ${couponCode}`);
   };
 
   const handlePlaceOrder = async () => {
-    try {
-      // 1. Kiểm tra thông tin bắt buộc
-      if (!users?.phone || !users?.address) {
-        toast.error("Vui lòng điền đầy đủ thông tin nhận hàng");
-        return;
-      }
+    if (!users) {
+      toast.error("Vui lòng đăng nhập để tiếp tục!");
+      return;
+    }
 
-      // 2. Tạo payload gửi lên server
+    if (!users.address) {
+      toast.error("Vui lòng cập nhật địa chỉ giao hàng!");
+      return;
+    }
+
+    try {
+      // Create order first for both payment methods
       const orderData = {
-        userId: users._id, // Lấy từ user profile
-        products: orderDetails.products,
+        userId: users._id,
+        products: orderDetails.products.map(product => ({
+          productId: product.productId._id,
+          quantity: product.quantity,
+          price: product.productId.productPrice
+        })),
         totalAmount: totalPayment,
-        shippingInfo: {
-          address: users.address,
-          phone: users.phone,
-          method: selectedDelivery,
-        },
-        paymentMethod: selectedMethod,
-        coupon: coupon || null, // Lưu mã giảm giá nếu có
-        status: "pending", // Trạng thái ban đầu
+        deliveryMethod: selectedMethod,
+        deliveryFee: deliveryFee,
+        address: users.address,
+        note: note,
+        paymentMethod: selectedPayment,
+        status: selectedPayment === "cod" ? "pending" : "awaiting_payment"
       };
 
-      // 3. Gọi API lưu đơn hàng
-      const response = await orderApi.createOrder(orderData);
+      // Create order
+      const orderResponse = await orderApi.createOrder(orderData);
+      const orderId = orderResponse._id;
 
-      // 4. Thông báo thành công & chuyển hướng
-      toast.success("Đặt hàng thành công!");
-      navigate(`/order-confirmation/${response._id}`); // Chuyển sang trang xác nhận
+      if (selectedPayment === "sepay") {
+        try {
+          // Create payment record
+          const paymentData = {
+            userId: users._id,
+            amount: totalPayment,
+            products: orderDetails.products.map(product => ({
+              productId: product.productId._id,
+              quantity: product.quantity,
+              price: product.productId.productPrice
+            })),
+            paymentMethod: selectedPayment,
+            orderId: orderId
+          };
+
+          const paymentResponse = await paymentApi.createPayment(paymentData);
+          const paymentId = paymentResponse.data._id;
+
+          // Create SePay payment URL
+          const sepayResponse = await paymentApi.createSepayPaymentUrl(
+            paymentId,
+            totalPayment,
+            `Thanh toán đơn hàng #${orderId}`
+          );
+
+          // Check if we got a valid payment URL
+          if (sepayResponse && sepayResponse.data) {
+            // If it's a fallback URL (code 01), show a notification
+            if (sepayResponse.code === "01") {
+              toast.info("Đang sử dụng cổng thanh toán mẫu để kiểm tra");
+            }
+            // Redirect to payment URL
+            window.location.href = sepayResponse.data;
+          } else {
+            throw new Error("Không nhận được URL thanh toán");
+          }
+        } catch (error) {
+          console.error("Lỗi khi tạo cổng thanh toán:", error);
+          toast.error("Không thể kết nối đến cổng thanh toán. Vui lòng thử lại sau!");
+          // Redirect to payment result page with failure status
+          navigate(`/payment-result?orderId=${orderId}&status=failed&amount=${totalPayment}`);
+        }
+      } else {
+        // For COD, no payment record is needed immediately
+        toast.success("Đặt hàng thành công!");
+        navigate(`/payment-result?orderId=${orderId}&status=success&amount=${totalPayment}`);
+      }
     } catch (error) {
       console.error("Lỗi khi đặt hàng:", error);
-      toast.error("Đặt hàng thất bại. Vui lòng thử lại!");
+      toast.error("Không thể đặt hàng. Vui lòng thử lại!");
     }
+  };
+
+  const handlePhoneChange = (e) => {
+    setUsers(prev => ({
+      ...prev,
+      phone: e.target.value
+    }));
+  };
+
+  const handleAddressChange = (e) => {
+    setUsers(prev => ({
+      ...prev,
+      address: e.target.value
+    }));
+  };
+
+  const handleNoteChange = (e) => {
+    setNote(e.target.value);
+  };
+
+  const handleLogout = () => {
+    authApi.logout();
   };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <ToastContainer position="top-right" autoClose={3000} />
       <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-xl overflow-hidden grid md:grid-cols-[1fr_400px]">
         <div className="p-6 space-y-6">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-3xl font-bold text-[#51bb1a]">
               DNC <span className="text-[#51bb1a]">FOOD</span>
             </h1>
-            <button className="text-[#51bb1a] flex items-center gap-2 hover:text-[#51bb1a] transition">
+            <button onClick={handleLogout} className="text-[#51bb1a] flex items-center gap-2 hover:text-[#51bb1a] transition">
               <ExitIcon />
               Đăng xuất
             </button>
@@ -141,6 +224,7 @@ export default function Payment() {
                 <input
                   type="text"
                   value={users?.phone || ""}
+                  onChange={handlePhoneChange}
                   className="w-full p-2 border border-gray-300 rounded-md outline-none"
                 />
               </div>
@@ -152,6 +236,7 @@ export default function Payment() {
               <input
                 type="text"
                 value={users?.address || ""}
+                onChange={handleAddressChange}
                 className="w-full p-2 border border-gray-300 rounded-md outline-none"
               />
             </div>
@@ -162,6 +247,8 @@ export default function Payment() {
               <input
                 type="text"
                 placeholder="Ghi chú tùy chọn..."
+                value={note}
+                onChange={handleNoteChange}
                 className="w-full p-2 border border-gray-300 rounded-md outline-none"
               />
             </div>
@@ -199,17 +286,37 @@ export default function Payment() {
                 Thanh toán
               </h3>
               <div className="border border-gray-300 rounded-md">
-                <label className="flex items-center p-3 hover:bg-gray-50 transition cursor-pointer">
-                  <input
-                    type="radio"
-                    name="paymentMethod" // Cùng name với cái trên
-                    value="payment"
-                    checked={selectedMethod === "payment"}
-                    onChange={() => setSelectedMethod("payment")}
-                    className="mr-3 text-[#51bb1a] focus:ring-[#51bb1a]"
-                  />
-                  <span>Thanh toán khi nhận hàng (COD)</span>
-                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center p-3 hover:bg-gray-50 transition cursor-pointer border-t border-gray-200">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      checked={selectedPayment === "cod"}
+                      onChange={() => setSelectedPayment("cod")}
+                      className="mr-3 text-[#51bb1a] focus:ring-[#51bb1a]"
+                    />
+                    <div className="flex items-center">
+                      <span className="mr-2">Thanh toán khi nhận hàng (COD)</span>
+                    </div>
+                  </label>
+                  <label className="flex items-center p-3 hover:bg-gray-50 transition cursor-pointer border-t border-gray-200">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      checked={selectedPayment === "sepay"}
+                      onChange={() => setSelectedPayment("sepay")}
+                      className="mr-3 text-[#51bb1a] focus:ring-[#51bb1a]"
+                    />
+                    <div className="flex items-center">
+                      <span className="mr-2">Thanh toán qua SePay</span>
+                      <img 
+                        src="/sepay-logo.png" 
+                        alt="SePay" 
+                        className="h-6 ml-2" 
+                      />
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -286,8 +393,8 @@ export default function Payment() {
             <input
               type="text"
               placeholder="Nhập mã giảm giá"
-              value={coupon}
-              onChange={(e) => setCoupon(e.target.value)}
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value)}
               className="flex-grow p-2 border border-[#51bb1a] border-r-0 rounded-l-md outline-none"
             />
             <button

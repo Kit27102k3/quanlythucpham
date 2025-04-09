@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
-import { Button, Radio, message } from 'antd';
+import { Button, message } from 'antd';
 import axios from 'axios';
-import VNPayCheckout from './VNPayCheckout';
-import MomoCheckout from './MomoCheckout';
+import SePayCheckout from './SePayCheckout';
 
 const PaymentMethods = ({ orderId, amount, onSuccess }) => {
-  const [paymentMethod, setPaymentMethod] = useState('VNPAY');
   const [loading, setLoading] = useState(false);
 
   const handlePayment = async () => {
@@ -14,37 +12,40 @@ const PaymentMethods = ({ orderId, amount, onSuccess }) => {
       const response = await axios.post('/api/payment/create-payment', {
         orderId,
         amount,
-        paymentMethod
+        paymentMethod: 'SEPAY'
       });
       
-      window.location.href = response.data.paymentUrl;
+      if (response.data && response.data.paymentUrl) {
+        window.location.href = response.data.paymentUrl;
+      } else {
+        throw new Error('Không nhận được URL thanh toán');
+      }
     } catch (error) {
-      message.error('Lỗi khi tạo thanh toán');
+      console.error('Lỗi thanh toán:', error);
+      message.error('Không thể tạo thanh toán, vui lòng thử lại');
       setLoading(false);
     }
   };
 
   return (
     <div className="payment-methods">
-      <h3>Chọn phương thức thanh toán</h3>
+      <h3 className="text-xl font-semibold mb-4">Thanh toán đơn hàng</h3>
       
-      <Radio.Group 
-        onChange={(e) => setPaymentMethod(e.target.value)} 
-        value={paymentMethod}
-        className="mb-4"
-      >
-        <Radio value="VNPAY">VNPAY</Radio>
-        <Radio value="MOMO">Momo</Radio>
-      </Radio.Group>
-
-      {paymentMethod === 'VNPAY' && <VNPayCheckout />}
-      {paymentMethod === 'MOMO' && <MomoCheckout />}
-
+      <div className="mb-4">
+        <p className="text-gray-700 mb-2">Thông tin đơn hàng:</p>
+        <div className="bg-gray-50 p-3 rounded-md">
+          <p>Mã đơn hàng: <span className="font-medium">{orderId}</span></p>
+          <p>Tổng thanh toán: <span className="font-medium text-red-600">{amount.toLocaleString('vi-VN')} VNĐ</span></p>
+        </div>
+      </div>
+      
+      <SePayCheckout />
+      
       <Button 
         type="primary" 
         onClick={handlePayment}
         loading={loading}
-        className="mt-4"
+        className="mt-4 bg-blue-600 hover:bg-blue-700 w-full h-10 text-base"
       >
         Thanh toán ngay
       </Button>
