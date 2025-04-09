@@ -30,6 +30,19 @@ const paymentSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    status: {
+      type: String,
+      enum: ["pending", "completed", "failed"],
+      default: "pending"
+    },
+    paymentMethod: {
+      type: String,
+      enum: ["cod", "sepay"],
+      default: "cod"
+    },
+    transactionId: {
+      type: String
+    },
     createdAt: {
       type: Date,
       default: Date.now,

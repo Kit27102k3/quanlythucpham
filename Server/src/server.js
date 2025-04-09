@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -25,7 +26,7 @@ import seedCategories from "./Model/seedCategories.js";
 
 dotenv.config({ path: ".env" });
 const app = express();
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 8081;
 
 app.use(
   cors({
@@ -40,6 +41,41 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Debug middleware
+app.use((req, res, next) => {
+  console.log('------------------------------------------------------------');
+  console.log(`${req.method} ${req.url}`);
+  console.log('Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('Query:', JSON.stringify(req.query, null, 2));
+  console.log('------------------------------------------------------------');
+  next();
+});
+
+// Middleware kiểm tra token và trích xuất thông tin người dùng
+app.use((req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const jwt = require('jsonwebtoken');
+      const secretKey = process.env.JWT_SECRET || 'your-secret-key';
+      
+      try {
+        const decoded = jwt.verify(token, secretKey);
+        req.user = decoded;
+        console.log(`Xác thực thành công: userId=${decoded._id}`);
+      } catch (error) {
+        console.log('Token không hợp lệ hoặc hết hạn');
+      }
+    }
+    next();
+  } catch (error) {
+    console.error('Lỗi middleware xác thực:', error);
+    next();
+  }
+});
 
 const URI = process.env.MONGOOSE_URI;
 mongoose
@@ -63,6 +99,15 @@ app.use("/api", chatbotRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/orders", orderRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development'
+  });
+});
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);

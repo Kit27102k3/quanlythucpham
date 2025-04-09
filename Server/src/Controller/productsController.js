@@ -1,3 +1,4 @@
+/*************  ✨ Windsurf Command 🌟  *************/
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-undef */
 import cloudinary from "../config/cloudinary.js";
@@ -415,3 +416,5 @@ export const updateProductCategory = async (req, res) => {
     res.status(500).json({ message: "Cập nhật danh mục sản phẩm thất bại", error });
   }
 };
+
+/*******  7cab8ad6-4345-4fb6-92ff-2129f8b85842  *******/
