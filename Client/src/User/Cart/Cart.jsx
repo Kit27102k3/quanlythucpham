@@ -1,4 +1,5 @@
-import React, { useEffect, useState, memo } from "react";
+/* eslint-disable react-hooks/exhaustive-deps */
+import { useState, useEffect, memo } from "react";
 import { MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Checkbox } from "@radix-ui/themes";
 import cartApi from "../../api/cartApi";
@@ -34,7 +35,7 @@ const Cart = () => {
     if (newQuantity < 1) return;
     setIsLoading(true);
     try {
-      const response = await cartApi.updateCartItem(
+      await cartApi.updateCartItem(
         userId,
         productId,
         newQuantity
@@ -57,7 +58,7 @@ const Cart = () => {
   const handleRemoveItem = async (productId) => {
     setIsLoading(true);
     try {
-      const response = await cartApi.removeFromCart(userId, productId);
+      await cartApi.removeFromCart(userId, productId);
       setCart((prevCart) => ({
         ...prevCart,
         items: prevCart.items.filter(
@@ -84,7 +85,8 @@ const Cart = () => {
     if (!cart || !cart.items) return 0;
     return cart.items.reduce((total, item) => {
       if (selectedItems.includes(item.productId._id)) {
-        return total + item.productId.productPrice * item.quantity;
+        const itemPrice = item.price || item.productId.productPrice;
+        return total + itemPrice * item.quantity;
       }
       return total;
     }, 0);
@@ -103,7 +105,7 @@ const Cart = () => {
         .map(item => ({
           productId: item.productId._id,
           quantity: item.quantity,
-          price: item.productId.productPrice
+          price: item.price || item.productId.productPrice
         }));
 
       const paymentData = {
@@ -129,8 +131,8 @@ const Cart = () => {
   };
 
   return (
-    <div className="lg:grid lg:px-[120px] mb-5">
-      <div className="flex gap-2 text-sm text-[#333333] p-2">
+    <div className=" mb-5">
+      <div className="lg:px-[120px] flex gap-2 text-sm text-[#333333] p-3">
         <a
           href="/"
           className="hover:text-[#51bb1a] cursor-pointer lg:text-[16px]"
@@ -141,13 +143,13 @@ const Cart = () => {
         <p className="font-medium lg:text-[16px]">Giỏ hàng</p>
       </div>
       <div className="border-b border-gray-300"></div>
-      <h1 className="text-[26px] uppercase font-medium hide-on-mobile p-2 mt-4">
+      <h1 className="lg:px-[120px] text-[26px] uppercase font-medium hide-on-mobile p-2 mt-4">
         Giỏ hàng{" "}
         <span className="text-sm font-normal">
           ({cart?.items?.length || 0} sản phẩm)
         </span>
       </h1>
-      <div className="lg:grid lg:grid-cols-[75%_25%]">
+      <div className="lg:grid lg:px-[120px] lg:grid-cols-[75%_25%]">
         <div className="p-2 mt-5">
           <h1 className="text-[16px] uppercase text-[#1c1c1c] font-medium hide-on-pc">
             Giỏ hàng của bạn
@@ -176,7 +178,7 @@ const Cart = () => {
                   <p className="text-gray-500">
                     Giá:{" "}
                     <span className="text-[#51bb1a]">
-                      {formatCurrency(item?.productId?.productPrice)}đ
+                      {formatCurrency(item.price || item?.productId?.productPrice)}đ
                     </span>
                   </p>
                 </div>

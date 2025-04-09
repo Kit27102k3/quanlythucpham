@@ -18,6 +18,11 @@ const cartSchema = mongoose.Schema({
         required: true,
         default: 1,
       },
+      price: {
+        type: Number,
+        required: true,
+        default: 0
+      },
       createdAt: {
         type: Date,
         default: Date.now(),

@@ -14,7 +14,7 @@ function AllProducts({
 }) {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const { handleAddToCart, handleClick } = useCartAndNavigation();
+  const { handleAddToCart, handleClick, getPrice } = useCartAndNavigation();
   const { category } = useParams();
   const location = useLocation();
 
@@ -146,7 +146,7 @@ function AllProducts({
                 {product.productDiscount > 0 ? (
                   <div className="flex items-center gap-2">
                     <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                      {formatCurrency(product.productPromoPrice)}đ
+                      {formatCurrency(getPrice(product))}đ
                     </p>
                     <p className="text-gray-400 text-[10px] mt-1 lg:text-[14px] line-through">
                       {formatCurrency(product.productPrice)}đ
@@ -154,7 +154,7 @@ function AllProducts({
                   </div>
                 ) : (
                   <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                    {formatCurrency(product.productPrice)}đ
+                    {formatCurrency(getPrice(product))}đ
                   </p>
                 )}
               </div>

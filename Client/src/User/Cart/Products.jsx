@@ -42,7 +42,7 @@ function Products() {
   };
 
   const total = cart?.items?.reduce(
-    (sum, item) => sum + item.productId.productPrice * item.quantity,
+    (sum, item) => sum + (item.price || item.productId.productPrice) * item.quantity,
     0
   );
 
@@ -66,7 +66,7 @@ function Products() {
                 />
                 <div className="flex flex-col justify-items-start">
                   <p>{item.productId.productName.slice(0, 20)}...</p>
-                  <p>{formatCurrency(item.productId.productPrice)}đ</p>
+                  <p>{formatCurrency(item.price || item.productId.productPrice)}đ</p>
                   <div className="flex items-center cursor-pointer">
                     <MinusIcon
                       onClick={() =>

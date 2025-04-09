@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import { InputText } from "primereact/inputtext";
 import { Dialog } from "primereact/dialog";
 import { FaFacebook, FaGoogle, FaLock, FaUser } from "react-icons/fa";
@@ -15,26 +15,37 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleAdminLogin = async () => {
-    try {
-      const response = await authApi.adminLogin({
-        userName: username,
-        password,
-      });
-
-      if (response.data && response.data.accessToken) {
-        saveAuthData(response.data);
-        toast.success("Đăng nhập admin thành công!");
-        navigate("/admin/dashboard");
-      } else {
-        throw new Error("Không phải tài khoản admin");
-      }
-    } catch (error) {
-      toast.error("Lỗi đăng nhập admin. Thử đăng nhập user...");
-      console.error(error);
-      handleUserLogin();
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem("accessToken");
+    const userId = localStorage.getItem("userId");
+    
+    if (token && userId) {
+      // User is already logged in, redirect to home page
+      navigate("/");
     }
-  };
+  }, [navigate]);
+
+  // const handleAdminLogin = async () => {
+  //   try {
+  //     const response = await authApi.adminLogin({
+  //       userName: username,
+  //       password,
+  //     });
+
+  //     if (response.data && response.data.accessToken) {
+  //       saveAuthData(response.data);
+  //       toast.success("Đăng nhập admin thành công!");
+  //       navigate("/admin/dashboard");
+  //     } else {
+  //       throw new Error("Không phải tài khoản admin");
+  //     }
+  //   } catch (error) {
+  //     toast.error("Lỗi đăng nhập admin. Thử đăng nhập user...");
+  //     console.error(error);
+  //     handleUserLogin();
+  //   }
+  // };
 
   const handleUserLogin = async () => {
     try {
@@ -100,7 +111,10 @@ const Login = () => {
   const handleLogin = (e) => {
     e.preventDefault();
     setIsLoading(true);
-    handleAdminLogin();
+    handleUserLogin()
+      .finally(() => {
+        setIsLoading(false);
+      });
   };
 
   return (

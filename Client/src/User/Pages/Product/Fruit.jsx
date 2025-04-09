@@ -6,7 +6,7 @@ import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import SEO from "../../../components/SEO";
 
 // Memo hóa ProductItem để tránh render lại không cần thiết
-const ProductItem = memo(({ product, handleAddToCart, handleClick }) => (
+const ProductItem = memo(({ product, handleAddToCart, handleClick, getPrice }) => (
   <div className="relative flex flex-col items-center group cursor-pointer h-full">
     <div className="relative overflow-hidden">
       <img
@@ -17,6 +17,11 @@ const ProductItem = memo(({ product, handleAddToCart, handleClick }) => (
         height="350"
         className="w-[150px] h-[150px] lg:w-[350px] lg:h-[350px] object-cover hover-scale-up"
       />
+      {product.productDiscount > 0 && (
+        <div className="bg-red-500 w-10 p-1 text-white rounded absolute top-2 left-2 text-center">
+          {product.productDiscount}%
+        </div>
+      )}
       <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
         <button 
           onClick={() => handleAddToCart(product._id)}
@@ -38,9 +43,20 @@ const ProductItem = memo(({ product, handleAddToCart, handleClick }) => (
       <p className="font-medium text-[12px] hover:text-[#51aa1b] lg:text-[16px]">
         {product.productName}
       </p>
-      <p className="text-[#51aa1b] text-[12px] lg:text-[16px]">
-        {formatCurrency(product.productPrice)}đ
-      </p>
+      {product.productDiscount > 0 ? (
+        <div className="flex items-center gap-2">
+          <p className="text-[#51aa1b] text-[12px] lg:text-[16px]">
+            {formatCurrency(getPrice(product))}đ
+          </p>
+          <p className="text-gray-400 text-[12px] lg:text-[16px] line-through">
+            {formatCurrency(product.productPrice)}đ
+          </p>
+        </div>
+      ) : (
+        <p className="text-[#51aa1b] text-[12px] lg:text-[16px]">
+          {formatCurrency(getPrice(product))}đ
+        </p>
+      )}
     </div>
   </div>
 ));
@@ -51,7 +67,7 @@ ProductItem.displayName = 'ProductItem';
 function Fruit() {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { handleAddToCart, handleClick } = useCartAndNavigation();
+  const { handleAddToCart, handleClick, getPrice } = useCartAndNavigation();
 
   useEffect(() => {
     const fetchProductCategory = async () => {
@@ -93,6 +109,7 @@ function Fruit() {
                   product={product}
                   handleAddToCart={handleAddToCart}
                   handleClick={handleClick}
+                  getPrice={getPrice}
                 />
               ))}
             </div>

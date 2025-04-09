@@ -3,6 +3,7 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   EnterIcon,
   PersonIcon,
@@ -178,12 +179,15 @@ const Header = () => {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("userId");
-      axios.interceptors.request.clear();
-      axios.interceptors.response.clear();
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("isBlocked");
+      localStorage.removeItem("permissions");
+      localStorage.removeItem("fullName");
+      setIsLoggedIn(false);
       toast.success("Đăng xuất thành công!");
       navigate("/");
     } catch (error) {
-      // console.log(error);
+      console.error("Logout error:", error);
     }
   };
 

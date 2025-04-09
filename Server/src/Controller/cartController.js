@@ -52,6 +52,22 @@ export const addToCart = async (req, res) => {
 
   try {
     let cart = await Cart.findOne({ userId });
+    
+    // Lấy thông tin sản phẩm để có giá chính xác
+    const Product = (await import("../Model/Products.js")).default;
+    const product = await Product.findById(productId);
+    
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Sản phẩm không tồn tại"
+      });
+    }
+    
+    // Tính giá dựa trên việc có giảm giá hay không
+    const price = product.productDiscount > 0
+      ? product.productPromoPrice
+      : product.productPrice;
 
     if (!cart) {
       cart = new Cart({ userId, items: [] });
@@ -63,11 +79,13 @@ export const addToCart = async (req, res) => {
 
     if (existingItem) {
       existingItem.quantity += quantity;
+      existingItem.price = price; // Cập nhật giá mới nhất
       existingItem.createdAt = new Date();
     } else {
       cart.items.push({
         productId,
         quantity,
+        price, // Lưu giá vào item giỏ hàng
         createdAt: new Date(),
       });
     }

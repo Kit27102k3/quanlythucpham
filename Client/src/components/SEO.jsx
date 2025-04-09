@@ -1,7 +1,13 @@
 import { Helmet } from 'react-helmet-async';
 import PropTypes from 'prop-types';
 
-const SEO = ({ title, description, name, type, image }) => {
+const SEO = ({ 
+  title, 
+  description, 
+  name = "DNC FOOD", 
+  type = "website", 
+  image = "/src/assets/Logo.png" 
+}) => {
   const siteName = "DNC FOOD";
   const siteUrl = "http://localhost:3000";
   
@@ -36,12 +42,6 @@ SEO.propTypes = {
   name: PropTypes.string,
   type: PropTypes.string,
   image: PropTypes.string
-};
-
-SEO.defaultProps = {
-  name: "DNC FOOD",
-  type: "website",
-  image: "/src/assets/Logo.png"
 };
 
 export default SEO; 

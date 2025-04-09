@@ -16,6 +16,12 @@ const useCartAndNavigation = () => {
       .replace(/(^-|-$)/g, "");
   };
 
+  // Hàm xử lý giá dựa trên có giảm giá hay không
+  const getPrice = (product) => {
+    if (!product) return 0;
+    return product.productDiscount > 0 ? product.productPromoPrice : product.productPrice;
+  };
+
   const handleAddToCart = async (productId) => {
     if (!userId) {
       toast.warning("Bạn cần phải đăng nhập trước!");
@@ -66,7 +72,7 @@ const useCartAndNavigation = () => {
     }
   };
 
-  return { handleAddToCart, handleClick, handleRemoveItem };
+  return { handleAddToCart, handleClick, handleRemoveItem, getPrice };
 };
 
 export default useCartAndNavigation;
