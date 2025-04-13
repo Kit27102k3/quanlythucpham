@@ -1,14 +1,15 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { motion } from "framer-motion";
 
 function NewsPage() {
-  // Giả lập dữ liệu tin tức
-  const [news, setNews] = useState([
+  // Giả lập dữ liệu tin tức với URL hình ảnh thực tế
+  const [news] = useState([
     {
       id: 1,
       title: "DNC FOOD hợp tác với 10 nhà cung cấp rau hữu cơ mới",
       category: "Hợp Tác",
       date: "28/03/2025",
-      image: "/images/organic-farm.jpg",
+      image: "https://images.unsplash.com/photo-1621450260662-26f2e6dd50d7?q=80&w=1974&auto=format&fit=crop",
       summary:
         "Mở rộng mạng lưới nhà cung cấp rau hữu cơ để đáp ứng nhu cầu ngày càng tăng của người tiêu dùng.",
       content:
@@ -21,7 +22,7 @@ function NewsPage() {
         "Ứng dụng công nghệ blockchain trong truy xuất nguồn gốc thực phẩm",
       category: "Công Nghệ",
       date: "23/03/2025",
-      image: "/images/blockchain.jpg",
+      image: "https://images.unsplash.com/photo-1639762681057-408e52192e55?q=80&w=2032&auto=format&fit=crop",
       summary:
         "DNC FOOD tiên phong áp dụng công nghệ blockchain để minh bạch hóa toàn bộ chuỗi cung ứng.",
       content:
@@ -33,7 +34,7 @@ function NewsPage() {
       title: "DNC FOOD mở rộng thêm 5 chi nhánh tại TP.HCM",
       category: "Phát Triển",
       date: "15/03/2025",
-      image: "/images/new-store.jpg",
+      image: "https://images.unsplash.com/photo-1534723452862-4c874018d66d?q=80&w=2070&auto=format&fit=crop",
       summary:
         "Chiến lược mở rộng mạng lưới phân phối tại các quận trung tâm và khu vực đông dân cư.",
       content:
@@ -46,7 +47,7 @@ function NewsPage() {
         "Chương trình đào tạo 'Nhận diện thực phẩm sạch' cho người tiêu dùng",
       category: "Giáo Dục",
       date: "10/03/2025",
-      image: "/images/education.jpg",
+      image: "https://images.unsplash.com/photo-1579113800032-c38bd7635818?q=80&w=2062&auto=format&fit=crop",
       summary:
         "Series workshop miễn phí giúp người tiêu dùng nâng cao kiến thức về an toàn thực phẩm.",
       content:
@@ -58,7 +59,7 @@ function NewsPage() {
       title: "DNC FOOD được vinh danh 'Doanh nghiệp xanh' năm 2025",
       category: "Giải Thưởng",
       date: "05/03/2025",
-      image: "/images/award.jpg",
+      image: "https://images.unsplash.com/photo-1557063673-0493e05da49f?q=80&w=2069&auto=format&fit=crop",
       summary:
         "Nỗ lực giảm thiểu rác thải nhựa và xây dựng chuỗi cung ứng bền vững được ghi nhận.",
       content:
@@ -70,7 +71,7 @@ function NewsPage() {
       title: "Ưu đãi đặc biệt nhân dịp kỷ niệm 5 năm thành lập DNC FOOD",
       category: "Khuyến Mãi",
       date: "01/03/2025",
-      image: "/images/promotion.jpg",
+      image: "https://images.unsplash.com/photo-1607082349566-187342175e2f?q=80&w=2070&auto=format&fit=crop",
       summary:
         "Chuỗi chương trình khuyến mãi hấp dẫn và hoạt động tri ân khách hàng trong tháng 3.",
       content:
@@ -101,23 +102,70 @@ function NewsPage() {
   // Lấy tin nổi bật
   const highlightedNews = news.filter((item) => item.isHighlight);
 
+  // Framer motion variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 12
+      }
+    }
+  };
+
+  const fadeInVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { duration: 0.6 }
+    }
+  };
+
   return (
     <div className="bg-gradient-to-br from-white to-green-50 min-h-screen py-16">
       <div className="container mx-auto px-4 md:px-12 lg:px-24">
-        <div className="bg-white shadow-2xl rounded-2xl overflow-hidden">
+        <motion.div 
+          className="bg-white shadow-2xl rounded-2xl overflow-hidden"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: false, amount: 0.1 }}
+          variants={fadeInVariants}
+        >
           <div className="p-8 md:p-12 lg:p-16">
             {/* Header Section */}
-            <div className="flex items-center mb-10">
+            <motion.div 
+              className="flex items-center mb-10"
+              variants={itemVariants}
+            >
               <div className="w-2 h-10 bg-green-500 mr-4 rounded"></div>
               <h1 className="text-4xl md:text-5xl font-bold text-gray-800">
                 Tin Tức & Sự Kiện
               </h1>
-            </div>
+            </motion.div>
 
             {/* Tin Nổi Bật Section */}
             {highlightedNews.length > 0 && (
-              <div className="mb-16">
-                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+              <motion.div 
+                className="mb-16"
+                variants={containerVariants}
+              >
+                <motion.h2 
+                  className="text-2xl font-bold text-gray-800 mb-6 flex items-center"
+                  variants={itemVariants}
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     className="h-6 w-6 text-yellow-500 mr-2"
@@ -133,31 +181,21 @@ function NewsPage() {
                     />
                   </svg>
                   Tin Nổi Bật
-                </h2>
+                </motion.h2>
                 <div className="grid md:grid-cols-3 gap-6">
                   {highlightedNews.map((item) => (
-                    <div
+                    <motion.div
                       key={item.id}
-                      className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow"
+                      className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                      variants={itemVariants}
+                      whileHover={{ scale: 1.02 }}
                     >
-                      <div className="h-48 bg-gray-200 relative">
-                        {/* Placeholder for image */}
-                        <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-16 w-16"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1}
-                              d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                            />
-                          </svg>
-                        </div>
+                      <div className="h-48 bg-gray-200 relative overflow-hidden">
+                        <img 
+                          src={item.image} 
+                          alt={item.title}
+                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                        />
                       </div>
                       <div className="p-6">
                         <div className="flex items-center mb-2">
@@ -172,11 +210,11 @@ function NewsPage() {
                           {item.title}
                         </h3>
                         <p className="text-gray-600 mb-4">{item.summary}</p>
-                        <button className="text-green-600 hover:text-green-800 font-medium flex items-center">
+                        <button className="text-green-600 hover:text-green-800 font-medium flex items-center group">
                           Đọc tiếp
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4 ml-1"
+                            className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -190,17 +228,20 @@ function NewsPage() {
                           </svg>
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* Categories Navigation */}
-            <div className="mb-8 overflow-x-auto">
+            <motion.div 
+              className="mb-8 overflow-x-auto"
+              variants={containerVariants}
+            >
               <div className="flex space-x-2 pb-2">
                 {categories.map((category) => (
-                  <button
+                  <motion.button
                     key={category.id}
                     className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
                       activeCategory === category.id
@@ -208,38 +249,34 @@ function NewsPage() {
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                     onClick={() => setActiveCategory(category.id)}
+                    variants={itemVariants}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
                     {category.name}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
             {/* Main News Section */}
-            <div className="grid md:grid-cols-2 gap-8">
+            <motion.div 
+              className="grid md:grid-cols-2 gap-8"
+              variants={containerVariants}
+            >
               {filteredNews.map((item) => (
-                <div
+                <motion.div
                   key={item.id}
-                  className="flex bg-white rounded-xl overflow-hidden shadow hover:shadow-md transition-shadow"
+                  className="flex bg-white rounded-xl overflow-hidden shadow hover:shadow-md transition-all duration-300 transform hover:-translate-y-1"
+                  variants={itemVariants}
+                  whileHover={{ scale: 1.01 }}
                 >
-                  <div className="w-1/3 bg-gray-200 relative">
-                    {/* Placeholder for image */}
-                    <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-10 w-10"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1}
-                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                      </svg>
-                    </div>
+                  <div className="w-1/3 bg-gray-200 relative overflow-hidden">
+                    <img 
+                      src={item.image} 
+                      alt={item.title}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                    />
                   </div>
                   <div className="w-2/3 p-5">
                     <div className="flex items-center mb-2">
@@ -256,11 +293,11 @@ function NewsPage() {
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">
                       {item.summary}
                     </p>
-                    <button className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center">
+                    <button className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center group">
                       Đọc tiếp
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        className="h-3 w-3 ml-1"
+                        className="h-3 w-3 ml-1 group-hover:translate-x-1 transition-transform"
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -274,68 +311,99 @@ function NewsPage() {
                       </svg>
                     </button>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
 
             {/* Pagination */}
-            <div className="mt-12 flex justify-center">
+            <motion.div 
+              className="mt-12 flex justify-center"
+              variants={fadeInVariants}
+            >
               <nav className="inline-flex rounded-md shadow">
-                <a
+                <motion.a
                   href="#"
                   className="py-2 px-4 border border-gray-300 bg-white rounded-l-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  whileHover={{ backgroundColor: "#f9fafb" }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   Trước
-                </a>
-                <a
+                </motion.a>
+                <motion.a
                   href="#"
                   className="py-2 px-4 border-t border-b border-gray-300 bg-green-500 text-sm font-medium text-white"
+                  whileTap={{ scale: 0.95 }}
                 >
                   1
-                </a>
-                <a
+                </motion.a>
+                <motion.a
                   href="#"
                   className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  whileHover={{ backgroundColor: "#f9fafb" }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   2
-                </a>
-                <a
+                </motion.a>
+                <motion.a
                   href="#"
                   className="py-2 px-4 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  whileHover={{ backgroundColor: "#f9fafb" }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   3
-                </a>
-                <a
+                </motion.a>
+                <motion.a
                   href="#"
                   className="py-2 px-4 border border-gray-300 bg-white rounded-r-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  whileHover={{ backgroundColor: "#f9fafb" }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   Tiếp
-                </a>
+                </motion.a>
               </nav>
-            </div>
+            </motion.div>
 
             {/* Newsletter Subscription */}
-            <div className="mt-16 bg-green-50 rounded-xl p-8 border-l-4 border-green-500">
-              <h3 className="text-2xl font-bold text-gray-800 mb-4">
+            <motion.div 
+              className="mt-16 bg-green-50 rounded-xl p-8 border-l-4 border-green-500"
+              variants={fadeInVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: false, amount: 0.3 }}
+            >
+              <motion.h3 
+                className="text-2xl font-bold text-gray-800 mb-4"
+                variants={itemVariants}
+              >
                 Đăng Ký Nhận Tin
-              </h3>
-              <p className="text-gray-600 mb-6">
+              </motion.h3>
+              <motion.p 
+                className="text-gray-600 mb-6"
+                variants={itemVariants}
+              >
                 Hãy đăng ký để nhận những thông tin mới nhất về sản phẩm, ưu đãi
                 và hoạt động của DNC FOOD.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3">
+              </motion.p>
+              <motion.div 
+                className="flex flex-col sm:flex-row gap-3"
+                variants={itemVariants}
+              >
                 <input
                   type="email"
                   placeholder="Email của bạn"
                   className="px-4 py-3 flex-1 rounded-lg border-gray-200 focus:ring-green-500 focus:border-green-500"
                 />
-                <button className="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
+                <motion.button 
+                  className="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors"
+                  whileHover={{ scale: 1.03, backgroundColor: "#3bac0d" }}
+                  whileTap={{ scale: 0.97 }}
+                >
                   Đăng Ký
-                </button>
-              </div>
-            </div>
+                </motion.button>
+              </motion.div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

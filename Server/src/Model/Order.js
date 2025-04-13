@@ -19,6 +19,8 @@ const orderSchema = new mongoose.Schema(
       method: String,
     },
     paymentMethod: String,
+    orderCode: { type: String },
+    notes: { type: String }
   },
   { timestamps: true }
 );

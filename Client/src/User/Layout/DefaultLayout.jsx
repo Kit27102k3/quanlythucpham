@@ -1,8 +1,9 @@
 import Footer from "./Footer";
 import Header from "./Header";
 import { useEffect } from "react";
+import React from "react";
 
-function DefaultLayout({ children }) {
+const DefaultLayout = ({ children }) => {
   useEffect(() => {
     window.scrollTo({
       top: 0,
@@ -16,6 +17,6 @@ function DefaultLayout({ children }) {
       <Footer />
     </div>
   );
-}
+};
 
 export default DefaultLayout;

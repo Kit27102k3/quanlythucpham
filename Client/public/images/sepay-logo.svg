@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 60" width="180" height="60">
+  <!-- Background -->
+  <rect x="0" y="0" width="180" height="60" rx="8" ry="8" fill="#ffffff"/>
+  
+  <!-- SE -->
+  <g fill="#007bff">
+    <path d="M32,15 C27,15 23,19 23,24 C23,29 27,33 32,33 C37,33 41,29 41,24 C41,19 37,15 32,15 Z M32,30 C28.5,30 26,27.5 26,24 C26,20.5 28.5,18 32,18 C35.5,18 38,20.5 38,24 C38,27.5 35.5,30 32,30 Z"/>
+    <path d="M32,21 L28,21 L28,24 L32,24 L32,27 L36,27 L36,21 Z"/>
+  </g>
+  
+  <!-- PAY text -->
+  <text x="55" y="30" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#333333">PAY</text>
+  
+  <!-- Subtitle -->
+  <text x="90" y="45" font-family="Arial, sans-serif" font-size="10" text-anchor="middle" fill="#666666">Secure Payments</text>
+</svg> 

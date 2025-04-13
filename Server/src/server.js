@@ -43,6 +43,11 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+app.post('/webhook', (req, res) => {
+  console.log('Received webhook:', req.body);
+  res.sendStatus(200);
+});
+
 // Middleware kiểm tra token và trích xuất thông tin người dùng
 app.use((req, res, next) => {
   try {
@@ -97,5 +102,5 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(port, () => {
-  // Server đã khởi động
+  console.log(`🚀 Server is running at http://localhost:${port}`);
 });

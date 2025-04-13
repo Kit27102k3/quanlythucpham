@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 import mongoose from "mongoose";
 import { genSalt, hash, compare } from "bcryptjs";
 

@@ -1,13 +1,20 @@
-import { useEffect, useState, memo } from "react";
+import React, { useEffect, useState, memo } from "react";
 import "../../../index.css";
 import productsApi from "../../../api/productsApi";
 import formatCurrency from "../../Until/FotmatPrice";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import SEO from "../../../components/SEO";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Memo hóa ProductItem để tránh render lại không cần thiết
 const ProductItem = memo(({ product, handleAddToCart, handleClick, getPrice }) => (
-  <div className="relative flex flex-col items-center group cursor-pointer h-full">
+  <motion.div 
+    className="relative flex flex-col items-center group cursor-pointer h-full"
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: false }}
+    transition={{ duration: 0.5 }}
+  >
     <div className="relative overflow-hidden">
       <img
         src={`${product.productImages[0]}`}
@@ -58,7 +65,7 @@ const ProductItem = memo(({ product, handleAddToCart, handleClick, getPrice }) =
         </p>
       )}
     </div>
-  </div>
+  </motion.div>
 ));
 
 // Đặt tên hiển thị cho component để dễ debug
@@ -82,70 +89,113 @@ function Fruit() {
       }
     };
     fetchProductCategory();
+    
+    // Cleanup function
+    return () => {
+      // Đảm bảo dọn dẹp tài nguyên khi component unmount
+    };
   }, []);
 
   return (
-    <div className="grid grid-cols-1 px-4">
-      <SEO 
-        title="Trái cây nhập khẩu" 
-        description="Trái cây tươi ngon nhập khẩu từ các nước, đảm bảo chất lượng, giá cả hợp lý."
-      />
-      
-      <h2 className="text-[14px] font-medium text-[#292929] uppercase lg:text-[35px]">
-        Trái cây nhập khẩu
-      </h2>
-      
-      <div className="mt-4 gap-10 lg:grid lg:grid-cols-[70%_30%]">
-        <div className="w-full">
-          {isLoading ? (
-            <div className="flex justify-center items-center min-h-[200px]">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 items-stretch justify-around gap-4">
-              {products.map((product) => (
-                <ProductItem
-                  key={product._id}
-                  product={product}
-                  handleAddToCart={handleAddToCart}
-                  handleClick={handleClick}
-                  getPrice={getPrice}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+    <AnimatePresence mode="sync">
+      <motion.div 
+        className="grid grid-cols-1 px-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <SEO 
+          title="Trái cây nhập khẩu" 
+          description="Trái cây tươi ngon nhập khẩu từ các nước, đảm bảo chất lượng, giá cả hợp lý."
+        />
         
-        <div className="w-full grid grid-cols-2 lg:grid-cols-1 mt-4 items-center justify-between gap-4">
-          <img
-            src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_col_product_banner_1.jpg?1721896755861"
-            alt="Khuyến mãi đặc biệt cho trái cây"
-            loading="lazy"
-            width="273"
-            height="358"
-            className="w-[332px] h-[300px] lg:w-[273px] lg:h-[358px]"
-          />
-          <img
-            src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_col_product_banner_1s.jpg?1721896755861"
-            alt="Ưu đãi trái cây nhập khẩu" 
-            loading="lazy"
-            width="273"
-            height="358"
-            className="w-[332px] h-[300px] lg:w-[273px] lg:h-[358px]"
-          />
-        </div>
-      </div>
-      
-      <img
-        src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_banner_full_1.jpg?1721896755861"
-        alt="Banner khuyến mãi trái cây"
-        loading="lazy"
-        width="1200" 
-        height="200"
-        className="w-full mt-5"
-      />
-    </div>
+        <motion.h2 
+          className="text-[14px] font-medium text-[#292929] uppercase lg:text-[35px]"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false }}
+          transition={{ duration: 0.3 }}
+        >
+          Trái cây nhập khẩu
+        </motion.h2>
+        
+        <motion.div 
+          className="mt-4 gap-10 lg:grid lg:grid-cols-[70%_30%]"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: false }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <div className="w-full">
+            {isLoading ? (
+              <div className="flex justify-center items-center min-h-[200px]">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+              </div>
+            ) : (
+              <motion.div 
+                className="grid grid-cols-2 lg:grid-cols-3 items-stretch justify-around gap-4"
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: false }}
+                transition={{ staggerChildren: 0.1 }}
+              >
+                {products.map((product) => (
+                  <ProductItem
+                    key={product._id}
+                    product={product}
+                    handleAddToCart={handleAddToCart}
+                    handleClick={handleClick}
+                    getPrice={getPrice}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </div>
+          
+          <div className="w-full grid grid-cols-2 lg:grid-cols-1 mt-4 items-center justify-between gap-4">
+            <motion.img
+              src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_col_product_banner_1.jpg?1721896755861"
+              alt="Khuyến mãi đặc biệt cho trái cây"
+              loading="lazy"
+              width="273"
+              height="358"
+              className="w-[332px] h-[300px] lg:w-[273px] lg:h-[358px]"
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: false }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            />
+            <motion.img
+              src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_col_product_banner_1s.jpg?1721896755861"
+              alt="Ưu đãi trái cây nhập khẩu" 
+              loading="lazy"
+              width="273"
+              height="358"
+              className="w-[332px] h-[300px] lg:w-[273px] lg:h-[358px]"
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: false }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+            />
+          </div>
+        </motion.div>
+        
+        <motion.img
+          src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_banner_full_1.jpg?1721896755861"
+          alt="Banner khuyến mãi trái cây"
+          loading="lazy"
+          width="1200" 
+          height="200"
+          className="w-full mt-5"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+        />
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
-export default memo(Fruit);
+export default Fruit;

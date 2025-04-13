@@ -44,7 +44,14 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
     const fetchCategories = async () => {
       try {
         const response = await categoriesApi.getAllCategories();
+        console.log("Fetched categories:", response);
+        
         if (Array.isArray(response)) {
+          // Log each category to see their structure
+          response.forEach(cat => {
+            console.log(`Category: ${cat.nameCategory}, ID: ${cat._id}, Code: ${cat.codeCategory}`);
+          });
+          
           setCategories(response);
         } else {
           toast.error("Dữ liệu danh mục không hợp lệ");
@@ -123,21 +130,31 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
 
   const handleDropdownChange = (e, name) => {
     if (name === 'productCategory') {
-      setSelectedCategory(e.value);
-      generateProductCode(e.value);
+      const categoryId = e.value;
+      setSelectedCategory(categoryId);
+      
+      console.log("Selected category ID:", categoryId);
       
       // Tìm tên danh mục dựa vào ID
-      const selectedCat = categories.find(cat => cat._id === e.value);
+      const selectedCat = categories.find(cat => cat._id === categoryId);
       if (selectedCat) {
+        console.log("Found category:", selectedCat);
+        
         setProduct(prev => ({
           ...prev,
-          productCategory: e.value,
+          productCategory: categoryId,
           productTypeName: selectedCat.nameCategory
         }));
+        
+        // Generate product code after setting category
+        generateProductCode(categoryId);
       } else {
+        console.error("Category not found for ID:", categoryId);
+        toast.error("Không tìm thấy danh mục đã chọn. Vui lòng thử lại.");
+        
         setProduct(prev => ({
           ...prev,
-          productCategory: e.value,
+          productCategory: categoryId,
         }));
       }
     } else {
@@ -183,27 +200,55 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
     setIsSubmitting(true);
 
     try {
-      const formData = new FormData();
-      Object.entries(product).forEach(([key, value]) => {
-        if (key !== "productImages" && value !== null && value !== undefined) {
-          formData.append(key, value);
-        }
-      });
+      // Tìm tên danh mục dựa vào ID đã chọn
+      const selectedCat = categories.find(cat => cat._id === product.productCategory);
+      if (!selectedCat) {
+        toast.error("Không tìm thấy thông tin danh mục đã chọn");
+        setIsSubmitting(false);
+        return;
+      }
       
+      console.log("Sử dụng tên danh mục:", selectedCat.nameCategory);
+      
+      // Use a new approach: Try sending directly with a different format
+      const formData = new FormData();
+      
+      // Sử dụng nameCategory thay vì categoryId
+      formData.append("productCategory", selectedCat.nameCategory);
+      
+      // Add all other product fields
+      formData.append("productName", product.productName);
+      formData.append("productPrice", product.productPrice);
+      formData.append("productBrand", product.productBrand || "");
+      formData.append("productStatus", product.productStatus || "Còn hàng");
+      formData.append("productDiscount", product.productDiscount || "0");
+      formData.append("productStock", product.productStock || "0");
+      formData.append("productCode", product.productCode || "");
+      formData.append("productWeight", product.productWeight || "0");
+      formData.append("productOrigin", product.productOrigin || "");
+      formData.append("productIntroduction", product.productIntroduction || "");
+      formData.append("productInfo", product.productInfo || "");
+      formData.append("productDetails", product.productDetails || "");
+      formData.append("productTypeName", selectedCat.nameCategory); // Thêm cả productTypeName
+      
+      // Add description
       const descriptions = productDescription
         .split(".")
         .map((desc) => desc.trim())
         .filter((desc) => desc !== "");
       formData.append("productDescription", JSON.stringify(descriptions));
       
+      // Add images separately
       product.productImages.forEach((file) => {
         formData.append("productImages", file);
       });
 
-      const response = await productsApi.createProduct(formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      console.log("FormData being submitted with a new approach");
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value instanceof File ? '(binary)' : value}`);
+      }
 
+      const response = await productsApi.createProduct(formData);
       toast.success("Thêm sản phẩm thành công!");
       if (onProductAdd) {
         onProductAdd(response.data); 
@@ -215,6 +260,41 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
       toast.error(`Thêm sản phẩm thất bại: ${errorMessage}`);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Helper function to test the API directly
+  const testCategoryAPI = async () => {
+    if (!product.productCategory) {
+      toast.error("Vui lòng chọn danh mục trước khi kiểm tra");
+      return;
+    }
+    
+    toast.info("Đang kiểm tra API với danh mục đã chọn...");
+    
+    try {
+      // First test: Check if the category exists
+      console.log("Checking category directly:", product.productCategory);
+      try {
+        const categoryDetails = await productsApi.checkCategory(product.productCategory);
+        console.log("Category details:", categoryDetails);
+        toast.success("✅ Danh mục tồn tại và hợp lệ!");
+      } catch (error) {
+        console.error("Category check failed:", error);
+        toast.error(`❌ Kiểm tra danh mục thất bại: ${error.message}`);
+        return;
+      }
+      
+      // Second test: Try creating a test product
+      const result = await productsApi.testProductCreation(product.productCategory);
+      
+      if (result.success) {
+        toast.success("✅ Kiểm tra tạo sản phẩm thành công!");
+      } else {
+        toast.error(`❌ Kiểm tra tạo sản phẩm thất bại: ${result.error?.message || "Lỗi không xác định"}`);
+      }
+    } catch (error) {
+      toast.error(`Lỗi kiểm tra: ${error.message}`);
     }
   };
 
@@ -257,10 +337,12 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                   value={product.productCategory}
                   onChange={(e) => handleDropdownChange(e, 'productCategory')}
                   options={categories.map(cat => ({ 
-                    label: cat.nameCategory, 
+                    label: `${cat.nameCategory} (${cat.codeCategory})`, 
                     value: cat._id,
                     code: cat.codeCategory
                   }))}
+                  optionLabel="label"
+                  optionValue="value"
                   placeholder="Chọn danh mục"
                   className="w-full border border-gray-300 rounded-md"
                   panelClassName="z-50"
@@ -269,7 +351,7 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                   appendTo="self"
                   style={{ height: '2.5rem' }}
                   itemTemplate={(option) => (
-                    <div className="px-4 py-2">{option.label} <span className="text-xs text-gray-500">({option.code})</span></div>
+                    <div className="px-4 py-2">{option.label}</div>
                   )}
                   filterPlaceholder="Tìm danh mục..."
                   dropdownIcon="pi pi-chevron-down"
@@ -293,6 +375,16 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                     trigger: { className: 'py-2' }
                   }}
                 />
+                <div className="mt-2">
+                  <Button
+                    type="button"
+                    icon="pi pi-check"
+                    label="Kiểm tra danh mục"
+                    onClick={testCategoryAPI}
+                    className="p-button-sm h-8 px-3 text-xs rounded-md bg-blue-500 hover:bg-blue-600 border-blue-500 hover:border-blue-600 text-white"
+                  />
+                  <small className="text-gray-500 ml-2">Kiểm tra xem danh mục có hợp lệ với API không</small>
+                </div>
               </div>
               
               <div className="field">
@@ -436,6 +528,36 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                   placeholder="Mỗi đặc điểm nên kết thúc bằng dấu chấm (.)"
                 />
                 <small className="text-gray-500 mt-1 block">Các đặc điểm được phân tách bằng dấu chấm (.)</small>
+              </div>
+              
+              <div className="field mb-4">
+                <label htmlFor="productIntroduction" className="block text-sm font-medium text-gray-700 mb-2">
+                  Giới thiệu sản phẩm
+                </label>
+                <InputTextarea
+                  id="productIntroduction"
+                  name="productIntroduction"
+                  value={product.productIntroduction}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Giới thiệu ngắn gọn về sản phẩm"
+                />
+              </div>
+              
+              <div className="field mb-4">
+                <label htmlFor="productDetails" className="block text-sm font-medium text-gray-700 mb-2">
+                  Chi tiết sản phẩm
+                </label>
+                <InputTextarea
+                  id="productDetails"
+                  name="productDetails"
+                  value={product.productDetails}
+                  onChange={handleInputChange}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Thông tin chi tiết về đặc tính, công dụng của sản phẩm"
+                />
               </div>
               
               <div className="field">

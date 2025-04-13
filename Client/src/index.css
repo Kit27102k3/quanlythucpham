@@ -71,6 +71,21 @@ html {
   transform: scale(1.1);
 }
 
+.scroll-up {
+  animation: scroll-up-animation 0.5s ease-out;
+}
+
+@keyframes scroll-up-animation {
+  0% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 .small-checkbox .p-checkbox-box {
   width: 16px; /* Điều chỉnh kích thước theo ý bạn */
   height: 16px;
@@ -190,15 +205,115 @@ html {
   right: 0;
   top: 100%;
   z-index: 50;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-20px);
-  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out,
-    visibility 0.3s;
 }
 
-.product-dropdown-container.show {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+.product-dropdown-content {
+  border-top: 3px solid #51aa1b;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Tùy chỉnh carousel sản phẩm liên quan */
+.related-products-carousel .p-carousel-items-container {
+  padding: 0 20px;
+}
+
+.related-products-carousel .p-carousel-prev,
+.related-products-carousel .p-carousel-next {
+  width: 40px !important; 
+  height: 40px !important;
+  margin-top: -20px;
+  z-index: 100 !important;
+  border-radius: 50% !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  background-color: white !important;
+  color: #51aa1b !important;
+  transition: all 0.3s ease !important;
+}
+
+.related-products-carousel .p-carousel-prev:hover,
+.related-products-carousel .p-carousel-next:hover {
+  background-color: #51aa1b !important;
+  color: white !important;
+  transform: scale(1.05);
+}
+
+/* Cân chỉnh item trong carousel */
+.related-products-carousel .p-carousel-item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+}
+
+/* Cân chỉnh container và các sản phẩm */
+.related-products-carousel .p-carousel-container {
+  position: relative;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.related-products-carousel .p-carousel-items-content {
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Container sản phẩm */
+.product-item {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Container hình ảnh */
+.product-image-container {
+  position: relative;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+.product-image-container img {
+  transition: transform 0.5s ease;
+}
+
+.product-image-container:hover img {
+  transform: scale(1.05);
+}
+
+/* Styling cho tên sản phẩm */
+.product-name {
+  transition: color 0.2s ease;
+  font-weight: 500;
+}
+
+/* Hiệu ứng hover cho tên sản phẩm */
+.product-name:hover {
+  color: #51aa1b;
+}
+
+/* Styling cho giá */
+.product-price {
+  font-weight: 600;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+  .related-products-carousel .p-carousel-items-container {
+    padding: 0 10px;
+  }
+  
+  .related-products-carousel .p-carousel-prev,
+  .related-products-carousel .p-carousel-next {
+    width: 32px !important;
+    height: 32px !important;
+    margin-top: -16px;
+  }
+  
+  .related-products-carousel .p-carousel-prev span,
+  .related-products-carousel .p-carousel-next span {
+    font-size: 12px !important;
+  }
+  
+  .product-item {
+    max-width: 220px;
+  }
 }

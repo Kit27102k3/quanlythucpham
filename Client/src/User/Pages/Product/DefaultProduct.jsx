@@ -3,7 +3,6 @@ import { useState } from "react";
 import { ChevronRightIcon } from "@radix-ui/react-icons";
 import { RadioButton } from "primereact/radiobutton";
 import AllProducts from "./AllProducts";
-import PaginatorBasic from "../../../Until/Paginator";
 import "../../../index.css";
 import FilterByPrice from "../../component/FilterByPrice";
 
@@ -154,7 +153,7 @@ function ProductLayout({ showPromotional = false }) {
               showPromotional={showPromotional}
             />
           </div>
-          <PaginatorBasic />
+         
         </main>
       </div>
     </div>

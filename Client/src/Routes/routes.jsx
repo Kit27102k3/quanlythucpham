@@ -6,6 +6,7 @@ import Home from "../User/Pages/Home/Home";
 import Introduce from "../User/Pages/Introduce/Introduce";
 import DefaultProduct from "../User/Pages/Product/DefaultProduct";
 import Order from "../User/Pages/Profile/Order";
+import OrderDetail from "../User/Pages/Profile/OrderDetail";
 import Account from "../User/Pages/Profile/Account";
 import FetchProductData from "../User/Until/FetchProductData";
 import ProductDetails from "../User/Pages/Product/ProductDetails";
@@ -42,6 +43,10 @@ const publicRoutes = [
         page: Order,
       },
       {
+        path: "don-hang/:orderId",
+        page: OrderDetail,
+      },
+      {
         path: "",
         page: Account,
       },
@@ -70,6 +75,10 @@ const publicRoutes = [
   {
     path: "/order-confirmation/:orderId",
     page: OrderConfirmation,
+  },
+  {
+    path: "/order-detail/:orderId",
+    page: OrderDetail,
   },
   {
     path: "/khuyen-mai",

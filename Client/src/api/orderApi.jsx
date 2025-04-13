@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const API_URL = "http://localhost:8080";
+const GHN_API_URL = "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order";
 
 // Cấu hình Axios để gửi token trong header
 axios.interceptors.request.use(
@@ -65,7 +66,7 @@ const orderApi = {
       }
 
       // If we have a user ID, use it to filter orders
-      let url = API_URL;
+      let url = `${API_URL}/orders`;
       if (userId) {
         url = `${API_URL}/orders/user?userId=${userId}`;
       }
@@ -93,7 +94,45 @@ const orderApi = {
       console.error("Lỗi khi hủy đơn hàng:", error);
       throw error;
     }
+  },
+
+  // Thêm hàm lấy thông tin vận chuyển từ GHN
+  getOrderTracking: async (orderCode) => {
+    try {
+      // Gọi API server để lấy thông tin tracking từ GHN
+      const response = await axios.get(`${API_URL}/orders/tracking/${orderCode}`);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy thông tin vận chuyển:", error);
+      throw error;
+    }
+  },
+  
+  // Thêm hàm cập nhật mã vận đơn cho đơn hàng
+  updateOrderWithTrackingCode: async (orderId, orderCode) => {
+    try {
+      // Tạo mã vận đơn tự động nếu không được cung cấp
+      const generatedOrderCode = orderCode || generateRandomOrderCode();
+      
+      const response = await axios.patch(`${API_URL}/orders/${orderId}`, {
+        orderCode: generatedOrderCode
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi cập nhật mã vận đơn:", error);
+      throw error;
+    }
   }
 };
+
+// Hàm tạo mã vận đơn ngẫu nhiên (10 ký tự)
+function generateRandomOrderCode() {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 10; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
 
 export default orderApi;

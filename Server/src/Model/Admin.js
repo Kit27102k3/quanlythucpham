@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 

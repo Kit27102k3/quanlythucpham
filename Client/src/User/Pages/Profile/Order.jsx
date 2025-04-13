@@ -16,6 +16,7 @@ export default function Order() {
     try {
       setLoading(true);
       const response = await orderApi.getUserOrders();
+      
       // Sắp xếp đơn hàng mới nhất lên đầu
       const sortedOrders = response.sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
@@ -56,6 +57,13 @@ export default function Order() {
     
     if (cancelLoading) return;
     
+    // Kiểm tra trạng thái đơn hàng trước khi hủy
+    const order = orders.find(o => o._id === orderId);
+    if (order.status === "delivering" || order.status === "completed" || order.status === "cancelled") {
+      toast.error("Không thể hủy đơn hàng đang giao, đã giao hoặc đã hủy");
+      return;
+    }
+    
     try {
       setCancelLoading(true);
       // console.log("Đang gửi yêu cầu hủy đơn hàng ID:", orderId);
@@ -90,6 +98,11 @@ export default function Order() {
     } finally {
       setCancelLoading(false);
     }
+  };
+
+  // Cập nhật hàm xử lý chuyển hướng để đi đến trang chi tiết đơn hàng
+  const handleOrderClick = (orderId) => {
+    navigate(`/tai-khoan/don-hang/${orderId}`);
   };
 
   if (loading) return <div className="text-center py-8">Đang tải...</div>;
@@ -152,7 +165,7 @@ export default function Order() {
                   <tr
                     key={order._id}
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/orders/${order._id}`)}
+                    onClick={() => handleOrderClick(order._id)}
                   >
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       #{order._id.slice(-6).toUpperCase()}
@@ -161,7 +174,15 @@ export default function Order() {
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-500">
-                      {order.shippingInfo?.address || "Chưa có địa chỉ"}
+                      {order.userId?.address ? (
+                        <span className="line-clamp-1">
+                          {order.userId.address}
+                          {order.userId.ward && `, ${order.userId.ward}`}
+                          {order.userId.district && `, ${order.userId.district}`}
+                        </span>
+                      ) : (
+                        "Chưa có địa chỉ"
+                      )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatCurrency(order.totalAmount)}
@@ -186,6 +207,8 @@ export default function Order() {
                             ? "bg-purple-100 text-purple-800"
                             : order.status === "cancelled"
                             ? "bg-red-100 text-red-800"
+                            : order.status === "delivering"
+                            ? "bg-indigo-100 text-indigo-800"
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
@@ -202,6 +225,9 @@ export default function Order() {
                           <XCircleIcon className="w-4 h-4" />
                           Hủy đơn
                         </button>
+                      )}
+                      {order.status === "delivering" && (
+                        <span className="text-gray-500 text-sm">Đơn hàng đang giao</span>
                       )}
                     </td>
                   </tr>
@@ -239,23 +265,27 @@ function getShippingStatus(status) {
     case "pending":
       return "Đang xử lý";
     case "paid":
-      return "Đang giao hàng";
+      return "Đã thanh toán";
     case "completed":
       return "Đã giao";
     case "cancelled":
       return "Đã hủy";
+    case "awaiting_payment":
+      return "Chờ thanh toán";
+    case "delivering":
+      return "Đang giao hàng";
     default:
       return status;
   }
 }
 
 const OrderStatusCard = ({ icon, title, count }) => (
-  <div className="bg-white shadow-md rounded-lg p-4 flex items-center justify-between hover:shadow-lg transition-shadow">
+  <div className="bg-white p-6 rounded-lg shadow-md">
     <div className="flex items-center space-x-4">
-      {icon}
+      <div className="bg-gray-50 p-3 rounded-lg">{icon}</div>
       <div>
-        <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-xl font-semibold text-gray-800">{count}</p>
+        <h3 className="text-lg font-medium text-gray-900">{title}</h3>
+        <p className="text-2xl font-bold text-[#51bb1a]">{count}</p>
       </div>
     </div>
   </div>

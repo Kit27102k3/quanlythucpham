@@ -16,6 +16,23 @@ export default defineConfig({
     },
   },
   resolve: {
-    extensions: ['.js', '.jsx', '.json']
+    extensions: ['.js', '.jsx', '.json'],
+    alias: {
+      aos: 'aos'
+    }
+  },
+  optimizeDeps: {
+    include: ['aos'],
+    exclude: ['framer-motion'],
+    esbuildOptions: {
+      define: {
+        global: 'globalThis'
+      }
+    }
+  },
+  build: {
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    }
   }
 });

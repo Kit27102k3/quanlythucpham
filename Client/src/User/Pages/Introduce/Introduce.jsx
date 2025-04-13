@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useEffect } from "react";
-import AOS from "aos";
+import * as AOS from "aos";
 import "aos/dist/aos.css";
 
 const Introduce = () => {
@@ -23,7 +23,7 @@ const Introduce = () => {
         <div className="text-center">
           <h1 className="text-4xl lg:text-6xl font-bold text-gray-800 mb-6">
             Chào mừng đến với{" "}
-            <span className="text-[#51bb1a]">Fresh Food Market</span>
+            <span className="text-[#51bb1a]">Dnc Food Market</span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Nơi bạn tìm thấy những sản phẩm thực phẩm tươi ngon, an toàn và chất lượng cao
@@ -91,7 +91,7 @@ const Introduce = () => {
                 Về chúng tôi
               </h2>
               <p className="text-gray-600 leading-relaxed">
-                Fresh Food Market là điểm đến lý tưởng cho những người yêu thích thực phẩm sạch và lành mạnh. 
+                Dnc Food Market là điểm đến lý tưởng cho những người yêu thích thực phẩm sạch và lành mạnh. 
                 Chúng tôi làm việc trực tiếp với các nhà cung cấp uy tín, các trang trại organic để mang đến 
                 những sản phẩm chất lượng cao nhất.
               </p>
@@ -110,7 +110,7 @@ const Introduce = () => {
               <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden shadow-xl">
                 <img 
                   src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80" 
-                  alt="Fresh Food Market" 
+                  alt="Dnc Food Market" 
                   className="object-cover w-full h-full"
                 />
               </div>
@@ -304,7 +304,7 @@ const Introduce = () => {
           <div className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-300">
             <i className="fas fa-envelope text-[#51bb1a] text-2xl mb-4"></i>
             <h3 className="text-lg font-semibold mb-2">Email</h3>
-            <p className="text-gray-600">contact@freshfood.com</p>
+            <p className="text-gray-600">contact@Dncfood.com</p>
           </div>
           
           <div className="p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow duration-300">

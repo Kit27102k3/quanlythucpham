@@ -58,6 +58,7 @@ const Header = () => {
   const [showPromotion, setShowPromotion] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(0);
   const inputRef = useRef(null);
+  const timeoutRef = useRef(null);
   const navigate = useNavigate();
   const userId = localStorage.getItem("userId");
 
@@ -189,6 +190,19 @@ const Header = () => {
     } catch (error) {
       console.error("Logout error:", error);
     }
+  };
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    setShowProduct(true);
+  };
+  
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setShowProduct(false);
+    }, 300); // 300ms delay trước khi ẩn dropdown
   };
 
   return (
@@ -328,22 +342,16 @@ const Header = () => {
                 handleNavigate(item.path);
               }}
               onMouseEnter={() =>
-                item.name === "Sản Phẩm" && setShowProduct(true)
+                item.name === "Sản Phẩm" && handleMouseEnter()
               }
-              onMouseLeave={() => setShowProduct(false)}
+              onMouseLeave={() => 
+                item.name === "Sản Phẩm" && handleMouseLeave()
+              }
             >
               {item.name}
               {item.name === "Sản Phẩm" && <CaretDownIcon />}
-              {item.name === "Sản Phẩm" && showProduct && (
-                <div
-                  className={`dropdown ${
-                    showProduct ? "show" : ""
-                  } absolute left-0 right-0 px-[120px] top-full z-50`}
-                  onMouseEnter={() => setShowProduct(true)}
-                  onMouseLeave={() => setShowProduct(false)}
-                >
-                  <ProductDetail />
-                </div>
+              {item.name === "Sản Phẩm" && (
+                <ProductDetail isVisible={showProduct} />
               )}
             </li>
           ))}
