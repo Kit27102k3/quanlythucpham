@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { useEffect, useState, memo } from "react";
 import "../../../index.css";
 import productsApi from "../../../api/productsApi";

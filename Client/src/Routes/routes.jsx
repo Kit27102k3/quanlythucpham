@@ -27,6 +27,7 @@ import OrderConfirmation from "../User/Cart/OrderConfirmation";
 import NewsPage from "../User/Pages/NewsPage/NewsPage";
 import TipsPage from "../User/Pages/TipsPage/TipsPage";
 import PaymentResult from "../User/Pages/PaymentResult";
+import PaymentQR from "../User/Pages/PaymentQR";
 import CategoryProducts from "../User/Pages/Product/CategoryProducts";
 
 const publicRoutes = [
@@ -125,6 +126,10 @@ const publicRoutes = [
   {
     path: "/payment-result",
     page: PaymentResult,
+  },
+  {
+    path: "/payment-qr",
+    page: PaymentQR,
   },
   {
     path: "/dang-ky",

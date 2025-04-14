@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCar, faMoneyCheckDollar } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams } from "react-router-dom";
-import paymentApi from "../../api/paymentApi";
+import paymentApi from "../../api/paymentApi.js";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import formatCurrency from "../Until/FotmatPrice";
@@ -38,10 +38,14 @@ export default function Payment() {
           return;
         }
         const response = await paymentApi.getPaymentById(paymentId);
+        // Kiểm tra cấu trúc response thực tế 
+        const paymentData = response.data || response;
+        console.log("Payment data:", paymentData);
+        
         setOrderDetails({
-          products: response.products || [],
-          totalAmount: response.totalAmount || 0,
-          productCount: response.products?.length || 0,
+          products: paymentData.products || [],
+          totalAmount: paymentData.totalAmount || 0,
+          productCount: paymentData.products?.length || 0,
         });
 
         try {
@@ -112,6 +116,7 @@ export default function Payment() {
 
       if (selectedPayment === "sepay") {
         try {
+          // Đảm bảo amount là số nguyên dương
           // Create payment record
           const paymentData = {
             userId: users._id,
@@ -136,13 +141,63 @@ export default function Payment() {
           );
 
           // Check if we got a valid payment URL
-          if (sepayResponse && sepayResponse.data) {
-            // If it's a fallback URL (code 01), show a notification
-            if (sepayResponse.code === "01") {
-              toast.info("Đang sử dụng cổng thanh toán mẫu để kiểm tra");
+          if (sepayResponse && sepayResponse.success) {
+            // Kiểm tra xem đây là phương thức thanh toán nào
+            if (sepayResponse.method === "bank_transfer") {
+              // Phương án QR chuyển khoản ngân hàng
+              toast.info("Phát hiện sự cố kết nối với cổng thanh toán SePay. Chuyển sang phương án thanh toán chuyển khoản qua QR");
+              
+              // Hiển thị QR code cho chuyển khoản
+              navigate(`/payment-qr?orderId=${orderId}&qrCode=${encodeURIComponent(sepayResponse.qrCode)}&bankName=${encodeURIComponent(sepayResponse.bankInfo.name)}&accountNumber=${sepayResponse.bankInfo.accountNumber}&accountName=${encodeURIComponent(sepayResponse.bankInfo.accountName)}&amount=${totalPayment}`);
+            } else {
+              // Nếu là SePay thông thường
+              if (sepayResponse.code === "01") {
+                toast.info("Đang sử dụng cổng thanh toán mẫu để kiểm tra");
+              }
+              // Redirect to payment URL
+              window.location.href = sepayResponse.data;
             }
-            // Redirect to payment URL
-            window.location.href = sepayResponse.data;
+          } else if (sepayResponse && sepayResponse.fallbackQR) {
+            // Fallback là QR trực tiếp
+            toast.info("Đang chuyển sang phương án thanh toán qua chuyển khoản ngân hàng");
+            
+            // Tạo một trang QR tạm thời và hiển thị
+            const htmlContent = `
+              <html>
+                <head><title>Thanh toán qua QR Code</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                  body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+                  .qr-container { margin: 20px auto; }
+                  .bank-info { margin: 20px auto; text-align: left; max-width: 400px; }
+                  .btn-back { padding: 10px 15px; background: #51bb1a; color: white; border: none; border-radius: 4px; cursor: pointer; }
+                </style>
+                </head>
+                <body>
+                  <h2>Quét mã QR để thanh toán</h2>
+                  <p>Đơn hàng: #${orderId} - Số tiền: ${formatCurrency(totalPayment)}</p>
+                  <div class="qr-container">
+                    <img src="${sepayResponse.fallbackQR}" alt="QR Code Thanh Toán" style="max-width: 300px;"/>
+                  </div>
+                  <div class="bank-info">
+                    <p><strong>Thông tin chuyển khoản:</strong></p>
+                    <p>Ngân hàng: MBBank - Ngân hàng Thương mại Cổ phần Quân đội</p>
+                    <p>Số tài khoản: 0326743391</p>
+                    <p>Tên tài khoản: NGUYEN TRONG KHIEM</p>
+                    <p>Nội dung: Thanh toan don hang #${orderId}</p>
+                  </div>
+                  <p>Sau khi quét mã và thanh toán thành công, quý khách vui lòng chờ 1-2 phút để hệ thống xác nhận.</p>
+                  <button class="btn-back" onclick="window.location.href='/payment-result?orderId=${orderId}&status=manual&amount=${totalPayment}'">
+                    Tôi đã thanh toán
+                  </button>
+                </body>
+              </html>
+            `;
+            
+            // Tạo Blob và mở trong cửa sổ mới
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const qrUrl = URL.createObjectURL(blob);
+            window.location.href = qrUrl;
           } else {
             throw new Error("Không nhận được URL thanh toán");
           }

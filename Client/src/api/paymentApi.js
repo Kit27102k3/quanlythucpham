@@ -4,12 +4,50 @@ import { API_URLS } from "../config/apiConfig";
 export const getPaymentById = async (paymentId) => {
   try {
     const response = await axios.get(`${API_URLS.PAYMENTS}/${paymentId}`);
-    return response.data;
+    // Kiểm tra và đảm bảo trả về cấu trúc dữ liệu mong đợi
+    return response.data.data || response.data;
   } catch (error) {
     console.error("Lỗi khi lấy thông tin thanh toán:", error);
     throw error;
   }
 };
+
+// Tạo link QR chuyển khoản ngân hàng trực tiếp
+function createDirectBankQRUrl(orderId, amount, bankCode = "MB", accountNumber = "0326743391") {
+  // Chuẩn bị nội dung chuyển khoản
+  const description = encodeURIComponent(`Thanh toan don hang #${orderId}`);
+  
+  // Tạo URL QR theo cấu trúc của SePay
+  return `https://qr.sepay.vn/img?acc=${accountNumber}&bank=${bankCode}&amount=${amount}&des=${description}`;
+}
+
+// Tạo đối tượng QR kết quả đầy đủ cho chuyển khoản ngân hàng
+function createBankTransferQR(orderId, amount, orderInfo) {
+  // Thông tin tài khoản ngân hàng
+  const bankInfo = {
+    name: "MBBank - Ngân hàng Thương mại Cổ phần Quân đội",
+    accountName: "NGUYEN TRONG KHIEM",
+    accountNumber: "0326743391",
+    bankCode: "MB"
+  };
+  
+  // Tạo QR URL
+  const qrUrl = createDirectBankQRUrl(orderId, amount, bankInfo.bankCode, bankInfo.accountNumber);
+  
+  // Tạo URL redirect xử lý thủ công
+  const baseUrl = window.location.origin;
+  const manualRedirectUrl = `${baseUrl}/payment-result?orderId=${orderId}&status=manual&amount=${amount}`;
+  
+  return {
+    success: true,
+    method: "bank_transfer",
+    data: manualRedirectUrl,
+    qrCode: qrUrl,
+    bankInfo: bankInfo,
+    message: "Vui lòng quét mã QR để thanh toán qua ngân hàng",
+    isManualVerification: true
+  };
+}
 
 const paymentApi = {
   // Lấy tất cả thanh toán của người dùng
@@ -54,32 +92,41 @@ const paymentApi = {
         redirectUrl
       };
       
-      const response = await axios.post(
-        `${API_URLS.PAYMENTS}/sepay/create-payment-url`, 
-        requestData, 
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      
-      // Kiểm tra response
-      if (response.data && response.data.success) {
-        return {
-          success: true,
-          data: {
-            paymentUrl: response.data.paymentUrl,
-            qrCode: response.data.qrCode
+      try {
+        // Thử gọi API SePay với timeout ngắn hơn để không đợi quá lâu
+        const response = await axios.post(
+          `${API_URLS.PAYMENTS}/sepay/create-payment-url`, 
+          requestData, 
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+            timeout: 5000 // 5 giây timeout
           }
-        };
-      } else {
+        );
+        
+        // Kiểm tra response
+        if (response.data && response.data.success) {
+          return {
+            success: true,
+            data: response.data.paymentUrl,
+            qrCode: response.data.qrCode,
+            method: "sepay"
+          };
+        }
+        // Nếu SePay trả về lỗi, chuyển sang phương án dự phòng
         throw new Error(response.data?.message || "Không nhận được URL thanh toán");
+      } catch (sepayError) {
+        console.log("Lỗi SePay, chuyển sang QR chuyển khoản:", sepayError.message);
+        // Phương án dự phòng: Tạo QR chuyển khoản ngân hàng
+        return createBankTransferQR(orderId, amount, orderInfo);
       }
     } catch (error) {
+      console.error("Lỗi toàn bộ quá trình thanh toán:", error);
       return {
         success: false,
-        error: error.response?.data?.message || error.message || "Không thể tạo URL thanh toán"
+        error: error.response?.data?.message || error.message || "Không thể tạo URL thanh toán",
+        fallbackQR: createDirectBankQRUrl(orderId, amount)
       };
     }
   },
@@ -129,20 +176,7 @@ const paymentApi = {
       console.error("Lỗi khi tìm kiếm thanh toán:", error);
       throw error;
     }
-  },
-
-  // Lấy thông tin thanh toán cho chatbot
-  getPaymentInfoForChatbot: async (paymentId) => {
-    try {
-      const response = await axios.post(`${API_URLS.PAYMENTS}/chatbot/payment-info`, {
-        paymentId,
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Lỗi khi lấy thông tin thanh toán cho chatbot:", error);
-      throw error;
-    }
-  },
+  }
 };
 
-export default paymentApi;
+export default paymentApi; 

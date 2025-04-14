@@ -10,7 +10,7 @@ import { Spin } from 'antd';
 try {
   Modal.setAppElement('#root');
 } catch (error) {
-  console.warn('Could not set app element for Modal:', error);
+  // Ignore error in testing environment
 }
 
 // Chuyển đổi thành function component hoàn chỉnh
@@ -19,40 +19,18 @@ const Payment = ({ calculateTotalPrice }) => {
   const [showQRCode, setShowQRCode] = useState(false);
   const [paymentUrl, setPaymentUrl] = useState('');
   const [qrValue, setQrValue] = useState('');
-  const [isScanned, setIsScanned] = useState(false);
   
   // Hiển thị modal QR code
   const showQRCodeModal = (url, qrCodeData = null) => {
-    console.log("Hiển thị QR code modal với URL:", url);
-    console.log("QR code data từ server:", qrCodeData ? "Có" : "Không");
-    
     setPaymentUrl(url);
     // Nếu có QR code từ server, dùng nó - ngược lại để null để modal tự tạo QR
     setQrValue(qrCodeData);
     setShowQRCode(true);
-    setIsScanned(false); // Reset trạng thái quét mỗi khi mở modal
   };
 
   // Đóng modal
   const handleCancel = () => {
     setShowQRCode(false);
-  };
-
-  // Xử lý khi người dùng quét mã QR
-  const handleQRScanned = () => {
-    setIsScanned(true);
-    toast.success("Đã quét mã QR thành công!");
-  };
-
-  // Xử lý khi người dùng hoàn tất thanh toán
-  const handleCompletePayment = () => {
-    if (!isScanned) {
-      toast.warning("Vui lòng quét mã QR trước khi hoàn tất thanh toán");
-      return;
-    }
-    
-    // Chuyển hướng đến trang kết quả thanh toán
-    window.location.href = paymentUrl;
   };
 
   // Function to handle placing order
@@ -62,41 +40,37 @@ const Payment = ({ calculateTotalPrice }) => {
     try {
       // Tạo mã đơn hàng duy nhất
       const orderId = `${new Date().getTime()}-${Math.floor(Math.random() * 1000)}`;
-      const amount = calculateTotalPrice();
-      const orderInfo = `Thanh toán đơn hàng ${orderId}`;
       
-      console.log("Bắt đầu thanh toán với:", { orderId, amount, orderInfo });
+      // Lấy tổng số tiền và đảm bảo là số dương
+      const totalPrice = calculateTotalPrice();
+      const amount = Math.max(1, Math.round(totalPrice)); // Đảm bảo amount là số nguyên và lớn hơn 0
+      
+      const orderInfo = `Thanh toán đơn hàng ${orderId}`;
       
       // Gọi API thanh toán SePay
       const response = await paymentApi.createSepayPaymentUrl(orderId, amount, orderInfo);
       
-      console.log("Phản hồi đầy đủ từ API thanh toán:", response);
-      
-      // Kiểm tra object response
-      if (!response || typeof response !== 'object') {
-        console.error("Phản hồi không hợp lệ từ API thanh toán:", response);
-        throw new Error("Phản hồi không hợp lệ từ API thanh toán");
+      if (!response.success) {
+        throw new Error(response.error || "Không thể khởi tạo thanh toán");
       }
       
-      // Kiểm tra data (chứa URL thanh toán)
-      if (!response.data) {
-        console.error("Không có URL thanh toán trong phản hồi:", response);
+      // Kiểm tra phản hồi từ API
+      const { paymentUrl, qrCode } = response.data;
+      
+      if (!paymentUrl) {
         throw new Error("Không nhận được URL thanh toán");
       }
       
-      // Log thông tin QR code để debug
-      console.log("Thông tin QR Code:", {
-        có_qr_code: !!response.qr_code,
-        loại_qr_code: response.qr_code ? typeof response.qr_code : 'không có',
-        độ_dài: response.qr_code ? response.qr_code.length : 0,
-        bắt_đầu_bằng: response.qr_code ? response.qr_code.substring(0, 30) + '...' : 'N/A'
-      });
-      
-      // LUÔN hiển thị QR code modal, không tự động chuyển hướng
-      showQRCodeModal(response.data, response.qr_code);
+      // Hiển thị QR code modal hoặc chuyển hướng đến trang thanh toán
+      if (qrCode) {
+        // Nếu có QR code, hiển thị modal
+        showQRCodeModal(paymentUrl, qrCode);
+      } else {
+        // Nếu không có QR code, chuyển hướng trực tiếp đến URL thanh toán
+        window.location.href = paymentUrl;
+      }
     } catch (error) {
-      console.error("Chi tiết lỗi khi tạo cổng thanh toán:", error);
-      toast.error("Không thể kết nối đến cổng thanh toán. Vui lòng thử lại sau.");
+      toast.error(error.message || "Không thể kết nối đến cổng thanh toán. Vui lòng thử lại sau.");
     } finally {
       setLoading(false);
     }
@@ -174,28 +148,13 @@ const Payment = ({ calculateTotalPrice }) => {
             <a href={paymentUrl} target="_blank" rel="noopener noreferrer" className="payment-link">
               Mở trang thanh toán
             </a>
-            {!isScanned ? (
-              <button 
-                onClick={handleQRScanned} 
-                className="scan-qr-btn"
-              >
-                Đã quét mã QR
-              </button>
-            ) : (
-              <button 
-                onClick={handleCompletePayment} 
-                className="complete-payment-btn"
-              >
-                Hoàn tất thanh toán
-              </button>
-            )}
+            <button
+              onClick={handleCancel}
+              className="cancel-payment-btn"
+            >
+              Hủy
+            </button>
           </div>
-          <button
-            onClick={handleCancel}
-            className="cancel-payment-btn"
-          >
-            Hủy
-          </button>
         </div>
       </Modal>
     </div>

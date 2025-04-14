@@ -17,70 +17,50 @@ const SITE_CONFIG = {
 
 class PaymentService {
     // SePay Payment
-    static async createSePayPayment(orderId, amount, orderInfo) {
+    static async createSePayPayment(orderId, amount, orderInfo, customRedirectUrl = null) {
         try {
-            console.log(`[SePay] Tạo thanh toán cho đơn hàng ${orderId} với số tiền ${amount}`);
-            
             // Cấu hình endpoints callback
-            const returnUrl = `${SITE_CONFIG.baseUrl}/payment-result`;
+            // Sử dụng customRedirectUrl từ client nếu có, ngược lại dùng URL mặc định
+            const returnUrl = customRedirectUrl || `${SITE_CONFIG.baseUrl}/payment-result`;
             const notifyUrl = `${SITE_CONFIG.apiUrl}/api/payments/sepay/callback`;
-            
-            console.log(`[SePay] URL callback: ${notifyUrl}`);
-            console.log(`[SePay] URL return: ${returnUrl}`);
             
             const requestData = {
                 merchantId: SEPAY.merchantId,
                 orderId: orderId.toString(),
                 amount: parseInt(amount),
                 orderInfo: orderInfo,
-                returnUrl: `${returnUrl}?orderId=${orderId}&status=success&amount=${amount}`,
+                returnUrl: `${returnUrl}${returnUrl.includes('?') ? '&' : '?'}status=success&amount=${amount}`,
                 notifyUrl: notifyUrl
             };
             
-            console.log('[SePay] Dữ liệu yêu cầu:', requestData);
-            
-            try {
-                // Luôn sử dụng API thanh toán thật
-                // Gọi API SePay thực
-                const response = await axios.post(
-                    `${SEPAY.endpoint}/create-payment-url`,
-                    requestData,
-                    {
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${SEPAY.apiToken}`
-                        },
-                        timeout: 30000 // 30 giây
-                    }
-                );
-                
-                console.log('[SePay] Phản hồi từ SePay API:', response.data);
-                
-                if (response.data && response.data.code === '00') {
-                    // Tạo QR code cho URL thanh toán
-                    const qrCodeDataURL = await this.generateQRCode(response.data.data);
-                    
-                    return {
-                        code: response.data.code,
-                        message: response.data.message,
-                        data: response.data.data,
-                        qr_code: qrCodeDataURL
-                    };
-                } else {
-                    // Thay vì ném lỗi, tạo URL dự phòng
-                    console.warn(`[SePay] Phản hồi không thành công từ SePay API: ${response.data?.message}`);
-                    return this.createFallbackPayment(orderId, amount, orderInfo);
+            // Gọi API SePay thực từ tệp .env
+            const response = await axios.post(
+                process.env.SEPAY_API_URL,
+                requestData,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.SEPAY_API_TOKEN}`
+                    },
+                    timeout: 30000 // 30 giây
                 }
-            } catch (apiError) {
-                console.error('[SePay] Lỗi khi gọi API SePay:', apiError);
-                return this.createFallbackPayment(orderId, amount, orderInfo);
+            );
+            
+            if (response.data && response.data.code === '00') {
+                // Tạo QR code cho URL thanh toán
+                const qrCodeDataURL = await this.generateQRCode(response.data.data);
+                
+                return {
+                    code: response.data.code,
+                    message: response.data.message,
+                    data: response.data.data,
+                    qr_code: qrCodeDataURL
+                };
+            } else {
+                throw new Error(`Phản hồi không thành công từ SePay API: ${response.data?.message || 'Unknown error'}`);
             }
         } catch (error) {
-            console.error('[SePay] Lỗi tạo thanh toán:', error);
-            
-            // Sử dụng mock trong trường hợp lỗi
-            console.warn('[SePay] Sử dụng thanh toán dự phòng do lỗi');
-            return this.createFallbackPayment(orderId, amount, orderInfo);
+            throw new Error(`Lỗi tạo thanh toán SePay: ${error.message}`);
         }
     }
 
@@ -124,7 +104,6 @@ class PaymentService {
     static async generateQRCode(text) {
         try {
             if (!text) {
-                console.error("Cannot generate QR code: Invalid or empty text");
                 return null;
             }
             
@@ -136,21 +115,49 @@ class PaymentService {
             });
             return qrCodeDataURL;
         } catch (error) {
-            console.error('Error generating QR code:', error);
+            // Tiếp tục mà không ném lỗi - chỉ trả về null nếu không thể tạo QR
             return null;
         }
     }
 
     // Xử lý callback từ SePay
     static verifySePayCallback(callbackData) {
-        // Log webhook data
-        console.log("Verifying SePay callback data:", callbackData);
-        
-        // Lưu lại log webhook
-        this.logWebhook(callbackData);
-        
-        // Verify callback data from SePay - thêm logic validation nếu cần
-        return true;
+        try {
+            if (!callbackData) {
+                return false;
+            }
+            
+            // Xác thực thông tin callback từ SePay
+            const { resultCode, amount, orderId, signature } = callbackData;
+            
+            // Kiểm tra các trường bắt buộc
+            if (!orderId || !resultCode) {
+                return false;
+            }
+            
+            // Kiểm tra chữ ký nếu SePay cung cấp
+            if (signature) {
+                // Tạo chuỗi dữ liệu cần xác thực
+                const dataToVerify = `${orderId}|${amount}|${resultCode}`;
+                
+                // Tạo chữ ký dựa trên secret key SePay
+                const expectedSignature = crypto
+                    .createHmac('sha256', process.env.SEPAY_API_TOKEN)
+                    .update(dataToVerify)
+                    .digest('hex');
+                
+                // So sánh chữ ký
+                if (signature !== expectedSignature) {
+                    return false;
+                }
+            }
+            
+            // Nếu không có lỗi và kiểm tra chữ ký thành công, trả về true
+            return true;
+        } catch (error) {
+            // Trong trường hợp có lỗi, trả về false
+            return false;
+        }
     }
 
     // Hàm hỗ trợ sắp xếp object
@@ -164,10 +171,10 @@ class PaymentService {
     // Lưu lại lịch sử webhook
     static logWebhook(data) {
         try {
-            console.log("Webhook received:", data);
-            // Thêm logic lưu webhook vào database nếu cần
+            // Triển khai logic lưu webhook vào database thực tế
+            // Ví dụ: Lưu vào bảng PaymentLogs, WebhookLogs...
         } catch (error) {
-            console.error("Error logging webhook:", error);
+            // Xử lý lỗi
         }
     }
 
@@ -176,7 +183,6 @@ class PaymentService {
         try {
             // Validate input
             if (!accountNumber || !bankCode) {
-                console.error("[Bank QR] Thiếu thông tin tài khoản hoặc mã ngân hàng");
                 return null;
             }
 
@@ -196,11 +202,8 @@ class PaymentService {
                 qrUrl += `&des=${encodedDescription}`;
             }
             
-            console.log(`[Bank QR] Đã tạo URL QR Code: ${qrUrl}`);
-            
             return qrUrl;
         } catch (error) {
-            console.error("[Bank QR] Lỗi khi tạo QR Code ngân hàng:", error);
             return null;
         }
     }
