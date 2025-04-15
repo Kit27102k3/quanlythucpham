@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_BASE_URL } from '../../config/apiConfig';
 
 export default function FetchProductData() {
   const [url, setUrl] = useState("");
@@ -7,7 +8,7 @@ export default function FetchProductData() {
   const fetchData = async () => {
     try {
       const response = await fetch(
-        `http://localhost:8080/api/scrape?url=${encodeURIComponent(url)}`
+        `${API_BASE_URL}/api/scrape?url=${encodeURIComponent(url)}`
       );
   
       if (!response.ok) {

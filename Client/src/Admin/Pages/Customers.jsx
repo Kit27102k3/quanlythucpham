@@ -8,6 +8,7 @@ import {
   UserX,
   UserCheck,
 } from "lucide-react";
+import { API_BASE_URL } from '../../config/apiConfig';
 
 function Customers() {
   const [users, setUsers] = useState([]);
@@ -20,7 +21,7 @@ function Customers() {
 
   const fetchUserProfile = async () => {
     try {
-      const response = await fetch("http://localhost:8080/auth/profile", {
+      const response = await fetch(`${API_BASE_URL}/auth/profile`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -64,17 +65,14 @@ function Customers() {
   const handleDelete = async (userId) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa người dùng này?")) {
       try {
-        const response = await fetch(
-          `http://localhost:8080/auth/profile/${userId}`,
-          {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-              // Thêm token xác thực nếu cần
-              // 'Authorization': `Bearer ${token}`
-            },
-          }
-        );
+        const response = await fetch(`${API_BASE_URL}/auth/profile/${userId}`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            // Thêm token xác thực nếu cần
+            // 'Authorization': `Bearer ${token}`
+          },
+        });
 
         if (!response.ok) {
           throw new Error("Xóa người dùng thất bại");
@@ -96,18 +94,15 @@ function Customers() {
       const user = users.find((u) => u._id === userId);
       const isBlocked = !user.isBlocked;
 
-      const response = await fetch(
-        `http://localhost:8080/auth/profile/block/${userId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            // Thêm token xác thực nếu cần
-            // 'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ isBlocked }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/auth/profile/block/${userId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          // Thêm token xác thực nếu cần
+          // 'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ isBlocked }),
+      });
 
       if (!response.ok) {
         throw new Error("Thao tác thất bại");

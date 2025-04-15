@@ -4,8 +4,9 @@ import { Send, MessageCircle, Minus, ExternalLink } from "lucide-react";
 import axios from "axios"; // Thêm import axios
 import { useNavigate } from "react-router-dom";
 import formatCurrency from "../Until/FotmatPrice";
+import { API_BASE_URL } from '../../config/apiConfig';
 
-const API_URL = "http://localhost:8080/api/chatbot";
+const API_URL = `${API_BASE_URL}/api/chatbot`;
 
 const ChatBot = ({ productId }) => {
   const [messages, setMessages] = useState([]);

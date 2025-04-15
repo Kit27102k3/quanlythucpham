@@ -1,7 +1,8 @@
 import axios from "axios";
+import { API_BASE_URL } from '../config/apiConfig';
 
-const API_URL = "http://localhost:8080/api/products";
-const CATEGORY_API_URL = "http://localhost:8080/api/categories";
+const API_URL = `${API_BASE_URL}/api/products`;
+const CATEGORY_API_URL = `${API_BASE_URL}/api/categories`;
 
 const productsApi = {
   getAllProducts: async () => {

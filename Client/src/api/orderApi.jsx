@@ -1,6 +1,7 @@
 import axios from "axios";
+import { API_BASE_URL } from '../config/apiConfig';
 
-const API_URL = "http://localhost:8080";
+const API_URL = API_BASE_URL;
 const GHN_API_URL = "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order";
 
 // Cấu hình Axios để gửi token trong header

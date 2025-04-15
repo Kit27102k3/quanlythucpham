@@ -12,6 +12,7 @@ import { Dropdown } from "primereact/dropdown";
 import { Dialog } from "primereact/dialog";
 import { Tooltip } from "primereact/tooltip";
 import { PackageIcon, ClockIcon, CheckIcon, XIcon, EyeIcon, Trash2Icon } from "lucide-react";
+import { API_BASE_URL } from '../../config/apiConfig';
 
 // Memoized Order Stats Component
 const OrderStats = memo(({ stats }) => {
@@ -276,7 +277,7 @@ const OrderAdmin = () => {
       const timestamp = Date.now();
       
       // Sửa URL cho phù hợp với API server
-      const response = await fetch(`http://localhost:8080/orders?_cache=${timestamp}`, {
+      const response = await fetch(`${API_BASE_URL}/orders?_cache=${timestamp}`, {
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'Pragma': 'no-cache',
@@ -336,7 +337,7 @@ const OrderAdmin = () => {
   const handleDeleteOrder = useCallback(async () => {
     try {
       // Gọi API xóa đơn hàng
-      await fetch(`http://localhost:8080/orders/${selectedOrderId}`, {
+      await fetch(`${API_BASE_URL}/orders/${selectedOrderId}`, {
         method: "DELETE",
       });
 
@@ -545,125 +546,4 @@ const OrderAdmin = () => {
                   <p className="mb-3"><span className="font-medium">Ngày đặt:</span> {formatDate(viewOrder.createdAt)}</p>
                   <p className="mb-3">
                     <span className="font-medium">Trạng thái:</span> 
-                    <span className={`inline-flex items-center ml-2 px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(viewOrder.status)}`}>
-                      {getStatusIcon(viewOrder.status)}
-                      {getStatusText(viewOrder.status)}
-                    </span>
-                  </p>
-                  <p className="mb-3"><span className="font-medium">Phương thức thanh toán:</span> {viewOrder.paymentMethod || "COD"}</p>
-                  <p><span className="font-medium">Ghi chú:</span> {viewOrder.note || "Không có"}</p>
-                </Card>
-              </div>
-            </div>
-            
-            <h3 className="text-lg font-semibold mb-3">Sản phẩm đã đặt</h3>
-            <Card 
-              className="shadow-sm mb-6 p-0 border border-gray-100 rounded-lg"
-              pt={{ 
-                root: { className: 'overflow-hidden' },
-                content: { className: 'p-0' }
-              }}>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">Tên sản phẩm</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-700">Đơn giá</th>
-                      <th className="px-6 py-3 text-center text-xs font-medium text-gray-700">Số lượng</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-700">Thành tiền</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {viewOrder.products && viewOrder.products.map((item, index) => (
-                      <tr key={index} className="border-b">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            {item.productId?.productImages && item.productId.productImages[0] && (
-                              <img 
-                                src={item.productId.productImages[0]} 
-                                alt={item.productId.productName} 
-                                className="w-14 h-14 object-cover rounded mr-4"
-                                loading="lazy"
-                              />
-                            )}
-                            <div>
-                              <p className="font-medium">{item.productId?.productName || "Sản phẩm không có sẵn"}</p>
-                              {item.productId?.productCode && (
-                                <p className="text-xs text-gray-500 mt-1">Mã: {item.productId.productCode}</p>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-right">{formatCurrency(item.price)}</td>
-                        <td className="px-6 py-4 text-center">{item.quantity}</td>
-                        <td className="px-6 py-4 text-right font-medium">{formatCurrency(item.price * item.quantity)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-50 border-t border-gray-200">
-                    <tr>
-                      <td colSpan="3" className="px-6 py-4 text-right font-medium">Tổng cộng:</td>
-                      <td className="px-6 py-4 text-right font-bold text-lg">{formatCurrency(viewOrder.totalAmount)}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </Card>
-            
-            <div className="flex justify-end">
-              <Button 
-                label="Đóng" 
-                icon="pi pi-times" 
-                onClick={() => setViewOrder(null)} 
-                className="px-4 py-2.5 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg transition-colors flex items-center gap-2"
-              />
-            </div>
-          </div>
-        )}
-      </Dialog>
-      
-      {/* Dialog xác nhận xóa */}
-      <Dialog
-        header="Xác nhận xóa"
-        visible={deleteDialog}
-        style={{ width: '450px' }}
-        modal
-        footer={
-          <div className="pt-3 flex justify-end gap-3">
-            <Button 
-              label="Không" 
-              icon="pi pi-times" 
-              onClick={() => setDeleteDialog(false)} 
-              className="px-4 py-2.5 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg transition-colors" 
-            />
-            <Button 
-              label="Có, xóa" 
-              icon="pi pi-trash" 
-              onClick={handleDeleteOrder} 
-              autoFocus 
-              className="px-4 py-2.5 bg-red-600 text-white hover:bg-red-700 font-medium rounded-lg transition-colors flex items-center gap-2" 
-            />
-          </div>
-        }
-        onHide={() => setDeleteDialog(false)}
-        contentClassName="p-5"
-        pt={{
-          root: { className: 'rounded-lg border border-gray-200 shadow-lg' },
-          header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg text-lg font-semibold' },
-          closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full transition-colors' },
-          content: { className: 'p-5' }
-        }}
-      >
-        <div className="flex flex-col items-center justify-center p-3">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-            <i className="pi pi-exclamation-triangle text-red-500" style={{ fontSize: '1.75rem' }} />
-          </div>
-          <h3 className="text-xl font-medium text-gray-800 mb-2">Xóa đơn hàng</h3>
-          <p className="text-gray-600 text-center">Bạn có chắc chắn muốn xóa đơn hàng này? Hành động này không thể hoàn tác.</p>
-        </div>
-      </Dialog>
-    </div>
-  );
-};
-
-export default memo(OrderAdmin);
+                    <span className={`
