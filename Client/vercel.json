@@ -2,7 +2,7 @@
     "rewrites": [
       {
         "source": "/api/:path*",
-        "destination": "https://localhost:8080*"
+        "destination": "https://quanlythucpham-azf6.vercel.app/api/:path*"
       }
     ],
     "redirects": [
