@@ -26,9 +26,19 @@ export default function Payment() {
   const [selectedPayment, setSelectedPayment] = useState("cod");
   const navigate = useNavigate();
   const { paymentId } = useParams();
+  const [loading, setLoading] = useState(false);
 
-  const deliveryFee = selectedDelivery === "standard" ? 40000 : 0;
-  const totalPayment = orderDetails.totalAmount + deliveryFee;
+  // Tính phí vận chuyển dựa trên phương thức thanh toán
+  const calculateShippingFee = () => {
+    return selectedPayment === 'sepay' ? 0 : 40000;
+  };
+
+  // Tính tổng tiền cuối cùng
+  const calculateFinalTotal = () => {
+    const subtotal = orderDetails.totalAmount;
+    const shippingFee = calculateShippingFee();
+    return subtotal + shippingFee;
+  };
 
   useEffect(() => {
     const fetchPaymentDetails = async () => {
@@ -50,7 +60,6 @@ export default function Payment() {
 
         try {
           const userResponse = await authApi.getProfile();
-          
           setUsers(userResponse.data);
         } catch (userError) {
           console.error("Lỗi khi lấy thông tin người dùng:", userError);
@@ -81,18 +90,36 @@ export default function Payment() {
     // console.log(`Applying coupon: ${couponCode}`);
   };
 
+  // Xử lý khi thay đổi phương thức thanh toán
+  const handlePaymentMethodChange = (method) => {
+    setSelectedPayment(method);
+  };
+
+  // Xử lý khi thay đổi phương thức giao hàng
+  const handleDeliveryMethodChange = (method) => {
+    setSelectedDelivery(method);
+  };
+
   const handlePlaceOrder = async () => {
+    setLoading(true);
     if (!users) {
       toast.error("Vui lòng đăng nhập để tiếp tục!");
+      setLoading(false);
       return;
     }
 
     if (!users.address) {
       toast.error("Vui lòng cập nhật địa chỉ giao hàng!");
+      setLoading(false);
       return;
     }
 
     try {
+      const orderId = `${new Date().getTime()}-${Math.floor(Math.random() * 1000)}`;
+      const totalAmount = calculateFinalTotal();
+      const orderInfo = `Thanh toán đơn hàng ${orderId}`;
+      const currentShippingFee = calculateShippingFee();
+
       // Create order first for both payment methods
       const orderData = {
         userId: users._id,
@@ -101,9 +128,9 @@ export default function Payment() {
           quantity: product.quantity,
           price: product.productId.productPrice
         })),
-        totalAmount: totalPayment,
+        totalAmount: totalAmount,
         deliveryMethod: selectedMethod,
-        deliveryFee: deliveryFee,
+        deliveryFee: currentShippingFee,
         address: users.address,
         note: note,
         paymentMethod: selectedPayment,
@@ -112,7 +139,7 @@ export default function Payment() {
 
       // Create order
       const orderResponse = await orderApi.createOrder(orderData);
-      const orderId = orderResponse._id;
+      const orderIdCreated = orderResponse._id;
 
       if (selectedPayment === "sepay") {
         try {
@@ -120,14 +147,14 @@ export default function Payment() {
           // Create payment record
           const paymentData = {
             userId: users._id,
-            amount: totalPayment,
+            amount: totalAmount,
             products: orderDetails.products.map(product => ({
               productId: product.productId._id,
               quantity: product.quantity,
               price: product.productId.productPrice
             })),
             paymentMethod: selectedPayment,
-            orderId: orderId
+            orderId: orderIdCreated
           };
 
           const paymentResponse = await paymentApi.createPayment(paymentData);
@@ -136,8 +163,8 @@ export default function Payment() {
           // Create SePay payment URL
           const sepayResponse = await paymentApi.createSepayPaymentUrl(
             paymentId,
-            totalPayment,
-            `Thanh toán đơn hàng #${orderId}`
+            totalAmount,
+            orderInfo
           );
 
           // Check if we got a valid payment URL
@@ -145,10 +172,10 @@ export default function Payment() {
             // Kiểm tra xem đây là phương thức thanh toán nào
             if (sepayResponse.method === "bank_transfer") {
               // Phương án QR chuyển khoản ngân hàng
-              toast.info("Phát hiện sự cố kết nối với cổng thanh toán SePay. Chuyển sang phương án thanh toán chuyển khoản qua QR");
+              toast.info("Chuyển sang phương thức thanh toán chuyển khoản qua QR");
               
-              // Hiển thị QR code cho chuyển khoản
-              navigate(`/payment-qr?orderId=${orderId}&qrCode=${encodeURIComponent(sepayResponse.qrCode)}&bankName=${encodeURIComponent(sepayResponse.bankInfo.name)}&accountNumber=${sepayResponse.bankInfo.accountNumber}&accountName=${encodeURIComponent(sepayResponse.bankInfo.accountName)}&amount=${totalPayment}`);
+              // Chuyển đến trang QR với orderId để theo dõi trạng thái
+              navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(sepayResponse.qrCode)}&bankName=${encodeURIComponent(sepayResponse.bankInfo.name)}&accountNumber=${sepayResponse.bankInfo.accountNumber}&accountName=${encodeURIComponent(sepayResponse.bankInfo.accountName)}&amount=${totalAmount}`);
             } else {
               // Nếu là SePay thông thường
               if (sepayResponse.code === "01") {
@@ -159,45 +186,10 @@ export default function Payment() {
             }
           } else if (sepayResponse && sepayResponse.fallbackQR) {
             // Fallback là QR trực tiếp
-            toast.info("Đang chuyển sang phương án thanh toán qua chuyển khoản ngân hàng");
+            toast.info("Chuyển sang phương thức thanh toán chuyển khoản ngân hàng");
             
-            // Tạo một trang QR tạm thời và hiển thị
-            const htmlContent = `
-              <html>
-                <head><title>Thanh toán qua QR Code</title>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <style>
-                  body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-                  .qr-container { margin: 20px auto; }
-                  .bank-info { margin: 20px auto; text-align: left; max-width: 400px; }
-                  .btn-back { padding: 10px 15px; background: #51bb1a; color: white; border: none; border-radius: 4px; cursor: pointer; }
-                </style>
-                </head>
-                <body>
-                  <h2>Quét mã QR để thanh toán</h2>
-                  <p>Đơn hàng: #${orderId} - Số tiền: ${formatCurrency(totalPayment)}</p>
-                  <div class="qr-container">
-                    <img src="${sepayResponse.fallbackQR}" alt="QR Code Thanh Toán" style="max-width: 300px;"/>
-                  </div>
-                  <div class="bank-info">
-                    <p><strong>Thông tin chuyển khoản:</strong></p>
-                    <p>Ngân hàng: MBBank - Ngân hàng Thương mại Cổ phần Quân đội</p>
-                    <p>Số tài khoản: 0326743391</p>
-                    <p>Tên tài khoản: NGUYEN TRONG KHIEM</p>
-                    <p>Nội dung: Thanh toan don hang #${orderId}</p>
-                  </div>
-                  <p>Sau khi quét mã và thanh toán thành công, quý khách vui lòng chờ 1-2 phút để hệ thống xác nhận.</p>
-                  <button class="btn-back" onclick="window.location.href='/payment-result?orderId=${orderId}&status=manual&amount=${totalPayment}'">
-                    Tôi đã thanh toán
-                  </button>
-                </body>
-              </html>
-            `;
-            
-            // Tạo Blob và mở trong cửa sổ mới
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const qrUrl = URL.createObjectURL(blob);
-            window.location.href = qrUrl;
+            // Chuyển đến trang QR với orderId để theo dõi trạng thái
+            navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(sepayResponse.fallbackQR)}&bankName=MBBank&accountNumber=0326743391&accountName=NGUYEN%20TRONG%20KHIEM&amount=${totalAmount}`);
           } else {
             throw new Error("Không nhận được URL thanh toán");
           }
@@ -205,16 +197,18 @@ export default function Payment() {
           console.error("Lỗi khi tạo cổng thanh toán:", error);
           toast.error("Không thể kết nối đến cổng thanh toán. Vui lòng thử lại sau!");
           // Redirect to payment result page with failure status
-          navigate(`/payment-result?orderId=${orderId}&status=failed&amount=${totalPayment}`);
+          navigate(`/payment-result?orderId=${orderIdCreated}&status=failed&amount=${totalAmount}`);
         }
       } else {
         // For COD, no payment record is needed immediately
         toast.success("Đặt hàng thành công!");
-        navigate(`/payment-result?orderId=${orderId}&status=success&amount=${totalPayment}`);
+        navigate(`/payment-result?orderId=${orderIdCreated}&status=success&amount=${totalAmount}`);
       }
     } catch (error) {
       console.error("Lỗi khi đặt hàng:", error);
       toast.error("Không thể đặt hàng. Vui lòng thử lại!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -320,13 +314,15 @@ export default function Payment() {
                 <label className="flex items-center p-3 hover:bg-gray-50 transition cursor-pointer">
                   <input
                     type="radio"
-                    name="paymentMethod"
+                    name="deliveryMethod"
                     checked={selectedMethod === "delivery"}
                     onChange={() => setSelectedMethod("delivery")}
                     className="mr-3 text-[#51bb1a] focus:ring-[#51bb1a]"
                   />
                   <span className="flex-grow">Giao hàng tiêu chuẩn</span>
-                  <span className="font-semibold text-[#51bb1a]">40.000đ</span>
+                  <span className="font-semibold text-[#51bb1a]">
+                    {selectedPayment === 'sepay' ? 'Miễn phí' : '40.000đ'}
+                  </span>
                 </label>
               </div>
             </div>
@@ -363,9 +359,9 @@ export default function Payment() {
                       className="mr-3 text-[#51bb1a] focus:ring-[#51bb1a]"
                     />
                     <div className="flex items-center">
-                      <span className="mr-2">Thanh toán qua SePay</span>
+                      <span className="mr-2">Thanh toán qua SePay (Miễn phí vận chuyển)</span>
                       <img 
-                        src="/sepay-logo.png" 
+                        src="https://itviec.com/rails/active_storage/representations/proxy/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaHBBekduUkE9PSIsImV4cCI6bnVsbCwicHVyIjoiYmxvYl9pZCJ9fQ==--34ce2c5002b6b16c71516dab0edcb87b75222107/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaDdCem9MWm05eWJXRjBPZ2wzWldKd09oSnlaWE5wZW1WZmRHOWZabWwwV3dkcEFhb3ciLCJleHAiOm51bGwsInB1ciI6InZhcmlhdGlvbiJ9fQ==--bb0ebae071595ab1791dc0ad640ef70a76504047/logo.png" 
                         alt="SePay" 
                         className="h-6 ml-2" 
                       />
@@ -379,8 +375,9 @@ export default function Payment() {
             <button
               onClick={handlePlaceOrder}
               className="w-full cursor-pointer bg-[#51bb1a] text-white py-3 rounded-lg hover:opacity-90  transition"
+              disabled={loading}
             >
-              Đặt hàng
+              {loading ? 'Đang xử lý...' : 'Đặt hàng'}
             </button>
             <button
               onClick={handleRemoveItem}
@@ -436,11 +433,11 @@ export default function Payment() {
             </div>
             <div className="flex justify-between text-gray-700">
               <span>Phí vận chuyển</span>
-              <span>{formatCurrency(deliveryFee)}</span>
+              <span>{formatCurrency(calculateShippingFee())}</span>
             </div>
             <div className="flex justify-between font-bold text-xl text-[#51bb1a] border-t pt-3">
               <span>Tổng cộng</span>
-              <span>{formatCurrency(totalPayment)}</span>
+              <span>{formatCurrency(calculateFinalTotal())}</span>
             </div>
           </div>
 

@@ -1,13 +1,15 @@
-import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { FaCopy, FaArrowLeft } from "react-icons/fa";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { formatCurrency } from "../../utils/formatCurrency";
+import paymentApi from "../../api/paymentApi";
 
 const PaymentQR = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const searchParams = new URLSearchParams(location.search);
+  const [searchParams] = useSearchParams();
 
   // Lấy thông tin từ query params
   const orderId = searchParams.get("orderId");
@@ -16,6 +18,67 @@ const PaymentQR = () => {
   const bankName = searchParams.get("bankName");
   const accountNumber = searchParams.get("accountNumber");
   const accountName = searchParams.get("accountName");
+  
+  const [timeLeft, setTimeLeft] = useState(initializeTimer());
+  const [expired, setExpired] = useState(timeLeft === 0);
+  const [checking, setChecking] = useState(false);
+
+  // Khởi tạo thời gian từ localStorage hoặc mặc định
+  function initializeTimer() {
+    const storedExpiry = localStorage.getItem(`qr_expiry_${orderId}`);
+    if (storedExpiry) {
+      const timeRemaining = Math.max(0, Math.floor((parseInt(storedExpiry) - Date.now()) / 1000));
+      return timeRemaining > 0 ? timeRemaining : 0;
+    }
+    const expiryTime = Date.now() + (300 * 1000); // 5 phút
+    localStorage.setItem(`qr_expiry_${orderId}`, expiryTime.toString());
+    return 300;
+  }
+
+  useEffect(() => {
+    // Timer for QR code expiration
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(timer);
+          setExpired(true);
+          localStorage.removeItem(`qr_expiry_${orderId}`);
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    // Check payment status every 10 seconds
+    const statusChecker = setInterval(async () => {
+      if (!checking && !expired) {
+        setChecking(true);
+        try {
+          const response = await paymentApi.checkPaymentStatus(orderId);
+          if (response.status === "completed") {
+            clearInterval(statusChecker);
+            clearInterval(timer);
+            localStorage.removeItem(`qr_expiry_${orderId}`);
+            toast.success("Thanh toán thành công!");
+            navigate(`/payment-result?orderId=${orderId}&status=success&amount=${amount}`);
+          }
+        } catch (error) {
+          console.error("Error checking payment status:", error);
+        } finally {
+          setChecking(false);
+        }
+      }
+    }, 10000);
+
+    // Cleanup
+    return () => {
+      clearInterval(timer);
+      clearInterval(statusChecker);
+      if (expired) {
+        localStorage.removeItem(`qr_expiry_${orderId}`);
+      }
+    };
+  }, [orderId, amount, navigate, expired, checking]);
 
   // Xử lý copy vào clipboard
   const copyToClipboard = (text) => {
@@ -31,23 +94,31 @@ const PaymentQR = () => {
 
   // Xử lý quay lại
   const handleGoBack = () => {
-    // Quay lại trang trước đó
     navigate(-1);
   };
 
-  // Xử lý khi người dùng đã thanh toán
-  const handleCompletedPayment = () => {
-    navigate(`/payment-result?orderId=${orderId}&status=manual&amount=${amount}`);
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Format tiền tệ
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('vi-VN', { 
-      style: 'currency', 
-      currency: 'VND',
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
+  if (expired) {
+    return (
+      <div className="max-w-lg mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="p-6 text-center">
+          <h2 className="text-2xl font-bold text-red-500 mb-4">Mã QR đã hết hạn</h2>
+          <p className="text-gray-600 mb-4">Vui lòng thực hiện lại giao dịch</p>
+          <button
+            onClick={handleGoBack}
+            className="bg-[#51bb1a] text-white px-6 py-2 rounded-lg hover:bg-[#3d8b14]"
+          >
+            Quay lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!orderId || !qrCode) {
     return (
@@ -90,6 +161,9 @@ const PaymentQR = () => {
             <p className="text-gray-600">
               Số tiền: <span className="font-semibold text-red-500">{formatCurrency(amount)}</span>
             </p>
+            <p className="text-yellow-600 mt-2">
+              Mã QR sẽ hết hạn sau: <span className="font-bold">{formatTime(timeLeft)}</span>
+            </p>
           </div>
 
           <div className="flex justify-center mb-6">
@@ -105,58 +179,52 @@ const PaymentQR = () => {
           <div className="bg-gray-50 p-4 rounded-md mb-6">
             <h3 className="font-semibold text-gray-800 mb-3">Thông tin chuyển khoản:</h3>
             
-            <div className="mb-3">
-              <p className="text-sm text-gray-500 mb-1">Ngân hàng</p>
-              <div className="flex items-center justify-between">
-                <p className="font-medium">{decodeURIComponent(bankName || "BIDV - Ngân hàng Đầu tư và Phát triển VN")}</p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Ngân hàng</p>
+                <p className="font-medium">{decodeURIComponent(bankName || "MBBank - Ngân hàng Thương mại Cổ phần Quân đội")}</p>
               </div>
-            </div>
-            
-            <div className="mb-3">
-              <p className="text-sm text-gray-500 mb-1">Số tài khoản</p>
-              <div className="flex items-center justify-between">
-                <p className="font-medium">{accountNumber}</p>
-                <button 
-                  onClick={() => copyToClipboard(accountNumber)}
-                  className="text-[#51bb1a] p-2 hover:bg-gray-200 rounded-full"
-                >
-                  <FaCopy />
-                </button>
+              
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Số tài khoản</p>
+                <div className="flex items-center justify-between">
+                  <p className="font-medium">{accountNumber}</p>
+                  <button 
+                    onClick={() => copyToClipboard(accountNumber)}
+                    className="text-[#51bb1a] p-2 hover:bg-gray-200 rounded-full"
+                  >
+                    <FaCopy />
+                  </button>
+                </div>
               </div>
-            </div>
-            
-            <div className="mb-3">
-              <p className="text-sm text-gray-500 mb-1">Chủ tài khoản</p>
-              <div className="flex items-center justify-between">
-                <p className="font-medium">{decodeURIComponent(accountName || "CONG TY CP DNC FOOD")}</p>
+              
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Chủ tài khoản</p>
+                <div className="flex items-center justify-between">
+                  <p className="font-medium">{decodeURIComponent(accountName || "NGUYEN TRONG KHIEM")}</p>
+                </div>
               </div>
-            </div>
-            
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Nội dung chuyển khoản</p>
-              <div className="flex items-center justify-between">
-                <p className="font-medium">{`Thanh toan don hang #${orderId}`}</p>
-                <button 
-                  onClick={() => copyToClipboard(`Thanh toan don hang #${orderId}`)}
-                  className="text-[#51bb1a] p-2 hover:bg-gray-200 rounded-full"
-                >
-                  <FaCopy />
-                </button>
+              
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Nội dung chuyển khoản</p>
+                <div className="flex items-center justify-between">
+                  <p className="font-medium">{`Thanh toan don hang #${orderId}`}</p>
+                  <button 
+                    onClick={() => copyToClipboard(`Thanh toan don hang #${orderId}`)}
+                    className="text-[#51bb1a] p-2 hover:bg-gray-200 rounded-full"
+                  >
+                    <FaCopy />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="text-center text-sm text-gray-500 mb-6">
-            <p>Sau khi chuyển khoản thành công, vui lòng bấm nút bên dưới.</p>
-            <p>Đơn hàng của bạn sẽ được xử lý sau khi chúng tôi xác nhận thanh toán.</p>
+          <div className="text-center text-sm text-gray-500">
+            <p>Hệ thống sẽ tự động xác nhận sau khi bạn chuyển khoản thành công.</p>
+            <p>Vui lòng không đóng trang này trong quá trình thanh toán.</p>
+            {checking && <p className="text-[#51bb1a] mt-2">Đang kiểm tra trạng thái thanh toán...</p>}
           </div>
-
-          <button
-            onClick={handleCompletedPayment}
-            className="w-full bg-[#51bb1a] text-white py-3 rounded-md hover:bg-opacity-90 transition"
-          >
-            Tôi đã hoàn tất thanh toán
-          </button>
         </div>
       </div>
     </div>

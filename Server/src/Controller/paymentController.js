@@ -423,3 +423,191 @@ export const createBankQRCode = async (req, res) => {
     });
   }
 };
+
+// Get payment status
+export const getPaymentStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Find payment by orderId
+    const payment = await Payment.findOne({ orderId });
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy thông tin thanh toán"
+      });
+    }
+
+    // Check if payment is completed
+    const order = await Order.findOne({ orderId });
+    if (order && order.paymentStatus === "completed") {
+      return res.json({
+        success: true,
+        status: "completed",
+        message: "Thanh toán đã hoàn tất"
+      });
+    }
+
+    return res.json({
+      success: true,
+      status: "pending",
+      message: "Đang chờ thanh toán"
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi kiểm tra trạng thái thanh toán",
+      error: error.message
+    });
+  }
+};
+
+// Xử lý webhook từ SePay
+export const handleBankWebhook = async (req, res) => {
+  try {
+    const { 
+      transaction_id,
+      order_id,
+      amount,
+      status,
+      signature
+    } = req.body;
+
+    // Verify webhook signature from SePay
+    const isValidSignature = PaymentService.verifySePayWebhookSignature(req.body);
+    if (!isValidSignature) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid webhook signature"
+      });
+    }
+
+    // Tìm đơn hàng
+    const order = await Order.findOne({ orderId: order_id });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    // Kiểm tra số tiền
+    if (parseInt(amount) !== parseInt(order.totalAmount)) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment amount does not match order amount"
+      });
+    }
+
+    // Cập nhật trạng thái đơn hàng
+    if (status === 'success') {
+      order.paymentStatus = 'completed';
+      order.status = 'processing';
+      await order.save();
+
+      // Cập nhật payment record nếu có
+      const payment = await Payment.findOne({ orderId: order_id });
+      if (payment) {
+        payment.status = 'completed';
+        payment.transactionId = transaction_id;
+        payment.paidAt = new Date();
+        await payment.save();
+      }
+
+      return res.json({
+        success: true,
+        message: "Payment verified and order updated successfully"
+      });
+    }
+
+    return res.json({
+      success: false,
+      message: "Payment status is not success"
+    });
+
+  } catch (error) {
+    console.error("Error processing SePay webhook:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error processing webhook",
+      error: error.message
+    });
+  }
+};
+
+// Kiểm tra trạng thái thanh toán qua SePay
+export const checkPaymentStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Tìm đơn hàng
+    const order = await Order.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    // Kiểm tra trạng thái thanh toán từ SePay
+    try {
+      const response = await axios.get(
+        `${SEPAY_API_URL}/transaction/status`,
+        {
+          params: {
+            order_id: orderId
+          },
+          headers: {
+            'Authorization': `Bearer ${SEPAY_API_TOKEN}`
+          }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        // Cập nhật trạng thái đơn hàng
+        order.paymentStatus = 'completed';
+        order.status = 'processing';
+        await order.save();
+
+        // Cập nhật payment record
+        const payment = await Payment.findOne({ orderId });
+        if (payment) {
+          payment.status = 'completed';
+          payment.transactionId = response.data.transaction_id;
+          payment.paidAt = new Date();
+          await payment.save();
+        }
+
+        return res.json({
+          success: true,
+          status: 'completed',
+          message: "Payment completed successfully"
+        });
+      }
+
+      // Trả về trạng thái từ SePay
+      return res.json({
+        success: true,
+        status: response.data.status,
+        message: response.data.message || "Payment pending"
+      });
+
+    } catch (sepayError) {
+      console.error("Error checking SePay payment status:", sepayError);
+      // Nếu không thể kết nối với SePay, trả về trạng thái hiện tại của đơn hàng
+      return res.json({
+        success: true,
+        status: order.paymentStatus,
+        message: order.paymentStatus === 'completed' ? "Payment completed" : "Payment pending"
+      });
+    }
+
+  } catch (error) {
+    console.error("Error checking payment status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error checking payment status",
+      error: error.message
+    });
+  }
+};

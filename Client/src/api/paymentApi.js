@@ -176,6 +176,24 @@ const paymentApi = {
       console.error("Lỗi khi tìm kiếm thanh toán:", error);
       throw error;
     }
+  },
+
+  // Check payment status
+  checkPaymentStatus: async (orderId) => {
+    try {
+      const response = await axios.get(
+        `${API_URLS.PAYMENTS}/status/${orderId}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error checking payment status:", error);
+      throw error;
+    }
   }
 };
 
