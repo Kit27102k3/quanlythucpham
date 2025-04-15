@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { DotFilledIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Card, CardContent } from "../../component/ui/card";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -7,9 +7,10 @@ import productsApi from "../../../api/productsApi";
 import { useParams } from "react-router-dom";
 import formatCurrency from "../../Until/FotmatPrice";
 import "../../../index.css";
-import Kitchen from "./Kitchen";
 import RelatedProducts from "./RelatedProducts";
 import ChatBot from "../../component/Chatbot.jsx";
+
+const Kitchen = lazy(() => import('./Kitchen'));
 
 export default function ProductDetails() {
   const [selectedImage, setSelectedImage] = useState([]);
@@ -429,7 +430,9 @@ export default function ProductDetails() {
             TIN KHUYẾN MÃI
           </h1>
           <div className="border-b"></div>
-          <Kitchen isHide={true} />
+          <Suspense fallback={<div>Loading...</div>}>
+            <Kitchen isHide={true} />
+          </Suspense>
         </div>
       </div>
       <div className="mt-10 mx-auto">

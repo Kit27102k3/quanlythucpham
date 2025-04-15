@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import React, { lazy, Suspense } from "react";
 import slide from "../../../assets/slide.png";
 import SEO from "../../../components/SEO";
 

@@ -1,4 +1,4 @@
-export const API_BASE_URL = "https://quanlythucpham-azf6.vercel.app";
+export const API_BASE_URL = import.meta.env.DEV ? "http://localhost:8080" : "https://quanlythucpham-azf6.vercel.app";
 
 export const API_URLS = {
   AUTH: `${API_BASE_URL}/auth`,
