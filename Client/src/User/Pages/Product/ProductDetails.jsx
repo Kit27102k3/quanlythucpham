@@ -9,7 +9,7 @@ import formatCurrency from "../../Until/FotmatPrice";
 import "../../../index.css";
 import Kitchen from "./Kitchen";
 import RelatedProducts from "./RelatedProducts";
-import Chatbot from "../../component/ChatBot";
+import ChatBot from "../../component/ChatBot";
 
 export default function ProductDetails() {
   const [selectedImage, setSelectedImage] = useState([]);
@@ -437,7 +437,7 @@ export default function ProductDetails() {
       </div>
       <div>
         {products && (
-          <Chatbot productId={products._id || slug} />
+          <ChatBot productId={products._id || slug} />
         )}
       </div>
     </div>

@@ -7,7 +7,7 @@ import formatCurrency from "../Until/FotmatPrice";
 
 const API_URL = "http://localhost:8080/api/chatbot";
 
-const Chatbot = ({ productId }) => {
+const ChatBot = ({ productId }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -299,4 +299,4 @@ const Chatbot = ({ productId }) => {
   );
 };
 
-export default Chatbot;
+export default ChatBot;
