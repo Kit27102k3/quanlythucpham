@@ -12,7 +12,13 @@ import {
 } from "../Controller/productsController.js";
 import multer from "multer";
 
-const upload = multer({ dest: "uploads/" });
+// Sử dụng memory storage thay vì disk storage
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // Giới hạn 5MB
+  }
+});
 
 const router = express.Router();
 

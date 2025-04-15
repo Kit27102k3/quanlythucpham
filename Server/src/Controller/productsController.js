@@ -23,19 +23,15 @@ export const createProduct = async (req, res) => {
     const uploadedUrls = [];
     for (const file of req.files) {
       try {
-        if (!fs.existsSync(file.path)) {
-          throw new Error(`File not found: ${file.path}`);
-        }
-        const result = await cloudinary.uploader.upload(file.path, {
+        // Upload trực tiếp buffer của file lên Cloudinary
+        const result = await cloudinary.uploader.upload(file.buffer, {
           folder: "products",
           resource_type: "auto",
           use_filename: true,
           unique_filename: false,
         });
         uploadedUrls.push(result.secure_url);
-        fs.unlinkSync(file.path);
       } catch (uploadError) {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
         throw new Error(`Upload ảnh thất bại: ${uploadError.message}`);
       }
     }
@@ -80,12 +76,6 @@ export const createProduct = async (req, res) => {
     return res.status(201).json(productToSend);
   } catch (error) {
     console.error("Error in createProduct:", error);
-
-    if (req.files) {
-      req.files.forEach((file) => {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      });
-    }
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -165,17 +155,13 @@ export const updateProduct = async (req, res) => {
     if (req.files && req.files.length > 0) {
       const uploadResults = await Promise.all(
         req.files.map((file) => {
-          return cloudinary.uploader.upload(file.path, {
+          return cloudinary.uploader.upload(file.buffer, {
             folder: "products",
             resource_type: "image",
           });
         })
       );
       newImageUrls = uploadResults.map((result) => result.secure_url);
-
-      req.files.forEach((file) => {
-        fs.unlinkSync(file.path);
-      });
     }
 
     let existingImages = product.productImages || [];
