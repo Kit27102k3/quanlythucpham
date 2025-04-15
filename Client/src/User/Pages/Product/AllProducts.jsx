@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import formatCurrency from "../../Until/FotmatPrice";
-import productsApi from "../../../API/productsApi";
+import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import "../../../index.css";
 import { motion, AnimatePresence } from "framer-motion";
