@@ -9,7 +9,7 @@ import formatCurrency from "../../Until/FotmatPrice";
 import "../../../index.css";
 import Kitchen from "./Kitchen";
 import RelatedProducts from "./RelatedProducts";
-import ChatBot from "../../component/ChatBot";
+import ChatBot from "../../component/Chatbot.jsx";
 
 export default function ProductDetails() {
   const [selectedImage, setSelectedImage] = useState([]);
