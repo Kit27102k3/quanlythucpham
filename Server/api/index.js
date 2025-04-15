@@ -2,10 +2,12 @@ import express from "express";
 import serverless from "serverless-http";
 
 const app = express();
+const router = express.Router();
 
-app.get("/api/hello", (req, res) => {
+router.get("/hello", (req, res) => {
   res.json({ message: "Hello from Vercel Express" });
 });
 
-// Export theo đúng chuẩn Vercel cần
+app.use("/api", router);
+
 export default serverless(app);
