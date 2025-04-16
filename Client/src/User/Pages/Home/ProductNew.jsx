@@ -77,7 +77,7 @@ function ProductNew() {
         transition={{ duration: 0.3 }}
       >
         <motion.div
-          className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-6"
+          className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-6"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -131,10 +131,10 @@ function ProductNew() {
                   </div>
                 ) : (
                   <div className="flex items-center ">
-                    <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
+                    <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[16px]">
                       {formatCurrency(getPrice(product))}đ
                     </p>
-                    <FontAwesomeIcon icon={faCartShopping} className="text-white border bg-[#51bb1a] p-2 rounded-full"/>
+                    {/* <FontAwesomeIcon icon={faCartShopping} className="text-white  border bg-[#51bb1a] p-2 rounded-full"/> */}
                   </div>
                 )}
               </div>

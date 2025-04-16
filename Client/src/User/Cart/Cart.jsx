@@ -3,7 +3,7 @@ import React, { useState, useEffect, memo } from "react";
 import { MinusIcon, PlusIcon, CheckIcon } from "@radix-ui/react-icons";
 import cartApi from "../../api/cartApi";
 import formatCurrency from "../Until/FotmatPrice";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import paymentApi from "../../api/paymentApi";
 import { useNavigate } from "react-router-dom";
 

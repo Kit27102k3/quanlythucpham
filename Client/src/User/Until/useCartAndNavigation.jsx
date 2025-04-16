@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import cartApi from "../../api/cartApi";
 
 const useCartAndNavigation = () => {

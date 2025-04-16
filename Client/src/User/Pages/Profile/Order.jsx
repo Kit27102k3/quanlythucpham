@@ -4,7 +4,7 @@ import { ClipboardListIcon, PackageIcon, CreditCardIcon, XCircleIcon } from "luc
 import { useNavigate } from "react-router-dom";
 import orderApi from "../../../api/orderApi"; // Giả sử bạn có file API này
 import formatCurrency from "../../Until/FotmatPrice"; // Hàm định dạng tiền tệ
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 export default function Order() {
   const [orders, setOrders] = useState([]);

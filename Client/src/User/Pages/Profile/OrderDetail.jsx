@@ -4,7 +4,7 @@ import { ClipboardListIcon, ChevronLeftIcon, TruckIcon, PackageIcon, XCircleIcon
 import orderApi, { getOrderById } from "../../../api/orderApi";
 import formatCurrency from "../../Until/FotmatPrice";
 import { motion } from "framer-motion";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 export default function OrderDetail() {
   const [order, setOrder] = useState(null);
@@ -154,7 +154,7 @@ export default function OrderDetail() {
             <div className="bg-green-50 py-4 px-6 border-b border-green-100">
               <h3 className="text-lg font-semibold text-gray-800">Thông tin đơn hàng</h3>
             </div>
-            <div className="px-6 py-4 space-y-4">
+            <div className="px-6 py-4 space-y-4 text-sm flex flex-col gap-2">
               <div className="flex justify-between items-center">
                 <div className="text-gray-600">Mã đơn hàng:</div>
                 <div className="font-medium">#{order._id.slice(-6).toUpperCase()}</div>
@@ -169,13 +169,13 @@ export default function OrderDetail() {
               </div>
               <div className="flex justify-between items-center">
                 <div className="text-gray-600">Trạng thái đơn hàng:</div>
-                <div className={`px-3 py-1 rounded-full text-sm ${getStatusColor(order.status)}`}>
+                <div className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
                   {getStatusText(order.status)}
                 </div>
               </div>
               <div className="flex justify-between items-center">
                 <div className="text-gray-600">Phương thức thanh toán:</div>
-                <div>
+                <div className="font-medium">
                   {order.paymentMethod === "cod" ? "Thanh toán khi nhận hàng" : 
                    order.paymentMethod === "bank_transfer" ? "Chuyển khoản ngân hàng" : 
                    order.paymentMethod}
@@ -377,20 +377,20 @@ export default function OrderDetail() {
             <div className="bg-green-50 py-4 px-6 border-b border-green-100">
               <h3 className="text-lg font-semibold text-gray-800">Thông tin giao hàng</h3>
             </div>
-            <div className="px-6 py-4 space-y-3">
-              <div>
-                <div className="text-sm text-gray-600 mb-1">Người nhận:</div>
+            <div className="px-6 py-4 space-y-6 flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-gray-600 ">Người nhận:</div>
                 <div className="font-medium">{order.userId?.firstName + " " + order.userId?.lastName || "Không có thông tin"}</div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600 mb-1">Số điện thoại:</div>
-                <div>{order.userId?.phone || "Không có thông tin"}</div>
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-gray-600">Số điện thoại:</div>
+                <div className="font-medium">{order.userId?.phone || "Không có thông tin"}</div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600 mb-1">Địa chỉ giao hàng:</div>
-                <div>
+              <div className="flex flex-col gap-2">
+                <div className="text-sm text-gray-600 ">Địa chỉ giao hàng:</div>
+                <div className="font-medium">
                   {order.userId?.address ? (
-                    <span>
+                    <span >
                       {order.userId.address}, 
                       {order.userId.ward && ` ${order.userId.ward},`}
                       {order.userId.district && ` ${order.userId.district},`}
@@ -401,9 +401,9 @@ export default function OrderDetail() {
                   )}
                 </div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600 mb-1">Phương thức giao hàng:</div>
-                <div>
+              <div className="flex items-center gap-2">
+                <div className="text-sm text-gray-600 ">Phương thức giao hàng:</div>
+                <div className="font-medium">
                   {order.shippingInfo?.method === "standard" ? "Giao hàng tiêu chuẩn" : 
                    order.shippingInfo?.method === "express" ? "Giao hàng nhanh" : 
                    order.shippingInfo?.method || "Tiêu chuẩn"}

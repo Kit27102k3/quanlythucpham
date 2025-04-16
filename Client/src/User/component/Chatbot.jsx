@@ -8,11 +8,10 @@ import { API_BASE_URL } from '../../config/apiConfig';
 
 const API_URL = `${API_BASE_URL}/api/chatbot`;
 
-const ChatBot = ({ productId }) => {
+const ChatBot = ({ productId, isOpen, setIsOpen }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
   const [isFirstOpen, setIsFirstOpen] = useState(true);
   const [conversationContext, setConversationContext] = useState({
     productId: productId,

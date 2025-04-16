@@ -10,11 +10,12 @@ import "../../../index.css";
 import RelatedProducts from "./RelatedProducts";
 import ChatBot from "../../component/Chatbot.jsx";
 
-const Kitchen = lazy(() => import('./Kitchen'));
+const Kitchen = lazy(() => import("./Kitchen"));
 
 export default function ProductDetails() {
   const [selectedImage, setSelectedImage] = useState([]);
   const [productImages, setProductImages] = useState([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [count, setCount] = useState(1);
   const [isOpen, setIsOpen] = useState(false);
   const [overview, setOverview] = useState(false);
@@ -28,8 +29,14 @@ export default function ProductDetails() {
     const fetchProduct = async () => {
       try {
         const allProducts = await productsApi.getAllProducts();
-        const product = allProducts.find(p => 
-          p.productName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") === slug
+        const product = allProducts.find(
+          (p) =>
+            p.productName
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/(^-|-$)/g, "") === slug
         );
         if (product) {
           setProducts(product);
@@ -352,7 +359,10 @@ export default function ProductDetails() {
           <p className="mt-2 lg:text-[16px] lg:text-center lg:font-medium">
             Để được hỗ trợ tốt nhất. Hãy gọi
           </p>
-          <button className="hover-animation-button p-2 bg-[#51bb1a] text-white border-[#51bb1a]  mt-2 container mx-auto lg:text-sm">
+          <button
+            onClick={() => setIsChatOpen(true)}
+            className="hover-animation-button cursor-pointer p-2 bg-[#51bb1a] text-white border-[#51bb1a]  mt-2 container mx-auto lg:text-sm"
+          >
             CHAT VỚI CHÚNG TÔI
           </button>
         </div>
@@ -440,7 +450,11 @@ export default function ProductDetails() {
       </div>
       <div>
         {products && (
-          <ChatBot productId={products._id || slug} />
+          <ChatBot
+            isOpen={isChatOpen}
+            setIsOpen={setIsChatOpen}
+            productId={products._id || slug}
+          />
         )}
       </div>
     </div>

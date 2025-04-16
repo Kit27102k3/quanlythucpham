@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import authApi from "../api/authApi";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 const host = "https://provinces.open-api.vn/api/";
 

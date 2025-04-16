@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useState } from "react";
 import { RadioButton } from "primereact/radiobutton";
-import { Checkbox } from "primereact/checkbox";
 import { Scrollbars } from "react-custom-scrollbars-2";
 
 const priceRanges = [
@@ -18,12 +17,13 @@ const typeProducts = [
   { name: "Nước", key: "B" },
   { name: "Trái cây", key: "C" },
   { name: "Rau", key: "D" },
-  // Thêm các loại khác nếu có
+  { name: "Đồ ăn nhanh", key: "E" },
+  { name: "Thịt", key: "F" },
 ];
 
 const FilterByPrice = ({ onPriceFilterChange, onTypeFilterChange }) => {
   const [selectedPriceRange, setSelectedPriceRange] = useState(null);
-  const [selectedTypeProduct, setSelectedTypeProduct] = useState([]);
+  const [selectedTypeProduct, setSelectedTypeProduct] = useState(null);
 
   const onPriceRangeChange = (e) => {
     setSelectedPriceRange(e.value);
@@ -31,23 +31,18 @@ const FilterByPrice = ({ onPriceFilterChange, onTypeFilterChange }) => {
   };
 
   const onTypeProductChange = (e) => {
-    let _selectedTypeProduct = [...selectedTypeProduct];
-
-    if (e.checked) {
-      _selectedTypeProduct.push(e.value);
-    } else {
-      _selectedTypeProduct = _selectedTypeProduct.filter(
-        (type) => type.key !== e.value.key
-      );
-    }
-
-    setSelectedTypeProduct(_selectedTypeProduct);
-    onTypeFilterChange(_selectedTypeProduct);
+    setSelectedTypeProduct(e.value);
+    onTypeFilterChange(e.value ? [e.value] : []);
   };
 
   const clearPriceFilter = () => {
     setSelectedPriceRange(null);
     onPriceFilterChange([]);
+  };
+
+  const clearTypeFilter = () => {
+    setSelectedTypeProduct(null);
+    onTypeFilterChange([]);
   };
 
   return (
@@ -56,13 +51,14 @@ const FilterByPrice = ({ onPriceFilterChange, onTypeFilterChange }) => {
         TÌM THEO
       </h2>
       <div className="card">
+        {/* Giá sản phẩm */}
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center">
             <h1 className="font-medium">Giá sản phẩm</h1>
             {selectedPriceRange && (
               <button
                 onClick={clearPriceFilter}
-                className="text-sm text-blue-500 hover:underline"
+                className="text-sm text-blue-500 hover:underline cursor-pointer"
               >
                 Bỏ chọn
               </button>
@@ -96,22 +92,32 @@ const FilterByPrice = ({ onPriceFilterChange, onTypeFilterChange }) => {
           ))}
         </div>
 
+        {/* Loại sản phẩm */}
         <div className="flex flex-col gap-3 mt-5">
-          <h1 className="font-medium">Loại</h1>
-          <Scrollbars style={{ width: "100%", height: "150px" }}>
+          <div className="flex justify-between items-center">
+            <h1 className="font-medium">Loại</h1>
+            {selectedTypeProduct && (
+              <button
+                onClick={clearTypeFilter}
+                className="text-sm text-blue-500 hover:underline cursor-pointer"
+              >
+                Bỏ chọn
+              </button>
+            )}
+          </div>
+          <Scrollbars style={{ width: "100%", height: "240px" }}>
             {typeProducts.map((type) => (
               <div key={type.key} className="flex items-center gap-2 py-1">
-                <Checkbox
+                <RadioButton
                   inputId={`type-${type.key}`}
                   name="typeProduct"
                   value={type}
                   onChange={onTypeProductChange}
-                  checked={selectedTypeProduct.some((t) => t.key === type.key)}
+                  checked={selectedTypeProduct?.key === type.key}
                   style={{
                     transform: "scale(0.6)",
                     transformOrigin: "left center",
-                    color: "black",
-                    border: "2px solid",
+                    border: "1px solid",
                     borderRadius: "50%",
                     backgroundColor: "white",
                   }}

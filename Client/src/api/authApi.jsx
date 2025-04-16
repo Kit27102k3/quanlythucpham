@@ -1,5 +1,5 @@
 import axios from "axios";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import { API_BASE_URL } from "../config/apiConfig";
 
 const instance = axios.create({

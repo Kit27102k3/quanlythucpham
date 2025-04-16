@@ -1,4 +1,4 @@
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 
 const showToast = (type, title, message) => {
   toast.success(`${title}: ${message}`);

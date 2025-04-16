@@ -7,7 +7,7 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { InputNumber } from "primereact/inputnumber";
 import { Card } from "primereact/card";
-import { toast } from "react-toastify";
+import { toast } from "sonner";
 import categoriesApi from "../../api/categoriesApi";
 
 const EditProduct = ({

@@ -47,7 +47,7 @@ function Products() {
   );
 
   return (
-    <>
+    <div className="bg-white p-2 rounded">
       {cart?.items.length > 0 ? (
         <div className="w-[350px]">
           <Scrollbars
@@ -118,7 +118,7 @@ function Products() {
       ) : (
         <p>Không có sản phẩm trong giỏ hàng.</p>
       )}
-    </>
+    </div>
   );
 }
 

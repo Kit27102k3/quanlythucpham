@@ -4,8 +4,10 @@ import { useParams, useLocation } from "react-router-dom";
 import formatCurrency from "../../Until/FotmatPrice";
 import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
-import "../../../index.css";
 import { motion, AnimatePresence } from "framer-motion";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCartShopping } from "@fortawesome/free-solid-svg-icons";
+import "../../../index.css";
 
 function AllProducts({
   sortOption,
@@ -16,7 +18,7 @@ function AllProducts({
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [productsPerPage] = useState(9);
+  const [productsPerPage] = useState(8);
   const [isChangingPage, setIsChangingPage] = useState(false);
   const { handleAddToCart, handleClick, getPrice } = useCartAndNavigation();
   const { category } = useParams();
@@ -46,7 +48,7 @@ function AllProducts({
           product.productCategory?.includes(decodedCategory) ||
           product.productName?.includes(decodedCategory) ||
           product.productDetails?.includes(decodedCategory) ||
-          product.productDescription?.some(desc => 
+          product.productDescription?.some((desc) =>
             desc.toLowerCase().includes(decodedCategory.toLowerCase())
           )
         );
@@ -103,28 +105,31 @@ function AllProducts({
   // Tính chỉ số sản phẩm đầu và cuối trên trang hiện tại
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
-  
+  const currentProducts = filteredProducts.slice(
+    indexOfFirstProduct,
+    indexOfLastProduct
+  );
+
   // Tính tổng số trang
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
 
   // Hiệu ứng mượt mà khi chuyển trang
   const smoothScrollTop = () => {
     setIsChangingPage(true); // Bắt đầu hiệu ứng chuyển trang
-    
+
     // Delay một chút để hiệu ứng fade out diễn ra
     setTimeout(() => {
       const scrollOptions = {
         top: 0,
-        behavior: 'smooth'
+        behavior: "smooth",
       };
-      
+
       if (productsContainerRef.current) {
         productsContainerRef.current.scrollIntoView(scrollOptions);
       } else {
         window.scrollTo(scrollOptions);
       }
-      
+
       // Delay để hiệu ứng scroll hoàn thành trước khi fade in
       setTimeout(() => {
         setIsChangingPage(false); // Kết thúc hiệu ứng chuyển trang
@@ -162,28 +167,28 @@ function AllProducts({
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.05
-      }
+        staggerChildren: 0.05,
+      },
     },
     exit: {
       opacity: 0,
       transition: {
-        duration: 0.2
-      }
-    }
+        duration: 0.2,
+      },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       transition: {
         type: "spring",
         stiffness: 100,
-        damping: 15
-      }
-    }
+        damping: 15,
+      },
+    },
   };
 
   return (
@@ -198,7 +203,7 @@ function AllProducts({
           </p>
         </div>
       )}
-      
+
       <AnimatePresence mode="wait">
         <motion.div
           key={currentPage}
@@ -206,16 +211,17 @@ function AllProducts({
           animate={isChangingPage ? "exit" : "visible"}
           exit="exit"
           variants={containerVariants}
-          className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2"
+          className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2"
         >
           {currentProducts.length > 0 ? (
             currentProducts.map((product, index) => (
               <motion.div
                 key={`${product._id}-${index}`}
                 variants={itemVariants}
-                className="relative items-center justify-center group cursor-pointer bg-white rounded-md overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
+                onClick={() => handleClick(product)}
+                className="items-center justify-center bg-white rounded-md overflow-hidden shadow-lg hover:shadow-md transition-shadow duration-300"
               >
-                <div className="relative overflow-hidden">
+                <div>
                   <img
                     src={`${product.productImages[0]}`}
                     alt={product.productName}
@@ -227,44 +233,53 @@ function AllProducts({
                       {product.productDiscount}%
                     </div>
                   )}
-                  <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                    <button
-                      onClick={() => handleAddToCart(product._id)}
-                      className="px-4 py-2 cursor-pointer bg-[#51aa1b] text-white uppercase text-[12px] hover:text-[#51aa1b] hover:bg-white hover:border hover:border-[#51aa1b] transition-colors duration-300"
-                    >
-                      Thêm vào giỏ
-                    </button>
-                    <button
-                      onClick={() => handleClick(product)}
-                      className="px-4 py-2 cursor-pointer bg-[#51aa1b] text-white uppercase text-[12px] hover:text-[#51aa1b] hover:bg-white hover:border hover:border-[#51aa1b] transition-colors duration-300"
-                    >
-                      Xem chi tiết
-                    </button>
-                  </div>
                 </div>
-                <div className="flex flex-col items-center mt-auto p-4 text-center">
+                <div className="flex flex-col mt-auto p-4 gap-2 ">
+                  <p className="text-gray-400 text-[10px] lg:text-[14px] ">
+                    {product.productCategory}
+                  </p>
                   <p className="font-medium text-[10px] hover:text-[#51aa1b] line-clamp-1 lg:text-[14px] transition-colors duration-300">
                     {product.productName}
                   </p>
                   {product.productDiscount > 0 ? (
-                    <div className="flex items-center gap-2">
-                      <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                        {formatCurrency(getPrice(product))}đ
-                      </p>
-                      <p className="text-gray-400 text-[10px] mt-1 lg:text-[14px] line-through">
-                        {formatCurrency(product.productPrice)}đ
-                      </p>
+                    <div className="flex items-center gap-2 mt-4 justify-between">
+                     <div className="flex items-center gap-2">
+                        <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
+                          {formatCurrency(getPrice(product))}đ
+                        </p>
+                        <p className="text-gray-400 text-[10px] mt-1 lg:text-[14px] line-through">
+                          {formatCurrency(product.productPrice)}đ
+                        </p>
+                     </div>
+                     <FontAwesomeIcon
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddToCart(product._id);
+                        }}
+                        icon={faCartShopping}
+                        className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5  mt-1 lg:text-[14px]"
+                      />
                     </div>
                   ) : (
-                    <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                      {formatCurrency(getPrice(product))}đ
-                    </p>
+                    <div className="flex items-center gap-2 justify-between mt-4">
+                      <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[16px] ">
+                        {formatCurrency(getPrice(product))}đ
+                      </p>
+                      <FontAwesomeIcon
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddToCart(product._id);
+                        }}
+                        icon={faCartShopping}
+                        className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5  mt-1 lg:text-[14px]"
+                      />
+                    </div>
                   )}
                 </div>
               </motion.div>
             ))
           ) : (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="col-span-full text-center py-8"
@@ -277,7 +292,7 @@ function AllProducts({
 
       {/* Phân trang */}
       {filteredProducts.length > 0 && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -295,7 +310,7 @@ function AllProducts({
             >
               &laquo;
             </button>
-            
+
             {/* Hiển thị số trang */}
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
               <button
@@ -310,7 +325,7 @@ function AllProducts({
                 {page}
               </button>
             ))}
-            
+
             <button
               onClick={goToNextPage}
               disabled={currentPage === totalPages}

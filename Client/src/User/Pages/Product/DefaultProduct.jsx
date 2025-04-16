@@ -24,8 +24,8 @@ function ProductLayout({ showPromotional = false }) {
   };
 
   return (
-    <div>
-      <div className="flex items-center px-4 mt-2 text-sm lg:px-[120px] py-1">
+    <div >
+      <div className="flex items-center mt-2 gap-1  text-sm lg:px-[120px] ">
         <a href="/" className="hover:text-[#51bb1a]">
           Trang chủ
         </a>
@@ -36,10 +36,10 @@ function ProductLayout({ showPromotional = false }) {
       <div className="flex flex-col md:flex-row p-4 bg-background lg:px-[120px] lg:gap-4">
         <aside className="w-full hide-on-mobile md:w-1/4 bg-card p-4 rounded-lg shadow-md border mt-5 h-full">
           <div className="cursor-pointer text-[#1c1c1c] text-sm">
-            <h2 className="text-lg font-semibold mb-4 bg-gray-100 p-2">
+            <h2 className="text-lg font-semibold mb-4 bg-gray-100 p-2 rounded">
               DANH MỤC
             </h2>
-            <ul className="space-y-2 flex flex-col gap-2 text-[#1c1c1c] text-sm">
+            <ul className="space-y-2 flex flex-col gap-4 text-[#1c1c1c] text-sm">
               <li>
                 <a href="#" className="text-primary hover:text-[#51aa1b]">
                   Trang chủ

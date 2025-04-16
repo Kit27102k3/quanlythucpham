@@ -6,6 +6,7 @@ import { BrowserRouter as Router } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { PrimeReactProvider } from "primereact/api";
 import { Theme } from "@radix-ui/themes";
+import { Toaster } from "sonner"
 
 // Cấu hình thêm cho PrimeReact
 const primeReactConfig = {
@@ -23,6 +24,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <PrimeReactProvider value={primeReactConfig}>
           <Theme accentColor="green">
             <App />
+            <Toaster richColors position="bottom-right" />
           </Theme>
         </PrimeReactProvider>
       </HelmetProvider>
