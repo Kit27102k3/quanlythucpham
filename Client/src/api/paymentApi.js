@@ -17,18 +17,18 @@ function createDirectBankQRUrl(orderId, amount, bankCode = "MB", accountNumber =
   // Chuẩn bị nội dung chuyển khoản
   const description = encodeURIComponent(`Thanh toan don hang #${orderId}`);
   
-  // Tạo URL QR theo cấu trúc của SePay
+  // Tạo URL QR theo cấu trúc của SePay - sử dụng thông tin Napas 247 đúng định dạng
   return `https://qr.sepay.vn/img?acc=${accountNumber}&bank=${bankCode}&amount=${amount}&des=${description}`;
 }
 
 // Tạo đối tượng QR kết quả đầy đủ cho chuyển khoản ngân hàng
 function createBankTransferQR(orderId, amount, orderInfo) {
-  // Thông tin tài khoản ngân hàng
+  // Thông tin tài khoản ngân hàng - đảm bảo chính xác theo Napas 247
   const bankInfo = {
     name: "MBBank - Ngân hàng Thương mại Cổ phần Quân đội",
     accountName: "NGUYEN TRONG KHIEM",
     accountNumber: "0326743391",
-    bankCode: "MB"
+    bankCode: "MB"  // Mã ngân hàng phải đúng định dạng Napas (MB thay vì MBBank)
   };
   
   // Tạo QR URL
@@ -101,7 +101,7 @@ const paymentApi = {
             headers: {
               "Content-Type": "application/json",
             },
-            timeout: 5000 // 5 giây timeout
+            timeout: 8000 // Tăng timeout lên 8 giây để đảm bảo đủ thời gian xử lý
           }
         );
         
@@ -180,6 +180,11 @@ const paymentApi = {
 
   // Check payment status
   checkPaymentStatus: async (orderId) => {
+    if (!orderId) {
+      console.error("OrderId is required for checking payment status");
+      return { success: false, status: "unknown", message: "Thiếu mã đơn hàng" };
+    }
+    
     try {
       const response = await axios.get(
         `${API_URLS.PAYMENTS}/status/${orderId}`,
@@ -187,10 +192,19 @@ const paymentApi = {
           headers: {
             "Content-Type": "application/json",
           },
+          // Giảm timeout để không chờ quá lâu nếu server không phản hồi
+          timeout: 5000
         }
       );
       return response.data;
     } catch (error) {
+      // Xử lý lỗi 404 (API endpoint không tồn tại hoặc chưa khởi động)
+      if (error.response && error.response.status === 404) {
+        // Trả về trạng thái mặc định thay vì ném lỗi
+        return { success: false, status: "pending", message: "Đang chờ thanh toán" };
+      }
+      
+      // Log các lỗi khác
       console.error("Error checking payment status:", error);
       throw error;
     }

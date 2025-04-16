@@ -2,12 +2,38 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 import { formatCurrency } from "../../utils/formatCurrency";
+import axios from "axios";
 
 const PaymentResult = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [orderData, setOrderData] = useState(null);
+  const [checkCount, setCheckCount] = useState(0);
+  const MAX_CHECKS = 10; // Số lần kiểm tra tối đa
+  const CHECK_INTERVAL = 3000; // Thời gian giữa các lần kiểm tra (3 giây)
+
+  const checkPaymentStatus = async (orderId) => {
+    try {
+      const response = await axios.get(`/api/payments/status/${orderId}`);
+      if (response.data.success) {
+        setOrderData(prevData => ({
+          ...prevData,
+          status: response.data.status,
+          amount: response.data.amount || prevData.amount
+        }));
+        
+        // Nếu trạng thái đã xác định (completed hoặc failed), dừng kiểm tra
+        if (["completed", "failed"].includes(response.data.status)) {
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking payment status:", error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     // Parse query parameters
@@ -16,8 +42,6 @@ const PaymentResult = () => {
     const status = searchParams.get("status") || searchParams.get("vnp_ResponseCode");
     const amount = searchParams.get("amount");
     
-    // console.log("URL Parameters:", { orderId, status, amount });
-
     // Create a minimal order object from URL parameters
     setOrderData({
       orderId: orderId || "Unknown",
@@ -25,17 +49,46 @@ const PaymentResult = () => {
       status: status === "success" || status === "00" ? "completed" : "pending"
     });
 
-    setLoading(false);
+    // Nếu có orderId và trạng thái chưa hoàn thành, bắt đầu kiểm tra định kỳ
+    if (orderId && status !== "success" && status !== "00") {
+      const intervalId = setInterval(async () => {
+        setCheckCount(prev => {
+          // Nếu đã kiểm tra đủ số lần, dừng lại
+          if (prev >= MAX_CHECKS) {
+            clearInterval(intervalId);
+            setLoading(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+
+        const isComplete = await checkPaymentStatus(orderId);
+        if (isComplete) {
+          clearInterval(intervalId);
+          setLoading(false);
+        }
+      }, CHECK_INTERVAL);
+
+      // Cleanup interval khi component unmount
+      return () => clearInterval(intervalId);
+    } else {
+      setLoading(false);
+    }
   }, [location]);
 
   const handleContinueShopping = () => {
     navigate("/");
   };
 
-  if (loading) {
+  const handleViewOrder = () => {
+    navigate(`/orders/${orderData.orderId}`);
+  };
+
+  if (loading && checkCount < MAX_CHECKS) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex flex-col items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+        <p className="mt-4 text-gray-600">Đang kiểm tra trạng thái thanh toán...</p>
       </div>
     );
   }
@@ -89,13 +142,21 @@ const PaymentResult = () => {
             </dl>
           </div>
 
-          <div className="mt-8 text-center">
+          <div className="mt-8 flex justify-center space-x-4">
             <button
               onClick={handleContinueShopping}
               className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
             >
               Tiếp tục mua sắm
             </button>
+            {isSuccess && (
+              <button
+                onClick={handleViewOrder}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              >
+                Xem đơn hàng
+              </button>
+            )}
           </div>
         </div>
       </div>

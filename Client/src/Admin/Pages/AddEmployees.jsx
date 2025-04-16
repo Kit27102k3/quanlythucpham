@@ -200,27 +200,27 @@ const Employees = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 p-4 md:p-8">
+    <div className="min-h-screen  p-4 md:p-8">
       <Toast ref={toastRef} position="top-right" />
 
       <div className="container mx-auto bg-white shadow-xl rounded-xl p-4 md:p-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-emerald-700">
+          <h1 className="text-2xl md:text-3xl font-bold text-blue-700">
             Quản Lý Nhân Viên
           </h1>
           <Button
             label="Thêm Nhân Viên"
             icon="pi pi-plus"
             onClick={() => openEmployeeDialog()}
-            className="px-6 py-3 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-semibold shadow-md"
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md"
           />
         </div>
 
         {/* Employee Table */}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
-            <thead className="bg-emerald-50">
+            <thead className="bg-gray-200">
               <tr>
                 {[
                   "Tên Đăng Nhập",
@@ -233,7 +233,7 @@ const Employees = () => {
                 ].map((header) => (
                   <th
                     key={header}
-                    className="px-4 py-3 text-left text-emerald-800 font-semibold whitespace-nowrap"
+                    className="px-4 py-3 text-left text-black font-semibold whitespace-nowrap"
                   >
                     {header}
                   </th>
@@ -289,7 +289,7 @@ const Employees = () => {
                       <div className="flex gap-2">
                         <Button
                           icon="pi pi-pencil"
-                          className="p-button-rounded p-button-warning p-button-text"
+                          className="p-button-rounded p-button-warning p-button-text text-red-500"
                           onClick={() => openEmployeeDialog(employee)}
                           tooltip="Sửa"
                           tooltipOptions={{ position: "top" }}

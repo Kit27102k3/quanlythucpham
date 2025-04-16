@@ -55,7 +55,7 @@ const PaymentQR = () => {
         setChecking(true);
         try {
           const response = await paymentApi.checkPaymentStatus(orderId);
-          if (response.status === "completed") {
+          if (response && response.status === "completed") {
             clearInterval(statusChecker);
             clearInterval(timer);
             localStorage.removeItem(`qr_expiry_${orderId}`);
@@ -63,12 +63,17 @@ const PaymentQR = () => {
             navigate(`/payment-result?orderId=${orderId}&status=success&amount=${amount}`);
           }
         } catch (error) {
-          console.error("Error checking payment status:", error);
+          // Không hiển thị lỗi liên tục trên console nếu server chưa khởi động xong
+          // hoặc không tìm thấy endpoint - đây là lỗi tạm thời và không ảnh hưởng
+          // đến người dùng, chúng ta sẽ thử lại sau
+          if (error.response && error.response.status !== 404) {
+            console.error("Error checking payment status:", error);
+          }
         } finally {
           setChecking(false);
         }
       }
-    }, 10000);
+    }, 5000);
 
     // Cleanup
     return () => {

@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import formatCurrency from "../../Until/FotmatPrice";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCartShopping} from '@fortawesome/free-solid-svg-icons'; // icon bạn muốn dùng
+
 
 function ProductNew() {
   const [products, setProducts] = useState([]);
@@ -15,7 +18,7 @@ function ProductNew() {
         const sortedData = data
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
           .slice(0, 4);
-          
+
         setProducts(sortedData);
       } catch (error) {
         console.error("Lỗi khi lấy danh sách sản phẩm:", error);
@@ -35,34 +38,34 @@ function ProductNew() {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       transition: {
         type: "spring",
         stiffness: 100,
-        damping: 12
-      }
-    }
+        damping: 12,
+      },
+    },
   };
 
   const bannerVariants = {
     hidden: { opacity: 0, scale: 0.95 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       scale: 1,
       transition: {
         duration: 0.5,
-        delay: 0.3
-      }
-    }
+        delay: 0.3,
+      },
+    },
   };
 
   return (
@@ -73,7 +76,7 @@ function ProductNew() {
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <motion.div 
+        <motion.div
           className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 mb-6"
           variants={containerVariants}
           initial="hidden"
@@ -83,14 +86,14 @@ function ProductNew() {
           {products.map((product, index) => (
             <motion.div
               key={index}
-              className="relative items-center justify-center group cursor-pointer bg-white rounded-md overflow-hidden"
+              className="relative items-center justify-center group cursor-pointer rounded-md overflow-hidden shadow-lg"
               variants={itemVariants}
             >
               <div className="relative overflow-hidden">
                 <img
                   src={`${product.productImages[0]}`}
                   alt={product.productName}
-                  className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px]"
+                  className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px] rounded"
                   loading="lazy"
                 />
                 {product.productDiscount > 0 && (
@@ -113,7 +116,7 @@ function ProductNew() {
                   </button>
                 </div>
               </div>
-              <div className="flex flex-col items-center mt-auto p-4 text-center">
+              <div className="flex flex-col items-center mt-auto p-4 text-center shadow-xl">
                 <p className="font-medium text-[10px] hover:text-[#51aa1b] line-clamp-1 lg:text-[14px]">
                   {product.productName}
                 </p>
@@ -127,23 +130,26 @@ function ProductNew() {
                     </p>
                   </div>
                 ) : (
-                  <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                    {formatCurrency(getPrice(product))}đ
-                  </p>
+                  <div className="flex items-center ">
+                    <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
+                      {formatCurrency(getPrice(product))}đ
+                    </p>
+                    <FontAwesomeIcon icon={faCartShopping} className="text-white border bg-[#51bb1a] p-2 rounded-full"/>
+                  </div>
                 )}
               </div>
             </motion.div>
           ))}
         </motion.div>
 
-        <motion.div 
+        <motion.div
           className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: false, amount: 0.2 }}
         >
-          <motion.div 
+          <motion.div
             className="p-4 rounded-lg relative"
             variants={bannerVariants}
           >
@@ -166,7 +172,7 @@ function ProductNew() {
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="p-4 rounded-lg relative"
             variants={bannerVariants}
           >
@@ -177,7 +183,7 @@ function ProductNew() {
               loading="lazy"
             />
             <div className="absolute left-[40px] top-[20%]">
-              <h2 className="text-[#51aa1b] text-xl font-semibold">
+              <h2 className="text-[#51aa1b] text-xl font-semibold ">
                 THỰC PHẨM TƯƠI
               </h2>
               <p className="text-2xl font-extralight">

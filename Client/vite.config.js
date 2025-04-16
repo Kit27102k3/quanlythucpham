@@ -10,12 +10,25 @@ const __dirname = dirname(__filename);
 
 export default defineConfig({
   plugins: [
-    react(), 
+    react({
+      jsxRuntime: 'automatic',
+      fastRefresh: true,
+      babel: {
+        plugins: [],
+      }
+    }), 
     tailwindcss(),
     splitVendorChunkPlugin()
   ],
   server: {
     port: 3000,
+    host: true,
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
+      port: 3000,
+      clientPort: 3000
+    },
     proxy: {
       "/api": {
         target: "http://localhost:8080",
@@ -41,11 +54,22 @@ export default defineConfig({
     extensions: ['.js', '.jsx', '.json'],
     alias: {
       aos: 'aos',
-      '@': resolve(__dirname, './src')
+      '@': resolve(__dirname, './src'),
+      'react': resolve(__dirname, 'node_modules/react'),
+      'react-dom': resolve(__dirname, 'node_modules/react-dom'),
+      'react-router-dom': resolve(__dirname, 'node_modules/react-router-dom')
     }
   },
   optimizeDeps: {
-    include: ['aos'],
+    include: [
+      'aos',
+      'react',
+      'react-dom',
+      'react-router-dom',
+      'primereact',
+      '@radix-ui/themes',
+      'react-toastify'
+    ],
     exclude: ['framer-motion'],
     esbuildOptions: {
       define: {
@@ -61,18 +85,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Tách các thư viện node_modules thành chunk riêng
           if (id.includes('node_modules')) {
             if (id.includes('react') || id.includes('react-dom')) {
-              if (id.includes('react-dom/client')) {
-                return 'vendor-react-dom';
-              }
               return 'vendor-react';
             }
             if (id.includes('primereact')) {
-              if (id.includes('primereact/api')) {
-                return 'vendor-primereact-core';
-              }
               return 'vendor-primereact';
             }
             if (id.includes('lucide-react') || id.includes('@radix-ui')) {
@@ -87,17 +104,8 @@ export default defineConfig({
             if (id.includes('tailwindcss') || id.includes('postcss')) {
               return 'vendor-styles';
             }
-            if (id.includes('@radix-ui/react-icons')) {
-              return 'vendor-radix-icons';
-            }
-            if (id.includes('@radix-ui/react-dialog') || 
-                id.includes('@radix-ui/react-dropdown-menu') ||
-                id.includes('@radix-ui/react-slot')) {
-              return 'vendor-radix-ui';
-            }
             return 'vendor-other';
           }
-          // Tách các component thành chunk riêng
           if (id.includes('src/User/component') || id.includes('src/Admin/component')) {
             if (id.includes('Chatbot') || id.includes('ChatBot')) {
               return 'components-chat';
@@ -110,7 +118,6 @@ export default defineConfig({
             }
             return 'components-other';
           }
-          // Tách các page thành chunk riêng
           if (id.includes('src/User/Pages') || id.includes('src/Admin/Pages')) {
             if (id.includes('Product') || id.includes('product')) {
               return 'pages-product';

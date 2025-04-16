@@ -16,6 +16,7 @@ export const SEPAY = {
     apiToken: process.env.SEPAY_API_TOKEN || 'J63FBVYE2ABYD8RQLHIGETZ1A799DKWZS5PBOYJZJ4HDXSQTSWIUU0RQGTVFATF',
     endpoint: 'https://api.sepay.vn/v1/payments',
     returnUrl: `${SITE_CONFIG.baseUrl}/payment-result`,
-    notifyUrl: `${SITE_CONFIG.apiUrl}/api/payments/sepay/callback`
+    notifyUrl: `${SITE_CONFIG.apiUrl}/api/payments/sepay/callback`,
+    qrExpireTime: 24 * 60 // 24 giờ tính bằng phút
 };
                                                  

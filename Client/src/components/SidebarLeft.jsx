@@ -16,12 +16,12 @@ const menuItems = [
 ];
 
 const SidebarLeft = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const navigate = useNavigate();
-
+  
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('accessToken');
@@ -58,6 +58,7 @@ const SidebarLeft = () => {
     authApi.logout();
     setIsLoggedIn(false);
     setUser(null);
+    navigate('/');
   };
 
   const handleNavigate = (path, index) => {

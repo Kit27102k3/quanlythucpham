@@ -30,7 +30,8 @@ class PaymentService {
                 amount: parseInt(amount),
                 orderInfo: orderInfo,
                 returnUrl: `${returnUrl}${returnUrl.includes('?') ? '&' : '?'}status=success&amount=${amount}`,
-                notifyUrl: notifyUrl
+                notifyUrl: notifyUrl,
+                expireTime: SEPAY.qrExpireTime // Thêm thời gian hết hạn từ config
             };
             
             // Gọi API SePay thực từ tệp .env
@@ -171,10 +172,35 @@ class PaymentService {
     // Lưu lại lịch sử webhook
     static logWebhook(data) {
         try {
-            // Triển khai logic lưu webhook vào database thực tế
-            // Ví dụ: Lưu vào bảng PaymentLogs, WebhookLogs...
+            console.log("====== WEBHOOK LOG ======");
+            console.log("Timestamp:", new Date().toISOString());
+            console.log("Webhook data:", JSON.stringify(data, null, 2));
+            console.log("=========================");
+            
+            // Nếu có order_id hoặc orderId, kiểm tra và cập nhật đơn hàng
+            const orderId = data.order_id || data.orderId;
+            if (orderId) {
+                // Trong triển khai thực tế, bạn sẽ lưu webhook vào database
+                // Ví dụ: Lưu vào bảng PaymentLogs, WebhookLogs...
+                
+                // Lưu trữ tạm thời vào bộ nhớ (chỉ cho phát triển)
+                if (!global.webhookHistory) {
+                    global.webhookHistory = [];
+                }
+                
+                global.webhookHistory.push({
+                    timestamp: new Date(),
+                    orderId: orderId,
+                    data: data
+                });
+                
+                // Giới hạn số lượng webhook lưu trong bộ nhớ
+                if (global.webhookHistory.length > 100) {
+                    global.webhookHistory.shift();
+                }
+            }
         } catch (error) {
-            // Xử lý lỗi
+            console.error("Error logging webhook:", error);
         }
     }
 
@@ -186,11 +212,15 @@ class PaymentService {
                 return null;
             }
 
+            // Chuẩn hóa mã ngân hàng để đảm bảo tương thích với Napas 247
+            // Đảm bảo mã ngân hàng đúng định dạng Napas yêu cầu
+            const normalizedBankCode = this.normalizeBankCode(bankCode);
+            
             // Mã hóa nội dung chuyển khoản nếu có
             const encodedDescription = description ? encodeURIComponent(description) : '';
 
-            // Tạo URL QR Code
-            let qrUrl = `https://qr.sepay.vn/img?acc=${accountNumber}&bank=${bankCode}`;
+            // Tạo URL QR Code với định dạng tương thích Napas 247
+            let qrUrl = `https://qr.sepay.vn/img?acc=${accountNumber}&bank=${normalizedBankCode}`;
             
             // Thêm số tiền nếu có
             if (amount && amount > 0) {
@@ -204,8 +234,35 @@ class PaymentService {
             
             return qrUrl;
         } catch (error) {
+            console.error("Lỗi tạo QR code ngân hàng:", error);
             return null;
         }
+    }
+
+    // Hàm chuẩn hóa mã ngân hàng cho Napas 247
+    static normalizeBankCode(bankCode) {
+        // Bảng ánh xạ mã ngân hàng thường gặp sang mã Napas 247
+        const bankMapping = {
+            'MBBank': 'MB',
+            'Techcombank': 'TCB',
+            'Vietcombank': 'VCB',
+            'VietinBank': 'CTG',
+            'BIDV': 'BIDV',
+            'Agribank': 'AGR',
+            'TPBank': 'TPB',
+            'VPBank': 'VPB',
+            'ACB': 'ACB',
+            'OCB': 'OCB',
+            'SHB': 'SHB'
+        };
+
+        // Kiểm tra nếu bankCode cần được ánh xạ
+        if (bankMapping[bankCode]) {
+            return bankMapping[bankCode];
+        }
+
+        // Nếu không tìm thấy trong bảng ánh xạ, trả về mã gốc
+        return bankCode;
     }
 }
 

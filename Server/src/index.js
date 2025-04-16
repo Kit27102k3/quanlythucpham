@@ -8,9 +8,11 @@ import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
+import { dirname } from "path";
 
+// ES modules compatibility
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = dirname(__filename);
 
 import authRoutes from "./routes/authRoutes.js";
 import scraperRoutes from "./routes/scraperRoutes.js";
@@ -23,7 +25,7 @@ import orderRoutes from "./routes/orderRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
-import seedCategories from "./Model/seedCategories.js";
+import { handleSepayCallback } from "./Controller/paymentController.js";
 
 dotenv.config({ path: ".env" });
 const app = express();
@@ -43,10 +45,7 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.post('/webhook', (req, res) => {
-  console.log('Received webhook:', req.body);
-  res.sendStatus(200);
-});
+app.post('/webhook', handleSepayCallback);
 
 // Middleware kiểm tra token và trích xuất thông tin người dùng
 app.use((req, res, next) => {
@@ -73,8 +72,8 @@ app.use((req, res, next) => {
 const URI = process.env.MONGOOSE_URI;
 mongoose
   .connect(URI)
-  .then(async () => {
-    await seedCategories();
+  .then(() => {
+    console.log("Connected to MongoDB");
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 

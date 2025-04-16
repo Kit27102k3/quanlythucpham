@@ -8,7 +8,9 @@ import {
   updatePaymentStatus,
   deletePayment,
   createVnpayPaymentUrl,
-  createBankQRCode
+  createBankQRCode,
+  checkPaymentStatus,
+  handleBankWebhook
 } from "../Controller/paymentController.js";
 
 const router = express.Router();
@@ -27,5 +29,11 @@ router.post("/vnpay/create-payment-url", createVnpayPaymentUrl);
 
 // Route cho QR code ngân hàng
 router.post("/bank-qr", createBankQRCode);
+
+// Route kiểm tra trạng thái thanh toán
+router.get("/status/:orderId", checkPaymentStatus);
+
+// Route webhook ngân hàng
+router.post("/webhook/bank", handleBankWebhook);
 
 export default router;
