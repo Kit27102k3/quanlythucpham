@@ -1,58 +1,100 @@
 /* eslint-disable react/prop-types */
-import formatCurrency from "../Until/FotmatPrice";
+import { motion, AnimatePresence } from "framer-motion";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCartShopping } from "@fortawesome/free-solid-svg-icons";
+import { formatCurrency } from "../../utils/formatCurrency";
 
-function ProductList({ products, handleAddToCart, handleClick }) {
+const ProductList = ({
+  products = [], 
+  isChangingPage,
+  containerVariants,
+  itemVariants,
+  handleClick,
+  handleAddToCart,
+  getPrice,
+}) => {
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-2">
-      {products?.map((product) => (
-        <div
-          key={product._id}
-          className="relative flex flex-col items-center group cursor-pointer"
-        >
-          <div className="relative overflow-hidden">
-            {product.productImages?.length > 0 && (
-              <img
-                src={`${product.productImages[0]}`}
-                alt={product.productName}
-                className="w-64 h-64 object-cover hover-scale-up mx-auto"
-              />
-            )}
-            <div
-              className={`${
-                product?.productDiscount > 0
-                  ? "lg:bg-red-500 w-10 p-1 text-white rounded lg:absolute top-2 left-2 text-center"
-                  : "w-10 p-1 text-white rounded lg:absolute top-2 left-2 text-center"
-              }`}
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={products.length > 0 ? "products" : "empty"}
+        initial="hidden"
+        animate={isChangingPage ? "exit" : "visible"}
+        exit="exit"
+        variants={containerVariants}
+        className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 "
+      >
+        {products.length > 0 ? (
+          products.map((product, index) => (
+            <motion.div
+              key={`${product._id}-${index}`}
+              variants={itemVariants}
+              onClick={() => handleClick(product)}
+              className="items-center justify-center bg-white rounded-md overflow-hidden shadow-lg hover:shadow-md transition-shadow duration-300"
             >
-              {product?.productDiscount}%
-            </div>
-            <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-              <button
-                onClick={() => handleAddToCart(product._id)}
-                className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1"
-              >
-                Thêm vào giỏ
-              </button>
-              <button
-                onClick={() => handleClick(product)}
-                className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1"
-              >
-                Xem chi tiết
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-col items-center mt-2">
-            <p className="font-medium hover:text-[#51aa1b] text-sm">
-              {product.productName.slice(0, 30)}...
-            </p>
-            <p className="text-[#51aa1b]">
-              {formatCurrency(product.productPrice)}đ
-            </p>
-          </div>
-        </div>
-      ))}
-    </div>
+              <div>
+                <img
+                  src={`${product.productImages[0]}`}
+                  alt={product.productName}
+                  className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px]"
+                  loading="lazy"
+                />
+              </div>
+              <div className="flex flex-col mt-auto p-4 gap-2">
+                <p className="text-gray-400 text-[10px] lg:text-[14px]">
+                  {product.productCategory}
+                </p>
+                <p className="font-medium text-[10px] hover:text-[#51aa1b] line-clamp-1 lg:text-[14px] transition-colors duration-300">
+                  {product.productName}
+                </p>
+                {product.productDiscount > 0 ? (
+                  <div className="flex items-center gap-2 mt-4 justify-between">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
+                        {formatCurrency(getPrice(product))}đ
+                      </p>
+                      <p className="text-gray-400 text-[10px] mt-1 lg:text-[14px] line-through">
+                        {formatCurrency(product.productPrice)}đ
+                      </p>
+                    </div>
+                    <FontAwesomeIcon
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product._id);
+                      }}
+                      icon={faCartShopping}
+                      className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5 mt-1 lg:text-[14px]"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 justify-between mt-4">
+                    <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[16px]">
+                      {formatCurrency(getPrice(product))}
+                    </p>
+                    <FontAwesomeIcon
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddToCart(product._id);
+                      }}
+                      icon={faCartShopping}
+                      className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5 mt-1 lg:text-[14px]"
+                    />
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          ))
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="col-span-full text-center py-8"
+          >
+            <p className="text-gray-500">Không tìm thấy sản phẩm phù hợp</p>
+          </motion.div>
+        )}
+      </motion.div>
+    </AnimatePresence>
   );
-}
+};
 
 export default ProductList;

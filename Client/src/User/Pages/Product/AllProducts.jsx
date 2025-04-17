@@ -1,12 +1,10 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState, useRef } from "react";
 import { useParams, useLocation } from "react-router-dom";
-import formatCurrency from "../../Until/FotmatPrice";
+import ProductList from "../../Until/ProductsList";
 import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCartShopping } from "@fortawesome/free-solid-svg-icons";
+import { motion } from "framer-motion";
 import "../../../index.css";
 
 function AllProducts({
@@ -204,91 +202,15 @@ function AllProducts({
         </div>
       )}
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentPage}
-          initial="hidden"
-          animate={isChangingPage ? "exit" : "visible"}
-          exit="exit"
-          variants={containerVariants}
-          className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2"
-        >
-          {currentProducts.length > 0 ? (
-            currentProducts.map((product, index) => (
-              <motion.div
-                key={`${product._id}-${index}`}
-                variants={itemVariants}
-                onClick={() => handleClick(product)}
-                className="items-center justify-center bg-white rounded-md overflow-hidden shadow-lg hover:shadow-md transition-shadow duration-300"
-              >
-                <div>
-                  <img
-                    src={`${product.productImages[0]}`}
-                    alt={product.productName}
-                    className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px]"
-                    loading="lazy"
-                  />
-                  {product.productDiscount > 0 && (
-                    <div className="bg-red-500 w-10 p-1 text-white rounded absolute top-2 left-2 text-center">
-                      {product.productDiscount}%
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col mt-auto p-4 gap-2 ">
-                  <p className="text-gray-400 text-[10px] lg:text-[14px] ">
-                    {product.productCategory}
-                  </p>
-                  <p className="font-medium text-[10px] hover:text-[#51aa1b] line-clamp-1 lg:text-[14px] transition-colors duration-300">
-                    {product.productName}
-                  </p>
-                  {product.productDiscount > 0 ? (
-                    <div className="flex items-center gap-2 mt-4 justify-between">
-                     <div className="flex items-center gap-2">
-                        <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                          {formatCurrency(getPrice(product))}đ
-                        </p>
-                        <p className="text-gray-400 text-[10px] mt-1 lg:text-[14px] line-through">
-                          {formatCurrency(product.productPrice)}đ
-                        </p>
-                     </div>
-                     <FontAwesomeIcon
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddToCart(product._id);
-                        }}
-                        icon={faCartShopping}
-                        className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5  mt-1 lg:text-[14px]"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 justify-between mt-4">
-                      <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[16px] ">
-                        {formatCurrency(getPrice(product))}đ
-                      </p>
-                      <FontAwesomeIcon
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddToCart(product._id);
-                        }}
-                        icon={faCartShopping}
-                        className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5  mt-1 lg:text-[14px]"
-                      />
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            ))
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="col-span-full text-center py-8"
-            >
-              <p className="text-gray-500">Không tìm thấy sản phẩm phù hợp</p>
-            </motion.div>
-          )}
-        </motion.div>
-      </AnimatePresence>
+      <ProductList
+        products={currentProducts}
+        isChangingPage={isChangingPage}
+        containerVariants={containerVariants}
+        itemVariants={itemVariants}
+        handleClick={handleClick}
+        handleAddToCart={handleAddToCart}
+        getPrice={getPrice}
+      />
 
       {/* Phân trang */}
       {filteredProducts.length > 0 && (

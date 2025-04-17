@@ -1,9 +1,11 @@
-import "../../../App.css";
-import "../../../index.css";
+/* eslint-disable react-hooks/rules-of-hooks */
+// eslint-disable-next-line no-unused-vars
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import PropTypes from 'prop-types';
+import "../../../App.css";
+import "../../../index.css";
 
 function ProductDetail({ isVisible = false }) {
   try {

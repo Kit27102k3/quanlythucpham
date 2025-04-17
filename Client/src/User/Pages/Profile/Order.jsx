@@ -184,8 +184,8 @@ export default function Order() {
                         "Chưa có địa chỉ"
                       )}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatCurrency(order.totalAmount)}
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                      {formatCurrency(order.totalAmount)}đ
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span

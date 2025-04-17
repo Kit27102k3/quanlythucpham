@@ -1,11 +1,9 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
-import formatCurrency from "../../Until/FotmatPrice";
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCartShopping} from '@fortawesome/free-solid-svg-icons'; // icon bạn muốn dùng
-
+import ProductList from "../../Until/ProductsList";
 
 function ProductNew() {
   const [products, setProducts] = useState([]);
@@ -69,79 +67,18 @@ function ProductNew() {
   };
 
   return (
-    <AnimatePresence mode="sync">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        <motion.div
-          className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-6"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: false, amount: 0.2 }}
-        >
-          {products.map((product, index) => (
-            <motion.div
-              key={index}
-              className="relative items-center justify-center group cursor-pointer rounded-md overflow-hidden shadow-lg"
-              variants={itemVariants}
-            >
-              <div className="relative overflow-hidden">
-                <img
-                  src={`${product.productImages[0]}`}
-                  alt={product.productName}
-                  className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px] rounded"
-                  loading="lazy"
-                />
-                {product.productDiscount > 0 && (
-                  <div className="bg-red-500 w-10 p-1 text-white rounded absolute top-2 left-2 text-center">
-                    {product.productDiscount}%
-                  </div>
-                )}
-                <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                  <button
-                    onClick={() => handleAddToCart(product._id)}
-                    className="px-4 py-2 cursor-pointer bg-[#51aa1b] text-white uppercase text-[12px] hover:text-[#51aa1b] hover:bg-white hover:border hover:border-[#51aa1b]"
-                  >
-                    Thêm vào giỏ
-                  </button>
-                  <button
-                    onClick={() => handleClick(product)}
-                    className="px-4 py-2 cursor-pointer bg-[#51aa1b] text-white uppercase text-[12px] hover:text-[#51aa1b] hover:bg-white hover:border hover:border-[#51aa1b]"
-                  >
-                    Xem chi tiết
-                  </button>
-                </div>
-              </div>
-              <div className="flex flex-col items-center mt-auto p-4 text-center shadow-xl">
-                <p className="font-medium text-[10px] hover:text-[#51aa1b] line-clamp-1 lg:text-[14px]">
-                  {product.productName}
-                </p>
-                {product.productDiscount > 0 ? (
-                  <div className="flex items-center gap-2">
-                    <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                      {formatCurrency(getPrice(product))}đ
-                    </p>
-                    <p className="text-gray-400 text-[10px] mt-1 lg:text-[14px] line-through">
-                      {formatCurrency(product.productPrice)}đ
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex items-center ">
-                    <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[16px]">
-                      {formatCurrency(getPrice(product))}đ
-                    </p>
-                    {/* <FontAwesomeIcon icon={faCartShopping} className="text-white  border bg-[#51bb1a] p-2 rounded-full"/> */}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
-
+    <>
+      
+      <div>
+        <ProductList
+          products={products}
+          containerVariants={containerVariants}
+          itemVariants={itemVariants}
+          handleClick={handleClick}
+          handleAddToCart={handleAddToCart}
+          getPrice={getPrice}
+        />
+      </div>
         <motion.div
           className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6"
           variants={containerVariants}
@@ -195,8 +132,8 @@ function ProductNew() {
             </div>
           </motion.div>
         </motion.div>
-      </motion.div>
-    </AnimatePresence>
+
+    </>
   );
 }
 

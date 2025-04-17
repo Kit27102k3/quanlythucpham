@@ -185,18 +185,10 @@ export default function ProductDetails() {
                       >
                         <CardContent className="border-t border-t-gray-400 text-[12px]">
                           <span className="text-black font-bold">
-                            Nước dừa xiêm hương vị sen Cocoxim
+                            {products?.productInfo}
                           </span>{" "}
                           <span className="text-[12px]">
-                            được sản xuất theo công nghệ hiện đại, mọi khâu từ
-                            tuyển chọn nguyên liệu tới chế biến, đóng bao bì đều
-                            diễn ra khép kín dưới sự giám sát và kiểm tra nghiêm
-                            ngặt. Sản phẩm không chứa hóa chất, chất bảo quản
-                            độc hại, đảm bảo an toàn cho sức khỏe người tiêu
-                            dùng. Sản phẩm có hương vị của những nguyên liệu tự
-                            nhiên được chọn lọc kỹ càng, sẽ mang lại cho bạn
-                            những phút giải trí và thưởng thức thật tuyệt vời
-                            bên cạnh bạn bè hoặc người thân.
+                           {products?.productIntroduction}
                           </span>
                         </CardContent>
                       </motion.div>
@@ -268,18 +260,11 @@ export default function ProductDetails() {
                 >
                   <CardContent className="border-t border-t-gray-400 text-[12px]">
                     <span className="text-black font-bold">
-                      Nước dừa xiêm hương vị sen Cocoxim
+                      {products?.productInfo} {" "}
                     </span>
 
                     <span className="text-[12px]">
-                      được sản xuất theo công nghệ hiện đại, mọi khâu từ tuyển
-                      chọn nguyên liệu tới chế biến, đóng bao bì đều diễn ra
-                      khép kín dưới sự giám sát và kiểm tra nghiêm ngặt. Sản
-                      phẩm không chứa hóa chất, chất bảo quản độc hại, đảm bảo
-                      an toàn cho sức khỏe người tiêu dùng. Sản phẩm có hương vị
-                      của những nguyên liệu tự nhiên được chọn lọc kỹ càng, sẽ
-                      mang lại cho bạn những phút giải trí và thưởng thức thật
-                      tuyệt vời bên cạnh bạn bè hoặc người thân.
+                      {products?.productDetails}
                     </span>
                   </CardContent>
                 </motion.div>
