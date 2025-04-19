@@ -71,22 +71,44 @@ const Header = () => {
     }
   };
 
+  const fetchCart = async () => {
+    try {
+      if (userId) {
+        const res = await cartApi.getCart(userId);
+        const totalItems = res.cart.items.reduce(
+          (sum, item) => sum + item.quantity,
+          0
+        );
+        setCartItemCount(totalItems);
+      } 
+    } catch (error) {
+      // console.log("Lỗi khi lấy giỏ hàng:", error);
+    }
+  };
+
   useEffect(() => {
-    const fetchCart = async () => {
-      try {
-        if (userId) {
-          const res = await cartApi.getCart(userId);
-          const totalItems = res.cart.items.reduce(
-            (sum, item) => sum + item.quantity,
-            0
-          );
-          setCartItemCount(totalItems);
-        } 
-      } catch (error) {
-        // console.log("Lỗi khi lấy giỏ hàng:", error);
-      }
-    };
     fetchCart();
+    
+    // Thiết lập polling để cập nhật giỏ hàng mỗi 5 giây
+    const intervalId = setInterval(() => {
+      fetchCart();
+    }, 5000);
+    
+    // Cleanup khi component unmount
+    return () => clearInterval(intervalId);
+  }, [userId]);
+
+  // Listen for custom event that signals cart updates
+  useEffect(() => {
+    const handleCartUpdate = () => {
+      fetchCart();
+    };
+    
+    window.addEventListener('cart-updated', handleCartUpdate);
+    
+    return () => {
+      window.removeEventListener('cart-updated', handleCartUpdate);
+    };
   }, []);
 
   useEffect(() => {

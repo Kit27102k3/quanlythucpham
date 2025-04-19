@@ -10,20 +10,11 @@ import {
   getProductByCategory,
   getProductBySlug,
 } from "../Controller/productsController.js";
-import multer from "multer";
-
-// Sử dụng memory storage thay vì disk storage
-const upload = multer({ 
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024 // Giới hạn 5MB
-  }
-});
 
 const router = express.Router();
 
-// Route để tạo sản phẩm (upload ảnh)
-router.post("/products", upload.array("productImages", 5), createProduct);
+// Route để tạo sản phẩm (sử dụng Cloudinary trực tiếp)
+router.post("/products", createProduct);
 
 // Route để lấy tất cả sản phẩm
 router.get("/products", getAllProducts);
@@ -39,7 +30,7 @@ router.get("/products/slug/:slug", getProductBySlug);
 router.get("/products/:id", getProductById);
 
 // Route để cập nhật sản phẩm
-router.put("/products/:id", upload.array("productImages", 5), updateProduct);
+router.put("/products/:id", updateProduct);
 
 // Route để xóa sản phẩm
 router.delete("/products/:id", deleteProduct);

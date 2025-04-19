@@ -85,7 +85,6 @@ app.use("/logout", authRoutes);
 app.use("/api", scraperRoutes);
 app.use("/api", productsRoutes);
 app.use("/api/cart", cartRoutes);
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/orders", orderRoutes);

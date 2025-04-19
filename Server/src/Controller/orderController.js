@@ -1,4 +1,5 @@
 import Order from "../Model/Order.js";
+import Product from "../Model/Products.js";
 import axios from "axios";
 import dotenv from "dotenv";
 
@@ -14,6 +15,36 @@ function generateOrderCode() {
   return result;
 }
 
+// Hàm cập nhật số lượng tồn kho sản phẩm
+async function updateProductStock(products, increase = false) {
+  try {
+    for (const item of products) {
+      const product = await Product.findById(item.productId);
+      if (product) {
+        // Tăng hoặc giảm số lượng tồn kho dựa vào tham số increase
+        const newStock = increase 
+          ? product.productStock + item.quantity 
+          : product.productStock - item.quantity;
+        
+        // Cập nhật số lượng tồn kho và trạng thái sản phẩm
+        product.productStock = Math.max(0, newStock);
+        
+        // Cập nhật trạng thái nếu hết hàng
+        if (product.productStock === 0) {
+          product.productStatus = "Hết hàng";
+        } else if (product.productStatus === "Hết hàng") {
+          product.productStatus = "Còn hàng";
+        }
+        
+        await product.save();
+      }
+    }
+  } catch (error) {
+    console.error("Lỗi khi cập nhật số lượng tồn kho:", error);
+    throw error;
+  }
+}
+
 export const orderCreate = async (req, res) => {
   try {
     // Validate required fields
@@ -23,6 +54,24 @@ export const orderCreate = async (req, res) => {
         success: false,
         error: "Missing required fields: userId, products (non-empty array), totalAmount" 
       });
+    }
+    
+    // Kiểm tra số lượng tồn kho trước khi tạo đơn hàng
+    for (const item of products) {
+      const product = await Product.findById(item.productId);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          error: `Sản phẩm với ID ${item.productId} không tồn tại`
+        });
+      }
+      
+      if (product.productStock < item.quantity) {
+        return res.status(400).json({
+          success: false,
+          error: `Sản phẩm "${product.productName}" chỉ còn ${product.productStock} sản phẩm trong kho`
+        });
+      }
     }
     
     // Create the order with all fields from request body
@@ -43,6 +92,9 @@ export const orderCreate = async (req, res) => {
     
     // Save the order
     await order.save();
+    
+    // Giảm số lượng tồn kho
+    await updateProductStock(products);
 
     // Return success response with order data
     res.status(201).json(order);
@@ -135,17 +187,23 @@ export const updateOrder = async (req, res) => {
       filteredData.orderCode = generateOrderCode();
     }
     
+    const previousStatus = order.status;
+    const newStatus = filteredData.status;
+    
     // Nếu đang cập nhật trạng thái thành 'cancelled', kiểm tra xem có thể hủy không
-    if (filteredData.status && filteredData.status === 'cancelled') {
+    if (newStatus === 'cancelled') {
       // Ngăn chặn việc hủy đơn hàng đã giao hoặc đang giao
-      if (order.status === 'completed' || order.status === 'delivering') {
+      if (previousStatus === 'completed' || previousStatus === 'delivering') {
         return res.status(400).json({
           success: false,
-          message: order.status === "delivering" 
+          message: previousStatus === "delivering" 
             ? "Không thể hủy đơn hàng đang giao" 
             : "Không thể hủy đơn hàng đã giao"
         });
       }
+      
+      // Khi hủy đơn hàng, trả lại số lượng tồn kho
+      await updateProductStock(order.products, true);
     }
     
     // Cập nhật đơn hàng
@@ -199,40 +257,31 @@ export const orderDelete = async (req, res) => {
 export const cancelOrder = async (req, res) => {
   try {
     const orderId = req.params.id;
-    
-    // Tìm đơn hàng theo ID
     const order = await Order.findById(orderId);
     
-    // Kiểm tra nếu đơn hàng không tồn tại
     if (!order) {
-      return res.status(404).json({ 
-        success: false, 
-        message: "Không tìm thấy đơn hàng" 
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng"
       });
     }
     
-    // Kiểm tra xem đơn hàng có thể hủy không (chỉ được hủy khi đang ở trạng thái "pending" hoặc "awaiting_payment")
-    if (order.status !== "pending" && order.status !== "awaiting_payment") {
-      return res.status(400).json({ 
-        success: false, 
+    // Kiểm tra xem đơn hàng có thể hủy không
+    if (order.status === 'completed' || order.status === 'delivering') {
+      return res.status(400).json({
+        success: false,
         message: order.status === "delivering" 
           ? "Không thể hủy đơn hàng đang giao" 
-          : order.status === "completed" 
-          ? "Không thể hủy đơn hàng đã giao" 
-          : "Chỉ có thể hủy đơn hàng ở trạng thái chờ xử lý hoặc chờ thanh toán" 
+          : "Không thể hủy đơn hàng đã giao"
       });
     }
     
-    // Cập nhật trạng thái đơn hàng thành "cancelled"
-    order.status = "cancelled";
-    
-    // Thêm ghi chú về việc đơn hàng bị hủy
-    order.notes = order.notes ? 
-      `${order.notes}, Đơn hàng đã bị hủy bởi người dùng` : 
-      "Đơn hàng đã bị hủy bởi người dùng";
-    
-    // Lưu các thay đổi vào đơn hàng
+    // Cập nhật trạng thái đơn hàng thành 'cancelled'
+    order.status = 'cancelled';
     await order.save();
+    
+    // Trả lại số lượng tồn kho
+    await updateProductStock(order.products, true);
     
     return res.status(200).json({
       success: true,
@@ -242,7 +291,7 @@ export const cancelOrder = async (req, res) => {
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Lỗi server khi hủy đơn hàng",
+      message: "Lỗi khi hủy đơn hàng",
       error: error.message
     });
   }

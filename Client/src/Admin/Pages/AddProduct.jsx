@@ -7,11 +7,24 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { InputNumber } from "primereact/inputnumber";
 import { Card } from "primereact/card";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { Calendar } from "primereact/calendar";
+import { toast } from "sonner";
 
 import productsApi from "../../api/productsApi";
 import categoriesApi from "../../api/categoriesApi";
+
+// Danh sách đơn vị đo lường
+const MEASUREMENT_UNITS = [
+  { label: "Gram (g)", value: "gram" },
+  { label: "Kilogram (kg)", value: "kg" },
+  { label: "Mililít (ml)", value: "ml" },
+  { label: "Lít (l)", value: "l" },
+  { label: "Cái", value: "cái" },
+  { label: "Hộp", value: "hộp" },
+  { label: "Chai", value: "chai" },
+  { label: "Gói", value: "gói" },
+  { label: "Lon", value: "lon" },
+];
 
 const INITIAL_PRODUCT_STATE = {
   productName: "",
@@ -30,6 +43,9 @@ const INITIAL_PRODUCT_STATE = {
   productIntroduction: "",
   productInfo: "",
   productDetails: "",
+  productUnit: "gram",
+  discountStartDate: null,
+  discountEndDate: null,
 };
 
 const AddProduct = ({ setVisible, onProductAdd }) => {
@@ -38,7 +54,7 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
   const [categories, setCategories] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [hasDiscount, setHasDiscount] = useState(false);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -124,14 +140,34 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
   const handleNumberChange = (e, name) => {
     setProduct((prev) => ({
       ...prev,
-      [name]: e.value.toString(),
+      [name]: e.value !== null ? e.value.toString() : "0",
+    }));
+    
+    // Khi thay đổi giảm giá, kiểm tra và bật/tắt tùy chọn thời hạn giảm giá
+    if (name === 'productDiscount') {
+      setHasDiscount(e.value > 0);
+      
+      if (e.value === 0 || e.value === null) {
+        // Xóa thời hạn giảm giá khi đặt giảm giá = 0
+        setProduct(prev => ({
+          ...prev,
+          discountStartDate: null,
+          discountEndDate: null
+        }));
+      }
+    }
+  };
+
+  const handleDateChange = (date, name) => {
+    setProduct(prev => ({
+      ...prev,
+      [name]: date
     }));
   };
 
   const handleDropdownChange = (e, name) => {
     if (name === 'productCategory') {
       const categoryId = e.value;
-      setSelectedCategory(categoryId);
       
       console.log("Selected category ID:", categoryId);
       
@@ -157,6 +193,11 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
           productCategory: categoryId,
         }));
       }
+    } else if (name === 'productUnit') {
+      setProduct(prev => ({
+        ...prev,
+        productUnit: e.value
+      }));
     } else {
       setProduct((prev) => ({
         ...prev,
@@ -165,15 +206,42 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
     }
   };
 
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files || []);
-    const previews = files.map((file) => URL.createObjectURL(file));
-
-    setImagePreviews((prev) => [...prev, ...previews]);
-    setProduct((prev) => ({
-      ...prev,
-      productImages: [...prev.productImages, ...files],
-    }));
+  const handleCloudinaryUpload = () => {
+    if (typeof window.cloudinary === 'undefined') {
+      toast.error("Cloudinary widget không khả dụng");
+      return;
+    }
+    
+    const widget = window.cloudinary.createUploadWidget(
+      {
+        cloudName: "drlxpdaub",
+        uploadPreset: "quanlythucpham",
+        sources: ["local", "url", "camera"],
+        multiple: true,
+        clientAllowedFormats: ["jpg", "png", "jpeg", "gif"],
+        maxFileSize: 5000000, // 5MB
+      },
+      (error, result) => {
+        if (!error && result && result.event === "success") {
+          const imageUrl = result.info.secure_url;
+          console.log("Image uploaded successfully:", imageUrl);
+          
+          // Add to image previews
+          setImagePreviews(prev => [...prev, imageUrl]);
+          
+          // Add to product images
+          setProduct(prev => ({
+            ...prev,
+            productImages: [...prev.productImages, imageUrl],
+          }));
+        } else if (error) {
+          console.error("Error uploading image:", error);
+          toast.error("Lỗi khi tải ảnh lên Cloudinary");
+        }
+      }
+    );
+    
+    widget.open();
   };
 
   const handleRemoveImage = (index) => {
@@ -197,6 +265,17 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
       return;
     }
     
+    // Kiểm tra thời hạn giảm giá
+    if (hasDiscount && product.discountStartDate && product.discountEndDate) {
+      const startDate = new Date(product.discountStartDate);
+      const endDate = new Date(product.discountEndDate);
+      
+      if (startDate > endDate) {
+        toast.error("Ngày bắt đầu giảm giá không thể sau ngày kết thúc");
+        return;
+      }
+    }
+    
     setIsSubmitting(true);
 
     try {
@@ -210,45 +289,44 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
       
       console.log("Sử dụng tên danh mục:", selectedCat.nameCategory);
       
-      // Use a new approach: Try sending directly with a different format
-      const formData = new FormData();
+      // Create data object for API request
+      const productData = {
+        productName: product.productName,
+        productPrice: product.productPrice,
+        productCategory: selectedCat.nameCategory,
+        productBrand: product.productBrand || "",
+        productStatus: product.productStatus || "Còn hàng",
+        productDiscount: product.productDiscount || "0",
+        productStock: product.productStock || "0",
+        productCode: product.productCode || "",
+        productWeight: product.productWeight || "0",
+        productOrigin: product.productOrigin || "",
+        productIntroduction: product.productIntroduction || "",
+        productInfo: product.productInfo || "",
+        productDetails: product.productDetails || "",
+        productTypeName: selectedCat.nameCategory,
+        productUnit: product.productUnit || "gram",
+        imageUrls: product.productImages, // Use Cloudinary URLs
+      };
       
-      // Sử dụng nameCategory thay vì categoryId
-      formData.append("productCategory", selectedCat.nameCategory);
-      
-      // Add all other product fields
-      formData.append("productName", product.productName);
-      formData.append("productPrice", product.productPrice);
-      formData.append("productBrand", product.productBrand || "");
-      formData.append("productStatus", product.productStatus || "Còn hàng");
-      formData.append("productDiscount", product.productDiscount || "0");
-      formData.append("productStock", product.productStock || "0");
-      formData.append("productCode", product.productCode || "");
-      formData.append("productWeight", product.productWeight || "0");
-      formData.append("productOrigin", product.productOrigin || "");
-      formData.append("productIntroduction", product.productIntroduction || "");
-      formData.append("productInfo", product.productInfo || "");
-      formData.append("productDetails", product.productDetails || "");
-      formData.append("productTypeName", selectedCat.nameCategory); // Thêm cả productTypeName
+      // Add discount dates if applicable
+      if (hasDiscount && product.discountStartDate) {
+        productData.discountStartDate = product.discountStartDate.toISOString();
+      }
+      if (hasDiscount && product.discountEndDate) {
+        productData.discountEndDate = product.discountEndDate.toISOString();
+      }
       
       // Add description
       const descriptions = productDescription
         .split(".")
         .map((desc) => desc.trim())
         .filter((desc) => desc !== "");
-      formData.append("productDescription", JSON.stringify(descriptions));
+      productData.productDescription = JSON.stringify(descriptions);
       
-      // Add images separately
-      product.productImages.forEach((file) => {
-        formData.append("productImages", file);
-      });
-
-      console.log("FormData being submitted with a new approach");
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}: ${value instanceof File ? '(binary)' : value}`);
-      }
-
-      const response = await productsApi.createProduct(formData);
+      console.log("Sending product data:", productData);
+      
+      const response = await productsApi.createProduct(productData);
       toast.success("Thêm sản phẩm thành công!");
       if (onProductAdd) {
         onProductAdd(response.data); 
@@ -484,6 +562,50 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                 />
               </div>
               
+              {hasDiscount && (
+                <>
+                  <div className="field col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Thời hạn giảm giá
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label htmlFor="discountStartDate" className="block text-sm text-gray-600 mb-1">
+                          Từ ngày
+                        </label>
+                        <Calendar
+                          id="discountStartDate"
+                          value={product.discountStartDate}
+                          onChange={(e) => handleDateChange(e.value, 'discountStartDate')}
+                          showIcon
+                          className="w-full"
+                          dateFormat="dd/mm/yy"
+                          placeholder="Chọn ngày bắt đầu"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="discountEndDate" className="block text-sm text-gray-600 mb-1">
+                          Đến ngày
+                        </label>
+                        <Calendar
+                          id="discountEndDate"
+                          value={product.discountEndDate}
+                          onChange={(e) => handleDateChange(e.value, 'discountEndDate')}
+                          showIcon
+                          className="w-full"
+                          dateFormat="dd/mm/yy"
+                          placeholder="Chọn ngày kết thúc"
+                          minDate={product.discountStartDate}
+                        />
+                      </div>
+                    </div>
+                    <small className="text-gray-500 mt-1 block">
+                      Mặc định giảm giá sẽ kết thúc vào cuối ngày được chọn
+                    </small>
+                  </div>
+                </>
+              )}
+              
               <div className="field">
                 <label htmlFor="productCode" className="block text-sm font-medium text-gray-700 mb-2">
                   Mã sản phẩm
@@ -496,18 +618,32 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
               
               <div className="field">
                 <label htmlFor="productWeight" className="block text-sm font-medium text-gray-700 mb-2">
-                  Trọng lượng (gram)
+                  Khối lượng/Thể tích
                 </label>
-                <InputNumber
-                  id="productWeight"
-                  value={parseInt(product.productWeight) || 0}
-                  onValueChange={(e) => handleNumberChange(e, 'productWeight')}
-                  suffix=" g"
-                  className="w-full h-10 flex items-center"
-                  placeholder="0 g"
-                  min={0}
-                  inputClassName="h-10 px-3 border border-gray-300 rounded-md"
-                />
+                <div className="flex items-center gap-2">
+                  <InputNumber
+                    id="productWeight"
+                    value={parseInt(product.productWeight) || 0}
+                    onValueChange={(e) => handleNumberChange(e, 'productWeight')}
+                    className="w-2/3 h-10 flex items-center"
+                    placeholder="0"
+                    min={0}
+                    inputClassName="h-10 px-3 border border-gray-300 rounded-md"
+                  />
+                  <Dropdown
+                    id="productUnit"
+                    value={product.productUnit}
+                    options={MEASUREMENT_UNITS}
+                    onChange={(e) => handleDropdownChange(e, 'productUnit')}
+                    className="w-1/3 border border-gray-300 rounded-md"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Đơn vị"
+                  />
+                </div>
+                <small className="text-gray-500 mt-1 block">
+                  Chọn đơn vị phù hợp: gram (g), kilogram (kg), milliliter (ml), lít (l), cái, hộp, chai...
+                </small>
               </div>
             </div>
           </Card>
@@ -597,17 +733,14 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
                   </button>
                 </div>
               ))}
-              <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                <i className="pi pi-plus text-2xl text-gray-400 mb-2"></i>
-                <span className="text-sm text-gray-500 text-center px-2">Thêm ảnh</span>
-              </label>
+              <button
+                type="button"
+                onClick={handleCloudinaryUpload}
+                className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
+              >
+                <i className="pi pi-cloud-upload text-2xl text-gray-400 mb-2"></i>
+                <span className="text-sm text-gray-500 text-center px-2">Tải ảnh lên</span>
+              </button>
             </div>
             <small className="text-gray-500 mt-2 block p-1">Hình ảnh tốt nhất ở định dạng JPG, PNG với tỷ lệ 1:1</small>
           </Card>
@@ -632,7 +765,6 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
           </div>
         </form>
       </Scrollbars>
-      <ToastContainer />
     </div>
   );
 };

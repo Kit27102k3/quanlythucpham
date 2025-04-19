@@ -32,54 +32,92 @@ const EditProduct = ({
   );
   const [newImages, setNewImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState(
-    product.productCategory || null
-  );
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await categoriesApi.getAllCategories();
+        console.log("Fetched categories:", response);
+        
         if (Array.isArray(response)) {
+          // Log each category to see their structure
+          response.forEach(cat => {
+            console.log(`Category: ${cat.nameCategory}, ID: ${cat._id}, Code: ${cat.codeCategory}`);
+          });
+          
           setCategories(response);
+
+          // Find and set selected category
+          if (product.productCategory) {
+            const categoryObj = response.find(cat => cat.nameCategory === product.productCategory);
+            if (categoryObj) {
+              setSelectedCategory(categoryObj._id);
+            }
+          }
         } else {
           toast.error("Dữ liệu danh mục không hợp lệ");
         }
       } catch (error) {
         toast.error("Không thể tải danh mục sản phẩm");
+        console.error("Lỗi khi lấy danh mục:", error);
       }
     };
     fetchCategories();
-  }, []);
+  }, [product.productCategory]);
 
-  const handleImageUpload = (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const filesArray = Array.from(files);
-    const previews = filesArray.map((file) => URL.createObjectURL(file));
-
-    setImagePreviews((prev) => [...prev, ...previews]);
-    setNewImages((prev) => [...prev, ...filesArray]);
-  };
-
-  const handleRemoveImage = (index) => {
-    if (index >= imagePreviews.length - newImages.length) {
-      setNewImages((prev) =>
-        prev.filter(
-          (_, i) => i !== index - (imagePreviews.length - newImages.length)
-        )
-      );
+  const generateProductCode = (categoryId) => {
+    // Tìm thông tin danh mục được chọn
+    const selectedCat = categories.find(cat => cat._id === categoryId);
+    if (!selectedCat) return "";
+    
+    // Lấy mã loại từ danh mục
+    const categoryCode = selectedCat.codeCategory;
+    
+    // Tìm sản phẩm có cùng mã loại để tạo số thứ tự
+    const getNextSequenceNumber = async () => {
+      try {
+        const products = await productsApi.getAllProducts();
+        // Lọc sản phẩm cùng mã loại và có mã sản phẩm dạng CATXXX-NNN
+        const regex = new RegExp(`^${categoryCode}-\\d{3}$`);
+        const matchingProducts = products.filter(p => regex.test(p.productCode));
+        
+        if (matchingProducts.length === 0) return `${categoryCode}-001`;
+        
+        // Tìm số thứ tự lớn nhất hiện tại
+        const maxSequence = Math.max(...matchingProducts.map(p => {
+          const match = p.productCode.match(/-(\d{3})$/);
+          return match ? parseInt(match[1], 10) : 0;
+        }));
+        
+        // Tăng số thứ tự lên 1
+        const nextSequence = maxSequence + 1;
+        return `${categoryCode}-${nextSequence.toString().padStart(3, '0')}`;
+      } catch (error) {
+        console.error("Lỗi khi tạo mã sản phẩm:", error);
+        return `${categoryCode}-001`;
+      }
+    };
+    
+    // Only generate new code if product doesn't already have one or category changed
+    if (!editedProduct.productCode || editedProduct.productCategory !== selectedCat.nameCategory) {
+      getNextSequenceNumber().then(code => {
+        setEditedProduct(prev => ({
+          ...prev,
+          productCode: code
+        }));
+      });
     }
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    
+    return editedProduct.productCode || `${categoryCode}-XXX`;
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setEditedProduct({
-      ...editedProduct,
+    setEditedProduct((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
   const handleNumberChange = (e, name) => {
@@ -89,51 +127,74 @@ const EditProduct = ({
     }));
   };
 
-  const generateProductCode = async (nameCategory) => {
-    const selectedCat = categories.find(
-      (cat) => cat.nameCategory === nameCategory
-    );
-    if (!selectedCat) return "";
-
-    const categoryCode = selectedCat.codeCategory;
-
-    try {
-      const products = await productsApi.getAllProducts();
-      const regex = new RegExp(`^${categoryCode}-\\d{3}$`);
-      const matchingProducts = products.filter((p) =>
-        regex.test(p.productCode)
-      );
-      if (matchingProducts.length === 0) return `${categoryCode}`;
-
-      const maxSequence = Math.max(
-        ...matchingProducts.map((p) => {
-          const match = p.productCode.match(/-(\\d{3})$/);
-          return match ? parseInt(match[1], 10) : 0;
-        })
-      );
-
-      const nextSequence = maxSequence + 1;
-      return `${categoryCode}-${nextSequence.toString().padStart(3, "0")}`;
-    } catch (error) {
-      return `${categoryCode}`;
+  const handleCloudinaryUpload = () => {
+    if (typeof window.cloudinary === 'undefined') {
+      toast.error("Cloudinary widget không khả dụng");
+      return;
     }
+    
+    const widget = window.cloudinary.createUploadWidget(
+      {
+        cloudName: "drlxpdaub",
+        uploadPreset: "quanlythucpham",
+        sources: ["local", "url", "camera"],
+        multiple: true,
+        clientAllowedFormats: ["jpg", "png", "jpeg", "gif"],
+        maxFileSize: 5000000, // 5MB
+      },
+      (error, result) => {
+        if (!error && result && result.event === "success") {
+          const imageUrl = result.info.secure_url;
+          console.log("Image uploaded successfully:", imageUrl);
+          
+          // Add to image previews
+          setImagePreviews(prev => [...prev, imageUrl]);
+          
+          // Add new URL to newImages array
+          setNewImages(prev => [...prev, imageUrl]);
+        } else if (error) {
+          console.error("Error uploading image:", error);
+          toast.error("Lỗi khi tải ảnh lên Cloudinary");
+        }
+      }
+    );
+    
+    widget.open();
   };
 
-  const handleDropdownChange = async (e, name) => {
-    if (name === "productCategory") {
-      const selectedCat = categories.find(
-        (cat) => cat.nameCategory === e.value
-      );
-      let newProductCode = "";
+  const handleRemoveImage = (index) => {
+    // If it's a new image
+    if (index >= product.productImages.length) {
+      const newImageIndex = index - product.productImages.length;
+      setNewImages(prev => prev.filter((_, i) => i !== newImageIndex));
+    }
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDropdownChange = (e, name) => {
+    if (name === 'productCategory') {
+      const categoryId = e.value;
+      setSelectedCategory(categoryId);
+      
+      console.log("Selected category ID:", categoryId);
+      
+      // Tìm tên danh mục dựa vào ID
+      const selectedCat = categories.find(cat => cat._id === categoryId);
       if (selectedCat) {
-        newProductCode = await generateProductCode(selectedCat.nameCategory);
+        console.log("Found category:", selectedCat);
+        
+        setEditedProduct(prev => ({
+          ...prev,
+          productCategory: selectedCat.nameCategory,
+          productTypeName: selectedCat.nameCategory
+        }));
+        
+        // Generate product code after setting category
+        generateProductCode(categoryId);
+      } else {
+        console.error("Category not found for ID:", categoryId);
+        toast.error("Không tìm thấy danh mục đã chọn. Vui lòng thử lại.");
       }
-      setEditedProduct((prev) => ({
-        ...prev,
-        productCategory: e.value,
-        productTypeName: selectedCat?.nameCategory || "",
-        productCode: newProductCode || prev.productCode,
-      }));
     } else {
       setEditedProduct((prev) => ({
         ...prev,
@@ -144,83 +205,62 @@ const EditProduct = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (
-      !editedProduct.productName ||
-      !editedProduct.productPrice ||
-      !editedProduct.productCategory
-    ) {
-      toast.error(
-        "Vui lòng điền đầy đủ thông tin bắt buộc: Tên, Giá và Danh mục"
-      );
-      return;
-    }
-
-    if (imagePreviews.length === 0) {
-      toast.error("Vui lòng thêm ít nhất một hình ảnh sản phẩm");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      // Tìm tên danh mục dựa vào ID đã chọn
-      const selectedCat = categories.find(
-        (cat) => cat.nameCategory === editedProduct.productCategory
-      );
-      if (!selectedCat) {
-        toast.error("Không tìm thấy thông tin danh mục đã chọn");
+      // Validate required fields
+      if (
+        !editedProduct.productName ||
+        !editedProduct.productPrice ||
+        !selectedCategory
+      ) {
+        toast.error("Vui lòng điền đầy đủ thông tin bắt buộc");
         setIsSubmitting(false);
         return;
       }
-      const formData = new FormData();
 
-      formData.append("productCategory", selectedCat.nameCategory);
-      formData.append("productName", editedProduct.productName);
-      formData.append("productPrice", editedProduct.productPrice);
-      formData.append("productBrand", editedProduct.productBrand || "");
-      formData.append(
-        "productStatus",
-        editedProduct.productStatus || "Còn hàng"
-      );
-      formData.append("productDiscount", editedProduct.productDiscount || "0");
-      formData.append("productStock", editedProduct.productStock || "0");
-      formData.append("productCode", editedProduct.productCode || "");
-      formData.append("productWeight", editedProduct.productWeight || "0");
-      formData.append("productOrigin", editedProduct.productOrigin || "");
-      formData.append(
-        "productIntroduction",
-        editedProduct.productIntroduction || ""
-      );
-      formData.append("productInfo", editedProduct.productInfo || "");
-      formData.append("productDetails", editedProduct.productDetails || "");
-      formData.append("productTypeName", selectedCat.nameCategory); // Thêm cả productTypeName
+      const category = categories.find((cat) => cat._id === selectedCategory);
+      if (!category) {
+        toast.error("Danh mục không hợp lệ");
+        setIsSubmitting(false);
+        return;
+      }
 
-      const descString = Array.isArray(editedProduct.productDescription)
-        ? editedProduct.productDescription.join(". ")
-        : editedProduct.productDescription ?? "";
+      // Add description
+      const descString = typeof editedProduct.productDescription === 'string' 
+        ? editedProduct.productDescription
+        : (Array.isArray(editedProduct.productDescription) 
+           ? editedProduct.productDescription.join(". ")
+           : "");
+           
       const descriptions = descString
         .split(".")
         .map((desc) => desc.trim())
         .filter((desc) => desc !== "");
-      formData.append("productDescription", JSON.stringify(descriptions));
-
-      // Thêm ảnh mới
-      newImages.forEach((file) => {
-        formData.append("productImages", file);
+      
+      // Handle existing images vs new images
+      // Keep track of which existing images to retain
+      const keepImages = [];
+      product.productImages.forEach((img) => {
+        if (imagePreviews.includes(img)) {
+          keepImages.push(img);
+        }
       });
-      const currentImages = imagePreviews.filter(
-        (_, index) => index < imagePreviews.length - newImages.length
-      );
-      formData.append("keepImages", JSON.stringify(currentImages));
+      
+      // Create data object for API request instead of FormData
+      const productData = {
+        ...editedProduct,
+        productCategory: category.nameCategory,
+        productTypeName: category.nameCategory,
+        productDescription: JSON.stringify(descriptions),
+        keepImages: keepImages,
+        newImageUrls: newImages,
+      };
 
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}: ${value instanceof File ? "(binary)" : value}`);
-      }
-
-      const response = await handleUpdateProduct(editedProduct._id, formData);
+      console.log("Product data being submitted:", productData);
+      
+      const response = await handleUpdateProduct(editedProduct._id, productData);
       toast.success("Cập nhật sản phẩm thành công!");
-      setVisible(false);
       if (response?.data?.product && setProducts) {
         setProducts((prev) =>
           prev.map((p) =>
@@ -228,17 +268,14 @@ const EditProduct = ({
           )
         );
       }
+      setVisible(false);
     } catch (error) {
-      console.error("Chi tiết lỗi:", {
-        message: error.message,
-        response: error.response?.data,
-      });
-      toast.error(
-        error.response?.data?.message || "Có lỗi xảy ra khi cập nhật sản phẩm"
-      );
+      const errorMessage =
+        error.response?.data?.message || error.message || "Lỗi không xác định";
+      toast.error(`Cập nhật sản phẩm thất bại: ${errorMessage}`);
+      console.error("Chi tiết lỗi:", error);
     } finally {
       setIsSubmitting(false);
-      newImages.forEach((file) => URL.revokeObjectURL(file.preview));
     }
   };
 
@@ -256,6 +293,9 @@ const EditProduct = ({
     if (product) {
       setEditedProduct({
         ...product,
+        productDescription: product.productDescription
+          ? product.productDescription.join(". ")
+          : "",
       });
     }
   }, [product]);
@@ -309,11 +349,11 @@ const EditProduct = ({
                 </label>
                 <Dropdown
                   id="productCategory"
-                  value={editedProduct.productCategory}
+                  value={selectedCategory}
                   onChange={(e) => handleDropdownChange(e, "productCategory")}
                   options={categories.map((cat) => ({
                     label: `${cat.nameCategory} (${cat.codeCategory})`,
-                    value: cat.nameCategory,
+                    value: cat._id,
                     code: cat.codeCategory,
                   }))}
                   optionLabel="label"
@@ -389,7 +429,7 @@ const EditProduct = ({
                     { label: "Hết hàng", value: "Hết hàng" },
                     { label: "Ngừng kinh doanh", value: "Ngừng kinh doanh" },
                   ]}
-                  className="w-full h-10 px-3 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed flex items-center"
+                  className="w-full h-10 px-3 border border-gray-300 rounded-md bg-gray-100 flex items-center"
                   style={{ height: "2.5rem" }}
                 />
               </div>
@@ -484,11 +524,11 @@ const EditProduct = ({
                 </label>
                 <div className="border p-3 rounded bg-gray-50 text-sm h-10 flex items-center">
                   <span className="font-medium text-blue-600">
-                    {editedProduct.productCode || "N/A"}
+                    {editedProduct.productCode || "Chọn danh mục để tạo mã"}
                   </span>
                 </div>
                 <small className="text-gray-500 mt-1 block">
-                  Mã sản phẩm tự động từ mã loại
+                  Mã sản phẩm được tạo tự động từ mã loại
                 </small>
               </div>
 
@@ -619,19 +659,14 @@ const EditProduct = ({
                   </button>
                 </div>
               ))}
-              <label className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors">
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-                <i className="pi pi-plus text-2xl text-gray-400 mb-2"></i>
-                <span className="text-sm text-gray-500 text-center px-2">
-                  Thêm ảnh
-                </span>
-              </label>
+              <button
+                type="button"
+                onClick={handleCloudinaryUpload}
+                className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-md flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 transition-colors"
+              >
+                <i className="pi pi-cloud-upload text-2xl text-gray-400 mb-2"></i>
+                <span className="text-sm text-gray-500 text-center px-2">Tải ảnh lên</span>
+              </button>
             </div>
             <small className="text-gray-500 mt-2 block p-1">
               Hình ảnh tốt nhất ở định dạng JPG, PNG với tỷ lệ 1:1

@@ -23,21 +23,39 @@ function Products() {
 
   const removeItem = async (itemId) => {
     try {
-      await cartApi.removeFromCart(userId, itemId);
+      const productId = cart.items.find(item => item._id === itemId)?.productId._id;
+      await cartApi.removeFromCart(userId, productId);
       const res = await cartApi.getCart(userId);
       setCart(res.cart);
+      
+      // Kích hoạt sự kiện cập nhật giỏ hàng
+      triggerCartUpdateEvent();
     } catch (error) {
-      // console.log("Lỗi khi xóa sản phẩm khỏi giỏ hàng:", error);
+      console.error("Lỗi khi xóa sản phẩm khỏi giỏ hàng:", error);
     }
   };
 
+  const triggerCartUpdateEvent = () => {
+    window.dispatchEvent(new Event('cart-updated'));
+  };
+
   const updateQuantity = async (itemId, newQuantity) => {
+    if (newQuantity < 1) return;
     try {
-      await cartApi.updateCartItem(userId, itemId, { quantity: newQuantity });
-      const res = await cartApi.getCart(userId);
-      setCart(res.cart);
+      await cartApi.updateCartItem(
+        userId,
+        cart.items.find((item) => item._id === itemId).productId._id,
+        newQuantity
+      );
+      setCart((prevCart) => ({
+        ...prevCart,
+        items: prevCart.items.map((item) =>
+          item._id === itemId ? { ...item, quantity: newQuantity } : item
+        )
+      }));
+      triggerCartUpdateEvent();
     } catch (error) {
-      // console.log("Lỗi khi cập nhật số lượng sản phẩm:", error);
+      console.error("Error updating quantity:", error);
     }
   };
 

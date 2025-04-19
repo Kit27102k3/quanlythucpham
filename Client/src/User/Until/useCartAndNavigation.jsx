@@ -2,6 +2,11 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import cartApi from "../../api/cartApi";
 
+// Custom event to notify components about cart updates
+const triggerCartUpdateEvent = () => {
+  window.dispatchEvent(new Event('cart-updated'));
+};
+
 const useCartAndNavigation = () => {
   const navigate = useNavigate();
   const userId = localStorage.getItem("userId");
@@ -31,6 +36,9 @@ const useCartAndNavigation = () => {
     try {
       await cartApi.addToCart(userId, productId);
       toast.success("Sản phẩm đã được thêm vào giỏ hàng");
+      
+      // Kích hoạt sự kiện cập nhật giỏ hàng
+      triggerCartUpdateEvent();
     } catch (error) {
       console.log("Lỗi khi thêm sản phẩm vào giỏ hàng!", error);
     }
@@ -65,6 +73,9 @@ const useCartAndNavigation = () => {
         ),
       }));
       toast.success("Xóa sản phẩm ra khỏi giỏ hàng thành công!");
+      
+      // Kích hoạt sự kiện cập nhật giỏ hàng
+      triggerCartUpdateEvent();
     } catch (error) {
       console.error("Lỗi khi xóa sản phẩm:", error);
     } finally {

@@ -9,7 +9,8 @@ import path from "path";
 
 export const createProduct = async (req, res) => {
   try {
-    if (!req.files || req.files.length === 0) {
+    // Kiểm tra nếu không có imageUrls
+    if (!req.body.imageUrls || req.body.imageUrls.length === 0) {
       return res
         .status(400)
         .json({ message: "Vui lòng tải lên ít nhất một hình ảnh" });
@@ -20,21 +21,10 @@ export const createProduct = async (req, res) => {
       return res.status(400).json({ message: "Danh mục sản phẩm không tồn tại" });
     }
 
-    const uploadedUrls = [];
-    for (const file of req.files) {
-      try {
-        // Upload trực tiếp buffer của file lên Cloudinary
-        const result = await cloudinary.uploader.upload(file.buffer, {
-          folder: "products",
-          resource_type: "auto",
-          use_filename: true,
-          unique_filename: false,
-        });
-        uploadedUrls.push(result.secure_url);
-      } catch (uploadError) {
-        throw new Error(`Upload ảnh thất bại: ${uploadError.message}`);
-      }
-    }
+    // Sử dụng URLs đã được upload thông qua Cloudinary widget
+    const uploadedUrls = Array.isArray(req.body.imageUrls) 
+      ? req.body.imageUrls 
+      : [req.body.imageUrls];
 
     let descriptions = [];
     try {
@@ -46,6 +36,18 @@ export const createProduct = async (req, res) => {
       descriptions = req.body.productDescription.split(",");
     }
 
+    // Xử lý thông tin ngày bắt đầu và kết thúc giảm giá
+    let discountStartDate = null;
+    let discountEndDate = null;
+    
+    if (req.body.discountStartDate) {
+      discountStartDate = new Date(req.body.discountStartDate);
+    }
+    
+    if (req.body.discountEndDate) {
+      discountEndDate = new Date(req.body.discountEndDate);
+    }
+
     const newProduct = new Product({
       ...req.body,
       productImages: uploadedUrls,
@@ -54,7 +56,10 @@ export const createProduct = async (req, res) => {
       productDiscount: Number(req.body.productDiscount) || 0,
       productStock: Number(req.body.productStock) || 0,
       productWeight: Number(req.body.productWeight) || 0,
-      productCategory: category.nameCategory
+      productCategory: category.nameCategory,
+      productUnit: req.body.productUnit || "gram",
+      discountStartDate,
+      discountEndDate
     });
 
     // Tính productPromoPrice từ productPrice và productDiscount
@@ -72,6 +77,14 @@ export const createProduct = async (req, res) => {
     productToSend.productWeight = String(productToSend.productWeight);
     productToSend.productPromoPrice = String(productToSend.productPromoPrice);
     productToSend.productWarranty = String(productToSend.productWarranty);
+    
+    // Format discount dates
+    if (productToSend.discountStartDate) {
+      productToSend.discountStartDate = productToSend.discountStartDate.toISOString();
+    }
+    if (productToSend.discountEndDate) {
+      productToSend.discountEndDate = productToSend.discountEndDate.toISOString();
+    }
     
     return res.status(201).json(productToSend);
   } catch (error) {
@@ -151,28 +164,27 @@ export const updateProduct = async (req, res) => {
       req.body.productCategory = category.nameCategory;
     }
 
+    // Sử dụng URLs đã được upload thông qua Cloudinary widget
     let newImageUrls = [];
-    if (req.files && req.files.length > 0) {
-      const uploadResults = await Promise.all(
-        req.files.map((file) => {
-          return cloudinary.uploader.upload(file.buffer, {
-            folder: "products",
-            resource_type: "image",
-          });
-        })
-      );
-      newImageUrls = uploadResults.map((result) => result.secure_url);
+    if (req.body.newImageUrls && req.body.newImageUrls.length > 0) {
+      newImageUrls = Array.isArray(req.body.newImageUrls) 
+        ? req.body.newImageUrls 
+        : [req.body.newImageUrls];
     }
 
     let existingImages = product.productImages || [];
     if (req.body.keepImages) {
-      const keepImages = JSON.parse(req.body.keepImages);
+      const keepImages = Array.isArray(req.body.keepImages) 
+        ? req.body.keepImages 
+        : JSON.parse(req.body.keepImages);
+      
       existingImages = existingImages.filter((img) => keepImages.includes(img));
 
       const imagesToDelete = product.productImages.filter(
         (img) => !keepImages.includes(img)
       );
 
+      // Xóa các ảnh không giữ lại
       await Promise.all(
         imagesToDelete.map((img) => {
           const publicId = img.split("/").pop().split(".")[0];
@@ -193,6 +205,18 @@ export const updateProduct = async (req, res) => {
       }
     }
 
+    // Xử lý thông tin ngày bắt đầu và kết thúc giảm giá
+    let discountStartDate = null;
+    let discountEndDate = null;
+    
+    if (req.body.discountStartDate) {
+      discountStartDate = new Date(req.body.discountStartDate);
+    }
+    
+    if (req.body.discountEndDate) {
+      discountEndDate = new Date(req.body.discountEndDate);
+    }
+
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       {
@@ -204,6 +228,9 @@ export const updateProduct = async (req, res) => {
         productStock: Number(req.body.productStock) || 0,
         productWeight: Number(req.body.productWeight) || 0,
         productWarranty: Number(req.body.productWarranty) || 0,
+        productUnit: req.body.productUnit || product.productUnit || "gram",
+        ...(discountStartDate && { discountStartDate }),
+        ...(discountEndDate && { discountEndDate })
       },
       { new: true }
     );
@@ -225,6 +252,14 @@ export const updateProduct = async (req, res) => {
     productToSend.productWeight = String(productToSend.productWeight);
     productToSend.productPromoPrice = String(productToSend.productPromoPrice);
     productToSend.productWarranty = String(productToSend.productWarranty);
+    
+    // Format discount dates
+    if (productToSend.discountStartDate) {
+      productToSend.discountStartDate = productToSend.discountStartDate.toISOString();
+    }
+    if (productToSend.discountEndDate) {
+      productToSend.discountEndDate = productToSend.discountEndDate.toISOString();
+    }
 
     res.status(200).json({
       success: true,
@@ -233,13 +268,6 @@ export const updateProduct = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi khi cập nhật sản phẩm:", error);
-
-    if (req.files) {
-      req.files.forEach((file) => {
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
-      });
-    }
-
     res.status(500).json({
       success: false,
       message: "Cập nhật sản phẩm thất bại",

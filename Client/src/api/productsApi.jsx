@@ -36,25 +36,12 @@ const productsApi = {
     try {
       console.log("API_URL used for creating product:", API_URL);
       
-      // Extract form data for debugging
-      const formDataObj = {};
-      for (let [key, value] of data.entries()) {
-        if (value instanceof File) {
-          formDataObj[key] = `(File: ${value.name})`;
-        } else {
-          formDataObj[key] = value;
-        }
-      }
-      console.log("FormData being sent:", formDataObj);
-      
-      // Try to see if we need to send the category in a different way
-      if (formDataObj.productCategory) {
-        console.log("Category ID being sent:", formDataObj.productCategory);
-      }
+      // Log the data being sent for debugging
+      console.log("Data being sent:", data);
       
       const token = localStorage.getItem("token") || localStorage.getItem("access_token");
       const headers = {
-        "Content-Type": "multipart/form-data",
+        "Content-Type": "application/json",
       };
       
       if (token) {

@@ -5,7 +5,27 @@ import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import "../../../index.css";
 import { motion, AnimatePresence } from "framer-motion";
-import ProductList from "../../Until/ProductsList";
+// import ProductList from "../../Until/ProductsList";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCartShopping } from "@fortawesome/free-solid-svg-icons";
+import formatCurrency from "../../Until/FotmatPrice";
+
+// Thêm style để căn giữa carousel
+const carouselStyle = `
+  .related-products-carousel .p-carousel-items-container {
+    justify-content: center;
+  }
+  
+  .related-products-carousel .p-carousel-item {
+    display: flex;
+    justify-content: center;
+  }
+  
+  .related-products-carousel .p-carousel-indicators {
+    display: flex;
+    justify-content: center;
+  }
+`;
 
 function RelatedProducts({ currentProduct }) {
   const [relatedProducts, setRelatedProducts] = useState([]);
@@ -65,25 +85,80 @@ function RelatedProducts({ currentProduct }) {
     },
   };
 
-  const productTemplate = (products) => {
+  const productTemplate = (product) => {
     return (
-      <div className="">
-        <ProductList
-          products={[products]}
-          containerVariants={containerVariants}
-          itemVariants={itemVariants}
-          handleClick={handleClick}
-          handleAddToCart={handleAddToCart}
-          getPrice={getPrice}
-        />
+      <div className="w-full lg:w-[272px] mx-auto">
+        <motion.div
+          variants={itemVariants}
+          onClick={() => handleClick(product)}
+          className="items-center justify-center bg-white rounded-md overflow-hidden shadow-lg hover:shadow-md transition-shadow duration-300"
+        >
+          <div>
+            <img
+              src={`${product.productImages[0]}`}
+              alt={product.productName}
+              className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px]"
+              loading="lazy"
+            />
+          </div>
+          <div className="flex flex-col mt-auto p-4 gap-2">
+            <p className="text-gray-400 text-[10px] lg:text-[14px]">
+              {product.productCategory}
+            </p>
+            <p className="font-medium text-[10px] hover:text-[#51aa1b] line-clamp-1 lg:text-[16px] transition-colors duration-300">
+              {product.productName}
+            </p>
+            {product.productDiscount > 0 ? (
+              <div className="flex items-center gap-2 mt-4 justify-between">
+                <div className="flex items-center gap-2">
+                  <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
+                    {formatCurrency(getPrice(product))}
+                  </p>
+                  <p className="text-gray-400 text-[10px] mt-1 lg:text-[14px] line-through">
+                    {formatCurrency(product.productPrice)}
+                  </p>
+                </div>
+                <FontAwesomeIcon
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddToCart(product._id);
+                  }}
+                  icon={faCartShopping}
+                  className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5 mt-1 lg:text-[14px]"
+                />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 justify-between mt-4">
+                <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[16px]">
+                  {formatCurrency(getPrice(product))}
+                </p>
+                <FontAwesomeIcon
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddToCart(product._id);
+                  }}
+                  icon={faCartShopping}
+                  className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5 mt-1 lg:text-[14px]"
+                />
+              </div>
+            )}
+          </div>
+        </motion.div>
       </div>
     );
   };
-  
 
   return (
     <AnimatePresence mode="wait">
-      <div key={key} className="px-2 sm:px-8 md:px-16 lg:px-[120px] my-8">
+      <style>{carouselStyle}</style>
+      <motion.div 
+        key={key} 
+        className="px-2 sm:px-8 md:px-16 lg:px-[120px] my-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+      >
         {relatedProducts.length > 0 && (
           <>
             <motion.h1
@@ -126,7 +201,7 @@ function RelatedProducts({ currentProduct }) {
             </div>
           </>
         )}
-      </div>
+      </motion.div>
     </AnimatePresence>
   );
 }

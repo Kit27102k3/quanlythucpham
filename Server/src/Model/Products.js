@@ -19,9 +19,36 @@ const productSchema = new mongoose.Schema(
     productWarranty: { type: Number, default: 0 },
     productOrigin: { type: String, trim: true },
     productIntroduction: { type: String, trim: true },
+    productUnit: { type: String, default: "gram", trim: true },
+    discountStartDate: { type: Date },
+    discountEndDate: { type: Date },
   },
   { timestamps: true }
 );
+
+productSchema.methods.isDiscountActive = function() {
+  if (!this.discountStartDate || !this.discountEndDate) {
+    return this.productDiscount > 0;
+  }
+  
+  const now = new Date();
+  return (
+    this.productDiscount > 0 && 
+    now >= this.discountStartDate && 
+    now <= this.discountEndDate
+  );
+};
+
+productSchema.methods.toJSON = function() {
+  const productObject = this.toObject();
+  
+  if (!this.isDiscountActive()) {
+    productObject.productDiscount = 0;
+    productObject.productPromoPrice = 0;
+  }
+  
+  return productObject;
+};
 
 productSchema.index({
   productName: "text",

@@ -20,7 +20,7 @@ const Products = () => {
   
   // Pagination states
   const [first, setFirst] = useState(0);
-  const [rows, setRows] = useState(10);
+  const [rows, setRows] = useState(8);
   const [totalRecords, setTotalRecords] = useState(0);
 
   useEffect(() => {
@@ -167,7 +167,6 @@ const Products = () => {
             <th className="border border-gray-300 p-2 text-sm">Giảm giá</th>
             <th className="border border-gray-300 p-2 text-sm">Số lượng tồn kho</th>
             <th className="border border-gray-300 p-2 text-sm">Mã Loại</th>
-            <th className="border border-gray-300 p-2 text-sm">Tên Loại</th>
             <th className="border border-gray-300 p-2 text-sm">Xuất xứ</th>
             <th className="border border-gray-300 p-2 text-sm w-[120px]">Chức Năng</th>
           </tr>
@@ -199,9 +198,7 @@ const Products = () => {
               <td className="border border-gray-300 p-2 text-[14px]">
                 {product?.productCode}
               </td>
-              <td className="border border-gray-300 p-2 text-[14px]">
-                {product?.productTypeName}
-              </td>
+
               <td className="border border-gray-300 p-2 text-[14px]">
                 {product?.productOrigin}
               </td>
