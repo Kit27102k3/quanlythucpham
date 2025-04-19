@@ -1,42 +1,70 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import productsApi from "../../../api/productsApi";
-import formatCurrency from "../../Until/FotmatPrice";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
+import ProductList from "../../Until/ProductsList";
 
 function SearchProducts() {
   const [searchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
-  const [sliceLength, setSliceLength] = useState(40);
+  const [isChangingPage, setIsChangingPage] = useState(false);
   const query = searchParams.get("query");
-  const { handleClick } = useCartAndNavigation();
+  const { handleClick, handleAddToCart } = useCartAndNavigation();
 
   useEffect(() => {
     const fetchProducts = async () => {
       if (query) {
+        setIsChangingPage(true);
         try {
           const results = await productsApi.searchProducts(query);
           setProducts(results.products);
         } catch (error) {
           console.error("Error fetching products:", error);
+        } finally {
+          setIsChangingPage(false);
         }
       }
     };
     fetchProducts();
   }, [query]);
 
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setSliceLength(20);
-      } else {
-        setSliceLength(40);
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  // Tính giá hiển thị (giá giảm giá nếu có)
+  const getPrice = (product) => {
+    if (product.productDiscount > 0 && product.productPromoPrice) {
+      return product.productPromoPrice;
+    }
+    return product.productPrice;
+  };
+
+  // Cấu hình animation
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+      },
+    },
+    exit: {
+      opacity: 0,
+      transition: {
+        duration: 0.2,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 100,
+        damping: 15,
+      },
+    },
+  };
 
   return (
     <div className="mb-5">
@@ -46,60 +74,26 @@ function SearchProducts() {
         </a>{" "}
         {" >"}
         <p className="text-[#51bb1a] text-sm lg:text-[16px]">
-          Kết quả tìm kiếm
+          Kết quả tìm kiếm cho: &ldquo;{query}&rdquo;
         </p>
       </div>
       <div className="border border-gray-100"></div>
-      <div className=" gap-4 mt-4 p-2 lg:px-[120px]">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4 ">
-          {products.length > 0 ? (
-            products.map((product) => (
-              <div
-                key={product._id}
-                onClick={() => handleClick(product._id, product.productName)}
-                className="relative cursor-pointer group"
-              >
-                <div className="relative overflow-hidden">
-                  <img
-                    src={`${product?.productImages[0]}`}
-                    alt={product.productName}
-                    className="w-[160px] h-[160px] lg:w-64 lg:h-64 object-cover hover-scale-up mx-auto"
-                  />
-                  <div
-                    className={`${
-                      product.productDiscount > 0
-                        ? "lg:bg-red-500 w-10 p-1 text-white rounded lg:absolute top-2 left-2 text-center"
-                        : " w-10 p-1 text-white rounded lg:absolute top-2 left-2 text-center"
-                    }`}
-                  >
-                    {product.productDiscount}%
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-2 translate-y-full opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                    <button className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
-                      Thêm vào giỏ
-                    </button>
-                    <button className="px-4 py-2 bg-[#51aa1b] text-white uppercase text-[12px] cursor-pointer hover:text-[#51aa1b] hover:bg-white hover:border-1">
-                      Xem chi tiết
-                    </button>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center mt-2">
-                  <p className="font-medium hover:text-[#51aa1b] text-sm">
-                    {product.productName.slice(0, sliceLength)}...
-                  </p>
-                  <p className="text-[#51aa1b]">
-                    {formatCurrency(product.productPrice)}đ
-                  </p>
-                </div>
-              </div>
-            ))
-          ) : (
-            <p className="text-center col-span-4 mt-4">
-              Không tìm thấy sản phẩm nào
-            </p>
-          )}
-        </div>
+      <div className="gap-4 mt-4 p-2 lg:px-[120px]">
+        <ProductList
+          products={products}
+          isChangingPage={isChangingPage}
+          containerVariants={containerVariants}
+          itemVariants={itemVariants}
+          handleClick={handleClick}
+          handleAddToCart={handleAddToCart}
+          getPrice={getPrice}
+        />
       </div>
+      {products.length === 0 && !isChangingPage && (
+        <div className="text-center py-10">
+          <p className="text-gray-500 text-lg">Không tìm thấy sản phẩm phù hợp với từ khóa &ldquo;{query}&rdquo;</p>
+        </div>
+      )}
     </div>
   );
 }
