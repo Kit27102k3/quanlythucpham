@@ -128,6 +128,7 @@ const CategoryProducts = () => {
         sortOption={sortOption}
         priceFilters={priceFilters}
         typeFilters={typeFilters}
+        category={decodedCategory}
       />
     </div>
   );

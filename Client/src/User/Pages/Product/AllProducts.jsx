@@ -12,6 +12,7 @@ function AllProducts({
   priceFilters,
   typeFilters,
   showPromotional = false,
+  category: propCategory,
 }) {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -19,9 +20,12 @@ function AllProducts({
   const [productsPerPage] = useState(8);
   const [isChangingPage, setIsChangingPage] = useState(false);
   const { handleAddToCart, handleClick, getPrice } = useCartAndNavigation();
-  const { category } = useParams();
+  const { category: paramCategory } = useParams();
   const location = useLocation();
   const productsContainerRef = useRef(null);
+  
+  // Ưu tiên category từ props, nếu không có thì lấy từ params
+  const category = propCategory || paramCategory;
 
   useEffect(() => {
     const fetchAllProducts = async () => {
@@ -30,27 +34,76 @@ function AllProducts({
         ? res.filter((product) => product?.productDiscount > 0)
         : res;
       setProducts(filteredRes);
+      console.log("Fetched products:", filteredRes);
     };
     fetchAllProducts();
   }, [showPromotional]);
 
   useEffect(() => {
     let filtered = [...products];
-
+    console.log("Category used for filtering:", category);
+    
     // Lọc theo danh mục từ URL nếu có
     if (category) {
-      const decodedCategory = decodeURIComponent(category);
-      filtered = filtered.filter((product) => {
-        // Tìm kiếm sản phẩm theo tên danh mục hoặc mô tả
-        return (
-          product.productCategory?.includes(decodedCategory) ||
-          product.productName?.includes(decodedCategory) ||
-          product.productDetails?.includes(decodedCategory) ||
-          product.productDescription?.some((desc) =>
-            desc.toLowerCase().includes(decodedCategory.toLowerCase())
-          )
-        );
+      const decodedCategory = typeof category === 'string' ? decodeURIComponent(category) : category;
+      console.log("Decoded category:", decodedCategory);
+      
+      // Tiếp cận 1: Tìm kiếm chính xác chuỗi danh mục (ưu tiên)
+      let exactMatches = filtered.filter(product => {
+        const productCategory = (product.productCategory || '').toLowerCase();
+        return productCategory.includes(decodedCategory.toLowerCase());
       });
+      
+      // Nếu tìm được ít nhất 1 kết quả khớp chính xác, sử dụng nó
+      if (exactMatches.length > 0) {
+        console.log("Found exact category matches:", exactMatches.length);
+        filtered = exactMatches;
+      } 
+      // Nếu không tìm thấy khớp chính xác, thử tìm theo từ khóa
+      else {
+        // Chia nhỏ danh mục thành các từ khóa có ý nghĩa
+        // Lọc ra các từ có độ dài > 3 ký tự để tránh những từ như "và", "với", v.v.
+        const keywords = decodedCategory.toLowerCase().split(/[,\s]+/).filter(keyword => keyword.length > 3);
+        console.log("Keywords for search:", keywords);
+        
+        filtered = filtered.filter((product) => {
+          // Ưu tiên tìm trong danh mục sản phẩm
+          const productCategory = (product.productCategory || '').toLowerCase();
+          
+          // Kiểm tra xem có ít nhất 1 từ khóa khớp với danh mục không
+          const categoryMatch = keywords.some(keyword => productCategory.includes(keyword));
+          
+          // Nếu khớp danh mục, ưu tiên trả về kết quả này
+          if (categoryMatch) {
+            console.log("Matched product category:", product.productName, "- Category:", product.productCategory);
+            return true;
+          }
+          
+          // Nếu không khớp danh mục, mới tìm trong tên và mô tả
+          const productName = (product.productName || '').toLowerCase();
+          
+          // Yêu cầu ít nhất 2 từ khóa khớp để tránh kết quả không liên quan
+          // Hoặc tên sản phẩm phải chứa ít nhất 1 từ khóa
+          const keywordMatches = keywords.filter(keyword => 
+            productName.includes(keyword) || 
+            (product.productDescription || []).some(desc => 
+              (desc || '').toLowerCase().includes(keyword)
+            )
+          );
+          
+          const isRelevant = keywordMatches.length >= 2 || (
+            keywords.some(keyword => productName.includes(keyword))
+          );
+          
+          if (isRelevant) {
+            console.log("Matched product by name/description:", product.productName, "- Category:", product.productCategory);
+          }
+          
+          return isRelevant;
+        });
+      }
+      
+      console.log("Filtered products count:", filtered.length);
     }
 
     // Lọc theo giá
@@ -67,10 +120,21 @@ function AllProducts({
     // Lọc theo loại sản phẩm
     if (typeFilters.length > 0) {
       filtered = filtered.filter((product) => {
-        return typeFilters.some(
-          (type) => product.productCategory === type.name
-        );
+        const productCategory = (product.productCategory || '').toLowerCase();
+        
+        return typeFilters.some(type => {
+          const typeName = type.name.toLowerCase();
+          
+          // Kiểm tra nếu loại là một phần của danh mục sản phẩm
+          // hoặc danh mục sản phẩm là một phần của loại
+          return productCategory.includes(typeName) || 
+                 typeName.includes(productCategory) ||
+                 // Hoặc tên sản phẩm chứa tên loại
+                 (product.productName || '').toLowerCase().includes(typeName);
+        });
       });
+      
+      console.log("Products after type filtering:", filtered.length);
     }
 
     switch (sortOption) {
@@ -194,11 +258,8 @@ function AllProducts({
       {category && (
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-[#51bb1a] mb-2">
-            Sản phẩm: {decodeURIComponent(category)}
+            {decodeURIComponent(category)}
           </h2>
-          <p className="text-gray-600 text-sm">
-            Hiển thị {filteredProducts.length} sản phẩm
-          </p>
         </div>
       )}
 

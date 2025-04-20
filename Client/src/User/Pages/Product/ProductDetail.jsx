@@ -19,8 +19,22 @@ function ProductDetail({ isVisible = false }) {
       }
     }, [isVisible]);
 
-    const handleCategoryClick = (category) => {
-      navigate(`/products/category/${encodeURIComponent(category)}`);
+    const handleCategoryClick = (category, e) => {
+      // Ngăn sự kiện lan truyền lên thẻ li cha
+      e.stopPropagation();
+      console.log("Clicked category:", category);
+      
+      // Chuyển đổi tên danh mục thành slug URL
+      const slug = category
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Loại bỏ dấu tiếng Việt
+        .replace(/[đĐ]/g, 'd')
+        .replace(/[^a-z0-9]/g, '-')  // Thay thế ký tự không phải chữ cái hoặc số bằng dấu gạch ngang
+        .replace(/-+/g, '-')         // Gộp nhiều dấu gạch ngang liên tiếp
+        .replace(/^-|-$/g, '');      // Loại bỏ dấu gạch ngang ở đầu và cuối
+      
+      navigate(`/san-pham/${slug}`);
     };
 
     // Animation variants
@@ -110,7 +124,7 @@ function ProductDetail({ isVisible = false }) {
                     ].map((item, index) => (
                       <motion.li key={index} variants={itemVariants}>
                         <a
-                          onClick={() => handleCategoryClick(item)}
+                          onClick={(e) => handleCategoryClick(item, e)}
                           className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors cursor-pointer"
                         >
                           {item}
@@ -140,7 +154,7 @@ function ProductDetail({ isVisible = false }) {
                     ].map((item, index) => (
                       <motion.li key={index} variants={itemVariants}>
                         <a
-                          onClick={() => handleCategoryClick(item)}
+                          onClick={(e) => handleCategoryClick(item, e)}
                           className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors cursor-pointer"
                         >
                           {item}
@@ -169,7 +183,7 @@ function ProductDetail({ isVisible = false }) {
                     ].map((item, index) => (
                       <motion.li key={index} variants={itemVariants}>
                         <a
-                          onClick={() => handleCategoryClick(item)}
+                          onClick={(e) => handleCategoryClick(item, e)}
                           className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors cursor-pointer"
                         >
                           {item}
@@ -199,7 +213,7 @@ function ProductDetail({ isVisible = false }) {
                     ].map((item, index) => (
                       <motion.li key={index} variants={itemVariants}>
                         <a
-                          onClick={() => handleCategoryClick(item)}
+                          onClick={(e) => handleCategoryClick(item, e)}
                           className="text-[14px] text-gray-700 hover:text-[#51bb1a] hover:underline transition-colors cursor-pointer"
                         >
                           {item}

@@ -8,7 +8,7 @@ import { FloatLabel } from "primereact/floatlabel";
 import { Pencil1Icon } from "@radix-ui/react-icons";
 import { TrashIcon } from "lucide-react";
 import categoriesApi from "../../api/categoriesApi";
-import { ToastContainer, toast } from "react-toastify";
+import { toast } from "sonner";
 
 const Categories = () => {
   const [searchCode, setSearchCode] = useState("");
@@ -29,7 +29,7 @@ const Categories = () => {
       const response = await categoriesApi.getAllCategories();
       setCategories(response);
     } catch (error) {
-      // console.log("Lỗi khi tải danh mục:", error);
+      console.log("Lỗi khi tải danh mục:", error);
     }
   };
 
@@ -42,26 +42,26 @@ const Categories = () => {
     // Tìm mã lớn nhất hiện tại
     const generateNewCode = () => {
       if (categories.length === 0) return "CAT001";
-      
+
       // Lọc ra các mã có định dạng CATxxx
       const codePrefixPattern = /^CAT(\d{3})$/;
       const existingCodes = categories
-        .map(cat => cat.codeCategory)
-        .filter(code => codePrefixPattern.test(code))
-        .map(code => {
+        .map((cat) => cat.codeCategory)
+        .filter((code) => codePrefixPattern.test(code))
+        .map((code) => {
           const match = code.match(codePrefixPattern);
           return match ? parseInt(match[1], 10) : 0;
         });
-      
+
       // Nếu không có mã nào phù hợp với pattern
       if (existingCodes.length === 0) return "CAT001";
-      
+
       // Tìm số lớn nhất và tăng lên 1
       const maxCodeNumber = Math.max(...existingCodes);
       const newCodeNumber = maxCodeNumber + 1;
-      return `CAT${newCodeNumber.toString().padStart(3, '0')}`;
+      return `CAT${newCodeNumber.toString().padStart(3, "0")}`;
     };
-    
+
     const newCode = generateNewCode();
     setNewCategory({
       codeCategory: newCode,
@@ -98,14 +98,14 @@ const Categories = () => {
         toast.error("Vui lòng nhập tên danh mục");
         return;
       }
-      
+
       const response = await categoriesApi.createCategory(newCategory);
       setCategories([...categories, response]);
       setVisible(false);
       setNewCategory({ codeCategory: "", nameCategory: "" });
       toast.success("Thêm danh mục thành công");
     } catch (error) {
-      // console.log("Lỗi khi thêm danh mục:", error);
+      console.log("Lỗi khi thêm danh mục:", error);
     }
   };
 
@@ -115,7 +115,7 @@ const Categories = () => {
       setCategories(categories.filter((category) => category._id !== _id));
       toast.success("Xóa danh mục thành công");
     } catch (error) {
-      // console.log("Lỗi khi xóa danh mục:", error);
+      console.log("Lỗi khi xóa danh mục:", error);
     }
   };
 
@@ -138,7 +138,7 @@ const Categories = () => {
       setEditVisible(false);
       toast.success("Cập nhật danh mục thành công");
     } catch (error) {
-      // console.log("Lỗi khi cập nhật danh mục:", error);
+      console.log("Lỗi khi cập nhật danh mục:", error);
     }
   };
 
@@ -157,7 +157,6 @@ const Categories = () => {
 
   return (
     <div className="p-4">
-      <ToastContainer />
       <h1 className="text-2xl font-bold mb-4">Danh Mục Sản Phẩm</h1>
       <div className="mb-4 lg:grid lg:grid-cols-[25%_55%_20%] lg:gap-2">
         <div className="mb-2 flex gap-3">
@@ -237,8 +236,15 @@ const Categories = () => {
         <div className="p-4 card flex flex-col justify-content-center mt-2">
           <div className="flex flex-col gap-8 mb-5">
             <div className="border p-3 rounded bg-gray-50 text-sm">
-              <p className="font-medium text-gray-700">Mã loại: <span className="font-bold text-blue-600">{newCategory.codeCategory}</span></p>
-              <p className="text-xs text-gray-500 mt-1">Mã loại được tạo tự động</p>
+              <p className="font-medium text-gray-700">
+                Mã loại:{" "}
+                <span className="font-bold text-blue-600">
+                  {newCategory.codeCategory}
+                </span>
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Mã loại được tạo tự động
+              </p>
             </div>
             <FloatLabel>
               <InputText
@@ -271,8 +277,15 @@ const Categories = () => {
         <div className="p-4 card flex flex-col justify-content-center mt-2">
           <div className="flex flex-col gap-8 mb-5">
             <div className="border p-3 rounded bg-gray-50 text-sm">
-              <p className="font-medium text-gray-700">Mã loại: <span className="font-bold text-blue-600">{editCategory?.codeCategory}</span></p>
-              <p className="text-xs text-gray-500 mt-1">Mã loại không thể chỉnh sửa</p>
+              <p className="font-medium text-gray-700">
+                Mã loại:{" "}
+                <span className="font-bold text-blue-600">
+                  {editCategory?.codeCategory}
+                </span>
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Mã loại không thể chỉnh sửa
+              </p>
             </div>
             <FloatLabel>
               <InputText
@@ -303,7 +316,9 @@ const Categories = () => {
         headerClassName="p-4"
       >
         <div className="px-4 mb-4 card flex flex-col justify-content-center ">
-          <p className="mb-4 text-sm">Bạn có chắc chắn muốn xóa danh mục này không?</p>
+          <p className="mb-4 text-sm">
+            Bạn có chắc chắn muốn xóa danh mục này không?
+          </p>
           <div className="flex gap-2">
             <Button
               label="Có"

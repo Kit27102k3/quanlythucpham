@@ -70,6 +70,10 @@ const publicRoutes = [
     page: DefaultProduct,
   },
   {
+    path: "/san-pham/:category",
+    page: DefaultProduct,
+  },
+  {
     path: "/products/category/:category",
     page: CategoryProducts,
   },
