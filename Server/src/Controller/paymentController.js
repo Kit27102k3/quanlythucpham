@@ -271,6 +271,48 @@ export const updatePaymentStatus = async (req, res) => {
   }
 };
 
+// Cập nhật thông tin thanh toán
+export const updatePayment = async (req, res) => {
+  try {
+    const paymentId = req.params.id;
+    const updateData = req.body;
+    
+    // Chỉ cho phép cập nhật các trường an toàn
+    const allowedFields = ['orderId', 'status', 'transactionId'];
+    const filteredData = {};
+    
+    for (const key of Object.keys(updateData)) {
+      if (allowedFields.includes(key)) {
+        filteredData[key] = updateData[key];
+      }
+    }
+    
+    const payment = await Payment.findByIdAndUpdate(
+      paymentId,
+      { $set: filteredData },
+      { new: true }
+    );
+    
+    if (!payment) {
+      return res.status(404).json({ 
+        success: false,
+        message: "Không tìm thấy thông tin thanh toán" 
+      });
+    }
+    
+    return res.json({
+      success: true,
+      data: payment
+    });
+  } catch (error) {
+    return res.status(500).json({ 
+      success: false,
+      message: "Lỗi khi cập nhật thông tin thanh toán",
+      error: error.message 
+    });
+  }
+};
+
 // Xóa thanh toán
 export const deletePayment = async (req, res) => {
   try {

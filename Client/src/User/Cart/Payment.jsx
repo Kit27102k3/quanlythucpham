@@ -5,12 +5,14 @@ import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCar, faMoneyCheckDollar } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams } from "react-router-dom";
-import paymentApi from "../../api/paymentApi.js";
+import paymentApi from "../../api/paymentApi";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import formatCurrency from "../Until/FotmatPrice";
 import orderApi from "../../api/orderApi";
 import authApi from "../../api/authApi";
+import axios from "axios";
+import { API_URLS } from "../../config/apiConfig";
 
 export default function Payment() {
   const [users, setUsers] = useState(null);
@@ -134,17 +136,12 @@ export default function Payment() {
         address: users.address,
         note: note,
         paymentMethod: selectedPayment,
-        status: selectedPayment === "cod" ? "pending" : "awaiting_payment"
+        status: "awaiting_payment" // Always set to awaiting_payment initially for all payment methods
       };
-
-      // Create order
-      const orderResponse = await orderApi.createOrder(orderData);
-      const orderIdCreated = orderResponse._id;
 
       if (selectedPayment === "sepay") {
         try {
-          // Đảm bảo amount là số nguyên dương
-          // Create payment record
+          // For online payment, create payment record first before creating order
           const paymentData = {
             userId: users._id,
             amount: totalAmount,
@@ -153,10 +150,10 @@ export default function Payment() {
               quantity: product.quantity,
               price: product.productId.productPrice
             })),
-            paymentMethod: selectedPayment,
-            orderId: orderIdCreated
+            paymentMethod: selectedPayment
           };
 
+          // Create payment first
           const paymentResponse = await paymentApi.createPayment(paymentData);
           const paymentId = paymentResponse.data._id;
 
@@ -167,8 +164,30 @@ export default function Payment() {
             orderInfo
           );
 
-          // Check if we got a valid payment URL
-          if (sepayResponse && sepayResponse.success) {
+          // Only create order if we get a valid payment URL or QR code
+          if (sepayResponse && (sepayResponse.success || sepayResponse.fallbackQR)) {
+            // Create order after successful payment setup
+            const orderResponse = await orderApi.createOrder(orderData);
+            const orderIdCreated = orderResponse._id;
+            
+            // Update the payment with order ID - use updatePaymentStatus as a workaround
+            try {
+              // Use paymentApi.updatePayment
+              await paymentApi.updatePayment(paymentId, { orderId: orderIdCreated });
+            } catch (updateError) {
+              console.log("Using alternative method to update payment");
+              // Use direct API call as fallback
+              await axios.patch(
+                `${API_URLS.PAYMENTS}/${paymentId}`,
+                { orderId: orderIdCreated },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+            }
+
             // Kiểm tra xem đây là phương thức thanh toán nào
             if (sepayResponse.method === "bank_transfer") {
               // Phương án QR chuyển khoản ngân hàng
@@ -188,6 +207,28 @@ export default function Payment() {
             // Fallback là QR trực tiếp
             toast.info("Chuyển sang phương thức thanh toán chuyển khoản ngân hàng");
             
+            // Create order after successful QR generation
+            const orderResponse = await orderApi.createOrder(orderData);
+            const orderIdCreated = orderResponse._id;
+            
+            // Update the payment with order ID
+            try {
+              // Use paymentApi.updatePayment
+              await paymentApi.updatePayment(paymentId, { orderId: orderIdCreated });
+            } catch (updateError) {
+              console.log("Using alternative method to update payment");
+              // Use direct API call as fallback
+              await axios.patch(
+                `${API_URLS.PAYMENTS}/${paymentId}`,
+                { orderId: orderIdCreated },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+            }
+            
             // Chuyển đến trang QR với orderId để theo dõi trạng thái
             navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(sepayResponse.fallbackQR)}&bankName=MBBank&accountNumber=0326743391&accountName=NGUYEN%20TRONG%20KHIEM&amount=${totalAmount}`);
           } else {
@@ -196,11 +237,13 @@ export default function Payment() {
         } catch (error) {
           console.error("Lỗi khi tạo cổng thanh toán:", error);
           toast.error("Không thể kết nối đến cổng thanh toán. Vui lòng thử lại sau!");
-          // Redirect to payment result page with failure status
-          navigate(`/payment-result?orderId=${orderIdCreated}&status=failed&amount=${totalAmount}`);
         }
       } else {
-        // For COD, no payment record is needed immediately
+        // For COD, we can create the order directly
+        orderData.status = "pending"; // Set status to pending for COD
+        const orderResponse = await orderApi.createOrder(orderData);
+        const orderIdCreated = orderResponse._id;
+        
         toast.success("Đặt hàng thành công!");
         navigate(`/payment-result?orderId=${orderIdCreated}&status=success&amount=${totalAmount}`);
       }

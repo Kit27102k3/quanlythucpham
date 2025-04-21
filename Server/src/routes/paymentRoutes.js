@@ -10,7 +10,8 @@ import {
   createVnpayPaymentUrl,
   createBankQRCode,
   checkPaymentStatus,
-  handleBankWebhook
+  handleBankWebhook,
+  updatePayment
 } from "../Controller/paymentController.js";
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.post("/", createPayment);
 router.get("/", getAllPayments);
 router.get("/:id", getPaymentById);
 router.patch("/:id/status", updatePaymentStatus);
+router.patch("/:id", updatePayment);
 router.delete("/:id", deletePayment);
 
 // Routes thanh toán

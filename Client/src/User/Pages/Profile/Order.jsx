@@ -46,10 +46,21 @@ export default function Order() {
     };
   }, []);
 
+  // Filter out awaiting_payment orders (SePay payments not yet completed)
+  const filteredOrders = orders.filter(order => 
+    !(order.status === "awaiting_payment" && order.paymentMethod === "sepay")
+  );
+  
+  // Get pending SePay payments separately
+  const pendingSePayOrders = orders.filter(order => 
+    order.status === "awaiting_payment" && order.paymentMethod === "sepay"
+  );
+
   const statusCounts = {
     pending: orders.filter((o) => o.status === "pending").length,
     paid: orders.filter((o) => o.status === "paid").length,
     completed: orders.filter((o) => o.status === "completed").length,
+    awaiting_payment: orders.filter((o) => o.status === "awaiting_payment").length
   };
 
   const handleCancelOrder = async (orderId, event) => {
@@ -140,7 +151,7 @@ export default function Order() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {orders.length === 0 ? (
+              {filteredOrders.length === 0 ? (
                 <tr className="text-center">
                   <td
                     colSpan={7}
@@ -161,7 +172,7 @@ export default function Order() {
                   </td>
                 </tr>
               ) : (
-                orders.map((order) => (
+                filteredOrders.map((order) => (
                   <tr
                     key={order._id}
                     className="hover:bg-gray-50 cursor-pointer"
@@ -192,11 +203,15 @@ export default function Order() {
                         className={`px-2 py-1 text-xs rounded-full ${
                           order.status === "paid"
                             ? "bg-green-100 text-green-800"
+                            : order.status === "awaiting_payment"
+                            ? "bg-orange-100 text-orange-800"
                             : "bg-yellow-100 text-yellow-800"
                         }`}
                       >
                         {order.status === "paid"
                           ? "Đã thanh toán"
+                          : order.status === "awaiting_payment"
+                          ? "Chờ thanh toán"
                           : "Chưa thanh toán"}
                       </span>
                     </td>
@@ -238,11 +253,86 @@ export default function Order() {
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+      {pendingSePayOrders.length > 0 && (
+        <div className="mt-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <CreditCardIcon className="w-6 h-6 text-orange-500" />
+            <h3 className="text-lg font-semibold text-gray-800">
+              Đơn hàng chờ thanh toán SePay
+            </h3>
+          </div>
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-orange-50 border-b border-orange-100">
+                  <tr>
+                    {[
+                      "Đơn hàng",
+                      "Ngày",
+                      "Giá trị đơn hàng",
+                      "Hành động"
+                    ].map((header, index) => (
+                      <th
+                        key={index}
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {pendingSePayOrders.map((order) => (
+                    <tr
+                      key={order._id}
+                      className="hover:bg-gray-50"
+                    >
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        #{order._id.slice(-6).toUpperCase()}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                        {formatCurrency(order.totalAmount)}đ
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => navigate(`/payment-qr?orderId=${order._id}`)}
+                            className="bg-orange-500 text-white px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors"
+                          >
+                            Thanh toán
+                          </button>
+                          <button
+                            onClick={(e) => handleCancelOrder(order._id, e)}
+                            className="text-red-500 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1 text-sm transition-colors"
+                            disabled={cancelLoading}
+                          >
+                            <XCircleIcon className="w-4 h-4" />
+                            Hủy
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
         <OrderStatusCard
           icon={<PackageIcon className="w-6 h-6 text-blue-600" />}
           title="Đang xử lý"
           count={statusCounts.pending}
+        />
+        <OrderStatusCard
+          icon={<CreditCardIcon className="w-6 h-6 text-orange-500" />}
+          title="Chờ thanh toán"
+          count={statusCounts.awaiting_payment}
         />
         <OrderStatusCard
           icon={<CreditCardIcon className="w-6 h-6 text-[#51bb1a]" />}

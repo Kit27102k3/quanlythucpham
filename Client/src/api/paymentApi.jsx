@@ -103,6 +103,25 @@ const paymentApi = {
     }
   },
 
+  // Cập nhật thông tin thanh toán
+  updatePayment: async (paymentId, paymentData) => {
+    try {
+      const response = await axios.patch(
+        `${API_URLS.PAYMENTS}/${paymentId}`,
+        paymentData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi cập nhật thông tin thanh toán:", error);
+      throw error;
+    }
+  },
+
   // Xóa thanh toán
   deletePayment: async (paymentId) => {
     try {

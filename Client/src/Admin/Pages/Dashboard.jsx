@@ -34,10 +34,12 @@ import formatCurrency from '../../User/Until/FotmatPrice';
 const COLORS = ["#6366f1", "#10b981", "#f97316", "#6366f1", "#8b5cf6"];
 const ORDER_STATUS_COLORS = {
   "pending": "#eab308",
+  "awaiting_payment": "#f97316",
   "completed": "#10b981",
   "cancelled": "#ef4444",
   "shipping": "#3b82f6",
   "Đang xử lý": "#eab308",
+  "Chờ thanh toán": "#f97316",
   "Đã giao hàng": "#10b981",
   "Đã hủy": "#ef4444",
   "Đang giao": "#3b82f6"
@@ -52,9 +54,9 @@ const CustomTooltip = ({ active, payload, label }) => {
         {payload.map((entry, index) => (
           <p key={`item-${index}`} style={{ color: entry.color }} className="flex items-center mt-1">
             <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: entry.color }}></span>
-            <span className="mr-2">{entry.name}: </span>
+            <span className="mr-2">{entry.name === "Doanh Thu" || entry.name === "doanh_thu" ? "Doanh Thu" : entry.name === "Đơn Hàng" || entry.name === "don_hang" ? "Đơn Hàng" : entry.name}: </span>
             <span className="font-medium">
-              {entry.name === "Doanh Thu" ? formatCurrency(entry.value) : entry.value}
+              {entry.name === "Doanh Thu" || entry.name === "doanh_thu" ? formatCurrency(entry.value) : entry.value}
             </span>
           </p>
         ))}
@@ -161,24 +163,26 @@ const Dashboard = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeOrderIndex, setActiveOrderIndex] = useState(0);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await dashboardApi.getDashboardStats();
-        
-        if (response.success) {
-          setStats(response.data);
-        } else {
-          setError(response.message || "Không thể tải dữ liệu");
-        }
-      } catch (err) {
-        console.error("Dashboard error:", err);
-        setError(err.message || "Có lỗi xảy ra khi tải dữ liệu");
-      } finally {
-        setLoading(false);
+  const fetchStats = async () => {
+    try {
+      const response = await dashboardApi.getDashboardStats();
+      
+      if (response && response.success) {
+        console.log("Dashboard API response:", response.data);
+        console.log("Product categories:", response.data.productsByCategory);
+        setStats(response.data);
+      } else {
+        setError(response?.message || "Không thể tải dữ liệu");
       }
-    };
+    } catch (err) {
+      console.error("Dashboard error:", err);
+      setError(err.message || "Có lỗi xảy ra khi tải dữ liệu");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchStats();
   }, []);
 
@@ -191,39 +195,58 @@ const Dashboard = () => {
   };
 
   const getRevenueData = () => {
-    if (!stats) return [];
+    if (!stats || !stats.dailyRevenue) return [];
 
+    let result;
     switch (timeRange) {
       case 'daily':
-        return stats.dailyRevenue.map(item => ({
+        result = stats.dailyRevenue?.map(item => ({
           date: formatDate(new Date(item._id.year, item._id.month - 1, item._id.day)),
           doanh_thu: item.revenue,
           don_hang: item.orders
-        })).slice(-7);
+        })).slice(-7) || [];
+        break;
       case 'weekly':
-        return stats.weeklyRevenue.map(item => ({
+        result = stats.weeklyRevenue?.map(item => ({
           date: `Tuần ${item._id.week}/${item._id.year}`,
           doanh_thu: item.revenue,
           don_hang: item.orders
-        }));
+        })) || [];
+        break;
       case 'monthly':
-        return stats.monthlyRevenue.map(item => ({
+        result = stats.monthlyRevenue?.map(item => ({
           date: `Tháng ${item._id.month}/${item._id.year}`,
           doanh_thu: item.revenue,
           don_hang: item.orders
-        }));
+        })) || [];
+        break;
       default:
-        return [];
+        result = [];
     }
+
+    return result;
   };
 
   const getOrderStatusData = () => {
     if (!stats || !stats.ordersByStatus) return [];
     
-    const requiredStatuses = ["Đã giao hàng", "Đã hủy"];
-    const existingStatuses = stats.ordersByStatus.map(item => item.name);
+    const statusTranslation = {
+      "pending": "Đang xử lý",
+      "awaiting_payment": "Chờ thanh toán",
+      "completed": "Đã giao hàng",
+      "cancelled": "Đã hủy"
+    };
     
-    const result = [...stats.ordersByStatus];
+    const requiredStatuses = ["Đã giao hàng", "Đã hủy", "Đang xử lý", "Chờ thanh toán"];
+    
+    const transformedData = stats.ordersByStatus.map(item => ({
+      name: statusTranslation[item.name] || item.name,
+      value: item.value
+    }));
+    
+    const existingStatuses = transformedData.map(item => item.name);
+    
+    const result = [...transformedData];
     
     requiredStatuses.forEach(status => {
       if (!existingStatuses.includes(status)) {
@@ -300,27 +323,38 @@ const Dashboard = () => {
 
     const revenueData = getRevenueData();
     const orderStatusData = getOrderStatusData();
-    const orderComparisonData = stats.dailyRevenue
-      .map(item => ({
-        date: formatDate(new Date(item._id.year, item._id.month - 1, item._id.day)),
-        completed: Math.floor(item.orders * 0.65),
-        cancelled: Math.floor(item.orders * 0.35)
-      }))
-      .slice(-14)
-      .reverse();
+    const orderComparisonData = stats.dailyRevenue && stats.dailyRevenue.length > 0 
+      ? stats.dailyRevenue
+          .map(item => ({
+            date: formatDate(new Date(item._id.year, item._id.month - 1, item._id.day)),
+            completed: Math.floor(item.orders * 0.65),
+            cancelled: Math.floor(item.orders * 0.35)
+          }))
+          .slice(-14)
+          .reverse()
+      : [];
 
-    const categoryData = stats.productsByCategory.sort((a, b) => b.value - a.value);
-    const gradientOffset = orderComparisonData.length > 0 ? 0.95 : 0;
+    const categoryData = stats.productsByCategory 
+      ? stats.productsByCategory
+          .filter(category => category && category.name)
+          .map(category => ({
+            name: category.name,
+            value: category.value || 0,
+            tooltip: `${category.value || 0} sản phẩm`
+          }))
+          .sort((a, b) => b.value - a.value)
+      : [];
 
-    // Dữ liệu cho biểu đồ sản phẩm bán chạy
-    const topProducts = stats.topProducts ? stats.topProducts
-      .sort((a, b) => b.soldQuantity - a.soldQuantity)
-      .map((product, index) => ({
-        name: product.name,
-        value: product.soldQuantity,
-        fill: COLORS[index % COLORS.length]
-      }))
-      .slice(0, 5) : [];
+    const topProducts = stats.topProducts && stats.topProducts.length > 0
+      ? stats.topProducts
+          .map((product, index) => ({
+            name: product.name,
+            value: product.soldQuantity,
+            fill: COLORS[index % COLORS.length],
+            tooltip: `Đã bán: ${product.soldQuantity} sản phẩm`
+          }))
+          .slice(0, 5)
+      : [];
 
     return (
       <div className="p-6">
@@ -336,25 +370,25 @@ const Dashboard = () => {
           <StatCard 
             icon={TrendingUp} 
             title="Doanh Thu" 
-            value={formatCurrency(stats.totalRevenue)} 
+            value={formatCurrency(stats.totalRevenue) || '0đ'} 
             bgColor="bg-blue-100" 
           />
           <StatCard 
             icon={ShoppingCart} 
             title="Đơn Hàng" 
-            value={stats.totalOrders} 
+            value={stats.totalOrders || 0} 
             bgColor="bg-green-100" 
           />
           <StatCard 
             icon={Box} 
             title="Sản Phẩm" 
-            value={stats.totalProducts} 
+            value={stats.totalProducts || 0} 
             bgColor="bg-yellow-100" 
           />
           <StatCard 
             icon={Users} 
             title="Khách Hàng" 
-            value={stats.totalCustomers} 
+            value={stats.totalCustomers || 0} 
             bgColor="bg-purple-100" 
           />
         </div>
@@ -420,7 +454,12 @@ const Dashboard = () => {
                 <Legend 
                   wrapperStyle={{ paddingTop: 10 }}
                   iconType="circle"
-                  formatter={(value) => <span className="text-sm font-medium text-gray-700">{value}</span>} 
+                  formatter={(value) => {
+                    let displayValue = value;
+                    if (value === "doanh_thu") displayValue = "Doanh Thu";
+                    if (value === "don_hang") displayValue = "Đơn Hàng";
+                    return <span className="text-sm font-medium text-gray-700">{displayValue}</span>;
+                  }} 
                 />
                 <Bar 
                   yAxisId="left"
@@ -444,248 +483,296 @@ const Dashboard = () => {
 
           <div className="bg-white shadow-md rounded-lg p-5 hover:shadow-lg transition-shadow duration-300">
             <SectionTitle title="Phân Loại Sản Phẩm" icon={Box} />
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <defs>
-                  {categoryData.map((entry, index) => (
-                    <linearGradient 
-                      key={`gradient-${index}`} 
-                      id={`color-${index}`} 
-                      x1="0" y1="0" x2="1" y2="1"
-                    >
-                      <stop offset="0%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.8}/>
-                      <stop offset="100%" stopColor={COLORS[index % COLORS.length]} stopOpacity={1}/>
-                    </linearGradient>
-                  ))}
-                </defs>
-                <Pie
-                  activeIndex={activeIndex}
-                  activeShape={renderActiveShape}
-                  data={categoryData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={4}
-                  dataKey="value"
-                  onMouseEnter={onPieEnter}
-                >
-                  {categoryData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={`url(#color-${index})`}
-                      stroke="#fff"
-                      strokeWidth={1.5}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value, name) => [value, name]} 
-                  wrapperStyle={{ outline: 'none' }}
-                  contentStyle={{ borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                />
-                <Legend 
-                  layout="vertical"
-                  align="right" 
-                  verticalAlign="middle"
-                  iconSize={10}
-                  iconType="circle"
-                  formatter={(value) => <span className="text-sm font-medium text-gray-700">{value}</span>}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {categoryData && categoryData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <defs>
+                    {categoryData.map((entry, index) => (
+                      <linearGradient 
+                        key={`gradient-${index}`} 
+                        id={`color-${index}`} 
+                        x1="0" y1="0" x2="1" y2="1"
+                      >
+                        <stop offset="0%" stopColor={COLORS[index % COLORS.length]} stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor={COLORS[index % COLORS.length]} stopOpacity={1}/>
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <Pie
+                    activeIndex={activeIndex}
+                    activeShape={renderActiveShape}
+                    data={categoryData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={4}
+                    dataKey="value"
+                    onMouseEnter={onPieEnter}
+                  >
+                    {categoryData.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={`url(#color-${index})`}
+                        stroke="#fff"
+                        strokeWidth={1.5}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value, name, props) => {
+                      const category = props.payload;
+                      return [category.tooltip || `${value} sản phẩm`, name];
+                    }} 
+                    wrapperStyle={{ outline: 'none' }}
+                    contentStyle={{ borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                  />
+                  <Legend 
+                    layout="vertical"
+                    align="right" 
+                    verticalAlign="middle"
+                    iconSize={10}
+                    iconType="circle"
+                    formatter={(value) => (
+                      <span className="text-sm font-medium text-gray-700">
+                        {value} <span className="text-xs text-gray-500">({categoryData.find(c => c.name === value)?.value || 0} sản phẩm)</span>
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex justify-center items-center h-64">
+                <div className="text-gray-500 text-center">
+                  <p className="mb-2">Không có dữ liệu phân loại sản phẩm</p>
+                  <p>Vui lòng kiểm tra lại kết nối hoặc thử lại sau</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <div className="bg-white shadow-md rounded-lg p-5 hover:shadow-lg transition-shadow duration-300">
             <SectionTitle title="Top 5 Sản Phẩm Bán Chạy" icon={Box} />
-            <ResponsiveContainer width="100%" height={320}>
-              <RadialBarChart 
-                cx="50%" 
-                cy="50%" 
-                innerRadius="20%" 
-                outerRadius="90%" 
-                barSize={20} 
-                data={topProducts}
-              >
-                <RadialBar
-                  minAngle={15}
-                  background
-                  clockWise
-                  dataKey="value"
-                  cornerRadius={12}
-                  label={{
-                    position: 'insideStart',
-                    fill: '#fff',
-                    fontSize: 12,
-                    formatter: (value) => `${value} sp`
-                  }}
-                />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-white p-3 border border-gray-200 shadow-lg rounded-lg">
-                          <p className="font-semibold text-gray-700">{payload[0].payload.name}</p>
-                          <p className="text-sm mt-1">
-                            <span className="font-medium">Đã bán: </span>
-                            <span className="text-indigo-600">{payload[0].value} sản phẩm</span>
-                          </p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Legend
-                  layout="vertical"
-                  align="right"
-                  verticalAlign="middle"
-                  wrapperStyle={{
-                    paddingLeft: '10px'
-                  }}
-                  formatter={(value, entry) => (
-                    <span className="text-sm font-medium text-gray-700">
-                      {entry.payload.name}
-                    </span>
-                  )}
-                />
-              </RadialBarChart>
-            </ResponsiveContainer>
+            {topProducts && topProducts.length > 0 ? (
+              <ResponsiveContainer width="100%" height={320}>
+                <RadialBarChart 
+                  cx="50%" 
+                  cy="50%" 
+                  innerRadius="20%" 
+                  outerRadius="90%" 
+                  barSize={20} 
+                  data={topProducts}
+                >
+                  <RadialBar
+                    minAngle={15}
+                    background
+                    clockWise
+                    dataKey="value"
+                    cornerRadius={12}
+                    label={{
+                      position: 'insideStart',
+                      fill: '#fff',
+                      fontSize: 12,
+                      formatter: (value) => `${value} sp`
+                    }}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white p-3 border border-gray-200 shadow-lg rounded-lg">
+                            <p className="font-semibold text-gray-700">{payload[0].payload.name}</p>
+                            <p className="text-sm mt-1">
+                              <span className="font-medium">Đã bán: </span>
+                              <span className="text-indigo-600">{payload[0].value} sản phẩm</span>
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Legend
+                    layout="vertical"
+                    align="right"
+                    verticalAlign="middle"
+                    wrapperStyle={{
+                      paddingLeft: '10px'
+                    }}
+                    formatter={(value, entry) => (
+                      <span className="text-sm font-medium text-gray-700">
+                        {entry.payload.name} <span className="text-xs text-gray-500">({entry.payload.value} sp)</span>
+                      </span>
+                    )}
+                  />
+                </RadialBarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex justify-center items-center h-64">
+                <div className="text-gray-500 text-center">
+                  <p className="mb-2">Không có dữ liệu sản phẩm bán chạy</p>
+                  <p>Vui lòng kiểm tra lại kết nối hoặc thử lại sau</p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-white shadow-md rounded-lg p-5 hover:shadow-lg transition-shadow duration-300">
             <SectionTitle title="Trạng Thái Đơn Hàng" icon={ShoppingCart} />
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <defs>
-                  {orderStatusData.map((entry, index) => (
-                    <linearGradient 
-                      key={`gradient-order-${index}`} 
-                      id={`color-order-${index}`} 
-                      x1="0" y1="0" x2="1" y2="1"
-                    >
-                      <stop 
-                        offset="0%" 
-                        stopColor={ORDER_STATUS_COLORS[entry.name] || COLORS[index % COLORS.length]} 
-                        stopOpacity={0.8}
+            {orderStatusData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={320}>
+                <PieChart>
+                  <defs>
+                    {orderStatusData.map((entry, index) => (
+                      <linearGradient 
+                        key={`gradient-order-${index}`} 
+                        id={`color-order-${index}`} 
+                        x1="0" y1="0" x2="1" y2="1"
+                      >
+                        <stop 
+                          offset="0%" 
+                          stopColor={ORDER_STATUS_COLORS[entry.name] || COLORS[index % COLORS.length]} 
+                          stopOpacity={0.8}
+                        />
+                        <stop 
+                          offset="100%" 
+                          stopColor={ORDER_STATUS_COLORS[entry.name] || COLORS[index % COLORS.length]} 
+                          stopOpacity={1}
+                        />
+                      </linearGradient>
+                    ))}
+                  </defs>
+                  <Pie
+                    activeIndex={activeOrderIndex}
+                    activeShape={renderActiveShape}
+                    data={orderStatusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={4}
+                    fill="#8884d8"
+                    dataKey="value"
+                    nameKey="name"
+                    onMouseEnter={onOrderPieEnter}
+                  >
+                    {orderStatusData.map((entry, index) => (
+                      <Cell
+                        key={`cell-order-${index}`} 
+                        fill={`url(#color-order-${index})`}
+                        stroke="#fff"
+                        strokeWidth={1.5}
                       />
-                      <stop 
-                        offset="100%" 
-                        stopColor={ORDER_STATUS_COLORS[entry.name] || COLORS[index % COLORS.length]} 
-                        stopOpacity={1}
-                      />
-                    </linearGradient>
-                  ))}
-                </defs>
-                <Pie
-                  activeIndex={activeOrderIndex}
-                  activeShape={renderActiveShape}
-                  data={orderStatusData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={4}
-                  fill="#8884d8"
-                  dataKey="value"
-                  nameKey="name"
-                  onMouseEnter={onOrderPieEnter}
-                >
-                  {orderStatusData.map((entry, index) => (
-                    <Cell
-                      key={`cell-order-${index}`} 
-                      fill={`url(#color-order-${index})`}
-                      stroke="#fff"
-                      strokeWidth={1.5}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value, name) => [value, name]} 
-                  wrapperStyle={{ outline: 'none' }}
-                  contentStyle={{ borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
-                />
-                <Legend 
-                  layout="vertical" 
-                  align="right" 
-                  verticalAlign="middle"
-                  iconSize={10}
-                  iconType="circle"
-                  formatter={(value) => (
-                    <span style={{ color: ORDER_STATUS_COLORS[value] || '#333' }} className="text-sm font-medium">
-                      {value}
-                    </span>
-                  )}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value, name) => [value, name]} 
+                    wrapperStyle={{ outline: 'none' }}
+                    contentStyle={{ borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                  />
+                  <Legend 
+                    layout="vertical" 
+                    align="right" 
+                    verticalAlign="middle"
+                    iconSize={10}
+                    iconType="circle"
+                    formatter={(value) => (
+                      <span style={{ color: ORDER_STATUS_COLORS[value] || '#333' }} className="text-sm font-medium">
+                        {value}
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex justify-center items-center h-64">
+                <div className="text-gray-500 text-center">
+                  <p className="mb-2">Không có dữ liệu trạng thái đơn hàng</p>
+                  <p>Vui lòng kiểm tra lại kết nối hoặc thử lại sau</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white shadow-md rounded-lg p-5 hover:shadow-lg transition-shadow duration-300">
             <SectionTitle title="Đơn Hàng Đã Giao vs Đã Hủy" />
-            <ResponsiveContainer width="100%" height={320}>
-              <AreaChart
-                data={orderComparisonData}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={ORDER_STATUS_COLORS.completed} stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor={ORDER_STATUS_COLORS.completed} stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorCancelled" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={ORDER_STATUS_COLORS.cancelled} stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor={ORDER_STATUS_COLORS.cancelled} stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis 
-                  dataKey="date" 
-                  tick={{ fill: '#6b7280', fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={{ stroke: '#e5e7eb' }}
-                  angle={-25}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis 
-                  tick={{ fill: '#6b7280', fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={{ stroke: '#e5e7eb' }}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend 
-                  iconType="circle"
-                  formatter={(value) => {
-                    const color = value === "Đã giao" ? ORDER_STATUS_COLORS.completed : ORDER_STATUS_COLORS.cancelled;
-                    return <span style={{ color }} className="text-sm font-medium">{value}</span>;
-                  }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="completed" 
-                  name="Đã giao" 
-                  stroke={ORDER_STATUS_COLORS.completed}
-                  fillOpacity={1}
-                  fill="url(#colorCompleted)"
-                  strokeWidth={2}
-                  activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="cancelled" 
-                  name="Đã hủy" 
-                  stroke={ORDER_STATUS_COLORS.cancelled} 
-                  fillOpacity={1}
-                  fill="url(#colorCancelled)"
-                  strokeWidth={2}
-                  activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {orderComparisonData && orderComparisonData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={320}>
+                <AreaChart
+                  data={orderComparisonData}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={ORDER_STATUS_COLORS.completed} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={ORDER_STATUS_COLORS.completed} stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorCancelled" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={ORDER_STATUS_COLORS.cancelled} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={ORDER_STATUS_COLORS.cancelled} stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    angle={-25}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend 
+                    iconType="circle"
+                    formatter={(value) => {
+                      let displayValue = value;
+                      if (value === "completed") displayValue = "Đã giao hàng";
+                      if (value === "cancelled") displayValue = "Đã hủy";
+                      
+                      const color = value === "completed" ? ORDER_STATUS_COLORS.completed : ORDER_STATUS_COLORS.cancelled;
+                      return <span style={{ color }} className="text-sm font-medium">{displayValue}</span>;
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="completed" 
+                    name="Đã giao hàng" 
+                    stroke={ORDER_STATUS_COLORS.completed}
+                    fillOpacity={1}
+                    fill="url(#colorCompleted)"
+                    strokeWidth={2}
+                    activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="cancelled" 
+                    name="Đã hủy" 
+                    stroke={ORDER_STATUS_COLORS.cancelled} 
+                    fillOpacity={1}
+                    fill="url(#colorCancelled)"
+                    strokeWidth={2}
+                    activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex justify-center items-center h-64">
+                <div className="text-gray-500 text-center">
+                  <p className="mb-2">Không có dữ liệu so sánh đơn hàng</p>
+                  <p>Vui lòng kiểm tra lại kết nối hoặc thử lại sau</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
