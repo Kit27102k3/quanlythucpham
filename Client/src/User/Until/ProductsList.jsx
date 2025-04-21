@@ -14,7 +14,7 @@ const ProductList = ({
   getPrice,
 }) => {
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="sync">
       <motion.div
         key={products.length > 0 ? "products" : "empty"}
         initial="hidden"

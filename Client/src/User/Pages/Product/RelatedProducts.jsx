@@ -149,7 +149,7 @@ function RelatedProducts({ currentProduct }) {
   };
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="sync">
       <style>{carouselStyle}</style>
       <motion.div 
         key={key} 

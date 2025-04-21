@@ -11,6 +11,7 @@ const __dirname = dirname(__filename);
 export default defineConfig({
   plugins: [
     react({
+      jsxImportSource: 'react',
       jsxRuntime: 'automatic',
       fastRefresh: true,
       babel: {
@@ -48,6 +49,17 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/api-provinces/, ""),
       },
+    },
+    headers: {
+      "*.js": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      },
+      "*.jsx": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      },
+      "*.mjs": {
+        "Content-Type": "application/javascript; charset=utf-8"
+      }
     },
   },
   resolve: {

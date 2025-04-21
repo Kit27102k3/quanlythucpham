@@ -77,7 +77,7 @@ function Kitchen({ isHide }) {
   };
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="sync">
       <motion.div className="mb-5 p-4" key={key}>
         {!isHide && (
           <>

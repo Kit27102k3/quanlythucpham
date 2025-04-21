@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+const { useState, useEffect } = React;
 import { motion, AnimatePresence } from "framer-motion";
 import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
