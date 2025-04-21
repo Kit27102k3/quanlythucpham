@@ -1,6 +1,5 @@
 /* eslint-disable no-unused-vars */
-import * as React from "react";
-const { useState, useEffect } = React;
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
@@ -69,7 +68,6 @@ function ProductNew() {
 
   return (
     <>
-      
       <div>
         <ProductList
           products={products}
@@ -80,60 +78,59 @@ function ProductNew() {
           getPrice={getPrice}
         />
       </div>
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6"
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: false, amount: 0.2 }}
+      >
         <motion.div
-          className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6"
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: false, amount: 0.2 }}
+          className="p-4 rounded-lg relative"
+          variants={bannerVariants}
         >
-          <motion.div
-            className="p-4 rounded-lg relative"
-            variants={bannerVariants}
-          >
-            <img
-              alt="fresh-grapes"
-              src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_banner_index_1.jpg?1721896755861"
-              className="my-2 rounded-md shadow-lg w-full h-[327px] object-cover"
-              loading="lazy"
-            />
-            <div className="absolute top-[20%] left-[40px]">
-              <h2 className="text-[#51aa1b] text-xl font-semibold">
-                THỰC PHẨM SẠCH
-              </h2>
-              <p className="text-2xl font-extralight">
-                Đồ ăn tươi ngon <br /> Mỗi ngày
-              </p>
-              <button className="bg-[#d73e6e] text-white w-[150px] hover:bg-secondary/80 mt-2 p-2 rounded-4xl cursor-pointer">
-                XEM THÊM
-              </button>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="p-4 rounded-lg relative"
-            variants={bannerVariants}
-          >
-            <img
-              alt="fresh-lemon"
-              src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_banner_index_2.jpg?1721896755861"
-              className="my-2 rounded-md shadow-lg w-full h-[327px] object-cover"
-              loading="lazy"
-            />
-            <div className="absolute left-[40px] top-[20%]">
-              <h2 className="text-[#51aa1b] text-xl font-semibold ">
-                THỰC PHẨM TƯƠI
-              </h2>
-              <p className="text-2xl font-extralight">
-                Giao nhanh <br /> Chớp mắt
-              </p>
-              <button className="bg-[#fcc108] text-white w-[150px] hover:bg-secondary/80 mt-2 p-2 rounded-4xl cursor-pointer">
-                XEM THÊM
-              </button>
-            </div>
-          </motion.div>
+          <img
+            alt="fresh-grapes"
+            src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_banner_index_1.jpg?1721896755861"
+            className="my-2 rounded-md shadow-lg w-full h-[327px] object-cover"
+            loading="lazy"
+          />
+          <div className="absolute top-[20%] left-[40px]">
+            <h2 className="text-[#51aa1b] text-xl font-semibold">
+              THỰC PHẨM SẠCH
+            </h2>
+            <p className="text-2xl font-extralight">
+              Đồ ăn tươi ngon <br /> Mỗi ngày
+            </p>
+            <button className="bg-[#d73e6e] text-white w-[150px] hover:bg-secondary/80 mt-2 p-2 rounded-4xl cursor-pointer">
+              XEM THÊM
+            </button>
+          </div>
         </motion.div>
 
+        <motion.div
+          className="p-4 rounded-lg relative"
+          variants={bannerVariants}
+        >
+          <img
+            alt="fresh-lemon"
+            src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_banner_index_2.jpg?1721896755861"
+            className="my-2 rounded-md shadow-lg w-full h-[327px] object-cover"
+            loading="lazy"
+          />
+          <div className="absolute left-[40px] top-[20%]">
+            <h2 className="text-[#51aa1b] text-xl font-semibold ">
+              THỰC PHẨM TƯƠI
+            </h2>
+            <p className="text-2xl font-extralight">
+              Giao nhanh <br /> Chớp mắt
+            </p>
+            <button className="bg-[#fcc108] text-white w-[150px] hover:bg-secondary/80 mt-2 p-2 rounded-4xl cursor-pointer">
+              XEM THÊM
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
     </>
   );
 }

@@ -1,7 +1,6 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable react/prop-types */
-import * as React from "react";
-const { useState, useEffect, memo } = React;
+import React, { useState, useEffect, memo } from "react";
 import "../../../index.css";
 import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";

@@ -22,13 +22,13 @@ const Login = () => {
     const token = localStorage.getItem("accessToken");
     const userId = localStorage.getItem("userId");
     const userRole = localStorage.getItem("userRole");
-
+    
     if (token && userId) {
       // User is already logged in, redirect based on role
       if (userRole === "admin") {
         navigate("/admin/dashboard");
       } else {
-        navigate("/");
+      navigate("/");
       }
     }
   }, [navigate]);
@@ -276,8 +276,8 @@ const Login = () => {
         );
       }
 
-      toast.success("Đăng nhập thành công!");
-
+        toast.success("Đăng nhập thành công!");
+        
       // Kiểm tra kỹ vai trò trước khi chuyển hướng
       setTimeout(() => {
         // Lấy role từ localStorage để đảm bảo dùng đúng giá trị đã lưu
@@ -344,7 +344,7 @@ const Login = () => {
               </div>,
               { autoClose: 7000 }
             );
-          } else {
+      } else {
             toast.error(`Lỗi: ${serverMessage}`);
           }
           return;
