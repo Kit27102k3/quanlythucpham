@@ -16,53 +16,85 @@ const intents = {
     patterns: [
       "giá", "giá cả", "bao nhiêu tiền", "giá bao nhiêu", "chi phí", 
       "giá sản phẩm", "giá của sản phẩm", "giá của", "giá bao nhiêu", 
-      "bao nhiêu", "giá thế nào", "giá như thế nào", "giá hiện tại"
+      "bao nhiêu", "giá thế nào", "giá như thế nào", "giá hiện tại", "phí"
     ],
-    response: (product) => `Giá sản phẩm ${product.productName} là ${formatCurrency(product.productPrice)}`,
+    response: (product) => `Giá sản phẩm ${product.productName} là ${formatCurrency(product.productPrice)}${product.productDiscount > 0 ? `. Hiện đang giảm giá ${product.productDiscount}%, giá sau giảm còn ${formatCurrency(product.productPromoPrice || product.productPrice * (1 - product.productDiscount/100))}` : ''}`,
   },
   info: {
     patterns: [
       "thông tin", "chi tiết", "mô tả", "thế nào", "thông tin sản phẩm", 
       "thông tin chi tiết", "thông tin về", "thông tin của", "thông tin gì", 
-      "cho tôi biết", "kể cho tôi", "nói cho tôi", "giới thiệu", "giới thiệu về"
+      "cho tôi biết", "kể cho tôi", "nói cho tôi", "giới thiệu", "giới thiệu về",
+      "là gì", "nói về", "biết về"
     ],
-    response: (product) => `${product.productName}:\n${product.productInfo}\n\nChi tiết: ${product.productDetails}`,
+    response: (product) => {
+      let response = `${product.productName}:`;
+      
+      if (product.productInfo) {
+        response += `\n${product.productInfo}`;
+      }
+      
+      if (product.productDetails) {
+        response += `\n\nChi tiết: ${product.productDetails}`;
+      }
+      
+      if (product.productOrigin) {
+        response += `\n\nXuất xứ: ${product.productOrigin}`;
+      }
+      
+      if (product.productWeight) {
+        response += `\n\nKhối lượng: ${product.productWeight}g`;
+      }
+      
+      return response;
+    },
   },
   usage: {
     patterns: [
       "công dụng", "tác dụng", "dùng để", "dùng làm gì", "sử dụng", 
       "công dụng gì", "tác dụng gì", "dùng để làm gì", "sử dụng để làm gì", 
       "công dụng của", "tác dụng của", "dùng để làm", "sử dụng để làm", 
-      "công dụng như thế nào", "tác dụng như thế nào"
+      "công dụng như thế nào", "tác dụng như thế nào", "có tác dụng gì",
+      "ích lợi", "lợi ích", "tốt gì", "hiệu quả"
     ],
-    response: (product) => `Công dụng của ${product.productName}:\n${product.productInfo}`,
+    response: (product) => {
+      const usageInfo = product.productInfo || product.productDetails || "Không có thông tin chi tiết về công dụng";
+      return `Công dụng của ${product.productName}:\n${usageInfo}`;
+    },
   },
   origin: {
     patterns: [
       "xuất xứ", "sản xuất", "nước nào", "ở đâu", "nhà sản xuất", 
       "xuất xứ từ đâu", "sản xuất ở đâu", "sản xuất tại đâu", "sản xuất bởi", 
       "nhà sản xuất nào", "công ty nào", "thương hiệu nào", "thương hiệu", 
-      "xuất xứ của", "sản xuất của", "nhà sản xuất của"
+      "xuất xứ của", "sản xuất của", "nhà sản xuất của", "nguồn gốc", "đến từ đâu",
+      "từ nước nào", "từ đâu"
     ],
-    response: (product) => `Sản phẩm ${product.productName} có xuất xứ từ ${product.origin || "chưa có thông tin"}`,
+    response: (product) => `Sản phẩm ${product.productName} có xuất xứ từ ${product.productOrigin || "chưa có thông tin"}`,
   },
   ingredients: {
     patterns: [
       "thành phần", "nguyên liệu", "chứa gì", "có gì", "thành phần gì", 
       "nguyên liệu gì", "chứa những gì", "có những gì", "thành phần của", 
       "nguyên liệu của", "chứa những thành phần gì", "có những thành phần gì", 
-      "thành phần như thế nào", "nguyên liệu như thế nào"
+      "thành phần như thế nào", "nguyên liệu như thế nào", "được làm từ",
+      "làm từ gì", "thành phần chính", "hỗn hợp", "chứa đựng", "bao gồm"
     ],
-    response: (product) => `Thành phần của ${product.productName}:\n${product.ingredients || "Chưa có thông tin chi tiết về thành phần"}`,
+    response: (product) => `Thành phần của ${product.productName}:\n${product.ingredients || product.productDetails || "Chưa có thông tin chi tiết về thành phần"}`,
   },
   howToUse: {
     patterns: [
       "cách dùng", "hướng dẫn", "sử dụng như thế nào", "dùng thế nào", "dùng như nào", 
       "cách sử dụng", "hướng dẫn sử dụng", "dùng như thế nào", "sử dụng thế nào", 
       "cách dùng như thế nào", "hướng dẫn dùng", "cách sử dụng như thế nào", 
-      "dùng như thế nào", "sử dụng như thế nào", "cách dùng của", "hướng dẫn của"
+      "dùng như thế nào", "sử dụng như thế nào", "cách dùng của", "hướng dẫn của",
+      "dùng sao", "sử dụng sao", "ăn thế nào", "uống thế nào", "chế biến ra sao",
+      "làm sao để", "cách thức", "làm thế nào", "bảo quản", "dùng đúng cách"
     ],
-    response: (product) => `Hướng dẫn sử dụng ${product.productName}:\n${product.howToUse || product.productDetails}`,
+    response: (product) => {
+      const usageGuide = product.howToUse || product.productDetails || product.productInfo || "Chưa có thông tin chi tiết về cách sử dụng";
+      return `Hướng dẫn sử dụng ${product.productName}:\n${usageGuide}`;
+    },
   },
   relatedProducts: {
     patterns: [
@@ -258,9 +290,138 @@ const intents = {
     patterns: [
       "mua sản phẩm như nào", "mua sản phẩm thế nào", "mua như thế nào", "làm thế nào để mua", 
       "làm sao để mua", "cách mua", "cách đặt hàng", "đặt hàng như thế nào", 
-      "cách thức mua", "có thể mua ở đâu", "mua online được không"
+      "cách thức mua", "có thể mua ở đâu", "mua online được không", "đặt hàng", 
+      "đặt hàng làm sao", "muốn đặt hàng", "muốn mua", "tôi muốn đặt", "tôi muốn mua",
+      "mua hàng", "đặt mua", "order", "đặt online", "mua online", "mua ở đâu",
+      "đặt như thế nào", "làm sao để đặt", "làm thế nào để đặt", "tôi muốn mua hàng",
+      "tôi muốn đặt hàng", "cách đặt", "cách order", "thủ tục mua", "thủ tục đặt",
+      "mua ở trang này như thế nào", "đặt hàng trên trang này", "quy trình đặt hàng"
     ],
     response: () => "Để mua sản phẩm, bạn có thể:\n1. Đặt hàng trực tiếp trên website này bằng cách thêm vào giỏ hàng\n2. Mua tại cửa hàng: 273 An Dương Vương, Phường 3, Quận 5, TP. Hồ Chí Minh\n3. Đặt hàng qua hotline: 1900 6789\n\nSau khi đặt hàng, bạn sẽ nhận được xác nhận qua email và có thể theo dõi trạng thái đơn hàng trong tài khoản của mình."
+  },
+  paymentMethods: {
+    patterns: [
+      "thanh toán", "cách thanh toán", "phương thức thanh toán", "hình thức thanh toán",
+      "trả tiền", "làm sao để thanh toán", "trả tiền bằng gì", "trả tiền như thế nào",
+      "có mấy hình thức thanh toán", "có những hình thức thanh toán nào", 
+      "thanh toán qua đâu", "có thanh toán online không", "hỗ trợ thanh toán gì",
+      "có thể thanh toán bằng", "có trả góp", "trả góp", "thanh toán qua thẻ",
+      "thanh toán bằng tiền mặt", "thanh toán qua ví điện tử", "thanh toán qua ngân hàng",
+      "thanh toán khi nhận hàng", "ship cod", "cod", "atm", "credit", "debit",
+      "banking", "chuyển khoản", "internet banking", "mobile banking"
+    ],
+    response: () => "Chúng tôi hỗ trợ 2 phương thức thanh toán sau:\n1. Thanh toán khi nhận hàng (COD)\n2. Thanh toán qua SePay\n\nBạn có thể chọn phương thức thanh toán phù hợp khi tiến hành đặt hàng."
+  },
+  foodSafety: {
+    patterns: [
+      "thực phẩm sạch", "đảm bảo an toàn", "an toàn thực phẩm", "thực phẩm có an toàn không", 
+      "nguồn gốc thực phẩm", "chứng nhận an toàn", "kiểm định", "tiêu chuẩn an toàn",
+      "thực phẩm có sạch không", "đảm bảo vệ sinh", "thực phẩm organic", "hữu cơ", 
+      "không hóa chất", "không thuốc trừ sâu", "không chất bảo quản", "độ tin cậy",
+      "thực phẩm có nguồn gốc rõ ràng không", "rau sạch", "thịt sạch", "trái cây sạch",
+      "rau an toàn", "thịt an toàn", "trái cây an toàn", "chất lượng thực phẩm"
+    ],
+    response: () => "Thực phẩm tại siêu thị chúng tôi đều được đảm bảo an toàn với tiêu chuẩn VietGAP và GlobalGAP. Tất cả sản phẩm đều có nguồn gốc xuất xứ rõ ràng, được kiểm định nghiêm ngặt về chất lượng và an toàn vệ sinh thực phẩm trước khi đưa đến tay người tiêu dùng. Mỗi sản phẩm đều có mã QR để khách hàng có thể truy xuất nguồn gốc và thông tin sản phẩm một cách minh bạch."
+  },
+  organicFood: {
+    patterns: [
+      "thực phẩm hữu cơ", "organic", "thực phẩm organic", "rau hữu cơ", "trái cây hữu cơ", 
+      "rau organic", "thịt hữu cơ", "trứng hữu cơ", "sản phẩm organic", "hữu cơ là gì", 
+      "organic là gì", "lợi ích của thực phẩm hữu cơ", "giá thực phẩm hữu cơ", 
+      "chứng nhận hữu cơ", "organic có tốt không", "có bán thực phẩm hữu cơ không",
+      "có bán đồ organic không", "mua thực phẩm hữu cơ ở đâu"
+    ],
+    response: () => "Siêu thị chúng tôi cung cấp đa dạng các sản phẩm hữu cơ (organic) được chứng nhận, bao gồm rau củ, trái cây, thịt, trứng và các sản phẩm chế biến. Thực phẩm hữu cơ được canh tác và chăn nuôi không sử dụng hóa chất, thuốc trừ sâu, hormone tăng trưởng hay kháng sinh, đảm bảo an toàn cho sức khỏe và thân thiện với môi trường. Mặc dù giá thành cao hơn thực phẩm thông thường, nhưng chúng mang lại giá trị dinh dưỡng và độ an toàn cao hơn."
+  },
+  deliveryInfo: {
+    patterns: [
+      "giao hàng", "phí giao hàng", "thời gian giao hàng", "ship", "freeship", "miễn phí giao hàng", 
+      "giao hàng mất bao lâu", "giao hàng bao nhiêu tiền", "phí vận chuyển", "cước vận chuyển", 
+      "giao hàng đến đâu", "khu vực giao hàng", "có giao hàng không", "có ship không", 
+      "giao hàng tận nhà", "giao hàng nhanh", "giao hàng trong ngày", "ship cod", 
+      "vận chuyển", "đơn vị vận chuyển", "dịch vụ giao hàng", "hình thức giao hàng"
+    ],
+    response: () => "Chúng tôi cung cấp dịch vụ giao hàng tận nhà trên toàn quốc với các chính sách sau:\n\n- Nội thành TP.HCM: Giao hàng trong 2-4 giờ, miễn phí giao hàng cho đơn từ 300.000đ\n- Các tỉnh thành khác: Giao hàng trong 1-3 ngày tùy khu vực, miễn phí giao hàng cho đơn từ 500.000đ\n- Phí giao hàng tiêu chuẩn: 20.000đ - 40.000đ tùy khu vực\n- Đơn hàng trên 1.000.000đ: Miễn phí giao hàng toàn quốc\n\nĐặc biệt, chúng tôi có dịch vụ giao hàng nhanh trong 2 giờ cho khu vực nội thành TP.HCM với các sản phẩm tươi sống."
+  },
+  returnPolicy: {
+    patterns: [
+      "đổi trả", "chính sách đổi trả", "trả hàng", "đổi hàng", "hoàn tiền", "chính sách hoàn tiền", 
+      "có được đổi trả không", "làm sao để đổi trả", "thời gian đổi trả", "điều kiện đổi trả", 
+      "quy định đổi trả", "quy định hoàn tiền", "đổi sản phẩm", "trả sản phẩm",
+      "đổi trả như thế nào", "có được trả hàng không", "đổi trả miễn phí", "bảo hành", 
+      "hàng lỗi", "hàng hỏng", "hàng không đúng"
+    ],
+    response: () => "Chính sách đổi trả của siêu thị thực phẩm sạch chúng tôi:\n\n- Thời hạn đổi trả: Trong vòng 24 giờ kể từ khi nhận hàng\n- Điều kiện đổi trả:\n  + Sản phẩm còn nguyên bao bì, tem nhãn\n  + Có hóa đơn mua hàng\n  + Sản phẩm bị lỗi, hỏng, không đúng mô tả, không đảm bảo chất lượng\n  + Đối với thực phẩm tươi sống: đổi trả ngay khi giao hàng nếu phát hiện không đạt chất lượng\n\n- Hình thức đổi trả:\n  + Đổi sản phẩm mới cùng loại\n  + Hoàn tiền 100% nếu không có sản phẩm thay thế\n\nVui lòng liên hệ hotline 1900 6789 để được hướng dẫn quy trình đổi trả."
+  },
+  membershipProgram: {
+    patterns: [
+      "thành viên", "chương trình thành viên", "khách hàng thân thiết", "hội viên", "tích điểm", 
+      "thẻ thành viên", "đăng ký thành viên", "ưu đãi thành viên", "quyền lợi thành viên", 
+      "điểm thưởng", "điểm thành viên", "quà tặng thành viên", "hạng thành viên", 
+      "đặc quyền thành viên", "đăng ký tài khoản", "tạo tài khoản", "đăng ký hội viên"
+    ],
+    response: () => "Chương trình thành viên tại siêu thị thực phẩm sạch của chúng tôi mang lại nhiều đặc quyền:\n\n- Tích lũy điểm: 1.000đ = 1 điểm\n- Quy đổi điểm: 10 điểm = 10.000đ khi mua hàng\n- Các hạng thành viên và ưu đãi:\n  + Thành viên Bạc (chi tiêu 2-5 triệu/năm): Giảm 3% mọi đơn hàng\n  + Thành viên Vàng (chi tiêu 5-10 triệu/năm): Giảm 5% mọi đơn hàng, ưu tiên giao hàng\n  + Thành viên Kim Cương (chi tiêu trên 10 triệu/năm): Giảm 7% mọi đơn hàng, miễn phí giao hàng, quà tặng sinh nhật\n\nĐăng ký miễn phí tại quầy thu ngân hoặc trên website của chúng tôi."
+  },
+  freshFood: {
+    patterns: [
+      "thực phẩm tươi", "rau tươi", "thịt tươi", "cá tươi", "hải sản tươi", "trái cây tươi", 
+      "đồ tươi sống", "thực phẩm tươi sống", "bảo quản thực phẩm tươi", "độ tươi", 
+      "thực phẩm tươi ngon", "thực phẩm tươi mới", "rau củ tươi", "sản phẩm tươi",
+      "có bán đồ tươi sống không", "nguồn gốc thực phẩm tươi", "đảm bảo độ tươi"
+    ],
+    response: () => "Siêu thị chúng tôi cung cấp đa dạng thực phẩm tươi sống chất lượng cao:\n\n- Rau củ: Thu hoạch trong ngày từ các trang trại đối tác, đảm bảo độ tươi ngon và giàu dinh dưỡng\n- Thịt tươi: Thịt heo, bò, gà được kiểm dịch nghiêm ngặt, bảo quản trong điều kiện lý tưởng\n- Hải sản: Nhập trực tiếp từ các vùng biển sạch, đánh bắt trong ngày\n- Trái cây: Đa dạng trái cây trong nước và nhập khẩu, đảm bảo tươi ngon\n\nTất cả sản phẩm tươi sống được bảo quản ở nhiệt độ thích hợp và được kiểm tra chất lượng hàng ngày để đảm bảo độ tươi tối đa khi đến tay khách hàng."
+  },
+  importedFood: {
+    patterns: [
+      "thực phẩm nhập khẩu", "sản phẩm nhập khẩu", "hàng nhập khẩu", "đồ nhập ngoại", 
+      "hàng ngoại", "thực phẩm ngoại", "trái cây nhập khẩu", "thực phẩm từ nước ngoài", 
+      "thực phẩm quốc tế", "sản phẩm quốc tế", "đồ ngoại nhập", "sản phẩm ngoại nhập",
+      "từ nước nào", "nhập từ đâu", "nguồn gốc nhập khẩu"
+    ],
+    response: () => "Siêu thị thực phẩm sạch của chúng tôi cung cấp nhiều loại thực phẩm nhập khẩu chất lượng cao:\n\n- Trái cây: Táo Mỹ, Lê Hàn Quốc, Cherry Úc, Kiwi New Zealand...\n- Thịt: Bò Úc, Bò Mỹ, Cừu New Zealand...\n- Hải sản: Cá hồi Na Uy, Tôm Canada...\n- Các sản phẩm khác: Sữa Úc, Phô mai Pháp, Rượu vang Ý...\n\nTất cả sản phẩm nhập khẩu đều có giấy chứng nhận xuất xứ rõ ràng, đảm bảo nguồn gốc và được nhập khẩu theo đúng quy định về an toàn thực phẩm của Việt Nam."
+  },
+  vegetarianFood: {
+    patterns: [
+      "thực phẩm chay", "đồ chay", "món chay", "ăn chay", "thực phẩm thuần chay", "vegan", 
+      "sản phẩm chay", "đồ ăn chay", "rau củ chay", "thực phẩm không thịt", "thuần chay", 
+      "không động vật", "chế độ ăn chay", "có bán đồ chay không"
+    ],
+    response: () => "Siêu thị chúng tôi có khu vực riêng dành cho thực phẩm chay và thuần chay (vegan) với đa dạng sản phẩm:\n\n- Rau củ quả hữu cơ đa dạng\n- Các sản phẩm thay thế thịt: đậu hũ, tempeh, seitan...\n- Sữa thực vật: sữa hạnh nhân, sữa đậu nành, sữa yến mạch...\n- Các loại hạt và ngũ cốc\n- Thực phẩm chay đông lạnh: chả chay, há cảo chay...\n- Gia vị và sốt chay\n\nTất cả sản phẩm chay đều được dán nhãn rõ ràng và được bố trí riêng biệt để dễ dàng tìm kiếm."
+  },
+  storeLocation: {
+    patterns: [
+      "chi nhánh", "cửa hàng", "địa điểm", "vị trí", "cơ sở", "bao nhiêu chi nhánh", 
+      "có mấy cửa hàng", "danh sách cửa hàng", "hệ thống cửa hàng", "siêu thị ở đâu", 
+      "địa chỉ các chi nhánh", "tìm chi nhánh", "tìm cửa hàng gần nhất",
+      "chi nhánh gần nhất", "cửa hàng gần đây", "cửa hàng ở đâu", "cửa hàng gần nhà"
+    ],
+    response: () => "Hệ thống siêu thị thực phẩm sạch của chúng tôi hiện có các chi nhánh sau:\n\n1. Chi nhánh Quận 1: 273 An Dương Vương, Phường 3, Quận 5, TP. HCM\n2. Chi nhánh Quận 2: 18 Trần Não, Phường Bình An, Quận 2, TP. HCM\n3. Chi nhánh Quận 7: 1060 Nguyễn Văn Linh, Phường Tân Phong, Quận 7, TP. HCM\n4. Chi nhánh Quận 9: 54 Lê Văn Việt, Phường Hiệp Phú, Quận 9, TP. HCM\n5. Chi nhánh Hà Nội: 85 Láng Hạ, Quận Đống Đa, Hà Nội\n\nGiờ mở cửa: 8h00 - 22h00 các ngày trong tuần.\n\nBạn có thể sử dụng tính năng 'Tìm cửa hàng gần nhất' trên website hoặc ứng dụng của chúng tôi để tìm chi nhánh gần bạn nhất."
+  },
+  promotions: {
+    patterns: [
+      "khuyến mãi", "ưu đãi", "giảm giá", "quà tặng", "chương trình khuyến mãi", 
+      "chương trình ưu đãi", "khuyến mại", "mã giảm giá", "voucher", "coupon", 
+      "sale", "đang giảm giá", "đang khuyến mãi", "ưu đãi đặc biệt", "có khuyến mãi gì",
+      "có giảm giá không", "khuyến mãi hôm nay"
+    ],
+    response: () => "Các chương trình khuyến mãi hiện tại tại siêu thị thực phẩm sạch của chúng tôi:\n\n- SALE CUỐI TUẦN: Giảm 10-20% cho rau củ quả tươi vào thứ 7 và Chủ nhật\n- MUA 2 TẶNG 1: Áp dụng cho các sản phẩm đóng gói\n- GIẢM 15% CHO ĐƠN HÀNG ĐẦU TIÊN: Khi đăng ký thành viên mới\n- FREESHIP: Miễn phí giao hàng cho đơn từ 300.000đ (nội thành) và 500.000đ (toàn quốc)\n- HAPPY HOUR: Giảm 15% từ 19h-21h hàng ngày cho thực phẩm tươi sống\n\nĐể cập nhật các chương trình khuyến mãi mới nhất, vui lòng theo dõi website, fanpage hoặc đăng ký nhận thông báo qua email của chúng tôi."
+  },
+  mobileApp: {
+    patterns: [
+      "ứng dụng", "app", "mobile app", "tải app", "download app", "cài đặt app", 
+      "ứng dụng di động", "phần mềm", "app trên điện thoại", "ứng dụng trên điện thoại", 
+      "có app không", "có ứng dụng không", "app ios", "app android", "tính năng app"
+    ],
+    response: () => "Ứng dụng di động của siêu thị thực phẩm sạch chúng tôi có nhiều tính năng tiện lợi:\n\n- Đặt hàng trực tuyến nhanh chóng\n- Theo dõi tình trạng đơn hàng\n- Quét mã QR để xem thông tin sản phẩm\n- Tích lũy và sử dụng điểm thành viên\n- Nhận thông báo về khuyến mãi, sản phẩm mới\n- Tra cứu thông tin dinh dưỡng và công thức nấu ăn\n- Thanh toán đa dạng\n\nỨng dụng khả dụng trên cả iOS và Android. Bạn có thể tải về miễn phí tại:\n- App Store: tìm 'Thực Phẩm Sạch Online'\n- Google Play: tìm 'Thực Phẩm Sạch Online'"
+  },
+  nutritionAdvice: {
+    patterns: [
+      "dinh dưỡng", "tư vấn dinh dưỡng", "chế độ ăn", "thực đơn", "ăn uống lành mạnh", 
+      "thực phẩm tốt cho sức khỏe", "ăn gì tốt", "thực phẩm dinh dưỡng", "dinh dưỡng hợp lý", 
+      "thực phẩm tốt cho", "ăn gì để", "thực phẩm giàu", "chế độ dinh dưỡng", 
+      "tư vấn ăn uống", "cân bằng dinh dưỡng", "thực phẩm bổ dưỡng"
+    ],
+    response: () => "Siêu thị thực phẩm sạch chúng tôi cung cấp dịch vụ tư vấn dinh dưỡng miễn phí với các chuyên gia dinh dưỡng có chứng chỉ. Một số lời khuyên dinh dưỡng cơ bản:\n\n- Ưu tiên thực phẩm tươi sống, ít qua chế biến\n- Đa dạng hóa chế độ ăn với đủ 4 nhóm: tinh bột, protein, rau củ và trái cây\n- Ưu tiên protein nạc từ cá, thịt gia cầm, đậu và các loại hạt\n- Tăng cường rau xanh và trái cây theo mùa\n- Hạn chế thực phẩm chứa nhiều đường, muối và chất béo bão hòa\n\nBạn có thể đặt lịch tư vấn dinh dưỡng cá nhân tại cửa hàng hoặc trực tuyến qua website của chúng tôi."
   },
   discountedProducts: {
     patterns: [
@@ -338,57 +499,237 @@ function formatCurrency(amount) {
   }).format(amount);
 }
 
-// Hàm tính điểm tương đồng giữa câu hỏi và pattern
+// Cải thiện hàm tính toán độ tương đồng để chính xác hơn
 function calculateSimilarity(message, pattern) {
-  // Chuyển đổi cả message và pattern thành chữ thường
-  const messageLower = message.toLowerCase();
-  const patternLower = pattern.toLowerCase();
+  const normalizedMessage = message.toLowerCase().trim();
+  const normalizedPattern = pattern.toLowerCase().trim();
   
-  // Kiểm tra xem pattern có nằm trong message không
-  if (messageLower.includes(patternLower)) {
-    return 0.8; // Điểm cao nếu pattern là một phần của message
+  // Kiểm tra chính xác - nếu message chứa pattern chính xác
+  if (normalizedMessage.includes(normalizedPattern)) {
+    // Kiểm tra xem pattern là một phần của từ hay là một từ riêng biệt
+    const messageWords = normalizedMessage.split(/\s+/);
+    const patternWords = normalizedPattern.split(/\s+/);
+
+    // Nếu pattern là nhiều từ và được tìm thấy chính xác trong tin nhắn
+    if (patternWords.length > 1) {
+      // Nếu pattern dài (>=3 từ) và khớp chính xác - độ tin cậy rất cao
+      if (patternWords.length >= 3) {
+        return 1.5;
+      }
+      // Pattern trung bình (2 từ) - khớp chính xác
+      return 1.2;
+    } 
+    
+    // Kiểm tra xem từ đơn lẻ có là một từ riêng biệt không
+    let isStandaloneWord = false;
+    for (const word of messageWords) {
+      if (word === normalizedPattern) {
+        isStandaloneWord = true;
+        break;
+      }
+    }
+    
+    if (isStandaloneWord) {
+      // Từ đơn lẻ cần kiểm tra thêm ngữ cảnh
+      // Kiểm tra xem nó có phải là một từ chung quá phổ biến không
+      const commonWords = ["thông tin", "giá", "mua", "cách"];
+      if (commonWords.includes(normalizedPattern)) {
+        // Với từ phổ biến, kiểm tra thêm ngữ cảnh
+        // Tìm các từ có ý nghĩa xung quanh từ khóa
+        let contextScore = 0;
+        
+        // Kiểm tra xem tin nhắn có phải chỉ là từ khóa đơn lẻ không
+        if (messageWords.length <= 2) {
+          return 0.8; // Chỉ có từ khóa đơn lẻ, điểm cao nhưng không quá cao
+        }
+        
+        // Kiểm tra thêm các từ khóa liên quan đến chủ đề cụ thể
+        const relatedTopics = {
+          "thông tin": ["thực phẩm", "sạch", "hữu cơ", "organic", "xuất xứ", "sản phẩm", "rau", "thịt", "cá", "trái cây", "tươi"],
+          "giá": ["sản phẩm", "bao nhiêu", "tiền", "đắt", "rẻ", "chi phí"],
+          "mua": ["sản phẩm", "hàng", "đặt", "order", "thủ tục", "online"],
+          "cách": ["sử dụng", "bảo quản", "chế biến", "nấu", "dùng"]
+        };
+        
+        // Nếu có từ khóa liên quan đến chủ đề cụ thể
+        if (relatedTopics[normalizedPattern]) {
+          for (const word of messageWords) {
+            if (relatedTopics[normalizedPattern].includes(word)) {
+              contextScore += 0.2; // Cộng điểm cho mỗi từ liên quan
+            }
+          }
+        }
+        
+        // Nếu tìm thấy ngữ cảnh rõ ràng
+        if (contextScore > 0) {
+          return Math.min(1.0, 0.7 + contextScore); // Tối đa là 1.0
+        }
+        
+        return 0.7; // Mặc định cho từ phổ biến
+      }
+      
+      return 1.0; // Từ không phổ biến, khớp hoàn toàn
+    }
+    
+    // Pattern là một phần của từ khác, cho điểm thấp hơn
+    return 0.6;
   }
   
-  // Tách các từ trong message và pattern
-  const messageWords = messageLower.split(/\s+/);
-  const patternWords = patternLower.split(/\s+/);
+  // Kiểm tra từng từ trong pattern
+  const patternWords = normalizedPattern.split(/\s+/);
+  let matchingWords = 0;
+  let totalWeight = 0;
+  let matchedWeight = 0;
   
-  // Đếm số từ trùng khớp
-  let matchCount = 0;
-  for (const word of messageWords) {
-    if (patternWords.includes(word)) {
-      matchCount++;
+  for (const word of patternWords) {
+    if (word.length < 2) continue; // Bỏ qua các từ quá ngắn
+    
+    // Từ dài quan trọng hơn
+    const wordWeight = Math.min(1.0, 0.5 + (word.length / 10));
+    totalWeight += wordWeight;
+    
+    if (normalizedMessage.includes(word)) {
+      matchingWords++;
+      matchedWeight += wordWeight;
     }
   }
   
-  // Tính điểm dựa trên tỷ lệ từ trùng khớp
-  const similarity = matchCount / Math.max(messageWords.length, patternWords.length);
+  // Nếu không có từ nào có thể so sánh, trả về 0
+  if (totalWeight === 0) return 0;
   
-  // Tăng điểm nếu có nhiều từ trùng khớp
-  return similarity + (matchCount * 0.1);
+  // Tính similarity dựa trên trọng số của các từ khớp
+  const similarity = matchedWeight / totalWeight;
+  
+  // Bonus cho số lượng từ khớp nhiều (thúc đẩy khớp nhiều từ)
+  if (patternWords.length > 2 && matchingWords >= 2) {
+    return similarity * (1 + (matchingWords / patternWords.length) * 0.5);
+  }
+  
+  return similarity;
 }
 
-// Hàm xác định intent của tin nhắn
+// Cải thiện hàm nhận dạng ý định với ưu tiên các intent phổ biến
 function detectIntent(message) {
-  let bestMatch = {
-    intent: null,
-    score: 0
-  };
-
+  let bestMatches = [];
+  const userMessage = message.toLowerCase().trim();
+  
+  // Các intent ưu tiên cao - kiểm tra trước tiên
+  const priorityIntents = ['buyingMethods', 'price', 'info'];
+  
+  // Kiểm tra tất cả intents và thu thập tất cả các kết quả tiềm năng
   for (const [intent, data] of Object.entries(intents)) {
     for (const pattern of data.patterns) {
-      const similarity = calculateSimilarity(message, pattern);
-      if (similarity > bestMatch.score) {
-        bestMatch = {
-          intent: intent,
-          score: similarity
-        };
+      const similarity = calculateSimilarity(userMessage, pattern);
+      
+      // Lưu tất cả các khớp có điểm cao hơn ngưỡng vào mảng
+      if (similarity >= 0.4) {
+        bestMatches.push({ intent, similarity, pattern });
+        
+        // Log các khớp có khả năng
+        if (similarity > 0.5) {
+          console.log(`Potential match: ${intent} with pattern "${pattern}" - score: ${similarity.toFixed(2)}`);
+        }
       }
     }
   }
-
-  // Tăng ngưỡng phát hiện intent để tránh trả lời sai
-  return bestMatch.score > 0.3 ? bestMatch.intent : null;
+  
+  // Sắp xếp các kết quả theo điểm số giảm dần
+  bestMatches.sort((a, b) => b.similarity - a.similarity);
+  
+  // Không tìm thấy kết quả nào phù hợp
+  if (bestMatches.length === 0) {
+    return { intent: null, similarity: 0, pattern: null };
+  }
+  
+  // Kiểm tra cho trường hợp đặc biệt: tin nhắn hỏi về thực phẩm
+  if (userMessage.includes("thực phẩm")) {
+    // Kiểm tra từng intent liên quan đến thực phẩm
+    const foodIntents = ['foodSafety', 'organicFood', 'freshFood', 'importedFood', 'vegetarianFood'];
+    
+    // Từ khóa phù hợp cho các intents thực phẩm
+    const foodKeywords = {
+      'foodSafety': ['sạch', 'an toàn', 'vệ sinh', 'nguồn gốc', 'chứng nhận', 'kiểm định'],
+      'organicFood': ['hữu cơ', 'organic', 'không hóa chất', 'không thuốc trừ sâu', 'tự nhiên'],
+      'freshFood': ['tươi', 'tươi sống', 'tươi ngon', 'mới', 'rau tươi', 'thịt tươi', 'cá tươi'],
+      'importedFood': ['nhập khẩu', 'ngoại nhập', 'nước ngoài', 'quốc tế'],
+      'vegetarianFood': ['chay', 'thuần chay', 'vegan', 'không thịt']
+    };
+    
+    // Kiểm tra xem message có chứa từ khóa đặc trưng nào cho các intent thực phẩm
+    for (const foodIntent of foodIntents) {
+      if (foodKeywords[foodIntent]) {
+        for (const keyword of foodKeywords[foodIntent]) {
+          if (userMessage.includes(keyword)) {
+            // Tìm thấy intent cụ thể về thực phẩm với từ khóa phù hợp
+            const matchedIntent = bestMatches.find(match => match.intent === foodIntent);
+            if (matchedIntent) {
+              return matchedIntent;
+            } else {
+              // Nếu không tìm thấy trong bestMatches, tạo mới với độ tương đồng cao
+              console.log(`Food intent matched by keyword: ${foodIntent} (keyword: ${keyword})`);
+              return { intent: foodIntent, similarity: 0.85, pattern: keyword };
+            }
+          }
+        }
+      }
+    }
+    
+    // Nếu chỉ hỏi về "thực phẩm" mà không có từ khóa cụ thể, ưu tiên foodSafety
+    console.log("General food query detected, prioritizing foodSafety intent");
+    return { intent: 'foodSafety', similarity: 0.8, pattern: 'thực phẩm' };
+  }
+  
+  // Kiểm tra sơ bộ kết quả tốt nhất
+  const topMatch = bestMatches[0];
+  
+  // Nếu kết quả tốt nhất có điểm cực cao (>0.9), trả về luôn
+  if (topMatch.similarity > 0.9) {
+    console.log(`Clear top match: ${topMatch.intent} with score ${topMatch.similarity.toFixed(2)} (pattern: "${topMatch.pattern}")`);
+    return topMatch;
+  }
+  
+  // Kiểm tra xem có nhiều intent có điểm số gần bằng nhau không
+  const closeMatches = bestMatches.filter(
+    match => (topMatch.similarity - match.similarity) < 0.2 && match.similarity > 0.6
+  );
+  
+  // Nếu có nhiều intent cạnh tranh
+  if (closeMatches.length > 1) {
+    console.log(`Multiple close matches found: ${closeMatches.length}`);
+    
+    // Kiểm tra intent ưu tiên
+    for (const match of closeMatches) {
+      if (priorityIntents.includes(match.intent)) {
+        console.log(`Selected priority intent: ${match.intent} with score ${match.similarity.toFixed(2)}`);
+        return match;
+      }
+    }
+    
+    // Kiểm tra dựa trên độ phủ của pattern với message
+    let bestCoverageMatch = topMatch;
+    for (const match of closeMatches) {
+      // Tính tỉ lệ pattern chiếm trong message
+      const patternCoverage = match.pattern.length / userMessage.length;
+      const topMatchCoverage = bestCoverageMatch.pattern.length / userMessage.length;
+      
+      // Ưu tiên pattern dài hơn và cụ thể hơn
+      if (patternCoverage > topMatchCoverage) {
+        bestCoverageMatch = match;
+      }
+    }
+    
+    console.log(`Selected by pattern coverage: ${bestCoverageMatch.intent} with score ${bestCoverageMatch.similarity.toFixed(2)}`);
+    return bestCoverageMatch;
+  }
+  
+  // Dựa vào ngưỡng để quyết định có trả về intent hay không
+  if (topMatch.similarity >= 0.5) {
+    console.log(`Selected intent: ${topMatch.intent} with score ${topMatch.similarity.toFixed(2)} (pattern: "${topMatch.pattern}")`);
+    return topMatch;
+  }
+  
+  console.log(`No intent matched above threshold. Best was: ${topMatch.intent} with score ${topMatch.similarity.toFixed(2)}`);
+  return { intent: null, similarity: 0, pattern: null };
 }
 
 // Hàm xử lý context của cuộc trò chuyện
@@ -442,125 +783,229 @@ function createSlug(name) {
 // Kiểm tra các intent không cần thông tin sản phẩm
 const generalIntents = [
   'greeting', 'thanks', 'bye', 'storeAddress', 'orderStatus', 'contactInfo', 
-  'mostExpensiveProduct', 'cheapestProduct', 'discountedProducts', 'userInfo', 'buyingMethods'
+  'mostExpensiveProduct', 'cheapestProduct', 'discountedProducts', 'userInfo', 'buyingMethods', 'paymentMethods',
+  'foodSafety', 'organicFood', 'deliveryInfo', 'returnPolicy', 'membershipProgram', 'freshFood',
+  'importedFood', 'vegetarianFood', 'storeLocation', 'promotions', 'mobileApp', 'nutritionAdvice'
 ];
 
 // Hàm xử lý tin nhắn từ người dùng
 export const handleMessage = async (req, res) => {
   try {
-    const { message, productId } = req.body;
+    const { message, userId, productId } = req.body;
     
-    if (!message && !productId) {
-      return res.status(400).json({ success: false, message: "Thiếu thông tin tin nhắn hoặc sản phẩm" });
+    console.log(`Nhận tin nhắn: "${message}" | userId: ${userId} | productId: ${productId ? productId : 'không có'}`);
+    
+    // Kiểm tra tin nhắn trống
+    if (!message || message.trim() === '') {
+      return res.json({
+        success: true,
+        message: 'Xin chào, tôi có thể giúp gì cho bạn?',
+        intent: null
+      });
     }
-
-    let response;
-    let intent = null;
     
-    // Xử lý truy vấn sản phẩm cụ thể
-    if (productId) {
+    // Chuyển tin nhắn sang chữ thường để dễ xử lý
+    const lowerMessage = message.toLowerCase();
+    
+    // Xử lý đặc biệt cho các từ khóa đặc trưng trước khi tìm intent
+    if (lowerMessage.includes("thực phẩm tươi") || 
+        (lowerMessage.includes("thực phẩm") && lowerMessage.includes("tươi"))) {
+      console.log("Phát hiện câu hỏi về thực phẩm tươi");
+      return res.json({
+        success: true,
+        message: intents.freshFood.response(),
+        intent: 'freshFood'
+      });
+    }
+    
+    if (lowerMessage.includes("thực phẩm sạch") || 
+        (lowerMessage.includes("thực phẩm") && lowerMessage.includes("sạch"))) {
+      console.log("Phát hiện câu hỏi về thực phẩm sạch");
+      return res.json({
+        success: true,
+        message: intents.foodSafety.response(),
+        intent: 'foodSafety'
+      });
+    }
+    
+    if (lowerMessage.includes("thực phẩm hữu cơ") || lowerMessage.includes("organic") || 
+        (lowerMessage.includes("thực phẩm") && lowerMessage.includes("hữu cơ"))) {
+      console.log("Phát hiện câu hỏi về thực phẩm hữu cơ/organic");
+      return res.json({
+        success: true,
+        message: intents.organicFood.response(),
+        intent: 'organicFood'
+      });
+    }
+    
+    if (lowerMessage.includes("thực phẩm nhập khẩu") || 
+        (lowerMessage.includes("thực phẩm") && lowerMessage.includes("nhập khẩu"))) {
+      console.log("Phát hiện câu hỏi về thực phẩm nhập khẩu");
+      return res.json({
+        success: true,
+        message: intents.importedFood.response(),
+        intent: 'importedFood'
+      });
+    }
+    
+    if (lowerMessage.includes("thực phẩm chay") || 
+        (lowerMessage.includes("thực phẩm") && lowerMessage.includes("chay"))) {
+      console.log("Phát hiện câu hỏi về thực phẩm chay");
+      return res.json({
+        success: true,
+        message: intents.vegetarianFood.response(),
+        intent: 'vegetarianFood'
+      });
+    }
+    
+    // Tìm intent từ tin nhắn
+    const { intent, similarity, pattern } = detectIntent(lowerMessage);
+    console.log(`Kết quả nhận dạng: Intent: ${intent || 'không có'} | Độ tương đồng: ${similarity.toFixed(2)} | Pattern: "${pattern || 'không có'}"`);
+    
+    // Kiểm tra các intent đặc biệt cần xử lý riêng
+    if (intent === 'buyingMethods') {
+      // Xử lý riêng cho câu hỏi về cách mua hàng
+      console.log('Phát hiện câu hỏi về cách mua hàng với độ tin cậy: ' + similarity.toFixed(2));
+      const response = intents.buyingMethods.response();
+      return res.json({
+        success: true,
+        message: response,
+        intent: 'buyingMethods'
+      });
+    }
+    
+    // Nếu không nhận ra intent và có productId, thử tìm sản phẩm để trả lời chung
+    if ((!intent || similarity < 0.5) && productId) {
+      console.log(`Intent không đủ mạnh, tìm thông tin sản phẩm với ID: ${productId}`);
       try {
-        // Kiểm tra xem productId có đúng định dạng ObjectId không
-        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(productId);
-        
-        let product = null;
-        
-        // Nếu là ObjectId hợp lệ, thử tìm sản phẩm bằng ID trước
-        if (isValidObjectId) {
-          product = await Product.findById(productId);
-        }
-        
-        // Nếu không tìm thấy bằng ID, thử tìm bằng slug
-        if (!product) {
-          // Lấy tất cả sản phẩm và tìm theo slug được tạo từ tên
-          const products = await Product.find();
-          product = products.find(p => {
-            const productSlug = createSlug(p.productName);
-            return productSlug === productId;
-          });
-        }
-        
-        if (!product) {
+        const product = await Product.findById(productId);
+        if (product) {
           return res.json({
             success: true,
-            message: "Xin lỗi, tôi không tìm thấy thông tin về sản phẩm này. Bạn có thể hỏi về các sản phẩm khác hoặc các thông tin khác như sản phẩm giảm giá, sản phẩm mới nhất."
+            message: `Sản phẩm ${product.productName} có giá ${formatCurrency(product.productPrice)}. Bạn muốn biết thêm thông tin gì về sản phẩm này?`,
+            intent: 'general_product_info'
           });
         }
+      } catch (error) {
+        console.error('Lỗi khi tìm sản phẩm:', error);
+      }
+    }
+    
+    // Nếu không nhận ra intent và không có productId, thử tìm sản phẩm trong tin nhắn
+    if ((!intent || similarity < 0.5) && !productId) {
+      // Tìm sản phẩm dựa trên tin nhắn
+      console.log('Tìm kiếm sản phẩm dựa trên nội dung tin nhắn');
+      try {
+        const products = await Product.find({
+          $or: [
+            { productName: { $regex: message, $options: 'i' } },
+            { productInfo: { $regex: message, $options: 'i' } },
+            { productDetails: { $regex: message, $options: 'i' } }
+          ]
+        }).limit(3);
         
-        // Xử lý context nếu cần
-        if (req.session && req.session.chatContext) {
-          intent = handleContext(req.session.chatContext, detectIntent(message));
-        } else {
-          // Xác định intent từ tin nhắn nếu có
-          if (message) {
-            intent = detectIntent(message);
+        if (products.length > 0) {
+          let response = 'Tôi tìm thấy những sản phẩm sau có thể phù hợp:\n';
+          products.forEach((product, index) => {
+            response += `${index + 1}. ${product.productName} - ${formatCurrency(product.productPrice)}\n`;
+          });
+          response += 'Bạn có thể hỏi thêm thông tin cụ thể về sản phẩm bạn quan tâm.';
+          
+          return res.json({
+            success: true,
+            message: response,
+            intent: 'product_search',
+            products: products.map(p => ({
+              _id: p._id,
+              productName: p.productName,
+              productPrice: p.productPrice
+            }))
+          });
+        }
+      } catch (error) {
+        console.error('Lỗi khi tìm kiếm sản phẩm:', error);
+      }
+    }
+    
+    // Xử lý intent đã nhận dạng nếu có và đủ đáng tin cậy
+    if (intent && intents[intent] && similarity >= 0.5) {
+      console.log(`Xử lý tin nhắn với intent: ${intent} (độ tin cậy: ${similarity.toFixed(2)})`);
+      
+      // Kiểm tra xem intent có cần product không
+      if (!generalIntents.includes(intent) && productId) {
+        // Lấy thông tin sản phẩm
+        try {
+          const product = await Product.findById(productId);
+          if (!product) {
+            console.log(`Không tìm thấy sản phẩm với ID: ${productId}`);
+            return res.json({
+              success: false,
+              message: 'Không tìm thấy thông tin sản phẩm bạn đang hỏi.',
+              intent: null
+            });
           }
-        }
-        
-        // Nếu có intent cụ thể, sử dụng nó để xử lý phản hồi
-        if (intent && intents[intent] && intents[intent].response) {
-          response = await intents[intent].response(product);
-        } else {
-          // Hiển thị mặc định thông tin sản phẩm
-          response = await intents.info.response(product);
-        }
-        
-        if (typeof response === 'string') {
+          
+          // Gọi hàm phản hồi tương ứng với intent và truyền thông tin sản phẩm
+          const response = intents[intent].response(product);
+          
           return res.json({
             success: true,
             message: response,
             intent: intent
           });
-        } else {
+        } catch (error) {
+          console.error('Lỗi khi truy vấn sản phẩm:', error);
+          return res.json({
+            success: false,
+            message: 'Đã xảy ra lỗi khi tìm thông tin sản phẩm.',
+            intent: null
+          });
+        }
+      } else {
+        // Với các intent không cần thông tin sản phẩm
+        console.log(`Xử lý intent không cần product: ${intent}`);
+        const response = intents[intent].response();
+        
+        // Xử lý đặc biệt cho intent cần userId
+        if (intent === 'userInfo') {
           return res.json({
             success: true,
-            data: response,
+            message: intents[intent].response(userId),
             intent: intent
           });
         }
-      } catch (error) {
-        return res.json({
-          success: false,
-          message: "Đã xảy ra lỗi khi xử lý yêu cầu của bạn.",
-          error: error.message
-        });
-      }
-    } else if (message) {
-      // Kiểm tra các intent không cần thông tin sản phẩm
-      intent = detectIntent(message);
-      
-      // Nếu là intent chung không cần sản phẩm
-      if (generalIntents.includes(intent)) {
-        // Store the intent for context in future messages
-        if (!req.session) req.session = {};
-        req.session.chatContext = { intent, timestamp: Date.now() };
         
-        // Nếu là intent chung không cần sản phẩm
-        if (intent === 'userInfo') {
-          response = intents[intent].response(req.body.userId);
-        } else if (intent === 'discountedProducts') {
-          response = await intents[intent].response();
-        } else {
-          response = await intents[intent].response();
+        // Xử lý đặc biệt cho các intent có thể trả về đối tượng thay vì chuỗi
+        if (typeof response === 'object' || response instanceof Promise) {
+          const finalResponse = await response;
+          return res.json({
+            success: true,
+            message: finalResponse,
+            intent: intent
+          });
         }
-      } else {
+        
         return res.json({
           success: true,
-          message: "Xin lỗi, tôi không hiểu rõ câu hỏi của bạn. Bạn có thể hỏi rõ hơn về:\n- Sản phẩm giảm giá\n- Thông tin sản phẩm\n- Các danh mục sản phẩm",
-          intent: null
+          message: response,
+          intent: intent
         });
       }
     }
-
+    
+    // Trường hợp không nhận ra intent hoặc độ tương đồng quá thấp
+    console.log(`Không thể xác định ý định của người dùng hoặc độ tương đồng thấp: ${similarity.toFixed(2)}`);
     return res.json({
       success: true,
-      message: response,
-      intent: intent
+      message: 'Xin lỗi, tôi không hiểu câu hỏi của bạn. Bạn có thể hỏi về giá, thông tin, cách sử dụng, cách đặt hàng hoặc xuất xứ của sản phẩm.',
+      intent: null
     });
+    
   } catch (error) {
+    console.error('Lỗi xử lý tin nhắn:', error);
     return res.status(500).json({
       success: false,
-      message: "Đã có lỗi xảy ra, vui lòng thử lại sau",
+      message: 'Đã xảy ra lỗi khi xử lý tin nhắn.',
       error: error.message
     });
   }

@@ -2,6 +2,7 @@ import Order from "../Model/Order.js";
 import Product from "../Model/Products.js";
 import axios from "axios";
 import dotenv from "dotenv";
+import { sendOrderConfirmationEmail } from "../utils/emailService.js";
 
 dotenv.config();
 
@@ -95,6 +96,22 @@ export const orderCreate = async (req, res) => {
     
     // Giảm số lượng tồn kho
     await updateProductStock(products);
+    
+    // Lấy đơn hàng với thông tin đầy đủ bao gồm thông tin sản phẩm để gửi email
+    const populatedOrder = await Order.findById(order._id)
+      .populate('userId')
+      .populate('products.productId');
+    
+    // Gửi email xác nhận đơn hàng
+    if (populatedOrder.shippingInfo && populatedOrder.shippingInfo.email) {
+      try {
+        await sendOrderConfirmationEmail(populatedOrder);
+        console.log(`Đã gửi email xác nhận đơn hàng ${populatedOrder.orderCode} đến ${populatedOrder.shippingInfo.email}`);
+      } catch (emailError) {
+        console.error('Lỗi khi gửi email xác nhận đơn hàng:', emailError);
+        // Không trả về lỗi cho người dùng nếu chỉ gửi email thất bại
+      }
+    }
 
     // Return success response with order data
     res.status(201).json(order);
@@ -212,6 +229,16 @@ export const updateOrder = async (req, res) => {
       { $set: filteredData },
       { new: true }
     ).populate("userId").populate("products.productId");
+    
+    // Gửi email thông báo khi trạng thái đơn hàng thay đổi (nếu có email)
+    if (newStatus && newStatus !== previousStatus && updatedOrder.shippingInfo && updatedOrder.shippingInfo.email) {
+      try {
+        await sendOrderConfirmationEmail(updatedOrder);
+        console.log(`Đã gửi email cập nhật trạng thái đơn hàng ${updatedOrder.orderCode} đến ${updatedOrder.shippingInfo.email}`);
+      } catch (emailError) {
+        console.error('Lỗi khi gửi email cập nhật trạng thái đơn hàng:', emailError);
+      }
+    }
     
     return res.status(200).json({
       success: true,
