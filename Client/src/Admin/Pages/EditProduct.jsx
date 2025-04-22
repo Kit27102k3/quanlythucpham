@@ -121,10 +121,22 @@ const EditProduct = ({
   };
 
   const handleNumberChange = (e, name) => {
+    const newValue = e.value.toString();
     setEditedProduct((prev) => ({
       ...prev,
-      [name]: e.value.toString(),
+      [name]: newValue,
     }));
+    
+    // Nếu đang cập nhật số lượng tồn kho, cập nhật trạng thái tương ứng
+    if (name === "productStock") {
+      const newStock = parseInt(newValue) || 0;
+      const newStatus = newStock > 0 ? "Còn hàng" : "Hết hàng";
+      
+      setEditedProduct(prev => ({
+        ...prev,
+        productStatus: newStatus
+      }));
+    }
   };
 
   const handleCloudinaryUpload = () => {
@@ -300,6 +312,22 @@ const EditProduct = ({
     }
   }, [product]);
 
+  // Thêm useEffect để cập nhật trạng thái dựa trên số lượng tồn kho
+  useEffect(() => {
+    // Tự động cập nhật trạng thái sản phẩm dựa vào số lượng tồn kho
+    if (editedProduct.productStock && parseInt(editedProduct.productStock) > 0) {
+      setEditedProduct(prev => ({
+        ...prev,
+        productStatus: "Còn hàng"
+      }));
+    } else if (editedProduct.productStock === "0" || parseInt(editedProduct.productStock) === 0) {
+      setEditedProduct(prev => ({
+        ...prev,
+        productStatus: "Hết hàng"
+      }));
+    }
+  }, [editedProduct.productStock]);
+
   return (
     <div className="relative p-3">
       <Scrollbars
@@ -431,7 +459,15 @@ const EditProduct = ({
                   ]}
                   className="w-full h-10 px-3 border border-gray-300 rounded-md bg-gray-100 flex items-center"
                   style={{ height: "2.5rem" }}
+                  disabled={parseInt(editedProduct.productStock) === 0}
+                  tooltip={parseInt(editedProduct.productStock) === 0 ? "Tự động đặt trạng thái 'Hết hàng' khi số lượng bằng 0" : undefined}
+                  tooltipOptions={{ position: 'top' }}
                 />
+                {parseInt(editedProduct.productStock) === 0 && (
+                  <small className="text-orange-500 mt-1 block">
+                    Trạng thái tự động chuyển thành "Hết hàng" khi số lượng bằng 0
+                  </small>
+                )}
               </div>
             </div>
           </Card>

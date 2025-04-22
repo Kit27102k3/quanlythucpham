@@ -29,6 +29,8 @@ import TipsPage from "../User/Pages/TipsPage/TipsPage";
 import PaymentResult from "../User/Pages/PaymentResult";
 import PaymentQR from "../User/Pages/PaymentQR";
 import CategoryProducts from "../User/Pages/Product/CategoryProducts";
+import TipsManagement from "../Admin/Pages/Tips/TipsManagement";
+import TipForm from "../Admin/Pages/Tips/TipForm";
 
 const publicRoutes = [
   {
@@ -175,6 +177,18 @@ const privateRoutes = [
     path: "/admin/customers/details/:id",
     page: CustomerDetails,
     layout: null,
+  },
+  {
+    path: "/admin/tips",
+    page: TipsManagement,
+  },
+  {
+    path: "/admin/tips/create",
+    page: TipForm,
+  },
+  {
+    path: "/admin/tips/edit/:id",
+    page: TipForm,
   },
 ];
 

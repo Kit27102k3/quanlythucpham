@@ -20,7 +20,9 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: String,
     orderCode: { type: String },
-    notes: { type: String }
+    notes: { type: String },
+    isPaid: { type: Boolean, default: false },
+    completedAt: { type: Date }
   },
   { timestamps: true }
 );

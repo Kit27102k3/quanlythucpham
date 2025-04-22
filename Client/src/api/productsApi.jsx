@@ -218,6 +218,17 @@ const productsApi = {
       };
     }
   },
+
+  // Lấy danh sách sản phẩm bán chạy nhất
+  getBestSellingProducts: async (limit = 10, period = 'month') => {
+    try {
+      const response = await axios.get(`${API_URL}/best-selling?limit=${limit}&period=${period}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching best selling products:', error);
+      throw error;
+    }
+  },
 };
 
 export default productsApi;

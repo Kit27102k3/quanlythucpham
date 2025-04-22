@@ -201,14 +201,14 @@ export default function Order() {
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 text-xs rounded-full ${
-                          order.status === "paid"
+                          order.status === "paid" || order.status === "completed"
                             ? "bg-green-100 text-green-800"
                             : order.status === "awaiting_payment"
                             ? "bg-orange-100 text-orange-800"
                             : "bg-yellow-100 text-yellow-800"
                         }`}
                       >
-                        {order.status === "paid"
+                        {order.status === "paid" || order.status === "completed"
                           ? "Đã thanh toán"
                           : order.status === "awaiting_payment"
                           ? "Chờ thanh toán"

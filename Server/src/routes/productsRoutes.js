@@ -9,6 +9,7 @@ import {
   searchProducts,
   getProductByCategory,
   getProductBySlug,
+  getBestSellingProducts,
 } from "../Controller/productsController.js";
 
 const router = express.Router();
@@ -20,6 +21,9 @@ router.post("/products", createProduct);
 router.get("/products", getAllProducts);
 
 router.get("/products/search", searchProducts);
+
+// Route để lấy danh sách sản phẩm bán chạy nhất
+router.get("/products/best-selling", getBestSellingProducts);
 
 router.get("/products/category/:category", getProductByCategory);
 

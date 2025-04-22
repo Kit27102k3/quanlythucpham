@@ -98,8 +98,17 @@ const OrderItem = memo(({
   formatDate, 
   formatCurrency, 
   onViewOrder, 
-  onDeleteOrder 
+  onDeleteOrder,
+  onMarkAsPaid
 }) => {
+  // Kiểm tra nếu đơn hàng là COD và chưa được đánh dấu là đã thanh toán
+  const paymentMethod = order.paymentMethod || "";
+  const showPaymentButton = 
+    (paymentMethod.toLowerCase() === "cod" || 
+     paymentMethod.toUpperCase() === "COD") && 
+    order.status === "pending" && 
+    !order.isPaid;
+
   return (
     <tr className="border-b hover:bg-gray-50 transition-colors">
       <td className="px-6 py-4 font-medium text-blue-600">
@@ -140,6 +149,12 @@ const OrderItem = memo(({
           {getStatusIcon(order.status)}
           {getStatusText(order.status)}
         </span>
+        {order.isPaid && (
+          <span className="inline-flex items-center ml-2 px-3 py-1.5 rounded-full text-xs font-medium border text-green-600 bg-green-100 border-green-200">
+            <CheckIcon size={16} className="mr-1" />
+            Đã thanh toán
+          </span>
+        )}
       </td>
       <td className="px-6 py-4">
         <div className="flex justify-center space-x-3">
@@ -157,6 +172,22 @@ const OrderItem = memo(({
               icon: { className: 'text-blue-600 ' } 
             }}
           />
+          {showPaymentButton && (
+            <Button
+              icon={<i className="pi pi-check-circle" style={{ fontSize: '1.1rem' }} />}
+              rounded
+              text
+              severity="success"
+              onClick={() => onMarkAsPaid(order._id)}
+              tooltip="Đánh dấu đã thanh toán"
+              tooltipOptions={{ position: 'top' }}
+              className="w-10 h-10 hover:bg-green-50 border border-transparent hover:border-green-200 transition-all"
+              pt={{ 
+                root: { className: 'flex items-center justify-center ' },
+                icon: { className: 'text-green-600' } 
+              }}
+            />
+          )}
           <Button
             icon={<Trash2Icon size={18} />}
             rounded
@@ -198,12 +229,22 @@ const OrderAdmin = () => {
     const [deleteDialog, setDeleteDialog] = useState(false);
     const [selectedOrderId, setSelectedOrderId] = useState(null);
     const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
+    
+    // Thêm state cho dialog xác nhận thanh toán
+    const [paymentDialog, setPaymentDialog] = useState(false);
+    const [paymentOrderId, setPaymentOrderId] = useState(null);
 
     // Memoize utility functions to prevent re-creation on each render
     const getStatusColor = useCallback((status) => {
       switch (status) {
         case "pending":
           return "text-yellow-600 bg-yellow-100 border-yellow-200";
+        case "processing":
+          return "text-yellow-600 bg-yellow-100 border-yellow-200";
+        case "awaiting_payment":
+          return "text-orange-600 bg-orange-100 border-orange-200";
+        case "delivering":
+          return "text-blue-600 bg-blue-100 border-blue-200";
         case "completed":
           return "text-green-600 bg-green-100 border-green-200";
         case "cancelled":
@@ -217,6 +258,12 @@ const OrderAdmin = () => {
       switch (status) {
         case "pending":
           return "Đang xử lý";
+        case "awaiting_payment":
+          return "Chờ thanh toán";
+        case "processing":
+          return "Đang xử lý";
+        case "delivering":
+          return "Đang giao hàng";
         case "completed":
           return "Đã giao";
         case "cancelled":
@@ -360,6 +407,47 @@ const OrderAdmin = () => {
       }
     }, [selectedOrderId, calculateOrderStats]);
 
+    const confirmMarkAsPaid = useCallback((orderId) => {
+      setPaymentOrderId(orderId);
+      setPaymentDialog(true);
+    }, []);
+
+    const handleMarkAsPaid = useCallback(async () => {
+      try {
+        // Cập nhật: Gọi API để cập nhật cả isPaid và status
+        const response = await fetch(`${API_BASE_URL}/orders/${paymentOrderId}/mark-paid`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            isPaid: true,
+            status: "completed" // Cập nhật trạng thái thành "Đã giao"
+          }),
+        });
+
+        if (response.ok) {
+          // Cập nhật state
+          setOrders(prevOrders => {
+            const updatedOrders = prevOrders.map(order => 
+              order._id === paymentOrderId 
+                ? { ...order, isPaid: true, status: "completed" } 
+                : order
+            );
+            // Cập nhật lại số liệu thống kê sau khi đổi trạng thái
+            calculateOrderStats(updatedOrders);
+            return updatedOrders;
+          });
+          
+          setPaymentDialog(false);
+        } else {
+          console.error("Lỗi khi đánh dấu đơn hàng đã thanh toán");
+        }
+      } catch (error) {
+        console.error("Lỗi khi cập nhật trạng thái thanh toán:", error);
+      }
+    }, [paymentOrderId, calculateOrderStats]);
+
     // Memoize filtered orders to prevent recalculation on every render
     const filteredOrders = useMemo(() => {
       return orders.filter((order) => {
@@ -372,13 +460,38 @@ const OrderAdmin = () => {
 
         const matchesStatus =
           filterStatus === "Tất cả" ||
-          (filterStatus === "Đang xử lý" && order.status === "pending") ||
+          (filterStatus === "Đang xử lý" && (order.status === "pending" || order.status === "processing")) ||
+          (filterStatus === "Chờ thanh toán" && order.status === "awaiting_payment") ||
+          (filterStatus === "Đang giao" && order.status === "delivering") ||
           (filterStatus === "Đã giao" && order.status === "completed") ||
           (filterStatus === "Đã hủy" && order.status === "cancelled");
 
         return matchesSearch && matchesStatus;
       });
     }, [orders, searchTerm, filterStatus, getCustomerName]);
+
+    // Thêm hàm chuyển đổi phương thức thanh toán
+    const getPaymentMethodText = useCallback((method) => {
+      if (!method) return "Thanh toán khi nhận hàng";
+      
+      method = method.toLowerCase();
+      switch (method) {
+        case "cod":
+          return "Thanh toán khi nhận hàng";
+        case "sepay":
+          return "Thanh toán SePay";
+        case "bank_transfer":
+          return "Chuyển khoản ngân hàng";
+        case "credit_card":
+          return "Thẻ tín dụng";
+        case "momo":
+          return "Ví MoMo";
+        case "zalopay":
+          return "ZaloPay";
+        default:
+          return method;
+      }
+    }, []);
 
     // Loading indicator
     if (loading && orders.length === 0) {
@@ -422,6 +535,8 @@ const OrderAdmin = () => {
               options={[
                 {label: 'Tất cả trạng thái', value: 'Tất cả'},
                 {label: 'Đang xử lý', value: 'Đang xử lý'},
+                {label: 'Chờ thanh toán', value: 'Chờ thanh toán'},
+                {label: 'Đang giao', value: 'Đang giao'},
                 {label: 'Đã giao', value: 'Đã giao'},
                 {label: 'Đã hủy', value: 'Đã hủy'}
               ]}
@@ -473,6 +588,7 @@ const OrderAdmin = () => {
                       formatCurrency={formatCurrency}
                       onViewOrder={handleViewOrder}
                       onDeleteOrder={confirmDeleteOrder}
+                      onMarkAsPaid={confirmMarkAsPaid}
                     />
                   ))
                 ) : (
@@ -555,7 +671,7 @@ const OrderAdmin = () => {
                         {getStatusText(viewOrder.status)}
                       </span>
                     </p>
-                    <p className="mb-3"><span className="font-medium">Phương thức thanh toán:</span> {viewOrder.paymentMethod || "COD"}</p>
+                    <p className="mb-3"><span className="font-medium">Phương thức thanh toán:</span> {getPaymentMethodText(viewOrder.paymentMethod)}</p>
                     <p><span className="font-medium">Ghi chú:</span> {viewOrder.note || "Không có"}</p>
                   </Card>
                 </div>
@@ -665,6 +781,49 @@ const OrderAdmin = () => {
             </div>
             <h3 className="text-xl font-medium text-gray-800 mb-2">Xóa đơn hàng</h3>
             <p className="text-gray-600 text-center">Bạn có chắc chắn muốn xóa đơn hàng này? Hành động này không thể hoàn tác.</p>
+          </div>
+        </Dialog>
+        
+        {/* Dialog xác nhận đánh dấu đã thanh toán */}
+        <Dialog
+          header="Xác nhận thanh toán"
+          visible={paymentDialog}
+          style={{ width: '450px' }}
+          modal
+          footer={
+            <div className="pt-3 flex justify-end gap-3 p-4">
+              <Button 
+                label="Hủy" 
+                icon="pi pi-times" 
+                onClick={() => setPaymentDialog(false)} 
+                className="px-4 py-2.5 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg transition-colors" 
+              />
+              <Button 
+                label="Xác nhận" 
+                icon="pi pi-check" 
+                onClick={handleMarkAsPaid} 
+                autoFocus 
+                className="px-6 py-2.5 bg-green-600 text-white hover:bg-green-700 font-medium rounded-lg transition-colors flex items-center gap-2" 
+              />
+            </div>
+          }
+          onHide={() => setPaymentDialog(false)}
+          contentClassName="p-5"
+          pt={{
+            root: { className: 'rounded-lg border border-gray-200 shadow-lg' },
+            header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg text-lg font-semibold' },
+            closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full transition-colors' },
+            content: { className: 'p-5' }
+          }}
+        >
+          <div className="flex flex-col items-center justify-center p-3">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <i className="pi pi-check-circle text-green-500" style={{ fontSize: '1.75rem' }} />
+            </div>
+            <h3 className="text-xl font-medium text-gray-800 mb-2">Xác nhận đã thanh toán và giao hàng</h3>
+            <p className="text-gray-600 text-center">
+              Khi xác nhận, đơn hàng sẽ được đánh dấu là đã thanh toán và chuyển trạng thái thành &ldquo;Đã giao&rdquo;. Bạn có chắc chắn không?
+            </p>
           </div>
         </Dialog>
       </div>

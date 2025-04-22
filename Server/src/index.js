@@ -25,6 +25,7 @@ import orderRoutes from "./routes/orderRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import tipsRoutes from "./routes/tipsRoutes.js";
 import { handleSepayCallback } from "./Controller/paymentController.js";
 
 dotenv.config({ path: ".env" });
@@ -89,6 +90,7 @@ app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/orders", orderRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api", tipsRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

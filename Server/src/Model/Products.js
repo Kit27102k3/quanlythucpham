@@ -22,6 +22,7 @@ const productSchema = new mongoose.Schema(
     productUnit: { type: String, default: "gram", trim: true },
     discountStartDate: { type: Date },
     discountEndDate: { type: Date },
+    soldCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
@@ -48,6 +49,11 @@ productSchema.methods.toJSON = function() {
   }
   
   return productObject;
+};
+
+productSchema.methods.updateSoldCount = async function(quantity) {
+  this.soldCount += quantity;
+  await this.save();
 };
 
 productSchema.index({

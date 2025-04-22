@@ -4,6 +4,7 @@
 import cloudinary from "../config/cloudinary.js";
 import Product from "../Model/Products.js";
 import Category from "../Model/Categories.js";
+import BestSellingProduct from "../Model/BestSellingProduct.js";
 import fs from "fs";
 import path from "path";
 
@@ -424,6 +425,37 @@ export const updateProductCategory = async (req, res) => {
   } catch (error) {
     console.error("Error in updateProductCategory:", error);
     res.status(500).json({ message: "Cập nhật danh mục sản phẩm thất bại", error });
+  }
+};
+
+// Lấy danh sách sản phẩm bán chạy
+export const getBestSellingProducts = async (req, res) => {
+  try {
+    const { limit = 10, period = 'all' } = req.query;
+    
+    // Chuyển đổi limit từ string sang number
+    const limitNum = parseInt(limit, 10) || 10;
+    
+    // Lấy danh sách sản phẩm bán chạy với giới hạn và khoảng thời gian
+    const bestSellingProducts = await BestSellingProduct.getBestSellers(limitNum, period);
+    
+    // Kiểm tra xem các sản phẩm có còn tồn tại và còn hàng không
+    const activeProducts = bestSellingProducts.filter(item => 
+      item.productId && item.productId.productStatus !== "Hết hàng"
+    );
+    
+    res.status(200).json({
+      success: true,
+      count: activeProducts.length,
+      data: activeProducts
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách sản phẩm bán chạy:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy danh sách sản phẩm bán chạy",
+      error: error.message
+    });
   }
 };
 

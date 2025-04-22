@@ -12,6 +12,7 @@ import {
   ReaderIcon,
   TriangleLeftIcon,
   TriangleRightIcon,
+  InfoCircledIcon
 } from "@radix-ui/react-icons";
 
 const AdminSidebar = () => {
@@ -62,6 +63,12 @@ const AdminSidebar = () => {
       text: "Quản lý Đơn hàng",
       path: "/admin/orders",
       key: "orders",
+    },
+    {
+      icon: <InfoCircledIcon className="size-6" />,
+      text: "Quản lý Mẹo hay",
+      path: "/admin/tips",
+      key: "tips",
     },
     {
       icon: <PersonIcon className="size-6" />,

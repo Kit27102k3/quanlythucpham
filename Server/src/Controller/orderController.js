@@ -3,6 +3,7 @@ import Product from "../Model/Products.js";
 import axios from "axios";
 import dotenv from "dotenv";
 import { sendOrderConfirmationEmail } from "../utils/emailService.js";
+import BestSellingProduct from "../Model/BestSellingProduct.js";
 
 dotenv.config();
 
@@ -17,7 +18,7 @@ function generateOrderCode() {
 }
 
 // Hàm cập nhật số lượng tồn kho sản phẩm
-async function updateProductStock(products, increase = false) {
+async function updateProductStock(products, increase = false, updateSoldCount = false) {
   try {
     for (const item of products) {
       const product = await Product.findById(item.productId);
@@ -36,12 +37,20 @@ async function updateProductStock(products, increase = false) {
         } else if (product.productStatus === "Hết hàng") {
           product.productStatus = "Còn hàng";
         }
+
+        // Cập nhật số lượng bán ra nếu cần
+        if (updateSoldCount && !increase) {
+          product.soldCount = (product.soldCount || 0) + item.quantity;
+        } else if (updateSoldCount && increase) {
+          // Trừ soldCount khi hủy đơn hàng đã thanh toán
+          product.soldCount = Math.max(0, (product.soldCount || 0) - item.quantity);
+        }
         
         await product.save();
       }
     }
   } catch (error) {
-    console.error("Lỗi khi cập nhật số lượng tồn kho:", error);
+    console.error("Lỗi khi cập nhật thông tin sản phẩm:", error);
     throw error;
   }
 }
@@ -94,8 +103,11 @@ export const orderCreate = async (req, res) => {
     // Save the order
     await order.save();
     
-    // Giảm số lượng tồn kho
-    await updateProductStock(products);
+    // Đối với các phương thức thanh toán trực tuyến (không phải COD), giảm số lượng sản phẩm ngay
+    if (paymentMethod !== "cod") {
+      // Giảm số lượng tồn kho, nhưng chưa cập nhật soldCount
+      await updateProductStock(products, false, false);
+    }
     
     // Lấy đơn hàng với thông tin đầy đủ bao gồm thông tin sản phẩm để gửi email
     const populatedOrder = await Order.findById(order._id)
@@ -207,6 +219,70 @@ export const updateOrder = async (req, res) => {
     const previousStatus = order.status;
     const newStatus = filteredData.status;
     
+    // Nếu đang cập nhật trạng thái thành 'completed', tự động đánh dấu đã thanh toán
+    if (newStatus === 'completed') {
+      filteredData.isPaid = true;
+      filteredData.completedAt = new Date();
+      
+      // Nếu đơn hàng là COD và chưa cập nhật kho thì giảm số lượng và tăng soldCount
+      if (order.paymentMethod === "cod" && !order.isPaid) {
+        await updateProductStock(order.products, false, true);
+        
+        // Cập nhật thông tin sản phẩm bán chạy
+        try {
+          // Tải thông tin chi tiết sản phẩm
+          const populatedOrder = await Order.findById(orderId).populate("products.productId");
+          
+          // Cập nhật từng sản phẩm trong đơn hàng
+          for (const item of populatedOrder.products) {
+            if (item.productId) {
+              await BestSellingProduct.updateSalesData(
+                item.productId._id,
+                item.productId,
+                item.quantity,
+                orderId
+              );
+            }
+          }
+        } catch (bestSellerError) {
+          console.error("Lỗi khi cập nhật sản phẩm bán chạy:", bestSellerError);
+          // Không trả về lỗi, vẫn tiếp tục xử lý
+        }
+      }
+      // Nếu thanh toán online và status khác awaiting_payment thì cập nhật soldCount
+      else if (order.paymentMethod !== "cod" && order.status !== "awaiting_payment") {
+        // Chỉ cập nhật soldCount mà không trừ kho (đã trừ lúc tạo đơn)
+        for (const item of order.products) {
+          const product = await Product.findById(item.productId);
+          if (product) {
+            product.soldCount = (product.soldCount || 0) + item.quantity;
+            await product.save();
+          }
+        }
+        
+        // Cập nhật thông tin sản phẩm bán chạy
+        try {
+          // Tải thông tin chi tiết sản phẩm
+          const populatedOrder = await Order.findById(orderId).populate("products.productId");
+          
+          // Cập nhật từng sản phẩm trong đơn hàng
+          for (const item of populatedOrder.products) {
+            if (item.productId) {
+              await BestSellingProduct.updateSalesData(
+                item.productId._id,
+                item.productId,
+                item.quantity,
+                orderId
+              );
+            }
+          }
+        } catch (bestSellerError) {
+          console.error("Lỗi khi cập nhật sản phẩm bán chạy:", bestSellerError);
+          // Không trả về lỗi, vẫn tiếp tục xử lý
+        }
+      }
+    }
+    
     // Nếu đang cập nhật trạng thái thành 'cancelled', kiểm tra xem có thể hủy không
     if (newStatus === 'cancelled') {
       // Ngăn chặn việc hủy đơn hàng đã giao hoặc đang giao
@@ -219,8 +295,10 @@ export const updateOrder = async (req, res) => {
         });
       }
       
-      // Khi hủy đơn hàng, trả lại số lượng tồn kho
-      await updateProductStock(order.products, true);
+      // Khi hủy đơn hàng thanh toán online, cần trả lại số lượng tồn kho
+      if (order.paymentMethod !== "cod") {
+        await updateProductStock(order.products, true, false);
+      }
     }
     
     // Cập nhật đơn hàng
@@ -268,6 +346,85 @@ export const orderUpdate = async (req, res) => {
   }
 };
 
+// Thêm controller mới để đánh dấu đơn hàng đã thanh toán
+export const markOrderAsPaid = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const { isPaid, status } = req.body;
+    
+    // Cập nhật thông tin đơn hàng: trạng thái thanh toán và trạng thái đơn hàng (nếu có)
+    const updateData = { isPaid };
+    
+    // Tìm đơn hàng để kiểm tra
+    const order = await Order.findById(orderId).populate("products.productId");
+    
+    if (!order) {
+      return res.status(404).json({ error: "Không tìm thấy đơn hàng" });
+    }
+    
+    // Theo dõi trạng thái trước khi cập nhật
+    const wasPaid = order.isPaid;
+    
+    // Nếu có trạng thái mới được gửi lên, cập nhật trạng thái đơn hàng
+    if (status) {
+      updateData.status = status;
+    }
+    
+    // Nếu đánh dấu là đã thanh toán và hoàn thành, cập nhật thời gian hoàn thành
+    if (isPaid && status === 'completed') {
+      updateData.completedAt = new Date();
+    }
+    
+    // Nếu đơn hàng COD hoặc chưa từng thanh toán, và giờ đã thanh toán
+    if (order.paymentMethod === "cod" && !wasPaid && isPaid) {
+      // Cập nhật số lượng tồn kho và tăng soldCount
+      await updateProductStock(order.products, false, true);
+      
+      // Cập nhật thông tin sản phẩm bán chạy
+      try {
+        for (const item of order.products) {
+          if (item.productId) {
+            await BestSellingProduct.updateSalesData(
+              item.productId._id,
+              item.productId,
+              item.quantity,
+              orderId
+            );
+          }
+        }
+      } catch (bestSellerError) {
+        console.error("Lỗi khi cập nhật sản phẩm bán chạy:", bestSellerError);
+        // Không trả về lỗi, vẫn tiếp tục xử lý
+      }
+    }
+    
+    // Cập nhật trạng thái thanh toán của đơn hàng
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      updateData,
+      { new: true }
+    ).populate("userId").populate("products.productId");
+    
+    // Ghi log hoặc thông báo
+    console.log(`Đơn hàng ${orderId} đã được đánh dấu là đã thanh toán${status ? ` và chuyển trạng thái thành ${status}` : ''}`);
+    
+    // Gửi email thông báo nếu có email và khi đơn hàng chuyển sang trạng thái completed
+    if (status === 'completed' && order.shippingInfo && order.shippingInfo.email) {
+      try {
+        await sendOrderConfirmationEmail(updatedOrder);
+        console.log(`Đã gửi email hoàn thành đơn hàng ${order.orderCode} đến ${order.shippingInfo.email}`);
+      } catch (emailError) {
+        console.error('Lỗi khi gửi email hoàn thành đơn hàng:', emailError);
+      }
+    }
+    
+    res.json(updatedOrder);
+  } catch (err) {
+    console.error("Lỗi khi đánh dấu đơn hàng đã thanh toán:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 export const orderDelete = async (req, res) => {
   try {
     const order = await Order.findByIdAndDelete(req.params.id);
@@ -307,8 +464,14 @@ export const cancelOrder = async (req, res) => {
     order.status = 'cancelled';
     await order.save();
     
-    // Trả lại số lượng tồn kho
-    await updateProductStock(order.products, true);
+    // Chỉ trả lại số lượng tồn kho nếu là thanh toán online, COD chưa trừ kho
+    if (order.paymentMethod !== "cod") {
+      await updateProductStock(order.products, true, false);
+    }
+    // Nếu COD nhưng đã thanh toán và đã cập nhật soldCount, cần giảm soldCount
+    else if (order.paymentMethod === "cod" && order.isPaid) {
+      await updateProductStock(order.products, false, true); // Tăng soldCount
+    }
     
     return res.status(200).json({
       success: true,

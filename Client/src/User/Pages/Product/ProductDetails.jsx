@@ -143,7 +143,7 @@ export default function ProductDetails() {
               <div className="lg:mt-1">
                 <p className="text-[12px] lg:text-sm lg:font-medium">
                   Tình trạng:{" "}
-                  <span className="text-[#51bb1a] ">
+                  <span className={`${products?.productStatus === "Hết hàng" ? "text-red-600" : "text-[#51bb1a]"}`}>
                     {products?.productStatus}
                   </span>
                 </p>
@@ -205,27 +205,44 @@ export default function ProductDetails() {
                           prevCount > 1 ? prevCount - 1 : 1
                         )
                       }
-                      className=" size-8 border p-2 text-black"
+                      className={`size-8 border p-2 text-black ${
+                        products?.productStock === 0 || products?.productStatus === "Hết hàng" ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                      }`}
+                      aria-disabled={products?.productStock === 0 || products?.productStatus === "Hết hàng"}
                     />
                     <input
                       type="text"
                       className="text-black w-16 border p-[4.5px] border-l-0 border-r-0 outline-none text-center"
                       value={count}
                       onChange={(e) => setCount(Number(e.target.value) || 1)}
+                      disabled={products?.productStock === 0 || products?.productStatus === "Hết hàng"}
                     />
                     <PlusIcon
                       onClick={() => setCount(count + 1)}
-                      className=" size-8 border p-2 text-black cursor-pointer"
+                      className={`size-8 border p-2 text-black ${
+                        products?.productStock === 0 || products?.productStatus === "Hết hàng" ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                      }`}
+                      aria-disabled={products?.productStock === 0 || products?.productStatus === "Hết hàng"}
                     />
                   </div>
                 </div>
-                <button className="bg-[#51bb1a] w-full cursor-pointer text-white text-sm p-2 mt-4 flex flex-col hover:opacity-90">
-                  <span className="uppercase">
-                    {" "}
-                    MUA NGAY VỚI GIÁ {formatCurrency(products?.productPrice)}đ
-                  </span>
-                  <span className="text-[12px]">Đặt mua giao hàng tận nơi</span>
-                </button>
+                {products?.productStock === 0 || products?.productStatus === "Hết hàng" ? (
+                  <button 
+                    className="bg-gray-400 w-full text-white text-sm p-2 mt-4 flex flex-col cursor-not-allowed"
+                    disabled
+                  >
+                    <span className="uppercase">HẾT HÀNG</span>
+                    <span className="text-[12px]">Vui lòng quay lại sau</span>
+                  </button>
+                ) : (
+                  <button className="bg-[#51bb1a] w-full cursor-pointer text-white text-sm p-2 mt-4 flex flex-col hover:opacity-90">
+                    <span className="uppercase">
+                      {" "}
+                      MUA NGAY VỚI GIÁ {formatCurrency(products?.productPrice)}đ
+                    </span>
+                    <span className="text-[12px]">Đặt mua giao hàng tận nơi</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

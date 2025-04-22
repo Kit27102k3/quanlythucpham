@@ -29,15 +29,20 @@ const ProductList = ({
               key={`${product._id}-${index}`}
               variants={itemVariants}
               onClick={() => handleClick(product)}
-              className="items-center justify-center bg-white rounded-md overflow-hidden shadow-lg hover:shadow-md transition-shadow duration-300"
+              className="items-center justify-center bg-white rounded-md overflow-hidden shadow-lg hover:shadow-md transition-shadow duration-300 relative"
             >
-              <div>
+              <div className="relative">
                 <img
                   src={`${product.productImages[0]}`}
                   alt={product.productName}
                   className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px]"
                   loading="lazy"
                 />
+                {(product.productStock === 0 || product.productStatus === "Hết hàng") && (
+                  <div className="absolute top-0 right-0 bg-red-600 text-white px-2 py-1 text-xs font-semibold">
+                    Hết hàng
+                  </div>
+                )}
               </div>
               <div className="flex flex-col mt-auto p-4 gap-2">
                 <p className="text-gray-400 text-[10px] lg:text-[14px]">
@@ -59,10 +64,16 @@ const ProductList = ({
                     <FontAwesomeIcon
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleAddToCart(product._id);
+                        if (product.productStock > 0 && product.productStatus !== "Hết hàng") {
+                          handleAddToCart(product._id);
+                        }
                       }}
                       icon={faCartShopping}
-                      className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5 mt-1 lg:text-[14px]"
+                      className={`p-2 rounded-full text-[16px] size-5 mt-1 lg:text-[14px] ${
+                        product.productStock === 0 || product.productStatus === "Hết hàng"
+                          ? "bg-gray-400 text-white cursor-not-allowed"
+                          : "bg-[#51aa1b] text-white cursor-pointer hover:bg-[#438e17]"
+                      }`}
                     />
                   </div>
                 ) : (
@@ -73,10 +84,16 @@ const ProductList = ({
                     <FontAwesomeIcon
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleAddToCart(product._id);
+                        if (product.productStock > 0 && product.productStatus !== "Hết hàng") {
+                          handleAddToCart(product._id);
+                        }
                       }}
                       icon={faCartShopping}
-                      className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5 mt-1 lg:text-[14px]"
+                      className={`p-2 rounded-full text-[16px] size-5 mt-1 lg:text-[14px] ${
+                        product.productStock === 0 || product.productStatus === "Hết hàng"
+                          ? "bg-gray-400 text-white cursor-not-allowed"
+                          : "bg-[#51aa1b] text-white cursor-pointer hover:bg-[#438e17]"
+                      }`}
                     />
                   </div>
                 )}
