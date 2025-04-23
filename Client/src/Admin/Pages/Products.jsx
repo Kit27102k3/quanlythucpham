@@ -116,172 +116,152 @@ const Products = () => {
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Quản Lý Sản Phẩm</h1>
-      <div className="grid grid-cols-[55%_25%_20%] lg:gap-2 mb-5">
-        <IconField iconPosition="left">
-          <InputIcon className="pi pi-search -mt-2"> </InputIcon>
-          <InputText
-            placeholder="Tìm kiếm theo tên sản phẩm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="border rounded w-full p-2 px-12"
+    <div className="p-2 md:p-4">
+      <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">Quản Lý Sản Phẩm</h1>
+      <div className="flex flex-col md:flex-row gap-2 mb-3 md:mb-5">
+        <div className="w-full md:w-1/2 lg:w-3/5">
+          <IconField iconPosition="left" className="w-full">
+            <InputIcon className="pi pi-search -mt-2"> </InputIcon>
+            <InputText
+              placeholder="Tìm kiếm theo tên sản phẩm"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="border rounded w-full p-2 px-12"
+            />
+          </IconField>
+        </div>
+        <div className="w-full md:w-1/4 lg:w-1/5">
+          <Dropdown
+            value={selectedProduct}
+            options={
+              Array.isArray(products)
+                ? products.map((product) => ({
+                    label: product?.productCode,
+                    value: product?._id,
+                  }))
+                : []
+            }
+            onChange={handleProductChange}
+            placeholder="Tất cả"
+            className="w-full"
+            pt={{
+              root: { className: "p-2" },
+              item: { className: "py-2 px-4" },
+              trigger: { className: "px-3" },
+            }}
           />
-        </IconField>
-        <Dropdown
-          value={selectedProduct}
-          options={
-            Array.isArray(products)
-              ? products.map((product) => ({
-                  label: product?.productCode,
-                  value: product?._id,
-                }))
-              : []
-          }
-          onChange={handleProductChange}
-          placeholder="Tất cả"
-          className="w-[200px] text-[10px]"
-          pt={{
-            root: { className: "p-2" },
-            item: { className: "py-2 px-4" },
-            trigger: { className: "px-3" },
-          }}
-        />
-
-        <Button
-          label="Thêm Sản Phẩm"
-          icon="pi pi-plus"
-          onClick={() => setVisible(true)}
-          className="bg-blue-500 text-white rounded text-[12px] w-[200px] p-2"
-        />
+        </div>
+        <div className="w-full md:w-1/4 lg:w-1/5">
+          <Button
+            label="Thêm Sản Phẩm"
+            icon="pi pi-plus"
+            onClick={() => setVisible(true)}
+            className="bg-blue-500 text-white rounded text-xs md:text-sm w-full p-2"
+          />
+        </div>
       </div>
 
-      <table className="w-full">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border border-gray-300 p-2 text-sm">Tên sản phẩm</th>
-            <th className="border border-gray-300 p-2 text-sm">Thương hiệu</th>
-            <th className="border border-gray-300 p-2 text-sm">Loại sản phẩm</th>
-            <th className="border border-gray-300 p-2 text-sm">Giá sản phẩm</th>
-            <th className="border border-gray-300 p-2 text-sm">Tình trạng</th>
-            <th className="border border-gray-300 p-2 text-sm">Giảm giá</th>
-            <th className="border border-gray-300 p-2 text-sm">Số lượng tồn kho</th>
-            <th className="border border-gray-300 p-2 text-sm">Mã Loại</th>
-            <th className="border border-gray-300 p-2 text-sm">Xuất xứ</th>
-            <th className="border border-gray-300 p-2 text-sm w-[120px]">Chức Năng</th>
-          </tr>
-        </thead>
-        <tbody>
-          {getCurrentPageProducts().map((product) => (
-            <tr key={product?._id} className="border-b">
-              <td className="border border-gray-300 p-2 text-[14px]">
-                {product?.productName}
-              </td>
-              <td className="border border-gray-300 p-2 text-[14px]">
-                {product?.productBrand}
-              </td>
-              <td className="border border-gray-300 p-2 text-[14px]">
-                {product?.productCategory}
-              </td>
-              <td className="border border-gray-300 p-2 text-[14px]">
-                {product?.productPrice}
-              </td>
-              <td className="border border-gray-300 p-2 text-[14px]">
-                {product?.productStatus}
-              </td>
-              <td className="border border-gray-300 p-2 text-[14px]">
-                {product?.productDiscount}
-              </td>
-              <td className="border border-gray-300 p-2 text-[14px]">
-                {product?.productStock}
-              </td>
-              <td className="border border-gray-300 p-2 text-[14px]">
-                {product?.productCode}
-              </td>
+      {/* Table container with horizontal scroll for mobile */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[800px]">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Tên sản phẩm</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Thương hiệu</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Loại sản phẩm</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Giá sản phẩm</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Tình trạng</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Giảm giá</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Số lượng tồn kho</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Mã Loại</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Xuất xứ</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm w-[100px] md:w-[120px]">Chức Năng</th>
+            </tr>
+          </thead>
+          <tbody>
+            {getCurrentPageProducts().map((product) => (
+              <tr key={product?._id} className="border-b">
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {product?.productName}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {product?.productBrand}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {product?.productCategory}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {product?.productPrice}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {product?.productStatus}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {product?.productDiscount}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {product?.productStock}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {product?.productCode}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {product?.productOrigin}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  <div className="flex justify-center space-x-1 md:space-x-2">
+                    <Button
+                      icon="pi pi-pencil"
+                      className="p-button-warning p-button-sm text-[10px] md:text-xs p-1 md:p-2"
+                      onClick={() => handleEditProduct(product)}
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      className="p-button-danger p-button-sm text-[10px] md:text-xs p-1 md:p-2"
+                      onClick={() => handleDeleteProduct(product?._id)}
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
-              <td className="border border-gray-300 p-2 text-[14px]">
-                {product?.productOrigin}
-              </td>
-              <td className="border border-gray-300 p-2 text-[14px]">
-                <Button
-                  label="Sửa"
-                  className="p-1 bg-blue-500 text-white rounded text-[12px] ml-2"
-                  onClick={() => handleEditProduct(product)}
-                />
-                <Button
-                  label="Xóa"
-                  className="p-1 bg-red-500 text-white rounded text-[12px] ml-2"
-                  onClick={() => handleDeleteProduct(product?._id)}
-                />
-              </td>
-            </tr>
-          ))}
-          {filteredProducts.length === 0 && (
-            <tr>
-              <td colSpan="11" className="text-center p-4 text-gray-500">
-                Không có sản phẩm nào
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-      
-      <div className="mt-6 flex flex-col items-center">
+      <div className="mt-4">
         <Paginator
           first={first}
           rows={rows}
           totalRecords={totalRecords}
-          rowsPerPageOptions={[10, 20, 30]}
           onPageChange={onPageChange}
           template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink"
-          className="border-0 shadow-sm"
-          pt={{
-            root: { className: 'bg-white rounded-lg p-2' },
-            firstPageButton: { className: 'border rounded-md p-2 hover:bg-blue-50 text-blue-600 mx-1' },
-            previousPageButton: { className: 'border rounded-md p-2 hover:bg-blue-50 text-blue-600 mx-1' },
-            nextPageButton: { className: 'border rounded-md p-2 hover:bg-blue-50 text-blue-600 mx-1' },
-            lastPageButton: { className: 'border rounded-md p-2 hover:bg-blue-50 text-blue-600 mx-1' },
-            pageButton: { className: 'border rounded-md p-2 hover:bg-blue-50 mx-1' },
-            currentPageReport: { className: 'text-sm text-gray-600 mx-2' }
-          }}
+          className="p-1 md:p-2 text-xs md:text-sm"
         />
-        <div className="text-sm text-gray-600 mt-3 mb-2">
-          Hiển thị <span className="font-medium text-blue-600">{Math.min(first + 1, totalRecords)}</span> - <span className="font-medium text-blue-600">{Math.min(first + rows, totalRecords)}</span> trên tổng số <span className="font-medium text-blue-600">{totalRecords}</span> sản phẩm
-        </div>
       </div>
 
       <Dialog
-        header="Thêm Sản Phẩm"
+        header="Thêm Sản Phẩm Mới"
         visible={visible}
-        style={{ width: "50vw" }}
         onHide={() => setVisible(false)}
-        headerClassName="p-4"
+        className="w-[95vw] md:w-[90vw] lg:w-[80vw] xl:w-[70vw]"
       >
         <AddProduct
-          setVisible={setVisible}
-          products={products}
-          setProducts={setProducts}
-          fetchProducts={fetchProducts}
-          onProductAdd={handleAddProduct}
+          onHide={() => setVisible(false)}
+          onAddSuccess={handleAddProduct}
         />
       </Dialog>
 
       <Dialog
         header="Chỉnh Sửa Sản Phẩm"
         visible={editVisible}
-        style={{ width: "50vw" }}
-        onHide={() => {
-          setEditVisible(false);
-          setEditingProduct(null);
-        }}
-        headerClassName="p-4"
+        onHide={() => setEditVisible(false)}
+        className="w-[95vw] md:w-[90vw] lg:w-[80vw] xl:w-[70vw]"
       >
         {editingProduct && (
           <EditProduct
             product={editingProduct}
-            setVisible={setEditVisible}
-            handleUpdateProduct={handleUpdateProduct}
-            setProducts={setProducts}
+            onHide={() => setEditVisible(false)}
+            onUpdateSuccess={handleUpdateProduct}
           />
         )}
       </Dialog>

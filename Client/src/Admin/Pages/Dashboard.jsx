@@ -68,16 +68,16 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 // Component ô hiển thị số liệu tổng quan
 const StatCard = ({ icon: Icon, title, value, bgColor }) => (
-  <div className={`${bgColor} p-5 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300`}>
+  <div className={`${bgColor} p-3 md:p-5 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300`}>
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-gray-700 text-sm font-medium mb-1">{title}</p>
-        <h3 className="text-2xl font-bold text-gray-800">{value}</h3>
+        <p className="text-gray-700 text-xs md:text-sm font-medium mb-1">{title}</p>
+        <h3 className="text-lg md:text-2xl font-bold text-gray-800">{value}</h3>
       </div>
-      <div className={`p-3 rounded-full ${bgColor === 'bg-blue-100' ? 'bg-blue-200' : 
+      <div className={`p-2 md:p-3 rounded-full ${bgColor === 'bg-blue-100' ? 'bg-blue-200' : 
                           bgColor === 'bg-green-100' ? 'bg-green-200' : 
                           bgColor === 'bg-yellow-100' ? 'bg-yellow-200' : 'bg-purple-200'}`}>
-        <Icon size={22} className={`${bgColor === 'bg-blue-100' ? 'text-blue-600' : 
+        <Icon size={18} className={`${bgColor === 'bg-blue-100' ? 'text-blue-600' : 
                                     bgColor === 'bg-green-100' ? 'text-green-600' : 
                                     bgColor === 'bg-yellow-100' ? 'text-yellow-600' : 'text-purple-600'}`} />
       </div>
@@ -94,15 +94,15 @@ const StatCard = ({ icon: Icon, title, value, bgColor }) => (
 // Component tiêu đề phần
 const SectionTitle = ({ title, icon: Icon }) => (
   <div className="flex items-center mb-4">
-    {Icon && <Icon size={20} className="text-indigo-600 mr-2" />}
-    <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+    {Icon && <Icon size={18} className="text-indigo-600 mr-2" />}
+    <h3 className="text-base md:text-lg font-semibold text-gray-800">{title}</h3>
   </div>
 );
 
 // Component nút chọn
 const TimeButton = ({ active, onClick, children }) => (
   <button
-    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+    className={`px-2 md:px-3 py-1 md:py-1.5 rounded-md text-xs md:text-sm font-medium transition-colors ${
       active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
     }`}
     onClick={onClick}
@@ -357,16 +357,16 @@ const Dashboard = () => {
       : [];
 
     return (
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-800">Tổng Quan</h2>
-          <div className="flex items-center text-sm text-gray-500">
+      <div className="p-3 md:p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2 md:mb-0">Tổng Quan</h2>
+          <div className="flex items-center text-xs md:text-sm text-gray-500">
             <span className="mr-2">Cập nhật gần nhất:</span>
             <span className="font-medium">{new Date().toLocaleString('vi-VN')}</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
           <StatCard 
             icon={TrendingUp} 
             title="Doanh Thu" 
@@ -393,11 +393,11 @@ const Dashboard = () => {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white shadow-md rounded-lg p-5 hover:shadow-lg transition-shadow duration-300">
-            <div className="flex justify-between items-center mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+          <div className="bg-white shadow-md rounded-lg p-3 md:p-5 hover:shadow-lg transition-shadow duration-300">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6">
               <SectionTitle title="Doanh Thu & Đơn Hàng" icon={BarChart2} />
-              <div className="flex gap-2">
+              <div className="flex gap-1 md:gap-2 mt-2 sm:mt-0">
                 <TimeButton 
                   active={timeRange === 'daily'} 
                   onClick={() => setTimeRange('daily')}
@@ -418,70 +418,72 @@ const Dashboard = () => {
                 </TimeButton>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={revenueData} margin={{ top: 10, right: 30, left: 20, bottom: 70 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-                <XAxis 
-                  dataKey="date" 
-                  tick={{ fill: '#6b7280', fontSize: 12 }} 
-                  tickLine={false}
-                  axisLine={{ stroke: '#e5e7eb' }}
-                  angle={-45}
-                  textAnchor="end"
-                  height={70}
-                />
-                <YAxis 
-                  yAxisId="left"
-                  tick={{ fill: '#6b7280', fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={{ stroke: '#e5e7eb' }}
-                  tickFormatter={(value) => 
-                    value >= 1000000 
-                      ? `${(value / 1000000).toFixed(1)}M` 
-                      : value >= 1000 
-                        ? `${(value / 1000).toFixed(0)}K` 
-                        : value
-                  }
-                />
-                <YAxis 
-                  yAxisId="right" 
-                  orientation="right" 
-                  tick={{ fill: '#6b7280', fontSize: 12 }}
-                  tickLine={false}
-                  axisLine={{ stroke: '#e5e7eb' }}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend 
-                  wrapperStyle={{ paddingTop: 10 }}
-                  iconType="circle"
-                  formatter={(value) => {
-                    let displayValue = value;
-                    if (value === "doanh_thu") displayValue = "Doanh Thu";
-                    if (value === "don_hang") displayValue = "Đơn Hàng";
-                    return <span className="text-sm font-medium text-gray-700">{displayValue}</span>;
-                  }} 
-                />
-                <Bar 
-                  yAxisId="left"
-                  dataKey="doanh_thu" 
-                  name="Doanh Thu" 
-                  fill="#6366f1" 
-                  radius={[4, 4, 0, 0]}
-                  barSize={30} 
-                />
-                <Bar 
-                  yAxisId="right"
-                  dataKey="don_hang" 
-                  name="Đơn Hàng" 
-                  fill="#10b981" 
-                  radius={[4, 4, 0, 0]}
-                  barSize={30} 
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="h-[250px] md:h-[320px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={revenueData} margin={{ top: 10, right: 30, left: 0, bottom: 50 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                  <XAxis 
+                    dataKey="date" 
+                    tick={{ fill: '#6b7280', fontSize: 10 }} 
+                    tickLine={false}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    yAxisId="left"
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    tickFormatter={(value) => 
+                      value >= 1000000 
+                        ? `${(value / 1000000).toFixed(1)}M` 
+                        : value >= 1000 
+                          ? `${(value / 1000).toFixed(0)}K` 
+                          : value
+                    }
+                  />
+                  <YAxis 
+                    yAxisId="right" 
+                    orientation="right" 
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend 
+                    wrapperStyle={{ paddingTop: 10 }}
+                    iconType="circle"
+                    formatter={(value) => {
+                      let displayValue = value;
+                      if (value === "doanh_thu") displayValue = "Doanh Thu";
+                      if (value === "don_hang") displayValue = "Đơn Hàng";
+                      return <span className="text-sm font-medium text-gray-700">{displayValue}</span>;
+                    }} 
+                  />
+                  <Bar 
+                    yAxisId="left"
+                    dataKey="doanh_thu" 
+                    name="Doanh Thu" 
+                    fill="#6366f1" 
+                    radius={[4, 4, 0, 0]}
+                    barSize={30} 
+                  />
+                  <Bar 
+                    yAxisId="right"
+                    dataKey="don_hang" 
+                    name="Đơn Hàng" 
+                    fill="#10b981" 
+                    radius={[4, 4, 0, 0]}
+                    barSize={30} 
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
-          <div className="bg-white shadow-md rounded-lg p-5 hover:shadow-lg transition-shadow duration-300">
+          <div className="bg-white shadow-md rounded-lg p-3 md:p-5 hover:shadow-lg transition-shadow duration-300">
             <SectionTitle title="Phân Loại Sản Phẩm" icon={Box} />
             {categoryData && categoryData.length > 0 ? (
               <ResponsiveContainer width="100%" height={320}>
@@ -552,8 +554,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white shadow-md rounded-lg p-5 hover:shadow-lg transition-shadow duration-300">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
+          <div className="bg-white shadow-md rounded-lg p-3 md:p-5 hover:shadow-lg transition-shadow duration-300">
             <SectionTitle title="Top 5 Sản Phẩm Bán Chạy" icon={Box} />
             {topProducts && topProducts.length > 0 ? (
               <ResponsiveContainer width="100%" height={320}>
@@ -619,7 +621,7 @@ const Dashboard = () => {
             )}
           </div>
 
-          <div className="bg-white shadow-md rounded-lg p-5 hover:shadow-lg transition-shadow duration-300">
+          <div className="bg-white shadow-md rounded-lg p-3 md:p-5 hover:shadow-lg transition-shadow duration-300">
             <SectionTitle title="Trạng Thái Đơn Hàng" icon={ShoppingCart} />
             {orderStatusData.length > 0 ? (
               <ResponsiveContainer width="100%" height={320}>
@@ -697,8 +699,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white shadow-md rounded-lg p-5 hover:shadow-lg transition-shadow duration-300">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+          <div className="bg-white shadow-md rounded-lg p-3 md:p-5 hover:shadow-lg transition-shadow duration-300">
             <SectionTitle title="Đơn Hàng Đã Giao vs Đã Hủy" />
             {orderComparisonData && orderComparisonData.length > 0 ? (
               <ResponsiveContainer width="100%" height={320}>

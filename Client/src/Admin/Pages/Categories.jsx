@@ -156,179 +156,206 @@ const Categories = () => {
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Danh Mục Sản Phẩm</h1>
-      <div className="mb-4 lg:grid lg:grid-cols-[25%_55%_20%] lg:gap-2">
-        <div className="mb-2 flex gap-3">
-          <IconField iconPosition="left">
+    <div className="p-2 md:p-4">
+      <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">Danh Mục Sản Phẩm</h1>
+      <div className="flex flex-col md:flex-row gap-2 mb-3 md:mb-4">
+        <div className="w-full md:w-1/4">
+          <IconField iconPosition="left" className="w-full">
             <InputIcon className="pi pi-search -mt-2"> </InputIcon>
             <InputText
               value={searchCode}
               onChange={(e) => setSearchCode(e.target.value)}
               placeholder="Tìm theo mã..."
-              className="border p-3 w-full rounded px-10 text-[12px]"
+              className="border p-2 md:p-3 w-full rounded px-10 text-xs md:text-sm"
             />
           </IconField>
         </div>
-        <div className="mb-2 flex gap-3">
-          <IconField iconPosition="left">
+        <div className="w-full md:w-1/2">
+          <IconField iconPosition="left" className="w-full">
             <InputIcon className="pi pi-search -mt-2"> </InputIcon>
             <InputText
               value={searchName}
               onChange={(e) => setSearchName(e.target.value)}
               placeholder="Tìm theo tên sản phẩm..."
-              className="border p-3 rounded px-10 text-[12px] w-[500px]"
+              className="border p-2 md:p-3 rounded px-10 text-xs md:text-sm w-full"
             />
           </IconField>
         </div>
-        <div className="mb-2 flex gap-3">
+        <div className="w-full md:w-1/4">
           <Button
             label="Thêm Danh Mục"
             icon="pi pi-plus"
             onClick={handleOpenAddDialog}
-            className="p-3 bg-blue-500 text-white rounded text-[12px] gap-2"
-            style={{
-              fontSize: "12px",
-            }}
+            className="p-2 md:p-3 bg-blue-500 text-white rounded text-xs md:text-sm w-full"
           />
         </div>
       </div>
 
-      <table className="w-full border-collapse border border-gray-300">
-        <thead>
-          <tr className="bg-gray-200">
-            <th className="border border-gray-300 p-2">Mã Loại</th>
-            <th className="border border-gray-300 p-2">Tên Loại</th>
-            <th className="border border-gray-300 p-2 w-[120px]">Chức Năng</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCategories.map((category) => (
-            <tr key={category._id} className="hover:bg-gray-100">
-              <td className="border border-gray-300 p-2">
-                {category.codeCategory}
-              </td>
-              <td className="border border-gray-300 p-2">
-                {category.nameCategory}
-              </td>
-              <td className="border border-gray-300 p-2 flex items-center gap-4 w-[120px] justify-center">
-                <Pencil1Icon
-                  className="size-6 text-red-500 cursor-pointer p-1"
-                  onClick={() => handleEditClick(category)}
-                />
-                <TrashIcon
-                  className="size-6 cursor-pointer p-1"
-                  onClick={() => handleDeleteClick(category._id)}
-                />
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px] border-collapse border border-gray-300">
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Mã Loại</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Tên Loại</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm w-[100px] md:w-[120px]">Chức Năng</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filteredCategories.map((category) => (
+              <tr key={category._id} className="hover:bg-gray-50">
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {category.codeCategory}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  {category.nameCategory}
+                </td>
+                <td className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                  <div className="flex justify-center space-x-1 md:space-x-2">
+                    <Button
+                      icon="pi pi-pencil"
+                      className="p-button-warning p-button-sm text-[10px] md:text-xs p-1 md:p-2"
+                      onClick={() => handleEditClick(category)}
+                    />
+                    <Button
+                      icon="pi pi-trash"
+                      className="p-button-danger p-button-sm text-[10px] md:text-xs p-1 md:p-2"
+                      onClick={() => handleDeleteClick(category._id)}
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filteredCategories.length === 0 && (
+              <tr>
+                <td colSpan="3" className="text-center p-4 text-xs md:text-sm text-gray-500">
+                  Không có danh mục nào
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       <Dialog
         header="Thêm Danh Mục"
         visible={visible}
-        style={{ width: "30vw" }}
         onHide={() => setVisible(false)}
-        headerClassName="p-4"
+        className="w-[90vw] sm:w-[80vw] md:w-[60vw] lg:w-[40vw]"
       >
-        <div className="p-4 card flex flex-col justify-content-center mt-2">
-          <div className="flex flex-col gap-8 mb-5">
-            <div className="border p-3 rounded bg-gray-50 text-sm">
-              <p className="font-medium text-gray-700">
-                Mã loại:{" "}
-                <span className="font-bold text-blue-600">
-                  {newCategory.codeCategory}
-                </span>
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Mã loại được tạo tự động
-              </p>
-            </div>
+        <div className="p-2 md:p-4">
+          <div className="mb-3 md:mb-4">
             <FloatLabel>
               <InputText
-                className="border p-2 rounded w-full"
+                id="codeCategory"
+                name="codeCategory"
+                value={newCategory.codeCategory}
+                onChange={handleInputChange}
+                className="w-full p-2 md:p-3 text-xs md:text-sm"
+                readOnly
+              />
+              <label htmlFor="codeCategory" className="text-xs md:text-sm">Mã Danh Mục</label>
+            </FloatLabel>
+          </div>
+          <div className="mb-3 md:mb-4">
+            <FloatLabel>
+              <InputText
                 id="nameCategory"
                 name="nameCategory"
                 value={newCategory.nameCategory}
                 onChange={handleInputChange}
+                className="w-full p-2 md:p-3 text-xs md:text-sm"
               />
-              <label htmlFor="nameCategory" className="text-sm -mt-3">
-                Tên loại <span className="text-red-500">*</span>
-              </label>
+              <label htmlFor="nameCategory" className="text-xs md:text-sm">Tên Danh Mục</label>
             </FloatLabel>
           </div>
-          <Button
-            label="Thêm"
-            onClick={handleAddCategory}
-            className="p-3 bg-blue-500 text-white rounded text-[12px] gap-2"
-          />
+          <div className="flex justify-end gap-2">
+            <Button
+              label="Hủy"
+              icon="pi pi-times"
+              onClick={() => setVisible(false)}
+              className="p-button-text text-xs md:text-sm"
+            />
+            <Button
+              label="Lưu"
+              icon="pi pi-check"
+              onClick={handleAddCategory}
+              className="p-button-success text-xs md:text-sm"
+            />
+          </div>
         </div>
       </Dialog>
 
       <Dialog
         header="Chỉnh Sửa Danh Mục"
         visible={editVisible}
-        style={{ width: "30vw" }}
         onHide={() => setEditVisible(false)}
-        headerClassName="p-4"
+        className="w-[90vw] sm:w-[80vw] md:w-[60vw] lg:w-[40vw]"
       >
-        <div className="p-4 card flex flex-col justify-content-center mt-2">
-          <div className="flex flex-col gap-8 mb-5">
-            <div className="border p-3 rounded bg-gray-50 text-sm">
-              <p className="font-medium text-gray-700">
-                Mã loại:{" "}
-                <span className="font-bold text-blue-600">
-                  {editCategory?.codeCategory}
-                </span>
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                Mã loại không thể chỉnh sửa
-              </p>
+        {editCategory && (
+          <div className="p-2 md:p-4">
+            <div className="mb-3 md:mb-4">
+              <FloatLabel>
+                <InputText
+                  id="codeCategory"
+                  name="codeCategory"
+                  value={editCategory.codeCategory}
+                  onChange={handleInputChange}
+                  className="w-full p-2 md:p-3 text-xs md:text-sm"
+                  readOnly
+                />
+                <label htmlFor="codeCategory" className="text-xs md:text-sm">Mã Danh Mục</label>
+              </FloatLabel>
             </div>
-            <FloatLabel>
-              <InputText
-                className="border p-2 rounded w-full"
-                id="nameCategory"
-                name="nameCategory"
-                value={editCategory?.nameCategory || ""}
-                onChange={handleInputChange}
+            <div className="mb-3 md:mb-4">
+              <FloatLabel>
+                <InputText
+                  id="nameCategory"
+                  name="nameCategory"
+                  value={editCategory.nameCategory}
+                  onChange={handleInputChange}
+                  className="w-full p-2 md:p-3 text-xs md:text-sm"
+                />
+                <label htmlFor="nameCategory" className="text-xs md:text-sm">Tên Danh Mục</label>
+              </FloatLabel>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                label="Hủy"
+                icon="pi pi-times"
+                onClick={() => setEditVisible(false)}
+                className="p-button-text text-xs md:text-sm"
               />
-              <label htmlFor="nameCategory" className="text-sm -mt-3">
-                Tên loại <span className="text-red-500">*</span>
-              </label>
-            </FloatLabel>
+              <Button
+                label="Lưu"
+                icon="pi pi-check"
+                onClick={handleUpdateCategory}
+                className="p-button-success text-xs md:text-sm"
+              />
+            </div>
           </div>
-          <Button
-            label="Cập nhật"
-            onClick={handleUpdateCategory}
-            className="p-3 bg-blue-500 text-white rounded text-[12px] gap-2"
-          />
-        </div>
+        )}
       </Dialog>
 
       <Dialog
         header="Xác Nhận Xóa"
         visible={deleteVisible}
-        style={{ width: "25vw" }}
         onHide={() => setDeleteVisible(false)}
-        headerClassName="p-4"
+        className="w-[90vw] sm:w-[60vw] md:w-[40vw] lg:w-[30vw]"
       >
-        <div className="px-4 mb-4 card flex flex-col justify-content-center ">
-          <p className="mb-4 text-sm">
-            Bạn có chắc chắn muốn xóa danh mục này không?
-          </p>
-          <div className="flex gap-2">
-            <Button
-              label="Có"
-              onClick={confirmDelete}
-              className="p-3 bg-green-500 text-white rounded text-[12px] gap-2 w-16"
-            />
+        <div className="p-2 md:p-4">
+          <p className="text-xs md:text-sm mb-4">Bạn có chắc chắn muốn xóa danh mục này?</p>
+          <div className="flex justify-end gap-2">
             <Button
               label="Không"
+              icon="pi pi-times"
               onClick={() => setDeleteVisible(false)}
-              className="p-3 bg-red-500 text-white rounded text-[12px] gap-2 w-16"
+              className="p-button-text text-xs md:text-sm"
+            />
+            <Button
+              label="Có"
+              icon="pi pi-check"
+              onClick={confirmDelete}
+              className="p-button-danger text-xs md:text-sm"
             />
           </div>
         </div>
