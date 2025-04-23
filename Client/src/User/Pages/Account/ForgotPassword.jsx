@@ -1,9 +1,9 @@
-import React, { useRef, useState } from "react";
+/* eslint-disable react/jsx-no-target-blank */
+import { useRef, useState } from "react";
 import { Stepper } from "primereact/stepper";
 import { StepperPanel } from "primereact/stepperpanel";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
-import { InputOtp } from "primereact/inputotp";
 import { Toast } from "primereact/toast";
 import { classNames } from "primereact/utils";
 import authApi from "../../../api/authApi";
@@ -23,6 +23,7 @@ export default function ForgotPassword() {
     email: "",
     password: "",
     confirm: "",
+    otp: "",
   });
 
   const [errors, setErrors] = useState({
@@ -89,21 +90,23 @@ export default function ForgotPassword() {
   };
 
   const handleSubmitStep2 = async () => {
-    if (!token || token.length < 6) {
+    if (!formData.otp || formData.otp.length !== 6) {
       setErrors((prev) => ({ ...prev, otp: "Mã OTP phải có 6 chữ số" }));
       return;
     }
     setLoading((prev) => ({ ...prev, step2: true }));
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
+      setToken(formData.otp); // Lưu token OTP để sử dụng ở bước 3
       showToast("success", "Thành công", "Xác thực OTP thành công");
       handleNext();
-    } catch (error) {
-      showToast("error", "Lỗi", "Mã OTP không chính xác");
+    } catch (err) {
+      showToast("error", "Lỗi", err?.message || "Mã OTP không chính xác");
     } finally {
       setLoading((prev) => ({ ...prev, step2: false }));
     }
   };
+  
   const handleSubmitStep3 = async () => {
     if (!formData.password) {
       setErrors((prev) => ({
@@ -124,15 +127,13 @@ export default function ForgotPassword() {
       return;
     }
 
-    console.log("Token OTP gửi lên API:", token); // Debug xem token có bị null không
-
     setLoading((prev) => ({ ...prev, step3: true }));
 
     try {
       const response = await authApi.resetPassword({
         email: formData.email,
-        newPassword: password,
-        otp, // Gửi OTP đã xác thực từ bước trước
+        newPassword: formData.password,
+        otp: token,
       });
 
       showToast(
@@ -142,7 +143,7 @@ export default function ForgotPassword() {
       );
 
       // Reset form sau khi đổi mật khẩu thành công
-      setFormData({ email: "", password: "", confirm: "" });
+      setFormData({ email: "", password: "", confirm: "", otp: "" });
       setToken("");
     } catch (error) {
       console.error("Lỗi đổi mật khẩu:", error.response?.data);
@@ -157,16 +158,24 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="p-6 flex justify-content-center">
-      <div style={{ maxWidth: "40rem", width: "100%" }}>
+    <div className="p-3 md:p-6 flex justify-content-center">
+      <div className="w-full max-w-full md:max-w-40rem">
         <Toast ref={toast} position="top-center" />
+        <div className="text-center mb-4 mt-3">
+          <h2 className="text-xl md:text-2xl font-bold">QUÊN MẬT KHẨU</h2>
+        </div>
         <Stepper
           ref={stepperRef}
           orientation="horizontal"
-          className="text-black mb-6 "
+          className="text-black mb-4"
+          style={{ fontSize: '0.9rem' }}
+          pt={{
+            root: { className: 'responsive-stepper' },
+            step: { className: 'responsive-step' }
+          }}
         >
           <StepperPanel header="Xác thực email">
-            <div className="border-dashed border-round surface-ground font-medium p-5 w-full">
+            <div className="border-dashed border-round surface-ground font-medium p-3 md:p-5 w-full">
               <div className="field mb-3">
                 <label htmlFor="email" className="font-bold block mb-2">
                   Email:
@@ -190,47 +199,45 @@ export default function ForgotPassword() {
                 )}
               </div>
             </div>
-            <div className="flex pt-4 justify-end w-full">
+            <div className="flex pt-4 justify-content-end w-full">
               <Button
                 label="Tiếp theo"
                 icon="pi pi-arrow-right"
                 iconPos="right"
                 loading={loading.step1}
-                className="h-10 w-28 bg-blue-500 text-white mr-4 px-2 text-sm size-8"
+                className="h-10 w-full md:w-28 bg-blue-500 text-white px-2 text-sm"
                 onClick={handleSubmitStep1}
               />
             </div>
           </StepperPanel>
 
           <StepperPanel header="Xác thực OTP">
-            <div className="border-dashed border-round surface-ground font-medium p-5 w-full">
-              <h2 className="mb-4">Nhập mã OTP đã gửi đến email của bạn</h2>
-              <div className="flex justify-content-center mb-3">
-                <InputOtp
-                  value={token}
-                  onChange={(e) => {
-                    setToken(e.value);
-                    if (errors.otp)
-                      setErrors((prev) => ({ ...prev, otp: false }));
-                  }}
-                  length={6}
-                  integerOnly
-                  inputClassName={classNames("w-3rem h-3rem mx-1 text-xl", {
-                    "border-red-500": errors.otp,
+            <div className="border-dashed border-round surface-ground font-medium p-3 md:p-5 w-full">
+              <h3 className="mb-4 text-center text-sm md:text-base">Nhập mã OTP đã gửi đến email của bạn</h3>
+              <div className="field mb-3">
+                <InputText
+                  id="otp"
+                  name="otp"
+                  keyfilter="int"
+                  maxLength={6}
+                  value={formData.otp}
+                  onChange={handleChange}
+                  placeholder="Nhập mã 6 số"
+                  className={classNames("w-full p-3 border-round border text-center text-lg", {
+                    "p-invalid": errors.otp,
                   })}
-                  inputStyle={{
-                    border: errors.otp
-                      ? "1px solid #ff0000"
-                      : "1px solid #ced4da",
-                    borderRadius: "6px",
+                  style={{
+                    backgroundColor: "white",
+                    color: "black",
+                    letterSpacing: "0.5rem"
                   }}
                 />
+                {errors.otp && (
+                  <small className="p-error block text-center mt-1">
+                    {errors.otp}
+                  </small>
+                )}
               </div>
-              {errors.otp && (
-                <small className="p-error block text-center">
-                  {errors.otp}
-                </small>
-              )}
               <div className="text-center mt-3">
                 <Button
                   label="Gửi lại mã OTP"
@@ -242,11 +249,11 @@ export default function ForgotPassword() {
                 />
               </div>
             </div>
-            <div className="flex pt-4 justify-between w-full">
+            <div className="flex pt-4 justify-content-between w-full flex-column md:flex-row gap-2">
               <Button
                 label="Quay lại"
                 severity="secondary"
-                className="h-10 w-28 text-black border-1 px-2 text-sm"
+                className="h-10 w-full md:w-28 text-black border-1 px-2 text-sm"
                 icon="pi pi-arrow-left"
                 onClick={handleBack}
               />
@@ -255,14 +262,14 @@ export default function ForgotPassword() {
                 icon="pi pi-arrow-right"
                 iconPos="right"
                 loading={loading.step2}
-                className="h-10 w-28 bg-blue-500 text-white px-2 text-sm"
+                className="h-10 w-full md:w-28 bg-blue-500 text-white px-2 text-sm"
                 onClick={handleSubmitStep2}
               />
             </div>
           </StepperPanel>
 
           <StepperPanel header="Đặt mật khẩu mới">
-            <div className="border-dashed border-round surface-ground font-medium p-5 w-full">
+            <div className="border-dashed border-round surface-ground font-medium p-3 md:p-5 w-full">
               <div className="field mb-4">
                 <label htmlFor="password" className="font-bold block mb-2">
                   Mật khẩu mới:
@@ -312,11 +319,11 @@ export default function ForgotPassword() {
                 )}
               </div>
             </div>
-            <div className="flex pt-4 justify-between w-full">
+            <div className="flex pt-4 justify-content-between w-full flex-column md:flex-row gap-2">
               <Button
                 label="Quay lại"
                 severity="secondary"
-                className="h-10 w-28 text-black border-1 px-2 text-sm"
+                className="h-10 w-full md:w-28 text-black border-1 px-2 text-sm"
                 icon="pi pi-arrow-left"
                 onClick={handleBack}
               />
@@ -324,7 +331,7 @@ export default function ForgotPassword() {
                 label="Xác nhận"
                 icon="pi pi-check"
                 loading={loading.step3}
-                className="h-10 w-28 bg-[#51bb1a] text-white px-2 text-sm size-8"
+                className="h-10 w-full md:w-28 bg-[#51bb1a] text-white px-2 text-sm"
                 onClick={handleSubmitStep3}
               />
             </div>

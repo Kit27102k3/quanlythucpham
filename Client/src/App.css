@@ -79,3 +79,62 @@
 .p-paginator .p-paginator-icon {
   color: #000000 !important; /* Màu icon đen */
 }
+
+/* Responsive Stepper */
+.responsive-stepper .p-stepper-header {
+  flex-wrap: wrap;
+}
+
+@media screen and (max-width: 768px) {
+  .responsive-stepper .p-stepper-header {
+    margin-bottom: 1rem;
+  }
+  
+  .responsive-step .p-stepper-step-title {
+    font-size: 0.8rem;
+  }
+  
+  .responsive-stepper .p-stepper-step {
+    flex: 1;
+    min-width: 90px;
+  }
+  
+  .responsive-stepper .p-stepper-step-number {
+    width: 25px !important;
+    height: 25px !important;
+    font-size: 0.9rem !important;
+  }
+}
+
+/* OTP Input Styles */
+.otp-input {
+  letter-spacing: 0.5rem;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+/* Mobile specific styles */
+@media screen and (max-width: 576px) {
+  .otp-input {
+    font-size: 1rem;
+  }
+  
+  .form-container {
+    padding: 1rem;
+  }
+  
+  .form-field {
+    margin-bottom: 1rem;
+  }
+}
+
+/* Button styles */
+.responsive-button {
+  width: 100%;
+}
+
+@media screen and (min-width: 768px) {
+  .responsive-button {
+    width: 7rem;
+  }
+}
