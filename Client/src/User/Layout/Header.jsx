@@ -1,9 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import {
   EnterIcon,
   PersonIcon,
@@ -234,7 +232,7 @@ const Header = () => {
         <h3 className="text-sm text-white text-center font-medium lg:text-left">
           Nông Trại Hữu Cơ Cung Cấp Thực Phẩm Sạch
         </h3>
-        <div className="flex lg:px-7 items-center ">
+        <div className="flex justify-center mt-2 lg:px-7 items-center ">
           {isLoggedIn ? (
             <a
               href="/tai-khoan"

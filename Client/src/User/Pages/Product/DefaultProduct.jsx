@@ -79,7 +79,7 @@ function ProductLayout({ showPromotional = false }) {
 
   return (
     <div >
-      <div className="flex items-center mt-2 gap-1  text-sm lg:px-[120px] ">
+      <div className="flex px-4 items-center mt-2 gap-1  text-sm lg:px-[120px] ">
         <a href="/" className="hover:text-[#51bb1a]">
           Trang chủ
         </a>
@@ -93,6 +93,7 @@ function ProductLayout({ showPromotional = false }) {
             <p className="font-medium">{originalCategory}</p>
           </>
         )}
+        <ChevronRightIcon />
         {!originalCategory && (
           <p className="font-medium ">{showPromotional ? "Sản phẩm khuyến mãi" : "Tất cả sản phẩm"}</p>
         )}
