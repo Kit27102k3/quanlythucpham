@@ -1,5 +1,4 @@
 import express from "express";
-import multer from "multer";
 import {
   getAllTips,
   getTipById,
@@ -12,7 +11,6 @@ import {
 } from "../Controller/tipsController.js";
 
 const router = express.Router();
-const upload = multer({ dest: "uploads/" });
 
 // Lấy tất cả mẹo hay
 router.get("/tips", getAllTips);
@@ -27,10 +25,10 @@ router.get("/tips/category/:category", getTipsByCategory);
 router.get("/tips/featured", getFeaturedTips);
 
 // Tạo mẹo hay mới
-router.post("/tips", upload.single("image"), createTip);
+router.post("/tips", createTip);
 
 // Cập nhật mẹo hay
-router.put("/tips/:id", upload.single("image"), updateTip);
+router.put("/tips/:id", updateTip);
 
 // Xóa mẹo hay
 router.delete("/tips/:id", deleteTip);
