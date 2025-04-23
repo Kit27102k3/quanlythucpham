@@ -10,8 +10,7 @@ const PRECACHE_URLS = [
   '/src/main.jsx',
   '/src/App.css',
   '/src/index.css',
-  '/src/assets/Logo.png',
-  '/src/assets/slide.png'
+  '/Logo.png'
 ];
 
 // Cài đặt Service Worker
@@ -21,6 +20,9 @@ self.addEventListener('install', (event) => {
       .then((cache) => {
         console.log('Opened cache');
         return cache.addAll(PRECACHE_URLS);
+      })
+      .catch((error) => {
+        console.error('Cache addAll error:', error);
       })
       .then(() => self.skipWaiting())
   );
@@ -70,7 +72,7 @@ self.addEventListener('fetch', (event) => {
           .catch(() => {
             // Nếu request là về hình ảnh và không có kết nối, trả về hình ảnh placeholder
             if (event.request.destination === 'image') {
-              return caches.match('/src/assets/image-placeholder.png');
+              return new Response();
             }
           });
           
@@ -84,8 +86,8 @@ self.addEventListener('push', (event) => {
   const data = event.data.json();
   const options = {
     body: data.body,
-    icon: '/src/assets/Logo.png',
-    badge: '/src/assets/Logo.png',
+    icon: '/Logo.png',
+    badge: '/Logo.png',
     vibrate: [100, 50, 100],
     data: {
       url: data.url || '/'

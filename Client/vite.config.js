@@ -59,6 +59,9 @@ export default defineConfig({
       },
       "*.mjs": {
         "Content-Type": "application/javascript; charset=utf-8"
+      },
+      "*.css": {
+        "Content-Type": "text/css; charset=utf-8"
       }
     },
   },
@@ -96,52 +99,12 @@ export default defineConfig({
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom')) {
-              return 'vendor-react';
-            }
-            if (id.includes('primereact')) {
-              return 'vendor-primereact';
-            }
-            if (id.includes('lucide-react') || id.includes('@radix-ui')) {
-              return 'vendor-icons';
-            }
-            if (id.includes('axios') || id.includes('react-router-dom')) {
-              return 'vendor-core';
-            }
-            if (id.includes('framer-motion')) {
-              return 'vendor-animation';
-            }
-            if (id.includes('tailwindcss') || id.includes('postcss')) {
-              return 'vendor-styles';
-            }
-            return 'vendor-other';
-          }
-          if (id.includes('src/User/component') || id.includes('src/Admin/component')) {
-            if (id.includes('Chatbot') || id.includes('ChatBot')) {
-              return 'components-chat';
-            }
-            if (id.includes('Product') || id.includes('product')) {
-              return 'components-product';
-            }
-            if (id.includes('Cart') || id.includes('cart')) {
-              return 'components-cart';
-            }
-            return 'components-other';
-          }
-          if (id.includes('src/User/Pages') || id.includes('src/Admin/Pages')) {
-            if (id.includes('Product') || id.includes('product')) {
-              return 'pages-product';
-            }
-            if (id.includes('Admin') || id.includes('admin')) {
-              return 'pages-admin';
-            }
-            if (id.includes('Cart') || id.includes('cart')) {
-              return 'pages-cart';
-            }
-            return 'pages-other';
-          }
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-primereact': ['primereact'],
+          'vendor-ui': ['@radix-ui/themes', 'lucide-react'],
+          'vendor-core': ['axios'],
+          'vendor-styles': ['tailwindcss', 'postcss']
         }
       }
     }
