@@ -38,7 +38,7 @@
     },
     {
       "name": "Giỏ hàng",
-      "short_name": "Cart",
+      "short_name": "Cart", 
       "description": "Xem giỏ hàng của bạn",
       "url": "/gio-hang",
       "icons": [{ "src": "/Logo.png", "sizes": "192x192" }]

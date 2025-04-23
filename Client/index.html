@@ -71,6 +71,16 @@
     ></script>
     
     <script>
+      // Unregister any existing service workers
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for(let registration of registrations) {
+            registration.unregister();
+            console.log('ServiceWorker unregistered');
+          }
+        });
+      }
+      
       // Cloudinary widget function
       function openCloudinaryWidget() {
         if (typeof cloudinary === 'undefined') return;

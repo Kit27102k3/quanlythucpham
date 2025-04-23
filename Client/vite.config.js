@@ -85,11 +85,12 @@ export default defineConfig({
       '@radix-ui/themes',
       'react-toastify'
     ],
-    exclude: ['framer-motion'],
+    exclude: [],
     esbuildOptions: {
       define: {
         global: 'globalThis'
-      }
+      },
+      target: 'es2020'
     }
   },
   build: {
@@ -97,15 +98,23 @@ export default defineConfig({
       transformMixedEsModules: true,
     },
     chunkSizeWarningLimit: 2000,
+    target: 'es2020',
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: false,
+        pure_funcs: ['console.log']
+      }
+    },
     rollupOptions: {
       output: {
+        inlineDynamicImports: false,
         manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-primereact': ['primereact'],
-          'vendor-ui': ['@radix-ui/themes', 'lucide-react'],
-          'vendor-core': ['axios'],
-          'vendor-styles': ['tailwindcss', 'postcss']
-        }
+          'vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui': ['primereact', '@radix-ui/themes'],
+          'utils': ['axios']
+        },
+        interop: 'auto'
       }
     }
   }

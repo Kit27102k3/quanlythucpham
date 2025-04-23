@@ -1,28 +1,44 @@
 {
   "routes": [
-    { "src": "/Logo.png", "dest": "/Logo.png" },
-    { "src": "/(.*)\\.css", "headers": { "content-type": "text/css" } },
-    { "src": "/(.*)\\.js", "headers": { "content-type": "application/javascript" } },
-    { "src": "/(.*)\\.json", "headers": { "content-type": "application/json" } },
-    { "src": "/(.*)\\.png", "headers": { "content-type": "image/png" } },
-    { "src": "/(.*)\\.jpg", "headers": { "content-type": "image/jpeg" } },
-    { "src": "/(.*)\\.svg", "headers": { "content-type": "image/svg+xml" } },
+    {
+      "src": "/assets/(.*)",
+      "headers": { "cache-control": "public, max-age=31536000, immutable" },
+      "dest": "/assets/$1"
+    },
+    { 
+      "src": "/(.*)\\.js", 
+      "headers": { "content-type": "application/javascript; charset=utf-8" } 
+    },
+    { 
+      "src": "/(.*)\\.css", 
+      "headers": { "content-type": "text/css; charset=utf-8" } 
+    },
+    { 
+      "src": "/(.*)\\.png", 
+      "headers": { "content-type": "image/png" } 
+    },
+    { 
+      "src": "/(.*)\\.jpg", 
+      "headers": { "content-type": "image/jpeg" } 
+    },
+    { 
+      "src": "/(.*)\\.svg", 
+      "headers": { "content-type": "image/svg+xml" } 
+    },
+    { 
+      "src": "/(.*)\\.json", 
+      "headers": { "content-type": "application/json" } 
+    },
+    { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
-  ],
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/(.*)\\.(js|css|jpg|jpeg|png|gif|ico|svg|woff2|ttf)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" }
       ]
     }
   ]
