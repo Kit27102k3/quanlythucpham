@@ -49,6 +49,7 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isFirstOpen, setIsFirstOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const [conversationContext, setConversationContext] = useState({
     lastIntent: null,
     messageHistory: []
@@ -57,6 +58,24 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
   const userId = localStorage.getItem("userId");
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
+
+  // Kiểm tra thiết bị di động
+  useEffect(() => {
+    const checkIfMobile = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 768);
+    };
+    
+    // Kiểm tra ban đầu
+    checkIfMobile();
+    
+    // Thêm event listener để kiểm tra khi thay đổi kích thước màn hình
+    window.addEventListener('resize', checkIfMobile);
+    
+    return () => {
+      window.removeEventListener('resize', checkIfMobile);
+    };
+  }, []);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -365,19 +384,19 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
   }, [getProductImageUrl, handleProductClick, handleSuggestedQuestion, generalOptions]);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className={`fixed z-50 ${isMobile ? 'bottom-2 right-2' : 'bottom-6 right-6'}`}>
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
           className="bg-green-500 text-white p-4 cursor-pointer rounded-full shadow-xl hover:bg-green-600 transition-all duration-300 animate-bounce"
           aria-label="Mở chat"
         >
-          <MessageCircle size={24} />
+          <MessageCircle size={isMobile ? 20 : 24} />
         </button>
       )}
 
       {isOpen && (
-        <div className="w-96 bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col">
+        <div className={`${isMobile ? 'w-[92vw] max-w-[350px]' : 'w-96'} bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col`}>
           <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-t-xl flex justify-between items-center">
             <h2 className="text-lg font-semibold">Hỗ Trợ DNC FOOD</h2>
             <button
@@ -389,7 +408,7 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
             </button>
           </div>
 
-          <div className="flex-grow overflow-y-auto p-4 space-y-3 max-h-[420px] custom-scrollbar">
+          <div className={`flex-grow overflow-y-auto p-4 space-y-3 ${isMobile ? 'max-h-[300px]' : 'max-h-[420px]'} custom-scrollbar`}>
             {messages.map((msg, index) => renderMessage(msg, index))}
 
             {isLoading && (
@@ -444,7 +463,7 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
                 }`}
                 aria-label="Gửi tin nhắn"
               >
-                <Send size={20} className="p-1" />
+                <Send size={isMobile ? 18 : 20} className="p-1" />
               </button>
             </div>
           </div>
@@ -481,6 +500,17 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
           }
           .custom-scrollbar-horizontal::-webkit-scrollbar-thumb:hover {
             background: #9ca3af;
+          }
+          
+          @media (max-width: 640px) {
+            .fixed.bottom-6.right-6 {
+              bottom: 1rem;
+              right: 1rem;
+            }
+            
+            .custom-scrollbar {
+              max-height: 280px;
+            }
           }
         `}
       </style>

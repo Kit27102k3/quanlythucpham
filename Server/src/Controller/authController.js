@@ -19,12 +19,22 @@ export const register = async (req, res) => {
       userImage,
     } = req.body;
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already in use" });
+    // Kiểm tra email đã tồn tại
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      return res.status(400).json({ message: "Email đã được sử dụng" });
     }
 
+    // Kiểm tra username đã tồn tại
+    const existingUsername = await User.findOne({ userName });
+    if (existingUsername) {
+      return res.status(400).json({ message: "Tên đăng nhập đã được sử dụng" });
+    }
+
+    // Băm mật khẩu
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Tạo user mới
     const newUser = new User({
       email,
       phone,
@@ -35,20 +45,54 @@ export const register = async (req, res) => {
       address,
       userImage,
     });
+    
+    // Lưu user vào database
     await newUser.save();
 
-    const refreshToken = jwt.sign({ id: newUser._id }, "SECRET_REFRESH", {
-      expiresIn: "7d",
-    });
-    await RefreshToken.create({ userId: newUser._id, token: refreshToken });
-
-    res.status(201).json({
-      message: "User registered successfully",
+    // Tạo refresh token với secret key từ biến môi trường
+    const refreshToken = jwt.sign(
+      { id: newUser._id },
+      process.env.JWT_REFRESH_SECRET || "SECRET_REFRESH", // Fallback nếu không có biến môi trường
+      { expiresIn: "7d" }
+    );
+    
+    // Lưu refresh token vào database với thời gian hết hạn
+    await RefreshToken.create({
       userId: newUser._id,
+      userModel: "User",
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 ngày
+    });
+
+    // Tạo access token cho người dùng mới
+    const accessToken = jwt.sign(
+      {
+        id: newUser._id,
+        role: "user",
+        permissions: ["Xem"]
+      },
+      process.env.JWT_SECRET_ACCESS || "SECRET_ACCESS", // Fallback nếu không có biến môi trường
+      { expiresIn: "1d" }
+    );
+
+    // Trả về thông tin đăng ký thành công
+    res.status(201).json({
+      success: true,
+      message: "Đăng ký người dùng thành công",
+      userId: newUser._id,
+      accessToken,
       refreshToken,
+      role: "user",
+      permissions: ["Xem"],
+      fullName: `${newUser.firstName} ${newUser.lastName}`
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Registration error:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Đã xảy ra lỗi khi đăng ký người dùng",
+      error: error.message 
+    });
   }
 };
 

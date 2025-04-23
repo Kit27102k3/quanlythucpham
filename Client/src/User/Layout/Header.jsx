@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link as RouterLink } from "react-router-dom";
 import {
   EnterIcon,
   PersonIcon,
@@ -332,42 +332,40 @@ const Header = () => {
             </div>
 
             <div className="flex items-center justify-end">
-              <HoverCard.Root>
-                <HoverCard.Trigger>
-                  <div className="relative">
-                    <Link href="/gio-hang" className="text-white">
-                      <Tooltip content="Giỏ hàng">
-                        <i
-                          className="pi pi-cart-minus"
-                          style={{ fontSize: "22px", color: "white" }}
-                        />
-                      </Tooltip>
-                    </Link>
-                    {cartItemCount > 0 && (
-                      <Badge
-                        value={cartItemCount}
-                        className="cart-badge"
-                        severity="warning"
-                        style={{
-                          position: "absolute",
-                          top: "-10px",
-                          right: "-10px",
-                          fontSize: "12px",
-                          backgroundColor: "#F9C938",
-                          color: "white"
-                        }}
-                      />
-                    )}
-                  </div>
-                </HoverCard.Trigger>
-                <HoverCard.Content maxWidth="400px">
-                  <Flex gap="4">
-                    <Text>
-                      <Products />
-                    </Text>
-                  </Flex>
-                </HoverCard.Content>
-              </HoverCard.Root>
+              <div className="relative">
+                <RouterLink 
+                  to="/gio-hang" 
+                  className="text-white block" 
+                  onClick={(e) => {
+                    // Ngăn chặn sự kiện lan truyền và hành vi mặc định
+                    e.stopPropagation();
+                    navigate('/gio-hang');
+                    return false;
+                  }}
+                >
+                  <Tooltip content="Giỏ hàng">
+                    <i
+                      className="pi pi-cart-minus cursor-pointer"
+                      style={{ fontSize: "22px", color: "white" }}
+                    />
+                  </Tooltip>
+                </RouterLink>
+                {cartItemCount > 0 && (
+                  <Badge
+                    value={cartItemCount}
+                    className="cart-badge"
+                    severity="warning"
+                    style={{
+                      position: "absolute",
+                      top: "-10px",
+                      right: "-10px",
+                      fontSize: "12px",
+                      backgroundColor: "#F9C938",
+                      color: "white"
+                    }}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>

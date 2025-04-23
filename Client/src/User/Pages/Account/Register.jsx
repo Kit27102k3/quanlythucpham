@@ -3,8 +3,11 @@ import { InputText } from "primereact/inputtext";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import authApi from "../../../api/authApi";
+import { useNavigate } from "react-router-dom";
 
 export default function Register() {
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     phone: "",
@@ -18,18 +21,63 @@ export default function Register() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const validateForm = () => {
+    const { email, phone, firstName, lastName, userName, password } = formData;
+    
+    if (!email) return "Email không được để trống";
+    if (!phone) return "Số điện thoại không được để trống";
+    if (!firstName) return "Tên không được để trống";
+    if (!lastName) return "Họ không được để trống";
+    if (!userName) return "Tên đăng nhập không được để trống";
+    if (!password) return "Mật khẩu không được để trống";
+    
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return "Email không hợp lệ";
+    }
+    
+    if (!/^\d{10,11}$/.test(phone)) {
+      return "Số điện thoại phải có 10-11 chữ số";
+    }
+    
+    if (password.length < 8) {
+      return "Mật khẩu phải có ít nhất 8 ký tự";
+    }
+    
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { email, phone, firstName, lastName, userName, password } = formData;
-
-    if (!email || !phone || !firstName || !lastName || !userName || !password) {
-      toast.error("Vui lòng điền đầy đủ thông tin!");
+    
+    // Kiểm tra validation
+    const validationError = validateForm();
+    if (validationError) {
+      toast.error(validationError);
       return;
     }
-
+    
+    setIsSubmitting(true);
+    
     try {
-      await authApi.register(formData);
-      toast.success("Đăng ký thành công!");
+      const response = await authApi.register(formData);
+      
+      // Lưu token và thông tin người dùng nếu có
+      if (response.data && response.data.accessToken) {
+        localStorage.setItem("accessToken", response.data.accessToken);
+        localStorage.setItem("refreshToken", response.data.refreshToken);
+        localStorage.setItem("userId", response.data.userId);
+        localStorage.setItem("userRole", response.data.role || "user");
+        localStorage.setItem("fullName", response.data.fullName || `${formData.firstName} ${formData.lastName}`);
+      }
+      
+      toast.success("Đăng ký tài khoản thành công!");
+      
+      // Đặt thời gian chuyển hướng sau khi hiển thị thông báo
+      setTimeout(() => {
+        navigate("/");
+      }, 2000);
+      
+      // Reset form
       setFormData({
         email: "",
         phone: "",
@@ -39,7 +87,17 @@ export default function Register() {
         password: "",
       });
     } catch (error) {
-      toast.error(error.response?.data?.message || "Đăng ký không thành công!");
+      let errorMessage = "Đăng ký không thành công!";
+      
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -161,9 +219,12 @@ export default function Register() {
 
             <button
               type="submit"
-              className="w-full mt-4 p-3 bg-[#51bb1a] text-white rounded-lg hover:bg-[#51bb1a] transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#51bb1a]"
+              disabled={isSubmitting}
+              className={`w-full mt-4 p-3 bg-[#51bb1a] text-white rounded-lg ${
+                isSubmitting ? "opacity-70 cursor-not-allowed" : "hover:bg-[#51bb1a] hover:scale-105"
+              } transition duration-300 ease-in-out transform focus:outline-none focus:ring-2 focus:ring-[#51bb1a]`}
             >
-              ĐĂNG KÝ
+              {isSubmitting ? "ĐANG XỬ LÝ..." : "ĐĂNG KÝ"}
             </button>
 
             <div className="text-center mt-4 text-sm">

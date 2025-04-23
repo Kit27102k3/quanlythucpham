@@ -96,7 +96,50 @@ instance.interceptors.response.use(
 );
 
 const authApi = {
-  register: (userData) => instance.post(`${API_URLS.AUTH}/register`, userData),
+  register: async (userData) => {
+    try {
+      // Thêm validation dữ liệu trước khi gửi
+      if (!userData.email || !userData.password || !userData.userName) {
+        throw new Error("Vui lòng điền đầy đủ thông tin");
+      }
+      
+      console.log("Sending registration data:", {
+        ...userData,
+        password: '[HIDDEN]' // Ẩn mật khẩu trong log
+      });
+      
+      const response = await instance.post(`${API_URLS.AUTH}/register`, userData);
+      
+      console.log("Registration response:", response.data);
+      
+      // Nếu đăng ký thành công và có refreshToken, lưu vào localStorage
+      if (response.data && response.data.refreshToken) {
+        localStorage.setItem("refreshToken", response.data.refreshToken);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error("Registration error:", error);
+      
+      // Ghi lại chi tiết lỗi để dễ debug
+      if (error.response) {
+        console.error("Server response error:", {
+          status: error.response.status,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+      }
+      
+      // Xử lý lỗi từ server và trả về message cụ thể
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      
+      throw error;
+    }
+  },
   
   login: async (credentials) => {
     try {
