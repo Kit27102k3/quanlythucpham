@@ -8,6 +8,7 @@ import {
   MagnifyingGlassIcon,
   CaretDownIcon,
   ExitIcon,
+  Cross2Icon,
 } from "@radix-ui/react-icons";
 import { HoverCard, Flex, Text, Link, Tooltip } from "@radix-ui/themes";
 import { Badge } from "primereact/badge";
@@ -55,8 +56,10 @@ const Header = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showPromotion, setShowPromotion] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(0);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const inputRef = useRef(null);
   const timeoutRef = useRef(null);
+  const mobileInputRef = useRef(null);
   const navigate = useNavigate();
   const userId = localStorage.getItem("userId");
 
@@ -146,6 +149,7 @@ const Header = () => {
   const handleSearch = () => {
     if (searchTerm.trim()) {
       navigate(`/search?query=${encodeURIComponent(searchTerm)}`);
+      setShowMobileSearch(false);
     }
   };
 
@@ -157,6 +161,16 @@ const Header = () => {
 
   const handleInputChange = (e) => {
     setSearchTerm(e.target.value);
+  };
+
+  const toggleMobileSearch = () => {
+    setShowMobileSearch(prev => !prev);
+    // Focus vào ô tìm kiếm sau khi hiển thị
+    if (!showMobileSearch) {
+      setTimeout(() => {
+        mobileInputRef.current?.focus();
+      }, 100);
+    }
   };
 
   useEffect(() => {
@@ -276,7 +290,7 @@ const Header = () => {
         </div>
       </div>
 
-      <div className="bg-[#5ccd16]">
+      <div className="bg-[#5ccd16] relative">
         <div className="grid grid-cols-[25%_35%_20%_20%] lg:grid-cols-3 lg:px-[120px] md:grid-cols-3 items-center justify-around p-5">
           <SidebarLeft />
           <h3 className="text-white text-4xl lg:text-4xl font-bold text-center">
@@ -296,7 +310,7 @@ const Header = () => {
               style={{
                 fontSize: "2rem",
               }}
-              onClick={handleSearch}
+              onClick={showMobileSearch ? handleSearch : toggleMobileSearch}
               className="lg:size-4 ml-12 lg:absolute md:absolute md:right-3 text-white cursor-pointer lg:text-black"
             />
           </div>
@@ -320,19 +334,31 @@ const Header = () => {
             <div className="flex items-center justify-end">
               <HoverCard.Root>
                 <HoverCard.Trigger>
-                  <Link href="/gio-hang" className="text-white">
-                    <Tooltip content="Giỏ hàng">
-                      <i
-                        className="pi pi-cart-minus"
-                        style={{ fontSize: "22px", color: "white" }}
-                      >
-                        <Badge
-                          value={cartItemCount}
-                          className="absolute top-21 right-4 lg:right-32 lg:top-16 text-white bg-[#F9C938]"
+                  <div className="relative">
+                    <Link href="/gio-hang" className="text-white">
+                      <Tooltip content="Giỏ hàng">
+                        <i
+                          className="pi pi-cart-minus"
+                          style={{ fontSize: "22px", color: "white" }}
                         />
-                      </i>
-                    </Tooltip>
-                  </Link>
+                      </Tooltip>
+                    </Link>
+                    {cartItemCount > 0 && (
+                      <Badge
+                        value={cartItemCount}
+                        className="cart-badge"
+                        severity="warning"
+                        style={{
+                          position: "absolute",
+                          top: "-10px",
+                          right: "-10px",
+                          fontSize: "12px",
+                          backgroundColor: "#F9C938",
+                          color: "white"
+                        }}
+                      />
+                    )}
+                  </div>
                 </HoverCard.Trigger>
                 <HoverCard.Content maxWidth="400px">
                   <Flex gap="4">
@@ -345,6 +371,40 @@ const Header = () => {
             </div>
           </div>
         </div>
+
+        {/* Mobile search panel - appears when search icon is clicked */}
+        {showMobileSearch && (
+          <div className="block lg:hidden fixed top-0 left-0 right-0 z-50 animate-slideDown">
+            <div className="bg-white p-4 shadow-md mobile-search-panel">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-medium">Tìm kiếm</h3>
+                <Cross2Icon 
+                  className="cursor-pointer" 
+                  onClick={toggleMobileSearch}
+                  width={20}
+                  height={20}
+                />
+              </div>
+              <div className="flex">
+                <input
+                  ref={mobileInputRef}
+                  value={searchTerm}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  type="text"
+                  placeholder="Nhập từ khóa tìm kiếm..."
+                  className="mobile-search-input"
+                />
+                <button
+                  onClick={handleSearch}
+                  className="mobile-search-button"
+                >
+                  <MagnifyingGlassIcon />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-[#428b16] hide-on-mobile ">
