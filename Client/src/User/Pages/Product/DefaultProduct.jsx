@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { ChevronRightIcon } from "@radix-ui/react-icons";
 import { RadioButton } from "primereact/radiobutton";
@@ -38,7 +38,7 @@ function ProductLayout({ showPromotional = false }) {
   const [typeFilters, setTypeFilters] = useState([]);
   const { category: categorySlug } = useParams(); // Lấy tham số category từ URL
   const [originalCategory, setOriginalCategory] = useState(null);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const categoryRef = useRef(null);
   
   // Lấy tên danh mục gốc từ slug URL
   useEffect(() => {
@@ -61,9 +61,10 @@ function ProductLayout({ showPromotional = false }) {
     }
   }, [categorySlug]);
 
-  // Giữ hàm toggle sidebar
-  const toggleMobileSidebar = () => {
-    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  const scrollToCategory = () => {
+    if (categoryRef.current) {
+      categoryRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const handleSortChange = (option) => {
@@ -106,10 +107,10 @@ function ProductLayout({ showPromotional = false }) {
       </div>
       <p className="border-b mt-4 border-gray-300 "></p>
       <div className="flex flex-col md:flex-row p-4 bg-background lg:px-[120px] lg:gap-4">
-        {/* Nút hiển thị danh mục trên mobile */}
+        {/* Nút cuộn xuống danh mục trên mobile */}
         <div className="fixed top-40 right-0 z-40 block md:hidden">
           <button 
-            onClick={toggleMobileSidebar}
+            onClick={scrollToCategory}
             className="bg-green-600 text-white p-2 rounded-l-lg shadow-lg"
             aria-label="Mở danh mục"
           >
@@ -118,36 +119,9 @@ function ProductLayout({ showPromotional = false }) {
             </svg>
           </button>
         </div>
-        
-        {/* Lớp mờ phía sau khi mở sidebar trên mobile */}
-        {isMobileSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-opacity-50 z-40 md:hidden"
-            onClick={toggleMobileSidebar}
-          ></div>
-        )}
-        
-        {/* Desktop: hiển thị bình thường, Mobile: chuyển thành sidebar */}
-        <aside 
-          className={`
-            md:w-1/4 bg-card p-4 rounded-lg shadow-md border mt-5 
-            md:static md:block md:translate-x-0
-            fixed top-0 right-0 z-50 h-full w-[80vw] max-w-[300px] 
-            bg-white overflow-y-auto
-            transform transition-transform duration-300 ease-in-out
-            ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
-          `}
-        >
-          {/* Nút đóng sidebar trên mobile */}
-          <div className="flex justify-between items-center p-4 border-b md:hidden">
-            <h2 className="text-lg font-semibold text-green-600">Danh Mục</h2>
-            <button onClick={toggleMobileSidebar} className="text-gray-500">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
+
+        {/* Phần danh mục sidebar trên desktop */}
+        <aside className="w-full md:w-1/4 bg-card p-4 rounded-lg shadow-md border mt-5 h-full hidden md:block">
           <div className="cursor-pointer text-[#1c1c1c] text-sm">
             <h2 className="text-lg font-semibold mb-4 bg-gray-100 p-2 rounded">
               DANH MỤC
@@ -269,6 +243,64 @@ function ProductLayout({ showPromotional = false }) {
           </div>
          
         </main>
+      </div>
+
+      {/* Thêm phần danh mục ở cuối trang cho mobile */}
+      <div ref={categoryRef} className="block md:hidden mt-6 p-4 rounded-lg shadow-md border">
+        <div className="cursor-pointer text-[#1c1c1c] text-sm">
+          <h2 id="danh-muc" className="text-lg font-semibold mb-4 text-green-600 border-b pb-2">
+            DANH MỤC
+          </h2>
+          <ul className="space-y-2 flex flex-col gap-4 text-[#1c1c1c] text-sm">
+            <li>
+              <a href="/" className="text-primary hover:text-[#51aa1b]">
+                Trang chủ
+              </a>
+            </li>
+            <li>
+              <a href="/gioi-thieu" className="text-primary hover:text-[#51aa1b]">
+                Giới thiệu
+              </a>
+            </li>
+            <li>
+              <a href="/san-pham" className="text-primary hover:text-[#51aa1b]">
+                Sản phẩm
+              </a>
+            </li>
+            <li>
+              <a href="/khuyen-mai" className="text-primary hover:text-[#51aa1b]">
+                Khuyến mãi
+              </a>
+            </li>
+            <li>
+              <a href="/tin-tuc" className="text-primary hover:text-[#51aa1b]">
+                Tin tức
+              </a>
+            </li>
+            <li>
+              <a href="/meo-hay" className="text-primary hover:text-[#51aa1b]">
+                Mẹo hay
+              </a>
+            </li>
+            <li>
+              <a href="/lien-he" className="text-primary hover:text-[#51aa1b]">
+                Liên hệ
+              </a>
+            </li>
+            <li>
+              <a href="/cua-hang" className="text-primary hover:text-[#51aa1b]">
+                Cửa hàng
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div className="mt-4">
+          <FilterByPrice
+            onPriceFilterChange={handlePriceFilterChange}
+            onTypeFilterChange={handleTypeFilterChange}
+          />
+        </div>
       </div>
     </div>
   );
