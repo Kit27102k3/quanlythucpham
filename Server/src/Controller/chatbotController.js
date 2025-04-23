@@ -425,50 +425,46 @@ const intents = {
   },
   discountedProducts: {
     patterns: [
-      "sản phẩm giảm giá", "sản phẩm đang giảm giá", "khuyến mãi", "đang khuyến mãi", 
-      "giảm giá", "ưu đãi", "sản phẩm nào đang giảm giá", "khuyến mãi gì", 
-      "có chương trình giảm giá", "có chương trình khuyến mãi nào", "sản phẩm khuyến mãi",
-      "deal hot", "flash sale", "có sale không", "đang sale", "có đang giảm giá không"
+      "sản phẩm giảm giá", "sản phẩm đang giảm giá", "giảm giá", 
+      "sản phẩm nào đang giảm giá", "sản phẩm khuyến mãi", "khuyến mãi",
+      "đang giảm giá", "đang khuyến mãi", "tìm sản phẩm giảm giá",
+      "có sản phẩm nào đang giảm giá không", "có sản phẩm nào đang khuyến mãi không"
     ],
     response: async () => {
       try {
-        // Tìm các sản phẩm có giá khuyến mãi (priceDiscount > 0)
-        const discountedProducts = await Product.find({
-          $expr: { $gt: [{ $subtract: ["$productPrice", "$productPromotionalPrice"] }, 0] }
-        }).limit(4);
+        // Tìm các sản phẩm có khuyến mãi (productDiscount > 0)
+        const discountedProducts = await Product.find({ 
+          productDiscount: { $gt: 0 },
+          productStatus: { $ne: "Hết hàng" }
+        }).sort({ productDiscount: -1 }).limit(6);
         
-        if (discountedProducts.length === 0) {
-          return "Hiện tại chưa có sản phẩm nào đang được giảm giá.";
+        if (!discountedProducts || discountedProducts.length === 0) {
+          return "Hiện tại cửa hàng không có sản phẩm nào đang giảm giá.";
         }
         
-        // Tạo phản hồi với các sản phẩm giảm giá
-        const productElements = discountedProducts.map(p => {
-          const imageUrl = p.productImages && p.productImages.length > 0 
-            ? p.productImages[0] 
-            : "default-product.jpg";
-          
-          const discount = p.productPrice - p.productPromotionalPrice;
-          const discountPercent = Math.round((discount / p.productPrice) * 100);
-          
+        // Tạo danh sách sản phẩm để hiển thị
+        const productElements = discountedProducts.map(product => {
           return {
-            type: "product",
-            id: p._id,
-            name: p.productName,
-            price: p.productPrice,
-            promotionalPrice: p.productPromotionalPrice,
-            discount: discountPercent,
-            image: imageUrl,
-            slug: createSlug(p.productName)
+            id: product._id,
+            name: product.productName,
+            price: product.productPrice,
+            promotionalPrice: product.productPromoPrice || product.productPrice * (1 - product.productDiscount/100),
+            discount: product.productDiscount,
+            image: product.productImages && product.productImages.length > 0 
+              ? product.productImages[0] 
+              : "default-product.jpg",
+            slug: createSlug(product.productName)
           };
         });
         
         return {
-          text: `Các sản phẩm đang giảm giá:\n\n`,
-          products: productElements,
-          type: "discountedProducts"
+          type: "discountedProducts",
+          text: "Đây là các sản phẩm đang giảm giá tại cửa hàng:",
+          products: productElements
         };
       } catch (error) {
-        return "Xin lỗi, tôi không thể tìm thấy thông tin về sản phẩm giảm giá lúc này.";
+        console.error("Lỗi khi tìm sản phẩm giảm giá:", error);
+        return "Xin lỗi, tôi không thể tìm thấy thông tin về sản phẩm đang giảm giá lúc này.";
       }
     }
   },
@@ -699,128 +695,67 @@ function calculateSimilarity(message, pattern) {
   return similarity;
 }
 
-// Cải thiện hàm nhận dạng ý định với ưu tiên các intent phổ biến
+// Thêm mảng quy định các trường hợp ưu tiên intent khi có xung đột
+const priorityRules = [
+  // Nếu tin nhắn chứa "sản phẩm giảm giá", ưu tiên intent discountedProducts hơn price
+  { 
+    patterns: ["sản phẩm giảm giá", "sản phẩm đang giảm giá", "tìm sản phẩm giảm giá"], 
+    priorityIntent: "discountedProducts" 
+  },
+  // Nếu tin nhắn chứa "sản phẩm dưới" hoặc "tìm sản phẩm giá", ưu tiên intent priceRange hơn price
+  { 
+    patterns: ["sản phẩm dưới", "tìm sản phẩm giá", "tìm sản phẩm theo giá", "tìm hàng giá"],
+    priorityIntent: "priceRange" 
+  }
+];
+
+// Sửa hàm detectIntent để áp dụng quy tắc ưu tiên
 function detectIntent(message) {
-  let bestMatches = [];
-  const userMessage = message.toLowerCase().trim();
-  
-  // Các intent ưu tiên cao - kiểm tra trước tiên
-  const priorityIntents = ['buyingMethods', 'price', 'info'];
-  
-  // Kiểm tra tất cả intents và thu thập tất cả các kết quả tiềm năng
-  for (const [intent, data] of Object.entries(intents)) {
-    for (const pattern of data.patterns) {
-      const similarity = calculateSimilarity(userMessage, pattern);
-      
-      // Lưu tất cả các khớp có điểm cao hơn ngưỡng vào mảng
-      if (similarity >= 0.4) {
-        bestMatches.push({ intent, similarity, pattern });
-        
-        // Log các khớp có khả năng
-        if (similarity > 0.5) {
+  let bestMatch = { intent: null, similarity: 0, pattern: null };
+  const matches = [];
+
+  // Ghi lại tất cả các match tiềm năng
+  for (const intent in intents) {
+    if (intents[intent].patterns) {
+      for (const pattern of intents[intent].patterns) {
+        const similarity = calculateSimilarity(message, pattern);
+        if (similarity >= 0.5) {
           console.log(`Potential match: ${intent} with pattern "${pattern}" - score: ${similarity.toFixed(2)}`);
-        }
-      }
-    }
-  }
-  
-  // Sắp xếp các kết quả theo điểm số giảm dần
-  bestMatches.sort((a, b) => b.similarity - a.similarity);
-  
-  // Không tìm thấy kết quả nào phù hợp
-  if (bestMatches.length === 0) {
-    return { intent: null, similarity: 0, pattern: null };
-  }
-  
-  // Kiểm tra cho trường hợp đặc biệt: tin nhắn hỏi về thực phẩm
-  if (userMessage.includes("thực phẩm")) {
-    // Kiểm tra từng intent liên quan đến thực phẩm
-    const foodIntents = ['foodSafety', 'organicFood', 'freshFood', 'importedFood', 'vegetarianFood'];
-    
-    // Từ khóa phù hợp cho các intents thực phẩm
-    const foodKeywords = {
-      'foodSafety': ['sạch', 'an toàn', 'vệ sinh', 'nguồn gốc', 'chứng nhận', 'kiểm định'],
-      'organicFood': ['hữu cơ', 'organic', 'không hóa chất', 'không thuốc trừ sâu', 'tự nhiên'],
-      'freshFood': ['tươi', 'tươi sống', 'tươi ngon', 'mới', 'rau tươi', 'thịt tươi', 'cá tươi'],
-      'importedFood': ['nhập khẩu', 'ngoại nhập', 'nước ngoài', 'quốc tế'],
-      'vegetarianFood': ['chay', 'thuần chay', 'vegan', 'không thịt']
-    };
-    
-    // Kiểm tra xem message có chứa từ khóa đặc trưng nào cho các intent thực phẩm
-    for (const foodIntent of foodIntents) {
-      if (foodKeywords[foodIntent]) {
-        for (const keyword of foodKeywords[foodIntent]) {
-          if (userMessage.includes(keyword)) {
-            // Tìm thấy intent cụ thể về thực phẩm với từ khóa phù hợp
-            const matchedIntent = bestMatches.find(match => match.intent === foodIntent);
-            if (matchedIntent) {
-              return matchedIntent;
-            } else {
-              // Nếu không tìm thấy trong bestMatches, tạo mới với độ tương đồng cao
-              console.log(`Food intent matched by keyword: ${foodIntent} (keyword: ${keyword})`);
-              return { intent: foodIntent, similarity: 0.85, pattern: keyword };
-            }
+          matches.push({ intent, similarity, pattern });
+          if (similarity > bestMatch.similarity) {
+            bestMatch = { intent, similarity, pattern };
           }
         }
       }
     }
-    
-    // Nếu chỉ hỏi về "thực phẩm" mà không có từ khóa cụ thể, ưu tiên foodSafety
-    console.log("General food query detected, prioritizing foodSafety intent");
-    return { intent: 'foodSafety', similarity: 0.8, pattern: 'thực phẩm' };
   }
-  
-  // Kiểm tra sơ bộ kết quả tốt nhất
-  const topMatch = bestMatches[0];
-  
-  // Nếu kết quả tốt nhất có điểm cực cao (>0.9), trả về luôn
-  if (topMatch.similarity > 0.9) {
-    console.log(`Clear top match: ${topMatch.intent} with score ${topMatch.similarity.toFixed(2)} (pattern: "${topMatch.pattern}")`);
-    return topMatch;
-  }
-  
-  // Kiểm tra xem có nhiều intent có điểm số gần bằng nhau không
-  const closeMatches = bestMatches.filter(
-    match => (topMatch.similarity - match.similarity) < 0.2 && match.similarity > 0.6
-  );
-  
-  // Nếu có nhiều intent cạnh tranh
-  if (closeMatches.length > 1) {
-    console.log(`Multiple close matches found: ${closeMatches.length}`);
-    
-    // Kiểm tra intent ưu tiên
-    for (const match of closeMatches) {
-      if (priorityIntents.includes(match.intent)) {
-        console.log(`Selected priority intent: ${match.intent} with score ${match.similarity.toFixed(2)}`);
-        return match;
-      }
-    }
-    
-    // Kiểm tra dựa trên độ phủ của pattern với message
-    let bestCoverageMatch = topMatch;
-    for (const match of closeMatches) {
-      // Tính tỉ lệ pattern chiếm trong message
-      const patternCoverage = match.pattern.length / userMessage.length;
-      const topMatchCoverage = bestCoverageMatch.pattern.length / userMessage.length;
+
+  // Áp dụng quy tắc ưu tiên nếu có xung đột
+  if (matches.length > 1) {
+    for (const rule of priorityRules) {
+      const hasKeyword = rule.patterns.some(pattern => 
+        message.toLowerCase().includes(pattern.toLowerCase())
+      );
       
-      // Ưu tiên pattern dài hơn và cụ thể hơn
-      if (patternCoverage > topMatchCoverage) {
-        bestCoverageMatch = match;
+      if (hasKeyword) {
+        // Tìm match có intent cần ưu tiên
+        const priorityMatch = matches.find(match => match.intent === rule.priorityIntent);
+        
+        // Nếu tìm thấy match với intent ưu tiên và độ tương đồng trên 0.6
+        if (priorityMatch && priorityMatch.similarity >= 0.6) {
+          console.log(`Applying priority rule for "${rule.priorityIntent}" because message contains prioritized keywords`);
+          bestMatch = priorityMatch;
+          break;
+        }
       }
     }
-    
-    console.log(`Selected by pattern coverage: ${bestCoverageMatch.intent} with score ${bestCoverageMatch.similarity.toFixed(2)}`);
-    return bestCoverageMatch;
+  }
+
+  if (bestMatch.similarity >= 0.5) {
+    console.log(`Clear top match: ${bestMatch.intent} with score ${bestMatch.similarity.toFixed(2)} (pattern: "${bestMatch.pattern}")`);
   }
   
-  // Dựa vào ngưỡng để quyết định có trả về intent hay không
-  if (topMatch.similarity >= 0.5) {
-    console.log(`Selected intent: ${topMatch.intent} with score ${topMatch.similarity.toFixed(2)} (pattern: "${topMatch.pattern}")`);
-    return topMatch;
-  }
-  
-  console.log(`No intent matched above threshold. Best was: ${topMatch.intent} with score ${topMatch.similarity.toFixed(2)}`);
-  return { intent: null, similarity: 0, pattern: null };
+  return bestMatch;
 }
 
 // Hàm xử lý context của cuộc trò chuyện
@@ -1097,6 +1032,13 @@ export const handleMessage = async (req, res) => {
             intent: null
           });
         }
+      } else if (intent === 'relatedProducts' && !productId) {
+        // Xử lý trường hợp người dùng hỏi về sản phẩm tương tự nhưng không có productId
+        return res.json({
+          success: true,
+          message: 'Bạn có thể cho tôi biết bạn đang quan tâm đến sản phẩm nào không?',
+          intent: 'general_product_query'
+        });
       }
       
       // Kiểm tra xem intent có cần product không
@@ -1129,6 +1071,14 @@ export const handleMessage = async (req, res) => {
             intent: null
           });
         }
+      } else if (!generalIntents.includes(intent) && !productId) {
+        // Xử lý trường hợp intent cần product nhưng không có productId
+        console.log(`Intent ${intent} cần thông tin sản phẩm nhưng không có productId`);
+        return res.json({
+          success: true,
+          message: 'Bạn muốn biết thông tin về sản phẩm nào? Vui lòng cho tôi biết tên sản phẩm.',
+          intent: 'product_inquiry'
+        });
       } else {
         // Với các intent không cần thông tin sản phẩm
         console.log(`Xử lý intent không cần product: ${intent}`);
@@ -1142,24 +1092,34 @@ export const handleMessage = async (req, res) => {
           });
         }
         
-        const response = intents[intent].response();
-        
-        // Xử lý đặc biệt cho các intent có thể trả về đối tượng thay vì chuỗi
-        if (typeof response === 'object' || response instanceof Promise) {
-          const finalResponse = await response;
+        // Đảm bảo rằng hàm response tồn tại
+        if (typeof intents[intent].response === 'function') {
+          const response = intents[intent].response();
+          
+          // Xử lý đặc biệt cho các intent có thể trả về đối tượng thay vì chuỗi
+          if (typeof response === 'object' || response instanceof Promise) {
+            const finalResponse = await response;
+            return res.json({
+              success: true,
+              message: finalResponse,
+              intent: intent,
+              data: finalResponse // Thêm data để trả về đầy đủ thông tin cho frontend
+            });
+          }
+          
           return res.json({
             success: true,
-            message: finalResponse,
-            intent: intent,
-            data: finalResponse // Thêm data để trả về đầy đủ thông tin cho frontend
+            message: response,
+            intent: intent
+          });
+        } else {
+          console.error(`Intent ${intent} có cấu trúc không hợp lệ, thiếu hàm response`);
+          return res.json({
+            success: false,
+            message: 'Xin lỗi, tôi không thể xử lý yêu cầu này vào lúc này.',
+            intent: null
           });
         }
-        
-        return res.json({
-          success: true,
-          message: response,
-          intent: intent
-        });
       }
     }
     

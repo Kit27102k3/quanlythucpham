@@ -1,9 +1,12 @@
 import Footer from "./Footer";
 import Header from "./Header";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import React from "react";
+import ChatBotWithErrorBoundary from "../component/Chatbot";
 
 const DefaultLayout = ({ children }) => {
+  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  
   useEffect(() => {
     window.scrollTo({
       top: 0,
@@ -15,6 +18,7 @@ const DefaultLayout = ({ children }) => {
       <Header />
       <div>{children}</div>
       <Footer />
+      <ChatBotWithErrorBoundary isOpen={isChatbotOpen} setIsOpen={setIsChatbotOpen} />
     </div>
   );
 };

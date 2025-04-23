@@ -7,8 +7,8 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 
 // Cấu hình domain dựa theo môi trường
 const SITE_CONFIG = {
-    baseUrl: isDevelopment ? "http://localhost:3000" : "https://dncfood.com",
-    apiUrl: isDevelopment ? "http://localhost:8080" : "https://api.dncfood.com"
+    baseUrl: isDevelopment ? "http://localhost:3000" : "https://quanlythucpham.vercel.app",
+    apiUrl: isDevelopment ? "http://localhost:8080" : "https://quanlythucpham-azf6.vercel.app"
 };
 
 export const SEPAY = {
@@ -16,7 +16,7 @@ export const SEPAY = {
     apiToken: process.env.SEPAY_API_TOKEN || 'J63FBVYE2ABYD8RQLHIGETZ1A799DKWZS5PBOYJZJ4HDXSQTSWIUU0RQGTVFATF',
     endpoint: 'https://api.sepay.vn/v1/payments',
     returnUrl: `${SITE_CONFIG.baseUrl}/payment-result`,
-    notifyUrl: `${SITE_CONFIG.apiUrl}/api/payments/sepay/callback`,
+    notifyUrl: `${SITE_CONFIG.apiUrl}/webhook`,
     qrExpireTime: 24 * 60 // 24 giờ tính bằng phút
 };
                                                  

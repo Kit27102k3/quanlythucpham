@@ -11,8 +11,8 @@ dotenv.config();
 // Thêm biến môi trường cho domain
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const SITE_CONFIG = {
-    baseUrl: isDevelopment ? "http://localhost:3000" : "https://dncfood.com",
-    apiUrl: isDevelopment ? "http://localhost:8080" : "https://api.dncfood.com"
+    baseUrl: isDevelopment ? "http://localhost:3000" : "https://quanlythucpham.vercel.app",
+    apiUrl: isDevelopment ? "http://localhost:8080" : "https://quanlythucpham-azf6.vercel.app"
 };
 
 class PaymentService {
@@ -22,7 +22,11 @@ class PaymentService {
             // Cấu hình endpoints callback
             // Sử dụng customRedirectUrl từ client nếu có, ngược lại dùng URL mặc định
             const returnUrl = customRedirectUrl || `${SITE_CONFIG.baseUrl}/payment-result`;
-            const notifyUrl = `${SITE_CONFIG.apiUrl}/api/payments/sepay/callback`;
+            
+            // Sửa URL webhook để khớp với cấu hình trực tiếp
+            const notifyUrl = `${SITE_CONFIG.apiUrl}/webhook`;
+            
+            console.log("Using SePay callback URLs:", { returnUrl, notifyUrl });
             
             const requestData = {
                 merchantId: SEPAY.merchantId,

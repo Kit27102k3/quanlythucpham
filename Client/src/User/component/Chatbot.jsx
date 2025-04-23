@@ -4,6 +4,7 @@ import { Send, MessageCircle, Minus, ExternalLink, Info, ShoppingBag, MapPin, Fi
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import formatCurrency from "../Until/FotmatPrice";
+import PropTypes from "prop-types";
 
 const API_BASE_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
 const SERVER_URL = API_BASE_URL;
@@ -43,13 +44,12 @@ class ChatBotErrorBoundary extends React.Component {
   }
 }
 
-const ChatBot = ({ productId, isOpen, setIsOpen }) => {
+const ChatBot = ({ isOpen, setIsOpen }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isFirstOpen, setIsFirstOpen] = useState(true);
   const [conversationContext, setConversationContext] = useState({
-    productId: productId,
     lastIntent: null,
     messageHistory: []
   });
@@ -57,16 +57,6 @@ const ChatBot = ({ productId, isOpen, setIsOpen }) => {
   const userId = localStorage.getItem("userId");
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
-
-  // Cập nhật context khi productId thay đổi
-  useEffect(() => {
-    if (productId) {
-      setConversationContext(prev => ({
-        ...prev,
-        productId: productId
-      }));
-    }
-  }, [productId]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -78,16 +68,14 @@ const ChatBot = ({ productId, isOpen, setIsOpen }) => {
     if (isOpen && isFirstOpen) {
       // Chỉ thêm tin nhắn chào mừng khi mở đầu tiên
       setMessages([{ 
-        text: productId 
-          ? "Xin chào! Tôi là trợ lý ảo của DNC FOOD. Bạn muốn biết thêm thông tin gì về sản phẩm này?"
-          : "Xin chào! Tôi là trợ lý ảo của DNC FOOD. Tôi có thể giúp gì cho bạn?", 
+        text: "Xin chào! Tôi là trợ lý ảo của DNC FOOD. Tôi có thể giúp gì cho bạn?", 
         sender: "bot",
         showOptions: true, // Flag để hiển thị các nút tùy chọn
-        optionsType: productId ? "product" : "general" // Loại tùy chọn dựa trên có productId hay không
+        optionsType: "general" // Luôn hiển thị các tùy chọn chung
       }]);
       setIsFirstOpen(false);
     }
-  }, [isOpen, isFirstOpen, productId]);
+  }, [isOpen, isFirstOpen]);
 
   const getProductImageUrl = useCallback((url) => {
     // Sử dụng ảnh mặc định nếu không có URL
@@ -121,8 +109,7 @@ const ChatBot = ({ productId, isOpen, setIsOpen }) => {
     try {
       const payload = {
         message,
-        userId,
-        ...(productId ? { productId } : {})
+        userId
       };
       
       // Thay đổi URL endpoint theo cách đăng ký của server
@@ -220,7 +207,7 @@ const ChatBot = ({ productId, isOpen, setIsOpen }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [conversationContext, productId, userId, SERVER_URL]);
+  }, [conversationContext, userId, SERVER_URL]);
   
   // Xử lý khi người dùng click vào câu gợi ý
   const handleSuggestedQuestion = useCallback((question) => {
@@ -265,52 +252,6 @@ const ChatBot = ({ productId, isOpen, setIsOpen }) => {
       color: "bg-amber-100 hover:bg-amber-200 text-amber-700"
     }
   ], []);
-  
-  // Các tùy chọn cho trang sản phẩm
-  const productOptions = useMemo(() => [
-    { 
-      icon: <Tag size={16} />,
-      text: "Giá cả", 
-      query: "Giá bán của sản phẩm này là bao nhiêu?",
-      color: "bg-blue-100 hover:bg-blue-200 text-blue-700"
-    },
-    { 
-      icon: <Info size={16} />,
-      text: "Công dụng", 
-      query: "Công dụng sản phẩm này là gì?",
-      color: "bg-purple-100 hover:bg-purple-200 text-purple-700"
-    },
-    { 
-      icon: <MapPin size={16} />,
-      text: "Xuất xứ", 
-      query: "Xuất xứ của sản phẩm này?",
-      color: "bg-red-100 hover:bg-red-200 text-red-700"
-    },
-    { 
-      icon: <FileText size={16} />,
-      text: "Thành phần", 
-      query: "Thành phần của sản phẩm này gồm những gì?",
-      color: "bg-amber-100 hover:bg-amber-200 text-amber-700"
-    },
-    { 
-      icon: <Settings size={16} />,
-      text: "Cách sử dụng", 
-      query: "Cách sử dụng sản phẩm này như thế nào?",
-      color: "bg-emerald-100 hover:bg-emerald-200 text-emerald-700"
-    },
-    { 
-      icon: <Search size={16} />,
-      text: "Sản phẩm tương tự", 
-      query: "Có sản phẩm tương tự không?",
-      color: "bg-cyan-100 hover:bg-cyan-200 text-cyan-700"
-    },
-    { 
-      icon: <Tag size={16} />,
-      text: "Sản phẩm cùng giá", 
-      query: "Tìm sản phẩm có giá tương tự",
-      color: "bg-indigo-100 hover:bg-indigo-200 text-indigo-700"
-    }
-  ], []);
 
   // Các câu gợi ý được tạo bằng useMemo để tránh tạo lại mỗi lần render
   const suggestedQuestions = useMemo(() => [
@@ -319,19 +260,11 @@ const ChatBot = ({ productId, isOpen, setIsOpen }) => {
     { text: "Cách đặt hàng?", handler: () => handleSuggestedQuestion("Làm thế nào để đặt hàng trên website?") },
     { text: "Phí vận chuyển", handler: () => handleSuggestedQuestion("Có phí vận chuyển không?") }
   ], [handleSuggestedQuestion]);
-  
-  // Mẫu câu gợi ý khi đang xem sản phẩm
-  const productSuggestedQuestions = useMemo(() => [
-    { text: "Công dụng của sản phẩm", handler: () => handleSuggestedQuestion("Công dụng sản phẩm này là gì?") },
-    { text: "Sản phẩm tương tự", handler: () => handleSuggestedQuestion("Có sản phẩm tương tự không?") },
-    { text: "Sản phẩm cùng giá", handler: () => handleSuggestedQuestion("Tìm sản phẩm có giá tương tự") },
-    { text: "Xuất xứ sản phẩm", handler: () => handleSuggestedQuestion("Xuất xứ của sản phẩm này?") }
-  ], [handleSuggestedQuestion]);
 
   // Render message based on type
   const renderMessage = useCallback((msg, index) => {
     if (msg.showOptions) {
-      const options = msg.optionsType === 'product' ? productOptions : generalOptions;
+      const options = generalOptions;
       
       return (
         <div key={index} className="flex justify-start w-full mb-4">
@@ -429,7 +362,7 @@ const ChatBot = ({ productId, isOpen, setIsOpen }) => {
         </div>
       </div>
     );
-  }, [getProductImageUrl, handleProductClick, handleSuggestedQuestion, productOptions, generalOptions]);
+  }, [getProductImageUrl, handleProductClick, handleSuggestedQuestion, generalOptions]);
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
@@ -477,7 +410,7 @@ const ChatBot = ({ productId, isOpen, setIsOpen }) => {
           <div className="px-3 py-2 border-t border-gray-100">
             <p className="text-xs text-gray-500 mb-2 font-medium">Câu hỏi phổ biến:</p>
             <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar-horizontal">
-              {(productId ? productSuggestedQuestions : suggestedQuestions).map((q, i) => (
+              {suggestedQuestions.map((q, i) => (
                 <button
                   key={`suggestedQ-${i}`}
                   onClick={q.handler}
@@ -495,9 +428,9 @@ const ChatBot = ({ productId, isOpen, setIsOpen }) => {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                 placeholder="Nhập tin nhắn..."
                 className="flex-grow px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-green-300 text-sm"
-                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                 disabled={isLoading}
                 aria-label="Nhập tin nhắn"
               />
@@ -553,6 +486,11 @@ const ChatBot = ({ productId, isOpen, setIsOpen }) => {
       </style>
     </div>
   );
+};
+
+ChatBot.propTypes = {
+  isOpen: PropTypes.bool.isRequired,
+  setIsOpen: PropTypes.func.isRequired
 };
 
 // Bọc ChatBot trong Error Boundary

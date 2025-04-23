@@ -8,7 +8,6 @@ import { useParams } from "react-router-dom";
 import formatCurrency from "../../Until/FotmatPrice";
 import "../../../index.css";
 import RelatedProducts from "./RelatedProducts";
-import ChatBot from "../../component/Chatbot.jsx";
 
 const Kitchen = lazy(() => import("./Kitchen"));
 
@@ -449,15 +448,6 @@ export default function ProductDetails() {
       </div>
       <div className="mt-10 mx-auto">
         <RelatedProducts currentProduct={products} />
-      </div>
-      <div>
-        {products && (
-          <ChatBot
-            isOpen={isChatOpen}
-            setIsOpen={setIsChatOpen}
-            productId={products._id || slug}
-          />
-        )}
       </div>
     </div>
   );

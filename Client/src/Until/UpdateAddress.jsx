@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import authApi from "../api/authApi";
 import { toast } from "sonner";
+import PropTypes from "prop-types";
 
 const host = "https://provinces.open-api.vn/api/";
 
@@ -68,7 +69,7 @@ function UpdateAddress({ onUpdate }) {
       try {
         const response = await axios.get(`${host}?depth=1`);
         setCities(response.data);
-      } catch (err) {
+      } catch {
         console.log("Không thể tải danh sách tỉnh/thành phố.");
       }
     };
@@ -139,7 +140,7 @@ function UpdateAddress({ onUpdate }) {
         address: `${houseNumber}, ${wardName}, ${districtName}, ${cityName}`,
       };
 
-      const res = await authApi.updateProfile(user._id, updatedData);
+      await authApi.updateProfile(user._id, updatedData);
       toast.success("Cập nhật thành công");
       onUpdate();
       setIsHide(true);
@@ -149,113 +150,132 @@ function UpdateAddress({ onUpdate }) {
     }
   };
 
+  const inputStyles = "border border-gray-300 rounded-md p-2.5 text-sm outline-none w-full focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all duration-200";
+  const labelStyles = "text-sm font-medium mb-1.5 text-gray-700";
+  const selectStyles = `${inputStyles} bg-white cursor-pointer`;
+  const disabledSelectStyles = `${inputStyles} bg-gray-100 cursor-not-allowed opacity-70`;
+
   return (
     <div>
       {!isHide && (
-        <div className="absolute top-52 right-0 left-0 w-[90%] lg:w-[50%] lg:p-5 mx-auto bg-white border p-4 shadow-lg rounded-lg">
-          <h2 className="text-center uppercase font-medium border-b border-gray-200">
-            Thông tin Giao hàng
-          </h2>
-          <div className="grid grid-cols-2 gap-5 mt-5">
-            <div>
-              <p className="text-sm font-medium mb-1">Họ tên</p>
-              <input
-                type="text"
-                className="border border-gray-400 p-2 text-sm outline-none w-full"
-                value={`${user?.firstName || ""} ${user?.lastName || ""}`}
-                readOnly
-              />
+        <div className="fixed top-0 left-0 w-full h-full  bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="w-[90%] lg:w-[550px] bg-white rounded-lg shadow-xl overflow-hidden animate-fadeIn">
+            <div className="bg-gradient-to-r from-green-600 to-green-500 py-3 px-4">
+              <h2 className="text-center font-bold text-white text-lg">
+                THÔNG TIN GIAO HÀNG
+              </h2>
             </div>
-            <div>
-              <p className="text-sm font-medium mb-1">Số điện thoại</p>
-              <input
-                type="text"
-                className="border border-gray-400 p-2 text-sm outline-none w-full"
-                value={user?.phone || ""}
-                readOnly
-              />
+            
+            <div className="p-5 max-h-[calc(100vh-150px)] overflow-y-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <p className={labelStyles}>Họ tên</p>
+                  <input
+                    type="text"
+                    className={`${inputStyles} bg-gray-50`}
+                    value={`${user?.firstName || ""} ${user?.lastName || ""}`}
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <p className={labelStyles}>Số điện thoại</p>
+                  <input
+                    type="text"
+                    className={`${inputStyles} bg-gray-50`}
+                    value={user?.phone || ""}
+                    readOnly
+                  />
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <p className={labelStyles}>Số nhà, tên đường</p>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: 123 Nguyễn Văn A"
+                  value={houseNumber}
+                  onChange={(e) => setHouseNumber(e.target.value)}
+                  className={inputStyles}
+                />
+              </div>
+
+              <div className="mb-4">
+                <p className={labelStyles}>Tỉnh/Thành phố</p>
+                <select
+                  value={selectedCity}
+                  onChange={(e) => setSelectedCity(e.target.value)}
+                  className={selectStyles}
+                >
+                  <option value="">-- Chọn Tỉnh/Thành phố --</option>
+                  {cities.map((city) => (
+                    <option key={city.code} value={city.code}>
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-4">
+                <p className={labelStyles}>Quận/Huyện</p>
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  disabled={!selectedCity}
+                  className={selectedCity ? selectStyles : disabledSelectStyles}
+                >
+                  <option value="">-- Chọn Quận/Huyện --</option>
+                  {districts.map((district) => (
+                    <option key={district.code} value={district.code}>
+                      {district.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-5">
+                <p className={labelStyles}>Phường/Xã</p>
+                <select
+                  value={selectedWard}
+                  onChange={(e) => setSelectedWard(e.target.value)}
+                  disabled={!selectedDistrict}
+                  className={selectedDistrict ? selectStyles : disabledSelectStyles}
+                >
+                  <option value="">-- Chọn Phường/Xã --</option>
+                  {wards.map((ward) => (
+                    <option key={ward.code} value={ward.code}>
+                      {ward.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setIsHide(!isHide)}
+                  className="px-5 py-2.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                >
+                  HỦY BỎ
+                </button>
+                <button
+                  onClick={handleUpdate}
+                  className="px-5 py-2.5 bg-green-600 rounded-md text-sm font-medium text-white hover:bg-green-700 transition-colors duration-200 flex items-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  CẬP NHẬT ĐỊA CHỈ
+                </button>
+              </div>
             </div>
-          </div>
-
-          <div className="mt-2">
-            <p className="text-sm font-medium mb-1">Số nhà</p>
-            <input
-              type="text"
-              placeholder="Nhập số nhà của bạn..."
-              value={houseNumber}
-              onChange={(e) => setHouseNumber(e.target.value)}
-              className="border border-gray-400 p-2 text-sm outline-none w-full"
-            />
-          </div>
-
-          <div className="mt-2">
-            <p className="text-sm font-medium mb-1">Tỉnh/Thành</p>
-            <select
-              value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              className="border border-gray-400 p-2 text-sm outline-none w-full"
-            >
-              <option value="">Chọn Tỉnh/Thành</option>
-              {cities.map((city) => (
-                <option key={city.code} value={city.code}>
-                  {city.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mt-2">
-            <p className="text-sm font-medium mb-1">Quận/Huyện</p>
-            <select
-              value={selectedDistrict}
-              onChange={(e) => setSelectedDistrict(e.target.value)}
-              disabled={!selectedCity}
-              className="border border-gray-400 p-2 text-sm outline-none w-full"
-            >
-              <option value="">Chọn Quận/Huyện</option>
-              {districts.map((district) => (
-                <option key={district.code} value={district.code}>
-                  {district.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mt-2">
-            <p className="text-sm font-medium mb-1">Phường/Xã</p>
-            <select
-              value={selectedWard}
-              onChange={(e) => setSelectedWard(e.target.value)}
-              disabled={!selectedDistrict}
-              className="border border-gray-400 p-2 text-sm outline-none w-full"
-            >
-              <option value="">Chọn Phường/Xã</option>
-              {wards.map((ward) => (
-                <option key={ward.code} value={ward.code}>
-                  {ward.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center mt-5 gap-5">
-            <button
-              onClick={() => setIsHide(!isHide)}
-              className="border border-gray-400 hover:opacity-90 bg-red-700 text-white p-2 px-8 text-sm uppercase cursor-pointer"
-            >
-              Hủy
-            </button>
-            <button
-              onClick={handleUpdate}
-              className="bg-[#51bb1a] hover-animation-button text-white p-2 px-8 uppercase text-sm cursor-pointer"
-            >
-              Cập nhật địa chỉ
-            </button>
           </div>
         </div>
       )}
     </div>
   );
 }
+
+UpdateAddress.propTypes = {
+  onUpdate: PropTypes.func.isRequired
+};
 
 export default UpdateAddress;

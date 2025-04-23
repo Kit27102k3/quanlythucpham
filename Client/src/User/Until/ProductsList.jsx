@@ -65,7 +65,7 @@ const ProductList = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         if (product.productStock > 0 && product.productStatus !== "Hết hàng") {
-                          handleAddToCart(product._id);
+                        handleAddToCart(product._id);
                         }
                       }}
                       icon={faCartShopping}
@@ -85,7 +85,7 @@ const ProductList = ({
                       onClick={(e) => {
                         e.stopPropagation();
                         if (product.productStock > 0 && product.productStatus !== "Hết hàng") {
-                          handleAddToCart(product._id);
+                        handleAddToCart(product._id);
                         }
                       }}
                       icon={faCartShopping}

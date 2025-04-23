@@ -37,7 +37,7 @@ const paymentSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cod", "sepay"],
+      enum: ["cod", "sepay", "bank_transfer"],
       default: "cod"
     },
     transactionId: {
