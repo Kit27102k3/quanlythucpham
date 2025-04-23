@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { ChevronRightIcon } from "@radix-ui/react-icons";
+import { ChevronRightIcon, Cross1Icon } from "@radix-ui/react-icons";
 import { RadioButton } from "primereact/radiobutton";
 import AllProducts from "./AllProducts";
-import "../../../index.css";
 import FilterByPrice from "../../component/FilterByPrice";
+import "../../../index.css";
 
 // Ánh xạ từ slug URL sang tên danh mục gốc (bạn có thể thêm các ánh xạ khác tùy theo danh mục của bạn)
 const categoryMappings = {
@@ -38,8 +38,8 @@ function ProductLayout({ showPromotional = false }) {
   const [typeFilters, setTypeFilters] = useState([]);
   const { category: categorySlug } = useParams(); // Lấy tham số category từ URL
   const [originalCategory, setOriginalCategory] = useState(null);
-  const categoryRef = useRef(null);
-  
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+
   // Lấy tên danh mục gốc từ slug URL
   useEffect(() => {
     if (categorySlug) {
@@ -51,9 +51,9 @@ function ProductLayout({ showPromotional = false }) {
         // Nếu không tìm thấy ánh xạ, hiển thị slug dưới dạng văn bản đọc được
         setOriginalCategory(
           categorySlug
-            .split('-')
-            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ')
+            .split("-")
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(" ")
         );
       }
     } else {
@@ -61,10 +61,8 @@ function ProductLayout({ showPromotional = false }) {
     }
   }, [categorySlug]);
 
-  const scrollToCategory = () => {
-    if (categoryRef.current) {
-      categoryRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+  const toggleMobileSidebar = () => {
+    setShowMobileSidebar(!showMobileSidebar);
   };
 
   const handleSortChange = (option) => {
@@ -80,12 +78,14 @@ function ProductLayout({ showPromotional = false }) {
   };
 
   // Tính toán tiêu đề trang
-  const pageTitle = originalCategory 
-    ? originalCategory 
-    : (showPromotional ? "Sản phẩm khuyến mãi" : "Tất cả sản phẩm");
+  const pageTitle = originalCategory
+    ? originalCategory
+    : showPromotional
+    ? "Sản phẩm khuyến mãi"
+    : "Tất cả sản phẩm";
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto  py-8">
       <div className="flex px-4 items-center -mt-3 gap-1 text-sm lg:px-[120px] ">
         <a href="/" className="hover:text-[#51bb1a]">
           Trang chủ
@@ -102,26 +102,132 @@ function ProductLayout({ showPromotional = false }) {
         )}
         <ChevronRightIcon />
         {!originalCategory && (
-          <p className="font-medium ">{showPromotional ? "Sản phẩm khuyến mãi" : "Tất cả sản phẩm"}</p>
+          <p className="font-medium ">
+            {showPromotional ? "Sản phẩm khuyến mãi" : "Tất cả sản phẩm"}
+          </p>
         )}
       </div>
       <p className="border-b mt-4 border-gray-300 "></p>
       <div className="flex flex-col md:flex-row p-4 bg-background lg:px-[120px] lg:gap-4">
-        {/* Nút cuộn xuống danh mục trên mobile */}
-        <div className="fixed top-40 right-0 z-40 block md:hidden">
-          <button 
-            onClick={scrollToCategory}
+        {/* Nút hiển thị/ẩn sidebar trên mobile */}
+        <div className="fixed top-1/2 right-0 z-40 block md:hidden transform -translate-y-1/2">
+          <button
+            onClick={toggleMobileSidebar}
             className="bg-green-600 text-white p-2 rounded-l-lg shadow-lg"
-            aria-label="Mở danh mục"
+            aria-label={showMobileSidebar ? "Đóng danh mục" : "Mở danh mục"}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            {showMobileSidebar ? (
+              <Cross1Icon className="h-6 w-6" />
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            )}
           </button>
         </div>
 
+        {/* Sidebar mobile */}
+        {showMobileSidebar && (
+          <div className="fixed top-0 right-0 h-full w-[80%] max-w-[300px] z-30 bg-white shadow-lg overflow-y-auto p-4 transition-transform ease-in-out duration-300 block md:hidden">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg w-full font-semibold bg-gray-100 p-2 rounded">
+                DANH MỤC
+              </h2>
+            </div>
+            <ul className="space-y-2 flex flex-col gap-4 text-[#1c1c1c] text-sm">
+              <li>
+                <a href="/" className="text-primary hover:text-[#51aa1b]">
+                  Trang chủ
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/gioi-thieu"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
+                  Giới thiệu
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/san-pham"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
+                  Sản phẩm
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/khuyen-mai"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
+                  Khuyến mãi
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/tin-tuc"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
+                  Tin tức
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/meo-hay"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
+                  Mẹo hay
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/lien-he"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
+                  Liên hệ
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/cua-hang"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
+                  Cửa hàng
+                </a>
+              </li>
+            </ul>
+
+            <div className="mt-6">
+              <FilterByPrice
+                onPriceFilterChange={handlePriceFilterChange}
+                onTypeFilterChange={handleTypeFilterChange}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Overlay khi hiện sidebar */}
+        {showMobileSidebar && (
+          <div
+            className="fixed inset-0 bg-opacity-50 z-20 block md:hidden"
+            onClick={toggleMobileSidebar}
+          ></div>
+        )}
+
         {/* Phần danh mục sidebar trên desktop */}
-        <aside className="w-full md:w-1/4 bg-card p-4 rounded-lg shadow-md border mt-5 h-full hidden md:block">
+        <aside className=" w-full md:w-1/4 bg-card p-4 rounded-lg shadow-md border mt-5 h-full hidden md:block">
           <div className="cursor-pointer text-[#1c1c1c] text-sm">
             <h2 className="text-lg font-semibold mb-4 bg-gray-100 p-2 rounded">
               DANH MỤC
@@ -133,37 +239,58 @@ function ProductLayout({ showPromotional = false }) {
                 </a>
               </li>
               <li>
-                <a href="/gioi-thieu" className="text-primary hover:text-[#51aa1b]">
+                <a
+                  href="/gioi-thieu"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
                   Giới thiệu
                 </a>
               </li>
               <li>
-                <a href="/san-pham" className="text-primary hover:text-[#51aa1b]">
+                <a
+                  href="/san-pham"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
                   Sản phẩm
                 </a>
               </li>
               <li>
-                <a href="/khuyen-mai" className="text-primary hover:text-[#51aa1b]">
+                <a
+                  href="/khuyen-mai"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
                   Khuyến mãi
                 </a>
               </li>
               <li>
-                <a href="/tin-tuc" className="text-primary hover:text-[#51aa1b]">
+                <a
+                  href="/tin-tuc"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
                   Tin tức
                 </a>
               </li>
               <li>
-                <a href="/meo-hay" className="text-primary hover:text-[#51aa1b]">
+                <a
+                  href="/meo-hay"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
                   Mẹo hay
                 </a>
               </li>
               <li>
-                <a href="/lien-he" className="text-primary hover:text-[#51aa1b]">
+                <a
+                  href="/lien-he"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
                   Liên hệ
                 </a>
               </li>
               <li>
-                <a href="/cua-hang" className="text-primary hover:text-[#51aa1b]">
+                <a
+                  href="/cua-hang"
+                  className="text-primary hover:text-[#51aa1b]"
+                >
                   Cửa hàng
                 </a>
               </li>
@@ -190,7 +317,7 @@ function ProductLayout({ showPromotional = false }) {
             />
           </div>
 
-          <div className="grid items-center lg:grid-cols-[10%_90%] lg:items-center lg:justify-center">
+          <div className="hide-on-mobile grid items-center lg:grid-cols-[10%_90%] lg:items-center lg:justify-center">
             <span className="hide-on-mobile text-muted font-medium">
               Xếp theo:
             </span>
@@ -241,66 +368,7 @@ function ProductLayout({ showPromotional = false }) {
               category={originalCategory}
             />
           </div>
-         
         </main>
-      </div>
-
-      {/* Thêm phần danh mục ở cuối trang cho mobile */}
-      <div ref={categoryRef} className="block md:hidden mt-6 p-4 rounded-lg shadow-md border">
-        <div className="cursor-pointer text-[#1c1c1c] text-sm">
-          <h2 id="danh-muc" className="text-lg font-semibold mb-4 text-green-600 border-b pb-2">
-            DANH MỤC
-          </h2>
-          <ul className="space-y-2 flex flex-col gap-4 text-[#1c1c1c] text-sm">
-            <li>
-              <a href="/" className="text-primary hover:text-[#51aa1b]">
-                Trang chủ
-              </a>
-            </li>
-            <li>
-              <a href="/gioi-thieu" className="text-primary hover:text-[#51aa1b]">
-                Giới thiệu
-              </a>
-            </li>
-            <li>
-              <a href="/san-pham" className="text-primary hover:text-[#51aa1b]">
-                Sản phẩm
-              </a>
-            </li>
-            <li>
-              <a href="/khuyen-mai" className="text-primary hover:text-[#51aa1b]">
-                Khuyến mãi
-              </a>
-            </li>
-            <li>
-              <a href="/tin-tuc" className="text-primary hover:text-[#51aa1b]">
-                Tin tức
-              </a>
-            </li>
-            <li>
-              <a href="/meo-hay" className="text-primary hover:text-[#51aa1b]">
-                Mẹo hay
-              </a>
-            </li>
-            <li>
-              <a href="/lien-he" className="text-primary hover:text-[#51aa1b]">
-                Liên hệ
-              </a>
-            </li>
-            <li>
-              <a href="/cua-hang" className="text-primary hover:text-[#51aa1b]">
-                Cửa hàng
-              </a>
-            </li>
-          </ul>
-        </div>
-
-        <div className="mt-4">
-          <FilterByPrice
-            onPriceFilterChange={handlePriceFilterChange}
-            onTypeFilterChange={handleTypeFilterChange}
-          />
-        </div>
       </div>
     </div>
   );

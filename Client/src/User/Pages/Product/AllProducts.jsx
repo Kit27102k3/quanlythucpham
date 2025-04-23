@@ -254,7 +254,7 @@ function AllProducts({
   };
 
   return (
-    <div className="px-4 py-6" ref={productsContainerRef}>
+    <div className="py-6" ref={productsContainerRef}>
       {category && (
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-[#51bb1a] mb-2">
