@@ -88,15 +88,10 @@ const Header = () => {
   };
 
   useEffect(() => {
-    fetchCart();
-    
-    // Thiết lập polling để cập nhật giỏ hàng mỗi 5 giây
-    const intervalId = setInterval(() => {
+    // Chỉ gọi fetchCart khi component mount hoặc userId thay đổi
+    if (userId) {
       fetchCart();
-    }, 5000);
-    
-    // Cleanup khi component unmount
-    return () => clearInterval(intervalId);
+    }
   }, [userId]);
 
   // Listen for custom event that signals cart updates
@@ -110,7 +105,7 @@ const Header = () => {
     return () => {
       window.removeEventListener('cart-updated', handleCartUpdate);
     };
-  }, []);
+  }, [userId]); // Thêm userId vào dependency array
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
