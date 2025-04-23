@@ -3,7 +3,11 @@ import { toast } from "sonner";
 import { API_BASE_URL, API_URLS } from "../config/apiConfig";
 
 const instance = axios.create({
-  baseURL: API_BASE_URL
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
+  }
 });
 
 let isRefreshing = false;

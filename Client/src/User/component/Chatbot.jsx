@@ -6,8 +6,19 @@ import { useNavigate } from "react-router-dom";
 import formatCurrency from "../Until/FotmatPrice";
 import PropTypes from "prop-types";
 
-const API_BASE_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
-const SERVER_URL = API_BASE_URL;
+// Định nghĩa URL API sử dụng đường dẫn tương đối để tránh bị chặn
+const getApiBaseUrl = () => {
+  // Trong môi trường phát triển (localhost), sử dụng đường dẫn đầy đủ
+  if (import.meta.env.DEV) {
+    return import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
+  }
+  
+  // Trong môi trường production (Vercel), sử dụng đường dẫn tương đối
+  return "";
+};
+
+// Định nghĩa API_BASE_URL
+const API_BASE_URL = getApiBaseUrl();
 
 // Component để xử lý lỗi trong chatbot
 class ChatBotErrorBoundary extends React.Component {
@@ -106,9 +117,11 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
     } else if (url === 'default-product.jpg') {
       return 'https://bizweb.dktcdn.net/thumb/large/100/360/151/products/5-fc8bf88b-59ce-4bb7-8b57-1e9cc2c5bfdb.jpg?v=1625689306000';
     } else if (url.startsWith('/')) {
-      return `http://localhost:8080${url}`;
+      // Sử dụng đường dẫn tương đối khi ở production
+      return import.meta.env.DEV ? `${API_BASE_URL}${url}` : url;
     } else {
-      return `http://localhost:8080/${url}`;
+      // Sử dụng đường dẫn tương đối khi ở production
+      return import.meta.env.DEV ? `${API_BASE_URL}/${url}` : `/${url}`;
     }
   }, []);
 
@@ -131,8 +144,18 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         userId
       };
       
-      // Thay đổi URL endpoint theo cách đăng ký của server
-      const response = await axios.post(`${SERVER_URL}/api/chatbot`, payload);
+      // Sử dụng đường dẫn tương đối cho API endpoint
+      const endpoint = API_BASE_URL ? `${API_BASE_URL}/api/chatbot` : '/api/chatbot';
+      
+      // Thêm header để tránh bị ad blockers chặn
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      };
+      
+      const response = await axios.post(endpoint, payload, config);
       
       if (response.data.success) {
         // Lọc và xử lý response.data.message tùy thuộc vào intent
@@ -226,7 +249,7 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [conversationContext, userId, SERVER_URL]);
+  }, [conversationContext, userId, API_BASE_URL]);
   
   // Xử lý khi người dùng click vào câu gợi ý
   const handleSuggestedQuestion = useCallback((question) => {
