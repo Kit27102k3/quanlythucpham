@@ -407,6 +407,25 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
     );
   }, [getProductImageUrl, handleProductClick, handleSuggestedQuestion, generalOptions]);
 
+  useEffect(() => {
+    if (userId) {
+      fetchCart(); // Lấy giỏ hàng khi component mount hoặc userId thay đổi
+    }
+  }, [userId]);
+
+  // Chỉ sử dụng event listener để cập nhật khi có thay đổi
+  useEffect(() => {
+    const handleCartUpdate = () => {
+      fetchCart();
+    };
+    
+    window.addEventListener('cart-updated', handleCartUpdate);
+    
+    return () => {
+      window.removeEventListener('cart-updated', handleCartUpdate);
+    };
+  }, [userId]); // Thêm userId vào dependency array
+
   return (
     <div className={`fixed z-50 ${isMobile ? 'bottom-2 right-2' : 'bottom-6 right-6'}`}>
       {!isOpen && (
