@@ -241,7 +241,7 @@ const Header = () => {
         <h3 className="text-sm text-white text-center font-medium lg:text-left">
           Nông Trại Hữu Cơ Cung Cấp Thực Phẩm Sạch
         </h3>
-        <div className="flex justify-center mt-2 lg:px-7 items-center ">
+        <div className="hide-on-mobile flex justify-center mt-2 lg:px-7 items-center ">
           {isLoggedIn ? (
             <a
               href="/tai-khoan"
