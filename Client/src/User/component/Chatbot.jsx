@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react/prop-types */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Send, MessageCircle, Minus, ExternalLink, Info, ShoppingBag, MapPin, FileText, Settings, Tag, Search } from "lucide-react";
+import { Send, MessageCircle, Minus, ExternalLink, ShoppingBag, MapPin, Tag } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import formatCurrency from "../Until/FotmatPrice";
@@ -13,8 +14,8 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
   }
   
-  // Trong môi trường production (Vercel), sử dụng đường dẫn tương đối
-  return "";
+  // Trong môi trường production (Vercel), sử dụng URL chính xác của backend
+  return import.meta.env.VITE_SERVER_URL || "https://quanlythucpham-azf6.vercel.app";
 };
 
 // Định nghĩa API_BASE_URL
@@ -132,7 +133,7 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
     setIsOpen(false); // Đóng chatbot khi chuyển trang
   }, [navigate, setIsOpen]);
 
-  // Send message to API endpoint
+  // Send message to API endpoint - Sửa phần gọi API
   const handleCustomMessage = useCallback(async (message) => {
     if (!message.trim()) return;
     
@@ -144,8 +145,8 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         userId
       };
       
-      // Sử dụng đường dẫn tương đối cho API endpoint
-      const endpoint = API_BASE_URL ? `${API_BASE_URL}/api/chatbot` : '/api/chatbot';
+      // Sử dụng endpoint tuyệt đối cho API
+      const endpoint = `${API_BASE_URL}/api/chatbot`;
       
       // Thêm header để tránh bị ad blockers chặn
       const config = {
