@@ -277,9 +277,9 @@ const Header = () => {
           ) : (
             <div className="flex items-center text-white p-1 border-l-2 ml-1 pl-2 ">
               <PersonIcon />
-              <button className="text-[12px] text-white  font-medium uppercase cursor-pointer p-1">
+              <a href="dang-ky" className="text-[12px] text-white  font-medium uppercase cursor-pointer p-1">
                 Đăng ký
-              </button>
+              </a>
             </div>
           )}
         </div>

@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import { InputText } from "primereact/inputtext";
 import { ToastContainer, toast } from "react-toastify";
@@ -23,60 +24,63 @@ export default function Register() {
 
   const validateForm = () => {
     const { email, phone, firstName, lastName, userName, password } = formData;
-    
+
     if (!email) return "Email không được để trống";
     if (!phone) return "Số điện thoại không được để trống";
     if (!firstName) return "Tên không được để trống";
     if (!lastName) return "Họ không được để trống";
     if (!userName) return "Tên đăng nhập không được để trống";
     if (!password) return "Mật khẩu không được để trống";
-    
+
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return "Email không hợp lệ";
     }
-    
+
     if (!/^\d{10,11}$/.test(phone)) {
       return "Số điện thoại phải có 10-11 chữ số";
     }
-    
+
     if (password.length < 8) {
       return "Mật khẩu phải có ít nhất 8 ký tự";
     }
-    
+
     return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Kiểm tra validation
     const validationError = validateForm();
     if (validationError) {
       toast.error(validationError);
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       const response = await authApi.register(formData);
-      
+
       // Lưu token và thông tin người dùng nếu có
       if (response.data && response.data.accessToken) {
         localStorage.setItem("accessToken", response.data.accessToken);
         localStorage.setItem("refreshToken", response.data.refreshToken);
         localStorage.setItem("userId", response.data.userId);
         localStorage.setItem("userRole", response.data.role || "user");
-        localStorage.setItem("fullName", response.data.fullName || `${formData.firstName} ${formData.lastName}`);
+        localStorage.setItem(
+          "fullName",
+          response.data.fullName || `${formData.firstName} ${formData.lastName}`
+        );
       }
-      
+
       toast.success("Đăng ký tài khoản thành công!");
-      
+
       // Đặt thời gian chuyển hướng sau khi hiển thị thông báo
       setTimeout(() => {
         navigate("/");
       }, 2000);
-      
+
       // Reset form
       setFormData({
         email: "",
@@ -88,13 +92,13 @@ export default function Register() {
       });
     } catch (error) {
       let errorMessage = "Đăng ký không thành công!";
-      
+
       if (error.message) {
         errorMessage = error.message;
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       }
-      
+
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -111,11 +115,11 @@ export default function Register() {
           className="hidden md:block bg-cover bg-center relative"
           style={{
             backgroundImage:
-              "url('https://img.freepik.com/free-photo/top-view-table-full-delicious-food_23-2149141463.jpg')",
+              "url('https://vinatechgroup.vn/wp-content/uploads/2022/08/ke-sieu-thi-tai-sieu-thi-nova-tinh-ba-ria-vung-tau-5.png')",
             backgroundSize: "cover",
           }}
         >
-          <div className="absolute inset-0 bg-[#51bb1a] bg-opacity-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-opacity-50 flex items-center justify-center">
             <h2 className="text-4xl font-bold text-white text-center px-8">
               Khám Phá Ẩm Thực <br />
               <span className="text-[#51bb1a]">DNC FOOD</span>
@@ -129,7 +133,7 @@ export default function Register() {
             Đăng Ký Tài Khoản
           </h1>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 flex flex-col gap-2">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -221,7 +225,9 @@ export default function Register() {
               type="submit"
               disabled={isSubmitting}
               className={`w-full mt-4 p-3 bg-[#51bb1a] text-white rounded-lg ${
-                isSubmitting ? "opacity-70 cursor-not-allowed" : "hover:bg-[#51bb1a] hover:scale-105"
+                isSubmitting
+                  ? "opacity-70 cursor-not-allowed"
+                  : "hover:bg-[#51bb1a] hover:scale-105"
               } transition duration-300 ease-in-out transform focus:outline-none focus:ring-2 focus:ring-[#51bb1a]`}
             >
               {isSubmitting ? "ĐANG XỬ LÝ..." : "ĐĂNG KÝ"}

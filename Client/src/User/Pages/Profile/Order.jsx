@@ -15,10 +15,31 @@ export default function Order() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
+      
+      // Lấy userId của người dùng hiện tại
+      const currentUserId = localStorage.getItem("userId");
+      if (!currentUserId) {
+        toast.error("Không tìm thấy thông tin người dùng, vui lòng đăng nhập lại.");
+        setTimeout(() => navigate("/dang-nhap"), 2000);
+        setLoading(false);
+        return;
+      }
+      
       const response = await orderApi.getUserOrders();
       
+      // Kiểm tra và lọc đơn hàng thuộc về tài khoản hiện tại
+      const filteredResponse = response.filter(order => {
+        // Kiểm tra xem userId trong đơn hàng có phải là userId hiện tại không
+        if (order.userId && typeof order.userId === 'object' && order.userId._id) {
+          return order.userId._id === currentUserId;
+        } else if (order.userId && typeof order.userId === 'string') {
+          return order.userId === currentUserId;
+        }
+        return false;
+      });
+      
       // Sắp xếp đơn hàng mới nhất lên đầu
-      const sortedOrders = response.sort(
+      const sortedOrders = filteredResponse.sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
 

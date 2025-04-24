@@ -19,8 +19,25 @@ axios.interceptors.request.use(
 );
 
 export const getOrderById = async (orderId) => {
-  const response = await axios.get(`${API_URL}/orders/${orderId}`);
-  return response.data;
+  try {
+    const userId = localStorage.getItem("userId");
+    const response = await axios.get(`${API_URL}/orders/${orderId}`);
+    const orderData = response.data;
+    
+    // Kiểm tra nếu đơn hàng không thuộc về người dùng hiện tại
+    const orderUserId = orderData.userId && typeof orderData.userId === 'object' 
+      ? orderData.userId._id 
+      : orderData.userId;
+      
+    if (userId && orderUserId !== userId) {
+      console.warn("Đơn hàng không thuộc về người dùng hiện tại!");
+    }
+    
+    return orderData;
+  } catch (error) {
+    console.error("Lỗi khi lấy thông tin đơn hàng:", error);
+    throw error;
+  }
 };
 
 const orderApi = {
@@ -30,50 +47,23 @@ const orderApi = {
   },
   getUserOrders: async () => {
     try {
-      // Get the access token
-      // All localStorage keys: ["access_token", "refresh_token", "auth_user", "user"]
-      // console.log("All localStorage keys:", Object.keys(localStorage));
-
-      // Try to find user ID from user data
-      const userString = localStorage.getItem("user");
-      // console.log("User data from localStorage:", userString);
-      const authString = localStorage.getItem("auth_user");
-      // console.log("Auth data from localStorage:", authString);
-      const tokenString = localStorage.getItem("access_token");
-      // console.log("Token data from localStorage:", tokenString);
-
-      let userId = null;
-
-      // First, try to get userId from user object
-      if (userString) {
-        try {
-          const userData = JSON.parse(userString);
-          userId = userData._id;
-          // console.log("UserId from user object:", userId);
-        } catch (e) {
-          // Invalid JSON, continue to next method
+      // Lấy userId từ localStorage - sử dụng userId trực tiếp nếu có
+      const userId = localStorage.getItem("userId");
+      
+      if (!userId) {
+        console.error("Không tìm thấy userId trong localStorage");
+        return [];
+      }
+      
+      // Sử dụng userId để lấy đơn hàng của người dùng hiện tại
+      const url = `${API_URL}/orders/user?userId=${userId}`;
+      
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("accessToken")}`
         }
-      }
-
-      // If userId is still null, try to get it from auth_user
-      if (!userId && authString) {
-        try {
-          const authData = JSON.parse(authString);
-          userId = authData.user?._id;
-          // console.log("UserId from auth object:", userId);
-        } catch (e) {
-          // Invalid JSON, continue to next method
-        }
-      }
-
-      // If we have a user ID, use it to filter orders
-      let url = `${API_URL}/orders`;
-      if (userId) {
-        url = `${API_URL}/orders/user?userId=${userId}`;
-      }
-
-      // console.log("Calling API with URL:", url);
-      const response = await axios.get(url);
+      });
+      
       return response.data;
     } catch (error) {
       console.error("Lỗi khi lấy đơn hàng của người dùng:", error);

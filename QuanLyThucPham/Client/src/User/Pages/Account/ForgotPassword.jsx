@@ -1,15 +1,17 @@
 /* eslint-disable react/jsx-no-target-blank */
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Stepper } from "primereact/stepper";
 import { StepperPanel } from "primereact/stepperpanel";
 import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
-import { toast } from "sonner";
 import { classNames } from "primereact/utils";
+import { toast } from "sonner";
 import authApi from "../../../api/authApi";
 import "../../../App.css";
 
-export default function ForgotPassword() {
+export default function ForgotPassword({ onClose }) {
+  const navigate = useNavigate();
   const stepperRef = useRef(null);
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState({
@@ -17,6 +19,7 @@ export default function ForgotPassword() {
     step2: false,
     step3: false,
   });
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -31,6 +34,31 @@ export default function ForgotPassword() {
     confirm: false,
     otp: false,
   });
+
+  // Đóng form nếu thành công
+  useEffect(() => {
+    if (resetSuccess) {
+      const timer = setTimeout(() => {
+        closeForm();
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [resetSuccess]);
+
+  const closeForm = () => {
+    // Kiểm tra và gọi onClose callback
+    if (onClose && typeof onClose === 'function') {
+      onClose();
+    } else {
+      // Nếu không có callback, chuyển hướng về trang đăng nhập
+      navigate("/dang-nhap", { 
+        state: { 
+          message: "Đổi mật khẩu thành công! Vui lòng đăng nhập với mật khẩu mới." 
+        } 
+      });
+    }
+  };
 
   const validateEmail = (email) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -57,18 +85,6 @@ export default function ForgotPassword() {
     stepperRef.current.prevCallback();
   };
 
-  const showToast = (severity, summary, detail) => {
-    if (severity === "success") {
-      toast.success(detail);
-    } else if (severity === "error") {
-      toast.error(detail);
-    } else if (severity === "info") {
-      toast.info(detail);
-    } else {
-      toast(detail);
-    }
-  };
-
   const handleSubmitStep1 = async () => {
     if (!formData.email) {
       setErrors((prev) => ({ ...prev, email: "Email không được để trống" }));
@@ -83,14 +99,14 @@ export default function ForgotPassword() {
       const response = await authApi.requestPasswordReset({
         email: formData.email,
       });
-      showToast("success", "Thành công", response.message);
+      toast.success("Thành công", {
+        description: response.message || "Mã OTP đã được gửi đến email của bạn"
+      });
       handleNext();
     } catch (error) {
-      showToast(
-        "error",
-        "Lỗi",
-        error.response?.data?.message || "Yêu cầu OTP thất bại"
-      );
+      toast.error("Lỗi", {
+        description: error.response?.data?.message || "Yêu cầu OTP thất bại"
+      });
     } finally {
       setLoading((prev) => ({ ...prev, step1: false }));
     }
@@ -105,15 +121,19 @@ export default function ForgotPassword() {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
       setToken(formData.otp); // Lưu token OTP để sử dụng ở bước 3
-      showToast("success", "Thành công", "Xác thực OTP thành công");
+      toast.success("Thành công", {
+        description: "Xác thực OTP thành công"
+      });
       handleNext();
     } catch (err) {
-      showToast("error", "Lỗi", err?.message || "Mã OTP không chính xác");
+      toast.error("Lỗi", {
+        description: err?.message || "Mã OTP không chính xác"
+      });
     } finally {
       setLoading((prev) => ({ ...prev, step2: false }));
     }
   };
-
+  
   const handleSubmitStep3 = async () => {
     if (!formData.password) {
       setErrors((prev) => ({
@@ -143,91 +163,96 @@ export default function ForgotPassword() {
         otp: token,
       });
 
-      showToast(
-        "success",
-        "Thành công",
-        response.message || "Đổi mật khẩu thành công"
-      );
+      toast.success("Thành công", {
+        description: response.message || "Đổi mật khẩu thành công! Đang chuyển hướng đến trang đăng nhập..."
+      });
 
-      // Reset form sau khi đổi mật khẩu thành công
+      // Reset form và đánh dấu là đã thành công
       setFormData({ email: "", password: "", confirm: "", otp: "" });
       setToken("");
+      setResetSuccess(true);
+      
     } catch (error) {
       console.error("Lỗi đổi mật khẩu:", error.response?.data);
-      showToast(
-        "error",
-        "Lỗi",
-        error.response?.data?.message || "Đổi mật khẩu thất bại"
-      );
+      toast.error("Lỗi", {
+        description: error.response?.data?.message || "Đổi mật khẩu thất bại"
+      });
     } finally {
       setLoading((prev) => ({ ...prev, step3: false }));
     }
   };
 
+  if (resetSuccess) {
+    return (
+      <div className="flex flex-column align-items-center justify-content-center py-5">
+        <div className="text-center">
+          <i className="pi pi-check-circle text-green-500" style={{ fontSize: '3rem' }}></i>
+          <h3 className="mt-3 mb-2">Đổi mật khẩu thành công!</h3>
+          <p className="text-sm text-gray-600 mb-4">Đang chuyển hướng đến trang đăng nhập...</p>
+          <Button 
+            label="Đi đến đăng nhập ngay" 
+            className="p-button-sm" 
+            onClick={closeForm}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      className="flex justify-content-center "
-      style={{ padding: "12px 16px" }}
-    >
-      <div
-        className="w-full max-w-full"
-        style={{ maxWidth: "330px", margin: "0 auto" }}
-      >
+    <div className="flex justify-content-center" style={{ padding: '12px 16px' }}>
+      <div className="w-full max-w-full" style={{ maxWidth: '330px', margin: '0 auto' }}>
         <div className="text-center mb-3 mt-2">
-          <h2 className="text-lg font-bold" style={{ marginBottom: "16px" }}>
-            QUÊN MẬT KHẨU
-          </h2>
+          <h2 className="text-lg font-bold" style={{ marginBottom: '16px' }}>QUÊN MẬT KHẨU</h2>
         </div>
         <Stepper
           ref={stepperRef}
           orientation="horizontal"
           className="text-black mb-3"
-          style={{ fontSize: "0.8rem", marginBottom: "16px" }}
+          style={{ fontSize: '0.8rem', marginBottom: '16px' }}
           pt={{
-            root: {
-              className: "responsive-stepper",
-              style: { paddingBottom: "10px" },
+            root: { 
+              className: 'responsive-stepper',
+              style: { paddingBottom: '10px' }
             },
-            step: {
-              className: "responsive-step",
-              style: {
-                padding: "0.5rem 0.25rem",
-                minWidth: "auto",
-              },
+            step: { 
+              className: 'responsive-step',
+              style: { 
+                padding: '0.5rem 0.25rem',
+                minWidth: 'auto'
+              }
             },
             stepbutton: {
               style: {
-                height: "auto",
-                width: "auto",
-                minWidth: "1.5rem",
-                minHeight: "1.5rem",
-              },
+                height: 'auto',
+                width: 'auto',
+                minWidth: '1.5rem',
+                minHeight: '1.5rem'
+              }
             },
             stepicon: {
               style: {
-                fontSize: "0.75rem",
-              },
+                fontSize: '0.75rem'
+              }
             },
             steptitle: {
-              className: "text-xs",
+              className: 'text-xs',
               style: {
-                margin: "0.25rem 0 0 0",
-                whiteSpace: "normal",
-                textAlign: "center",
-                maxWidth: "70px",
-              },
-            },
+                margin: '0.25rem 0 0 0',
+                whiteSpace: 'normal',
+                textAlign: 'center',
+                maxWidth: '70px'
+              }
+            }
           }}
         >
           <StepperPanel header="Xác thực email">
-            <div
-              className="border-dashed border-round surface-ground font-medium w-full"
-              style={{
-                padding: "16px",
-                borderRadius: "8px",
-                boxShadow: "0 2px 5px rgba(0,0,0,0.08)",
-              }}
-            >
+            <div className="border-dashed border-round surface-ground font-medium w-full" 
+                style={{ 
+                  padding: '16px', 
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.08)'
+                }}>
               <div className="field mb-3">
                 <label htmlFor="email" className="font-bold block mb-2 text-sm">
                   Email:
@@ -244,28 +269,24 @@ export default function ForgotPassword() {
                   style={{
                     backgroundColor: "white",
                     color: "black",
-                    padding: "10px 12px",
-                    borderRadius: "6px",
+                    padding: '10px 12px',
+                    borderRadius: '6px'
                   }}
                 />
                 {errors.email && (
-                  <small className="p-error block mt-1 text-xs">
-                    {errors.email}
-                  </small>
+                  <small className="p-error block mt-1 text-xs">{errors.email}</small>
                 )}
               </div>
             </div>
             <div className="flex pt-3 justify-content-end px-4">
               <Button
                 label="Tiếp theo"
-                // icon="pi pi-arrow-right"
-                // iconPos="right"
                 loading={loading.step1}
                 className="w-full text-white text-xs"
                 style={{
-                  height: "38px",
-                  backgroundColor: "#1976d2",
-                  borderRadius: "6px",
+                  height: '38px',
+                  backgroundColor: '#1976d2',
+                  borderRadius: '6px'
                 }}
                 onClick={handleSubmitStep1}
               />
@@ -273,18 +294,13 @@ export default function ForgotPassword() {
           </StepperPanel>
 
           <StepperPanel header="Xác thực OTP">
-            <div
-              className="border-dashed border-round surface-ground font-medium w-full"
-              style={{
-                padding: "16px",
-                borderRadius: "8px",
-                boxShadow: "0 2px 5px rgba(0,0,0,0.08)",
-              }}
-            >
-              <h3
-                className="mb-3 text-center text-xs"
-                style={{ fontWeight: "600" }}
-              >
+            <div className="border-dashed border-round surface-ground font-medium w-full"
+                style={{ 
+                  padding: '16px', 
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.08)'
+                }}>
+              <h3 className="mb-3 text-center text-xs" style={{ fontWeight: '600' }}>
                 Nhập mã OTP đã gửi đến email của bạn
               </h3>
               <div className="field mb-3">
@@ -296,18 +312,15 @@ export default function ForgotPassword() {
                   value={formData.otp}
                   onChange={handleChange}
                   placeholder="Nhập mã 6 số"
-                  className={classNames(
-                    "w-full border-round border text-center text-base",
-                    {
-                      "p-invalid": errors.otp,
-                    }
-                  )}
+                  className={classNames("w-full border-round border text-center text-base", {
+                    "p-invalid": errors.otp,
+                  })}
                   style={{
                     backgroundColor: "white",
                     color: "black",
                     letterSpacing: "0.3rem",
-                    padding: "10px 12px",
-                    borderRadius: "6px",
+                    padding: '10px 12px',
+                    borderRadius: '6px'
                   }}
                 />
                 {errors.otp && (
@@ -321,10 +334,20 @@ export default function ForgotPassword() {
                   label="Gửi lại mã OTP"
                   link
                   className="p-0 text-xs"
-                  style={{ color: "#1976d2" }}
-                  onClick={() =>
-                    showToast("info", "Thông báo", "Mã OTP mới đã được gửi")
-                  }
+                  style={{ color: '#1976d2' }}
+                  onClick={() => {
+                    // Gọi API gửi lại OTP ở đây nếu có
+                    // Giả lập API call
+                    if (!formData.email) {
+                      toast.error("Lỗi", {
+                        description: "Vui lòng nhập email trước khi gửi lại OTP"
+                      });
+                      return;
+                    }
+                    toast.info("Thông báo", {
+                      description: "Mã OTP mới đã được gửi"
+                    });
+                  }}
                 />
               </div>
             </div>
@@ -333,24 +356,21 @@ export default function ForgotPassword() {
                 label="Quay lại"
                 severity="secondary"
                 className="w-full text-black border-1 text-xs"
-                // icon="pi pi-arrow-left"
                 style={{
-                  height: "38px",
-                  backgroundColor: "#f8f9fa",
-                  borderRadius: "6px",
+                  height: '38px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '6px'
                 }}
                 onClick={handleBack}
               />
               <Button
                 label="Tiếp theo"
-                // icon="pi pi-arrow-right"
-                // iconPos="right"
                 loading={loading.step2}
                 className="w-full text-white text-xs"
                 style={{
-                  height: "38px",
-                  backgroundColor: "#1976d2",
-                  borderRadius: "6px",
+                  height: '38px',
+                  backgroundColor: '#1976d2',
+                  borderRadius: '6px'
                 }}
                 onClick={handleSubmitStep2}
               />
@@ -358,19 +378,14 @@ export default function ForgotPassword() {
           </StepperPanel>
 
           <StepperPanel header="Đặt mật khẩu mới">
-            <div
-              className="border-dashed border-round surface-ground font-medium w-full"
-              style={{
-                padding: "16px",
-                borderRadius: "8px",
-                boxShadow: "0 2px 5px rgba(0,0,0,0.08)",
-              }}
-            >
+            <div className="border-dashed border-round surface-ground font-medium w-full"
+                style={{ 
+                  padding: '16px', 
+                  borderRadius: '8px',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.08)'
+                }}>
               <div className="field mb-3">
-                <label
-                  htmlFor="password"
-                  className="font-bold block mb-2 text-sm"
-                >
+                <label htmlFor="password" className="font-bold block mb-2 text-sm">
                   Mật khẩu mới:
                 </label>
                 <InputText
@@ -386,8 +401,8 @@ export default function ForgotPassword() {
                   style={{
                     backgroundColor: "white",
                     color: "black",
-                    padding: "10px 12px",
-                    borderRadius: "6px",
+                    padding: '10px 12px',
+                    borderRadius: '6px'
                   }}
                 />
                 {errors.password && (
@@ -397,10 +412,7 @@ export default function ForgotPassword() {
                 )}
               </div>
               <div className="field mb-2">
-                <label
-                  htmlFor="confirm"
-                  className="font-bold block mb-2 text-sm"
-                >
+                <label htmlFor="confirm" className="font-bold block mb-2 text-sm">
                   Xác nhận mật khẩu:
                 </label>
                 <InputText
@@ -416,14 +428,12 @@ export default function ForgotPassword() {
                   style={{
                     backgroundColor: "white",
                     color: "black",
-                    padding: "10px 12px",
-                    borderRadius: "6px",
+                    padding: '10px 12px',
+                    borderRadius: '6px'
                   }}
                 />
                 {errors.confirm && (
-                  <small className="p-error block mt-1 text-xs">
-                    {errors.confirm}
-                  </small>
+                  <small className="p-error block mt-1 text-xs">{errors.confirm}</small>
                 )}
               </div>
             </div>
@@ -432,23 +442,21 @@ export default function ForgotPassword() {
                 label="Quay lại"
                 severity="secondary"
                 className="w-full text-black border-1 text-xs"
-                // icon="pi pi-arrow-left"
                 style={{
-                  height: "38px",
-                  backgroundColor: "#f8f9fa",
-                  borderRadius: "6px",
+                  height: '38px',
+                  backgroundColor: '#f8f9fa',
+                  borderRadius: '6px'
                 }}
                 onClick={handleBack}
               />
               <Button
                 label="Xác nhận"
-                // icon="pi pi-check"
                 loading={loading.step3}
                 className="w-full text-white text-xs"
                 style={{
-                  height: "38px",
-                  backgroundColor: "#51bb1a",
-                  borderRadius: "6px",
+                  height: '38px',
+                  backgroundColor: '#51bb1a',
+                  borderRadius: '6px'
                 }}
                 onClick={handleSubmitStep3}
               />
@@ -458,4 +466,4 @@ export default function ForgotPassword() {
       </div>
     </div>
   );
-}
+} 

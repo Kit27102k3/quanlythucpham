@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { ClipboardListIcon, ChevronLeftIcon, TruckIcon, PackageIcon, XCircleIcon, ClockIcon, MapPinIcon, EyeIcon } from "lucide-react";
 import orderApi, { getOrderById } from "../../../api/orderApi";
 import formatCurrency from "../../Until/FotmatPrice";
@@ -14,12 +14,35 @@ export default function OrderDetail() {
   const [showTracking, setShowTracking] = useState(false);
   const [trackingError, setTrackingError] = useState(false);
   const { orderId } = useParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
+        
+        // Lấy userId của người dùng hiện tại
+        const currentUserId = localStorage.getItem("userId");
+        if (!currentUserId) {
+          toast.error("Không tìm thấy thông tin người dùng, vui lòng đăng nhập lại.");
+          setTimeout(() => navigate("/dang-nhap"), 2000);
+          setLoading(false);
+          return;
+        }
+        
         const orderData = await getOrderById(orderId);
+        
+        // Kiểm tra xem đơn hàng có thuộc về người dùng hiện tại không
+        const orderUserId = orderData.userId && typeof orderData.userId === 'object' 
+          ? orderData.userId._id 
+          : orderData.userId;
+          
+        if (orderUserId !== currentUserId) {
+          toast.error("Bạn không có quyền xem đơn hàng này.");
+          setTimeout(() => navigate("/tai-khoan/don-hang"), 2000);
+          setLoading(false);
+          return;
+        }
         
         setOrder(orderData);
         
@@ -29,13 +52,15 @@ export default function OrderDetail() {
         }
       } catch (error) {
         console.error("Lỗi khi lấy thông tin đơn hàng:", error);
+        toast.error("Không thể tải thông tin đơn hàng. Vui lòng thử lại sau.");
+        setTimeout(() => navigate("/tai-khoan/don-hang"), 2000);
       } finally {
         setLoading(false);
       }
     };
 
     fetchOrderDetails();
-  }, [orderId]);
+  }, [orderId, navigate]);
 
   const fetchTrackingInfo = async (orderCode) => {
     if (!orderCode) {
