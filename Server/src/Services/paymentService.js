@@ -25,7 +25,7 @@ class PaymentService {
             // Sử dụng customRedirectUrl từ client nếu có, ngược lại dùng URL mặc định
             const returnUrl = customRedirectUrl || `${SITE_CONFIG.baseUrl}/payment-result`;
             
-            // Sửa URL webhook để khớp chính xác với handler trong app.post()
+            // Sửa URL webhook để khớp với cấu hình trực tiếp
             const notifyUrl = `https://quanlythucpham-azf6.vercel.app/api/payments/webhook/bank`;
             
             console.log("Using SePay callback URLs:", { returnUrl, notifyUrl });
