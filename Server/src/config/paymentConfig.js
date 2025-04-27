@@ -12,13 +12,11 @@ const SITE_CONFIG = {
 };
 
 export const SEPAY = {
-    merchantId: "DNC_FOOD",
-    merchantName: "DNC Food",
+    merchantId: 'DNCFOOD',
     apiToken: process.env.SEPAY_API_TOKEN || 'J63FBVYE2ABYD8RQLHIGETZ1A799DKWZS5PBOYJZJ4HDXSQTSWIUU0RQGTVFATF',
     endpoint: 'https://api.sepay.vn/v1/payments',
     returnUrl: `${SITE_CONFIG.baseUrl}/payment-result`,
     notifyUrl: `${SITE_CONFIG.apiUrl}/webhook`,
-    qrExpireTime: 60 * 60 * 1000, // 60 phút (đơn vị là milliseconds)
-    currency: "VND"
+    qrExpireTime: 24 * 60 // 24 giờ tính bằng phút
 };
                                                  

@@ -9,7 +9,6 @@ import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import jwt from "jsonwebtoken";
 
 // ES modules compatibility
 const __filename = fileURLToPath(import.meta.url);
@@ -28,7 +27,6 @@ import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import tipsRoutes from "./routes/tipsRoutes.js";
 import { handleSepayCallback, handleBankWebhook } from "./Controller/paymentController.js";
-import * as paymentController from "./Controller/paymentController.js";
 
 dotenv.config({ path: ".env" });
 const app = express();
@@ -83,9 +81,11 @@ app.use((req, res, next) => {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
+      const jwt = require('jsonwebtoken');
+      const secretKey = process.env.JWT_SECRET || 'your-secret-key';
       
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        const decoded = jwt.verify(token, secretKey);
         req.user = decoded;
       } catch (error) {
         // Xử lý token không hợp lệ
@@ -282,65 +282,6 @@ app.post('*/webhook*', async (req, res) => {
   }
 });
 
-// Webhook handler để xử lý các thông báo thanh toán từ ngân hàng
-app.post("/api/payments/webhook/bank", async (req, res) => {
-  try {
-    console.log("SePay webhook received:", JSON.stringify(req.body));
-    
-    // Trả về response thành công ngay lập tức
-    res.status(200).json({
-      success: true,
-      code: "00",
-      message: "Webhook received successfully"
-    });
-    
-    // Xử lý webhook sau khi đã trả về response
-    try {
-      const result = await paymentController.handleBankWebhook(req, res);
-    } catch (err) {
-      console.error("Error processing webhook after response:", err);
-    }
-  } catch (error) {
-    console.error("Error in SePay webhook handler:", error);
-    res.status(200).json({
-      success: true,
-      code: "00",
-      message: "Webhook received with error"
-    });
-  }
-});
-
-// Thêm route bắt tất cả request có chứa từ webhook để đảm bảo bắt được các request từ MBBank
-app.post("*/webhook*", async (req, res) => {
-  try {
-    console.log("Generic webhook received:", {
-      url: req.originalUrl,
-      body: JSON.stringify(req.body)
-    });
-    
-    // Trả về response thành công ngay lập tức
-    res.status(200).json({
-      success: true,
-      code: "00",
-      message: "Webhook received successfully"
-    });
-    
-    // Chuyển req để xử lý theo tiêu chuẩn
-    try {
-      const result = await paymentController.handleBankWebhook(req, res);
-    } catch (err) {
-      console.error("Error processing generic webhook after response:", err);
-    }
-  } catch (error) {
-    console.error("Error in generic webhook handler:", error);
-    res.status(200).json({
-      success: true,
-      code: "00",
-      message: "Webhook received with error"
-    });
-  }
-});
-
 // Hàm xử lý dữ liệu webhook riêng biệt
 async function handleWebhookData(webhookData) {
   try {
@@ -370,37 +311,43 @@ async function handleWebhookData(webhookData) {
     // Tìm orderId từ các nguồn khác nhau
     let finalOrderId = requestOrderId || order_id;
     
-    console.log("Initial orderId from webhook:", finalOrderId);
-    
     // Trích xuất orderId từ nội dung chuyển khoản (MBBank)
-    if (content) {
+    if (!finalOrderId && content) {
       console.log("Trying to extract orderId from content:", content);
       
-      // Tìm với pattern cụ thể cho ID định dạng như 680db5e1067c94fe83e85e2c
-      const idPattern = /680[a-z0-9]{20,30}/gi;
-      const idMatches = content.match(idPattern);
+      // Các mẫu regex khác nhau để tìm mã đơn hàng từ nội dung
+      const patterns = [
+        /don hang[:\s]*#?([a-zA-Z0-9_-]+)/i,  // "Thanh toan don hang #ABC123"
+        /thanh toan don hang[:\s]*#?([a-zA-Z0-9_-]+)/i, // "Thanh toan don hang ABC123"
+        /#([a-zA-Z0-9_-]+)/i,  // "#ABC123"
+        /([a-f0-9]{24})/i,  // MongoDB ID format
+        /(\d{8,15}[-]?\d{1,6})/i  // Timestamp-random format
+      ];
       
-      if (idMatches && idMatches.length > 0) {
-        finalOrderId = idMatches[0];
-        console.log(`Found direct MongoDB ID in content: ${finalOrderId}`);
-      } else {
-        // Các mẫu regex khác nhau để tìm mã đơn hàng từ nội dung
-        const patterns = [
-          /don hang\s+#?([a-zA-Z0-9_-]+)/i,  // "Thanh toan don hang #ABC123"
-          /thanh toan don hang\s+#?([a-zA-Z0-9_-]+)/i, // "Thanh toan don hang ABC123"
-          /#([a-zA-Z0-9_-]+)/i,  // "#ABC123"
-          /([a-f0-9]{20,24})/i,  // MongoDB ID format
-          /(\d{8,15}[-]?\d{1,6})/i  // Timestamp-random format
-        ];
-        
-        for (const pattern of patterns) {
-          const match = content.match(pattern);
-          if (match && match[1]) {
-            finalOrderId = match[1].trim();
-            console.log(`Extracted orderId from content: ${finalOrderId} using pattern: ${pattern}`);
-            break;
-          }
+      for (const pattern of patterns) {
+        const match = content.match(pattern);
+        if (match && match[1]) {
+          finalOrderId = match[1].trim();
+          console.log(`Extracted orderId from content: ${finalOrderId} using pattern: ${pattern}`);
+          break;
         }
+      }
+      
+      // Nếu nội dung có mã như #680db5f0067c94fe83e85e30
+      const hashtagMatch = content.match(/#([a-zA-Z0-9]+)/);
+      if (!finalOrderId && hashtagMatch && hashtagMatch[1]) {
+        finalOrderId = hashtagMatch[1];
+        console.log(`Extracted orderId from hashtag: ${finalOrderId}`);
+      }
+    }
+    
+    // Trích xuất trực tiếp từ nội dung chuyển khoản nếu có format #ID
+    if (!finalOrderId && content) {
+      // Tìm trong toàn bộ chuỗi content
+      const extractedOrderId = content.match(/680[a-zA-Z0-9]+/);
+      if (extractedOrderId && extractedOrderId[0]) {
+        finalOrderId = extractedOrderId[0];
+        console.log(`Found orderId in content by direct match: ${finalOrderId}`);
       }
     }
     
@@ -409,70 +356,35 @@ async function handleWebhookData(webhookData) {
       return;
     }
     
-    console.log(`Final orderId determined: ${finalOrderId}`);
-    console.log(`Processing payment for order ID: ${finalOrderId}, transaction: ${transactionId}`);
+    console.log(`Processing payment for order: ${finalOrderId}, transaction: ${transactionId}`);
     
-    // Sử dụng chức năng tìm kiếm linh hoạt hơn để tìm đơn hàng
+    // Tìm order
     const Order = mongoose.model('Order');
-    
-    // Trước tiên, thử tìm kiếm chính xác
-    let order = await Order.findOne({ 
+    const order = await Order.findOne({ 
       $or: [
         { _id: finalOrderId },
         { orderId: finalOrderId }
       ]
     });
     
-    // Nếu không tìm thấy, thử tìm với regex để phòng trường hợp có sự khác biệt nhỏ
     if (!order) {
-      const escapeRegex = (text) => {
-        return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&");
-      };
-      
-      // Lấy 10 ký tự đầu tiên của finalOrderId để tìm kiếm gần đúng
-      const idPrefix = finalOrderId.substring(0, 10);
-      const regexPattern = new RegExp(escapeRegex(idPrefix), 'i');
-      
-      order = await Order.findOne({
-        $or: [
-          { _id: { $regex: regexPattern } },
-          { orderId: { $regex: regexPattern } }
-        ]
-      });
-      
-      if (order) {
-        console.log(`Found order with fuzzy search: ${order._id}`);
-      }
+      console.log(`Order not found: ${finalOrderId}`);
+      // Tìm kiếm mở rộng với pattern matching trên ID
+      const allOrders = await Order.find({}).limit(10).sort({createdAt: -1});
+      console.log(`Latest 10 orders in system:`, allOrders.map(o => o._id));
+      return;
     }
     
-    // Nếu vẫn không tìm thấy, thử lấy đơn hàng gần đây nhất
-    if (!order) {
-      console.log(`Order not found with ID: ${finalOrderId}, trying to find recent orders`);
-      
-      // Lấy đơn hàng chưa thanh toán gần đây nhất
-      const recentOrders = await Order.find({
-        paymentStatus: { $ne: 'completed' }
-      }).sort({createdAt: -1}).limit(5);
-      
-      if (recentOrders && recentOrders.length > 0) {
-        // Sử dụng đơn hàng gần đây nhất chưa thanh toán
-        order = recentOrders[0];
-        console.log(`Using most recent unpaid order: ${order._id}`);
-      } else {
-        console.log("No recent unpaid orders found");
-        return;
-      }
-    }
+    console.log(`Found order: ${order._id}, current status: ${order.status}, payment: ${order.paymentStatus}`);
     
-    console.log(`Processing order: ${order._id}, current status: ${order.status}, payment: ${order.paymentStatus}`);
-    
-    // Xác định trạng thái thành công - với MBBank nếu có transferAmount là đã thành công
+    // Xác định trạng thái thành công
     const isSuccessful = 
       status === 'success' || 
       status === 'completed' || 
       status === '0' || 
       status === 0 || 
-      (gateway === 'MBBank' && transferAmount > 0);
+      (gateway === 'MBBank' && transferAmount > 0) ||
+      (webhookData.transferAmount && webhookData.transferAmount > 0);
     
     // Tìm hoặc tạo payment record
     const Payment = mongoose.model('Payment');
@@ -483,10 +395,12 @@ async function handleWebhookData(webhookData) {
       ] 
     });
     
-    const finalAmount = amount || transferAmount || order.totalAmount;
+    const finalAmount = amount || transferAmount || webhookData.transferAmount || order.totalAmount;
     
     // Xác định phương thức thanh toán
-    const paymentMethod = gateway === 'MBBank' ? 'bank_transfer' : 'sepay';
+    const paymentMethod = gateway === 'MBBank' || webhookData.gateway === 'MBBank' 
+      ? 'bank_transfer' 
+      : 'sepay';
     
     if (payment) {
       console.log(`Found payment record: ${payment._id}, current status: ${payment.status}`);

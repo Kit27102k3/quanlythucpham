@@ -181,28 +181,28 @@ export default function Payment() {
           console.log("SePay response received:", sepayResponse);
 
           // Create order after successful payment setup regardless of payment type
-          const orderResponse = await orderApi.createOrder(orderData);
-          const orderIdCreated = orderResponse._id;
+            const orderResponse = await orderApi.createOrder(orderData);
+            const orderIdCreated = orderResponse._id;
           
           console.log("Order created with ID:", orderIdCreated);
-          
-          // Update the payment with order ID - use updatePaymentStatus as a workaround
-          try {
-            // Use paymentApi.updatePayment
-            await paymentApi.updatePayment(paymentId, { orderId: orderIdCreated });
-          } catch (updateError) {
-            console.log("Using alternative method to update payment");
-            // Use direct API call as fallback
-            await axios.patch(
-              `${API_URLS.PAYMENTS}/${paymentId}`,
-              { orderId: orderIdCreated },
-              {
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-          }
+            
+            // Update the payment with order ID - use updatePaymentStatus as a workaround
+            try {
+              // Use paymentApi.updatePayment
+              await paymentApi.updatePayment(paymentId, { orderId: orderIdCreated });
+            } catch (updateError) {
+              console.log("Using alternative method to update payment");
+              // Use direct API call as fallback
+              await axios.patch(
+                `${API_URLS.PAYMENTS}/${paymentId}`,
+                { orderId: orderIdCreated },
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+            }
 
           // Xử lý các trường hợp khác nhau của phản hồi thanh toán
           if (sepayResponse) {
@@ -232,10 +232,10 @@ export default function Payment() {
               // Redirect to payment URL
               window.location.href = sepayResponse.data;
             } else if (sepayResponse.fallbackQR) {
-              // Fallback là QR trực tiếp
+            // Fallback là QR trực tiếp
               console.log("Using fallback QR payment");
-              toast.info("Chuyển sang phương thức thanh toán chuyển khoản ngân hàng");
-              
+            toast.info("Chuyển sang phương thức thanh toán chuyển khoản ngân hàng");
+            
               // Chuyển đến trang QR với orderId để theo dõi trạng thái
               navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(sepayResponse.fallbackQR)}&bankName=MBBank&accountNumber=0326743391&accountName=NGUYEN%20TRONG%20KHIEM&amount=${totalAmount}`);
             } else {
