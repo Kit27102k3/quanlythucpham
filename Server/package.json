@@ -9,7 +9,9 @@
     "build-babel": "babel ./src -d ./build/src",
     "build": "npm run clean && npm run build-babel",
     "start": "node ./build/src/index.js",
-    "dev": "nodemon --exec babel-node ./src/index.js"
+    "dev": "nodemon --exec babel-node ./src/index.js",
+    "update-webhook": "node --no-warnings updateWebhook.cjs",
+    "ngrok-dev": "node --no-warnings ngrok-dev.cjs"
   },
   "dependencies": {
     "@payos/node": "^1.0.10",

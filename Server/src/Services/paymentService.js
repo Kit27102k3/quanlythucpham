@@ -23,16 +23,19 @@ class PaymentService {
             // Sử dụng customRedirectUrl từ client nếu có, ngược lại dùng URL mặc định
             const returnUrl = customRedirectUrl || `${SITE_CONFIG.baseUrl}/payment-result`;
             
-            // Sửa URL webhook để khớp với cấu hình trực tiếp
+            // Ưu tiên sử dụng NGROK_URL nếu có (cho môi trường phát triển với ngrok)
+            const ngrokUrl = process.env.NGROK_URL;
+            
             // Sử dụng đường dẫn chính xác của API
-            const apiBaseUrl = isDevelopment 
+            const apiBaseUrl = ngrokUrl || (isDevelopment 
                 ? "http://localhost:8080" 
-                : "https://quanlythucpham-azf6.vercel.app";
+                : "https://quanlythucpham-azf6.vercel.app");
             
             // Đường dẫn webhook SePay chính xác
             const notifyUrl = `${apiBaseUrl}/api/payments/webhook/bank`;
             
             console.log("Using SePay callback URLs:", { returnUrl, notifyUrl });
+            console.log("Using ngrokUrl:", ngrokUrl || "Not set");
             
             const requestData = {
                 merchantId: SEPAY.merchantId,

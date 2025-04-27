@@ -39,6 +39,9 @@ export const createSepayPaymentUrl = async (req, res) => {
       });
     }
     
+    console.log("Yêu cầu tạo URL thanh toán SePay:", { orderId, amount: numericAmount, redirectUrl });
+    
+    try {
     // Gọi service để tạo thanh toán SePay
     const paymentResult = await PaymentService.createSePayPayment(
       orderId,
@@ -47,13 +50,45 @@ export const createSepayPaymentUrl = async (req, res) => {
       redirectUrl // Truyền redirectUrl vào hàm
     );
     
-    // Trả về URL thanh toán thực từ SePay
+      console.log("Kết quả tạo URL thanh toán:", paymentResult);
+      
+      // Đảm bảo trả về URL thanh toán và QR code
+      if (paymentResult && paymentResult.data) {
     return res.json({
       success: true,
       paymentUrl: paymentResult.data,
       qrCode: paymentResult.qr_code
     });
+      } else {
+        // Tạo QR code trực tiếp nếu không có URL từ SePay
+        console.log("Không nhận được URL thanh toán từ SePay, tạo QR code trực tiếp");
+        
+        // Tạo QR code chuyển khoản ngân hàng
+        const bankQRUrl = await PaymentService.generateBankQRCode("0326743391", "MB", numericAmount, `Thanh toan ${orderId}`);
+        
+        return res.json({
+          success: true,
+          paymentUrl: redirectUrl || `${process.env.CLIENT_URL || 'http://localhost:3000'}/payment-result?orderId=${orderId}`,
+          qrCode: bankQRUrl,
+          fallbackMode: true
+        });
+      }
+    } catch (serviceError) {
+      console.error("Lỗi từ PaymentService:", serviceError);
+      
+      // Tạo QR code trực tiếp trong trường hợp lỗi
+      const bankQRUrl = await PaymentService.generateBankQRCode("0326743391", "MB", numericAmount, `Thanh toan ${orderId}`);
+      
+      return res.json({
+        success: true,
+        message: "Sử dụng phương thức dự phòng",
+        paymentUrl: redirectUrl || `${process.env.CLIENT_URL || 'http://localhost:3000'}/payment-result?orderId=${orderId}`,
+        qrCode: bankQRUrl,
+        fallbackMode: true
+      });
+    }
   } catch (error) {
+    console.error("Lỗi khi tạo URL thanh toán SePay:", error);
     return res.status(500).json({
       success: false,
       message: "Không thể khởi tạo thanh toán SePay",

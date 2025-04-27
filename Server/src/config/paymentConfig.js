@@ -17,6 +17,6 @@ export const SEPAY = {
     endpoint: 'https://api.sepay.vn/v1/payments',
     returnUrl: `${SITE_CONFIG.baseUrl}/payment-result`,
     notifyUrl: `${SITE_CONFIG.apiUrl}/webhook`,
-    qrExpireTime: 24 * 60 // 24 giờ tính bằng phút
+    qrExpireTime: 60 // 1 tiếng tính bằng phút
 };
                                                  

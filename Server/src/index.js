@@ -109,40 +109,20 @@ webhookPaths.forEach(path => {
     try {
       console.log(`Webhook received at ${path}:`, JSON.stringify(req.body));
       
-      // Trả về response ngay để tránh timeout
-      res.status(200).json({
-        success: true,
-        code: "00",
-        message: "Webhook received and will be processed",
-      });
-      
-      // Xử lý webhook bất đồng bộ không chặn response
-      try {
-        // Tạo bản sao của request để tránh xung đột
-        const reqClone = {...req, headers: {...req.headers}, body: {...req.body}};
-        
-        // Gọi handler riêng biệt dựa vào dữ liệu
-        if (req.body.gateway === 'MBBank' || req.body.transferAmount) {
-          // Không await để tránh chặn
-          handleBankWebhook(reqClone, {
-            status: () => ({
-              json: (data) => {
-                console.log(`Bank webhook processed for path ${path}:`, data);
-              }
-            })
-          });
-        } else {
-          // Không await để tránh chặn
-          handleSepayCallback(reqClone, {
-            status: () => ({
-              json: (data) => {
-                console.log(`SePay webhook processed for path ${path}:`, data);
-              }
-            })
-          });
-        }
-      } catch (processingError) {
-        console.error(`Error processing webhook at ${path}:`, processingError);
+      // Xử lý webhook đồng bộ trước khi trả về response
+      if (req.body.gateway === 'MBBank' || req.body.transferAmount) {
+        await handleBankWebhook(req, res);
+      } else {
+        await handleSepayCallback(req, res);
+      }
+
+      // Chỉ trả về response nếu chưa được trả về từ các handler
+      if (!res.headersSent) {
+        res.status(200).json({
+          success: true,
+          code: "00",
+          message: "Webhook processed successfully",
+        });
       }
     } catch (error) {
       console.error(`Error handling webhook at ${path}:`, error);
