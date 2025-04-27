@@ -33,7 +33,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://quanlythucpham.vercel.app"],
+    origin: ["http://localhost:3000", "https://quanlythucpham.vercel.app", process.env.NODE_ENV !== 'production' ? '*' : null].filter(Boolean),
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     maxAge: 3600,
@@ -47,33 +47,6 @@ app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
-
-app.post('/webhook', (req, res) => {
-  try {
-    console.log("Root webhook handler received:", JSON.stringify(req.body));
-    res.status(200).json({
-      success: true,
-      code: "00",
-      message: "Webhook received successfully at root level",
-      data: req.body
-    });
-    
-    // Forward request to appropriate handler (không await để đảm bảo response nhanh)
-    if (req.body.gateway === 'MBBank' || req.body.transferAmount) {
-      handleBankWebhook(req, res).catch(err => {
-        console.error("Error processing bank webhook:", err);
-      });
-    } else {
-      handleSepayCallback(req, res).catch(err => {
-        console.error("Error processing SePay webhook:", err);
-      });
-    }
-  } catch (error) {
-    console.error("Error in root webhook handler:", error);
-    // Luôn trả về 200
-    res.status(200).json({ success: true, code: "00", message: "Webhook received with error" });
-  }
-});
 
 // Middleware kiểm tra token và trích xuất thông tin người dùng
 app.use((req, res, next) => {
@@ -119,10 +92,71 @@ app.use("/orders", orderRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", tipsRoutes);
 
-// Thêm route đặc biệt cho webhook SePay để tránh lỗi 404
-app.post("/api/payments/webhook/bank", handleBankWebhook);
-app.post("/api/payments/sepay/webhook", handleBankWebhook);
-app.post("/api/payments/webhook/bank", handleBankWebhook);
+// Dọn dẹp các webhook handler trùng lặp
+// Đây là danh sách các đường dẫn webhook cần hỗ trợ
+const webhookPaths = [
+  '/webhook',
+  '/api/webhook',
+  '/api/webhook/bank',
+  '/api/payments/webhook',
+  '/api/payments/webhook/bank',
+  '/api/payments/sepay/webhook'
+];
+
+// Đăng ký tất cả các route webhook với một handler duy nhất
+webhookPaths.forEach(path => {
+  app.post(path, async (req, res) => {
+    try {
+      console.log(`Webhook received at ${path}:`, JSON.stringify(req.body));
+      
+      // Trả về response ngay để tránh timeout
+      res.status(200).json({
+        success: true,
+        code: "00",
+        message: "Webhook received and will be processed",
+      });
+      
+      // Xử lý webhook bất đồng bộ không chặn response
+      try {
+        // Tạo bản sao của request để tránh xung đột
+        const reqClone = {...req, headers: {...req.headers}, body: {...req.body}};
+        
+        // Gọi handler riêng biệt dựa vào dữ liệu
+        if (req.body.gateway === 'MBBank' || req.body.transferAmount) {
+          // Không await để tránh chặn
+          handleBankWebhook(reqClone, {
+            status: () => ({
+              json: (data) => {
+                console.log(`Bank webhook processed for path ${path}:`, data);
+              }
+            })
+          });
+        } else {
+          // Không await để tránh chặn
+          handleSepayCallback(reqClone, {
+            status: () => ({
+              json: (data) => {
+                console.log(`SePay webhook processed for path ${path}:`, data);
+              }
+            })
+          });
+        }
+      } catch (processingError) {
+        console.error(`Error processing webhook at ${path}:`, processingError);
+      }
+    } catch (error) {
+      console.error(`Error handling webhook at ${path}:`, error);
+      if (!res.headersSent) {
+        res.status(200).json({
+          success: true,
+          code: "00",
+          message: "Webhook received with error",
+          error: error.message
+        });
+      }
+    }
+  });
+});
 
 // Thêm middleware xử lý lỗi nghiêm trọng
 app.use((req, res, next) => {
@@ -143,47 +177,6 @@ app.use((req, res, next) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error",
-      error: error.message
-    });
-  }
-});
-
-// Đặt route webhook SePay trực tiếp tại root level (không qua router)
-app.post([
-  "/api/payments/webhook/bank", 
-  "/api/payments/sepay/webhook", 
-  "/api/webhook/bank",
-  // Thêm URL chính xác từ SePay
-  "/api/payments/webhook/bank"
-], async (req, res) => {
-  try {
-    console.log("Direct webhook handler received:", req.originalUrl);
-    console.log("Webhook payload:", JSON.stringify(req.body));
-    
-    const { order_id, status } = req.body;
-    
-    // Chuyển tiếp đến handler chính (không đợi xử lý)
-    handleBankWebhook(req, res).catch(err => {
-      console.error("Error forwarding to bank webhook handler:", err);
-      // Nếu có lỗi từ handler chính và chưa gửi response, đảm bảo vẫn trả về 200
-      if (!res.headersSent) {
-        return res.status(200).json({
-          success: true,
-          code: "00",
-          message: "Webhook received with processing error",
-          data: {
-            order_id: order_id || "unknown",
-            status: status || "pending"
-          }
-        });
-      }
-    });
-  } catch (error) {
-    console.error("Direct webhook handler error:", error);
-    return res.status(200).json({
-      success: true,
-      code: "00",
-      message: "Webhook received with error",
       error: error.message
     });
   }
@@ -217,35 +210,36 @@ app.post("/webhook", (req, res) => {
   });
 });
 
-// Thay đổi cách thiết lập server để xử lý lỗi cổng đã sử dụng
+// Khởi động server với cơ chế xử lý lỗi cổng
 const startServer = (port) => {
   // Đảm bảo port là số và trong phạm vi hợp lệ
   const portNumber = parseInt(port, 10);
-  if (isNaN(portNumber) || portNumber < 1024 || portNumber > 65535) {
-    console.log(`Invalid port ${port}, using default port 8090...`);
-    port = 8090;
+  if (isNaN(portNumber)) {
+    port = 8080;
   }
 
-  const server = app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-  });
+  try {
+    const server = app.listen(port, () => {
+      console.log(`Server is running on port ${port}`);
+    });
 
-  server.on('error', (error) => {
-    if (error.code === 'EADDRINUSE') {
-      // Tăng port lên 1 và kiểm tra không vượt quá 65535
-      const nextPort = port + 1;
-      if (nextPort > 65535) {
-        console.error('No available ports in valid range');
+    server.on('error', (error) => {
+      if (error.code === 'EADDRINUSE') {
+        console.log(`Port ${port} is in use, trying next port...`);
+        // Thử port tiếp theo
+        startServer(port + 1);
+      } else {
+        console.error('Server error:', error);
         process.exit(1);
       }
-      console.log(`Port ${port} is in use, trying alternative port ${nextPort}...`);
-      startServer(nextPort);
-    } else {
-      console.error('Server error:', error);
-    }
-  });
+    });
+  } catch (error) {
+    console.error('Error starting server:', error);
+    // Thử port tiếp theo
+    startServer(port + 1);
+  }
 };
 
-// Khởi động server với cơ chế xử lý lỗi cổng
+// Khởi động server
 const port = process.env.PORT || 8081;
 startServer(port);

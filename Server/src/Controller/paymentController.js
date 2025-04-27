@@ -21,11 +21,8 @@ export const createSepayPaymentUrl = async (req, res) => {
   try {
     const { orderId, amount, orderInfo, redirectUrl } = req.body;
     
-    console.log("Received payment request:", JSON.stringify(req.body));
-    
     // Validate đầu vào
     if (!orderId || !amount || !orderInfo) {
-      console.log("Missing required fields for payment");
       return res.status(400).json({
         success: false,
         message: "Thiếu thông tin cần thiết: orderId, amount, orderInfo"
@@ -36,64 +33,27 @@ export const createSepayPaymentUrl = async (req, res) => {
     const numericAmount = parseInt(amount);
     
     if (isNaN(numericAmount) || numericAmount <= 0) {
-      console.log("Invalid amount:", amount);
       return res.status(400).json({
         success: false,
         message: "Số tiền không hợp lệ"
       });
     }
     
-    try {
-      // Gọi service để tạo thanh toán SePay
-      const paymentResult = await PaymentService.createSePayPayment(
-        orderId,
-        numericAmount,
-        orderInfo,
-        redirectUrl // Truyền redirectUrl vào hàm
-      );
-      
-      console.log("Payment result:", JSON.stringify(paymentResult));
-      
-      // Trả về URL thanh toán thực từ SePay
-      return res.json({
-        success: true,
-        paymentUrl: paymentResult.data,
-        qrCode: paymentResult.qr_code
-      });
-    } catch (paymentError) {
-      console.error("Error creating SePay payment:", paymentError);
-      
-      // Tạo QR code chuyển khoản ngân hàng dự phòng
-      try {
-        // Tạo mã QR dự phòng
-        const bankQRCode = await PaymentService.generateBankQRCode(
-          "0326743391", // Số tài khoản
-          "MB", // Mã ngân hàng MB Bank
-          numericAmount,
-          `Thanh toan don hang ${orderId}`
-        );
-        
-        // Tạo data URL cho QR code
-        const qrDataURL = await PaymentService.generateQRCode(bankQRCode);
-        
-        return res.json({
-          success: true,
-          paymentUrl: null,
-          qrCode: qrDataURL,
-          method: "bank_transfer",
-          message: "Sử dụng mã QR chuyển khoản ngân hàng"
-        });
-      } catch (backupError) {
-        console.error("Error creating backup bank QR:", backupError);
-        return res.status(500).json({
-          success: false,
-          message: "Không thể khởi tạo thanh toán",
-          error: backupError.message
-        });
-      }
-    }
+    // Gọi service để tạo thanh toán SePay
+    const paymentResult = await PaymentService.createSePayPayment(
+      orderId,
+      numericAmount,
+      orderInfo,
+      redirectUrl // Truyền redirectUrl vào hàm
+    );
+    
+    // Trả về URL thanh toán thực từ SePay
+    return res.json({
+      success: true,
+      paymentUrl: paymentResult.data,
+      qrCode: paymentResult.qr_code
+    });
   } catch (error) {
-    console.error("SePay payment creation failed:", error);
     return res.status(500).json({
       success: false,
       message: "Không thể khởi tạo thanh toán SePay",
@@ -776,7 +736,7 @@ export const checkPaymentStatus = async (req, res) => {
     const { orderId } = req.params;
 
     console.log("Checking payment status for orderId:", orderId);
-    
+
     if (!orderId) {
       return res.status(400).json({
         success: false,
@@ -819,8 +779,8 @@ export const checkPaymentStatus = async (req, res) => {
 
     // Nếu đơn hàng đã được đánh dấu hoàn tất thanh toán (nhưng chưa có payment record)
     if (order.paymentStatus === 'completed') {
-      return res.json({
-        success: true,
+        return res.json({
+          success: true,
         status: "completed",
         message: "Đơn hàng đã thanh toán",
         data: {
@@ -831,7 +791,7 @@ export const checkPaymentStatus = async (req, res) => {
     }
 
     // Trường hợp chưa thanh toán hoặc đang xử lý
-    return res.json({
+          return res.json({
       success: false, // Ban đầu trạng thái success sẽ là false khi chưa thanh toán
       status: order.paymentStatus || "pending",
       message: "Đang chờ thanh toán",
