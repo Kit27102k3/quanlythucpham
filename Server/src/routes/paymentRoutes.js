@@ -35,10 +35,16 @@ router.post("/bank-qr", createBankQRCode);
 // Route kiểm tra trạng thái thanh toán
 router.get("/status/:orderId", checkPaymentStatus);
 
-// Route webhook ngân hàng - thêm cả path cũ và mới để đảm bảo tương thích
+// Các routes webhook - hỗ trợ nhiều dạng đường dẫn khác nhau
 router.post("/webhook/bank", handleBankWebhook);
-
-// Thêm route mới khớp với URL trong SePay
 router.post("/sepay/webhook", handleBankWebhook);
+router.post("/webhook", handleBankWebhook);
+router.post("/payments/webhook/bank", handleBankWebhook);
+router.post("/callback", handleBankWebhook);
+router.post("/ipn", handleBankWebhook);
+// Thêm route cho webhook MBBank
+router.post("/webhook/mbbank", handleBankWebhook);
+// Route tổng cho tất cả webhook
+router.post("*webhook*", handleBankWebhook);
 
 export default router;

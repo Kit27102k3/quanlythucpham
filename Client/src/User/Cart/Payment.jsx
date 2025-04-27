@@ -14,6 +14,15 @@ import authApi from "../../api/authApi";
 import axios from "axios";
 import { API_URLS } from "../../config/apiConfig";
 
+// Tạo QR code chuyển khoản ngân hàng trực tiếp
+function createDirectBankTransferQR(orderId, amount, bankCode = "MB", accountNumber = "0326743391") {
+  // Chuẩn bị nội dung chuyển khoản
+  const description = encodeURIComponent(`Thanh toan don hang #${orderId}`);
+  
+  // Tạo URL QR theo cấu trúc SePay
+  return `https://qr.sepay.vn/img?acc=${accountNumber}&bank=${bankCode}&amount=${amount}&des=${description}`;
+}
+
 export default function Payment() {
   const [users, setUsers] = useState(null);
   const [orderDetails, setOrderDetails] = useState({
@@ -153,90 +162,125 @@ export default function Payment() {
             paymentMethod: selectedPayment
           };
 
+          console.log("Creating payment for order:", orderId, "with amount:", totalAmount);
+
           // Create payment first
           const paymentResponse = await paymentApi.createPayment(paymentData);
           const paymentId = paymentResponse.data._id;
 
+          console.log("Payment created with ID:", paymentId);
+
           // Create SePay payment URL
+          console.log("Creating SePay payment URL for payment ID:", paymentId);
           const sepayResponse = await paymentApi.createSepayPaymentUrl(
             paymentId,
             totalAmount,
             orderInfo
           );
 
-          // Only create order if we get a valid payment URL or QR code
-          if (sepayResponse && (sepayResponse.success || sepayResponse.fallbackQR)) {
-            // Create order after successful payment setup
-            const orderResponse = await orderApi.createOrder(orderData);
-            const orderIdCreated = orderResponse._id;
-            
-            // Update the payment with order ID - use updatePaymentStatus as a workaround
-            try {
-              // Use paymentApi.updatePayment
-              await paymentApi.updatePayment(paymentId, { orderId: orderIdCreated });
-            } catch (updateError) {
-              console.log("Using alternative method to update payment");
-              // Use direct API call as fallback
-              await axios.patch(
-                `${API_URLS.PAYMENTS}/${paymentId}`,
-                { orderId: orderIdCreated },
-                {
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                }
-              );
-            }
+          console.log("SePay response received:", sepayResponse);
 
+          // Create order after successful payment setup regardless of payment type
+          const orderResponse = await orderApi.createOrder(orderData);
+          const orderIdCreated = orderResponse._id;
+          
+          console.log("Order created with ID:", orderIdCreated);
+          
+          // Update the payment with order ID - use updatePaymentStatus as a workaround
+          try {
+            // Use paymentApi.updatePayment
+            await paymentApi.updatePayment(paymentId, { orderId: orderIdCreated });
+          } catch (updateError) {
+            console.log("Using alternative method to update payment");
+            // Use direct API call as fallback
+            await axios.patch(
+              `${API_URLS.PAYMENTS}/${paymentId}`,
+              { orderId: orderIdCreated },
+              {
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+          }
+
+          // Xử lý các trường hợp khác nhau của phản hồi thanh toán
+          if (sepayResponse) {
             // Kiểm tra xem đây là phương thức thanh toán nào
-            if (sepayResponse.method === "bank_transfer") {
+            if (sepayResponse.method === "bank_transfer" || sepayResponse.bankInfo) {
               // Phương án QR chuyển khoản ngân hàng
+              console.log("Using bank transfer QR payment");
               toast.info("Chuyển sang phương thức thanh toán chuyển khoản qua QR");
               
+              // Đảm bảo có thông tin ngân hàng
+              const bankInfo = sepayResponse.bankInfo || {
+                name: "MBBank - Ngân hàng Thương mại Cổ phần Quân đội",
+                accountName: "NGUYEN TRONG KHIEM",
+                accountNumber: "0326743391"
+              };
+              
               // Chuyển đến trang QR với orderId để theo dõi trạng thái
-              navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(sepayResponse.qrCode)}&bankName=${encodeURIComponent(sepayResponse.bankInfo.name)}&accountNumber=${sepayResponse.bankInfo.accountNumber}&accountName=${encodeURIComponent(sepayResponse.bankInfo.accountName)}&amount=${totalAmount}`);
-            } else {
-              // Nếu là SePay thông thường
+              navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(sepayResponse.qrCode)}&bankName=${encodeURIComponent(bankInfo.name)}&accountNumber=${bankInfo.accountNumber}&accountName=${encodeURIComponent(bankInfo.accountName)}&amount=${totalAmount}`);
+            } else if (sepayResponse.data) {
+              // Nếu là SePay thông thường và có data (URL)
+              console.log("Using SePay redirect URL", sepayResponse.data);
+              
               if (sepayResponse.code === "01") {
                 toast.info("Đang sử dụng cổng thanh toán mẫu để kiểm tra");
               }
+              
               // Redirect to payment URL
               window.location.href = sepayResponse.data;
+            } else if (sepayResponse.fallbackQR) {
+              // Fallback là QR trực tiếp
+              console.log("Using fallback QR payment");
+              toast.info("Chuyển sang phương thức thanh toán chuyển khoản ngân hàng");
+              
+              // Chuyển đến trang QR với orderId để theo dõi trạng thái
+              navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(sepayResponse.fallbackQR)}&bankName=MBBank&accountNumber=0326743391&accountName=NGUYEN%20TRONG%20KHIEM&amount=${totalAmount}`);
+            } else {
+              // Nếu không có URL hoặc QR code, nhưng vẫn có sepayResponse
+              console.log("No payment URL or QR found, using default bank QR");
+              
+              // Tạo QR code trực tiếp từ client
+              const qrUrl = createDirectBankTransferQR(orderIdCreated, totalAmount);
+              
+              // Chuyển đến trang QR với thông tin mặc định
+              navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(qrUrl)}&bankName=MBBank&accountNumber=0326743391&accountName=NGUYEN%20TRONG%20KHIEM&amount=${totalAmount}`);
             }
-          } else if (sepayResponse && sepayResponse.fallbackQR) {
-            // Fallback là QR trực tiếp
-            toast.info("Chuyển sang phương thức thanh toán chuyển khoản ngân hàng");
-            
-            // Create order after successful QR generation
-            const orderResponse = await orderApi.createOrder(orderData);
-            const orderIdCreated = orderResponse._id;
-            
-            // Update the payment with order ID
-            try {
-              // Use paymentApi.updatePayment
-              await paymentApi.updatePayment(paymentId, { orderId: orderIdCreated });
-            } catch (updateError) {
-              console.log("Using alternative method to update payment");
-              // Use direct API call as fallback
-              await axios.patch(
-                `${API_URLS.PAYMENTS}/${paymentId}`,
-                { orderId: orderIdCreated },
-                {
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                }
-              );
-            }
-            
-            // Chuyển đến trang QR với orderId để theo dõi trạng thái
-            navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(sepayResponse.fallbackQR)}&bankName=MBBank&accountNumber=0326743391&accountName=NGUYEN%20TRONG%20KHIEM&amount=${totalAmount}`);
           } else {
-            throw new Error("Không nhận được URL thanh toán");
+            // Nếu không có sepayResponse, tạo QR chuyển khoản ngân hàng thủ công
+            console.log("No SePay response, creating manual bank transfer QR");
+            toast.warning("Không thể kết nối cổng thanh toán, chuyển sang thanh toán chuyển khoản");
+            
+            // Tạo QR code trực tiếp
+            const qrUrl = `https://qr.sepay.vn/img?acc=0326743391&bank=MB&amount=${totalAmount}&des=Thanh%20toan%20don%20hang%20${orderIdCreated}`;
+            
+            // Chuyển đến trang QR với thông tin mặc định
+            navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(qrUrl)}&bankName=MBBank&accountNumber=0326743391&accountName=NGUYEN%20TRONG%20KHIEM&amount=${totalAmount}`);
           }
         } catch (error) {
           console.error("Lỗi khi tạo cổng thanh toán:", error);
-          toast.error("Không thể kết nối đến cổng thanh toán. Vui lòng thử lại sau!");
+          
+          // Try to create a direct bank transfer as last resort
+          try {
+            // Create order first
+            const orderResponse = await orderApi.createOrder(orderData);
+            const orderIdCreated = orderResponse._id;
+            
+            console.log("Order created with ID (fallback):", orderIdCreated);
+            
+            // Create direct bank transfer QR
+            const qrUrl = `https://qr.sepay.vn/img?acc=0326743391&bank=MB&amount=${totalAmount}&des=Thanh%20toan%20don%20hang%20${orderIdCreated}`;
+            
+            toast.warning("Đã chuyển sang phương thức thanh toán chuyển khoản ngân hàng");
+            
+            // Navigate to payment QR page
+            navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(qrUrl)}&bankName=MBBank&accountNumber=0326743391&accountName=NGUYEN%20TRONG%20KHIEM&amount=${totalAmount}`);
+          } catch (fallbackError) {
+            console.error("Lỗi khi tạo phương án dự phòng:", fallbackError);
+            toast.error("Không thể tạo đơn hàng. Vui lòng thử lại sau!");
+          }
         }
       } else {
         // For COD, we can create the order directly

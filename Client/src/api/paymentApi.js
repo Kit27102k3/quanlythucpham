@@ -39,7 +39,7 @@ function createBankTransferQR(orderId, amount, orderInfo) {
   const manualRedirectUrl = `${baseUrl}/payment-result?orderId=${orderId}&status=manual&amount=${amount}`;
   
   return {
-    success: true,
+    success: false, // Chuyển thành false ban đầu, chỉ true khi webhook xác nhận đã thanh toán
     method: "bank_transfer",
     data: manualRedirectUrl,
     qrCode: qrUrl,
@@ -92,6 +92,8 @@ const paymentApi = {
         redirectUrl
       };
       
+      console.log("Sending payment request with data:", JSON.stringify(requestData));
+      
       try {
         // Thử gọi API SePay với timeout ngắn hơn để không đợi quá lâu
         const response = await axios.post(
@@ -101,21 +103,25 @@ const paymentApi = {
             headers: {
               "Content-Type": "application/json",
             },
-            timeout: 8000 // Tăng timeout lên 8 giây để đảm bảo đủ thời gian xử lý
+            timeout: 15000 // Tăng timeout lên 15 giây để đảm bảo đủ thời gian xử lý
           }
         );
+        
+        console.log("SePay API response:", response.data);
         
         // Kiểm tra response
         if (response.data && response.data.success) {
           return {
-            success: true,
+            success: false, // Chuyển thành false ban đầu, chỉ true khi webhook xác nhận đã thanh toán
             data: response.data.paymentUrl,
             qrCode: response.data.qrCode,
             method: "sepay"
           };
         }
+        
+        console.log("SePay API returned success=false, falling back to bank transfer");
         // Nếu SePay trả về lỗi, chuyển sang phương án dự phòng
-        throw new Error(response.data?.message || "Không nhận được URL thanh toán");
+        return createBankTransferQR(orderId, amount, orderInfo);
       } catch (sepayError) {
         console.log("Lỗi SePay, chuyển sang QR chuyển khoản:", sepayError.message);
         // Phương án dự phòng: Tạo QR chuyển khoản ngân hàng
@@ -123,10 +129,18 @@ const paymentApi = {
       }
     } catch (error) {
       console.error("Lỗi toàn bộ quá trình thanh toán:", error);
+      // Đảm bảo luôn trả về QR code ngân hàng thay vì throw error
+      const bankQR = createBankTransferQR(orderId, amount, orderInfo);
       return {
         success: false,
         error: error.response?.data?.message || error.message || "Không thể tạo URL thanh toán",
-        fallbackQR: createDirectBankQRUrl(orderId, amount)
+        fallbackQR: createDirectBankQRUrl(orderId, amount),
+        // Thêm toàn bộ thông tin từ bankQR để client có thể hiển thị
+        qrCode: bankQR.qrCode,
+        bankInfo: bankQR.bankInfo,
+        message: "Vui lòng quét mã QR để thanh toán qua ngân hàng",
+        method: "bank_transfer",
+        isManualVerification: true
       };
     }
   },

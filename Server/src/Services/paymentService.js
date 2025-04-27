@@ -19,12 +19,14 @@ class PaymentService {
     // SePay Payment
     static async createSePayPayment(orderId, amount, orderInfo, customRedirectUrl = null) {
         try {
+            console.log(`[PaymentService] Creating payment for order: ${orderId}, amount: ${amount}`);
+            
             // Cấu hình endpoints callback
             // Sử dụng customRedirectUrl từ client nếu có, ngược lại dùng URL mặc định
             const returnUrl = customRedirectUrl || `${SITE_CONFIG.baseUrl}/payment-result`;
             
-            // Sửa URL webhook để khớp với cấu hình trực tiếp
-            const notifyUrl = `${SITE_CONFIG.apiUrl}/webhook`;
+            // Sửa URL webhook để khớp chính xác với handler trong app.post()
+            const notifyUrl = `https://quanlythucpham-azf6.vercel.app/api/payments/webhook/bank`;
             
             console.log("Using SePay callback URLs:", { returnUrl, notifyUrl });
             
@@ -38,41 +40,61 @@ class PaymentService {
                 expireTime: SEPAY.qrExpireTime // Thêm thời gian hết hạn từ config
             };
             
-            // Gọi API SePay thực từ tệp .env
-            const response = await axios.post(
-                process.env.SEPAY_API_URL,
-                requestData,
-                {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${process.env.SEPAY_API_TOKEN}`
-                    },
-                    timeout: 30000 // 30 giây
-                }
-            );
+            console.log("Sending request to SePay API:", JSON.stringify(requestData));
             
-            if (response.data && response.data.code === '00') {
-                // Tạo QR code cho URL thanh toán
-                const qrCodeDataURL = await this.generateQRCode(response.data.data);
+            // Kiểm tra SEPAY_API_URL và SEPAY_API_TOKEN
+            if (!process.env.SEPAY_API_URL || !process.env.SEPAY_API_TOKEN) {
+                console.log("Missing SEPAY_API_URL or SEPAY_API_TOKEN, using fallback payment");
+                return this.createFallbackPayment(orderId, amount, orderInfo);
+            }
+            
+            try {
+                // Gọi API SePay thực từ tệp .env
+                const response = await axios.post(
+                    process.env.SEPAY_API_URL,
+                    requestData,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${process.env.SEPAY_API_TOKEN}`
+                        },
+                        timeout: 15000 // Tăng timeout lên 15 giây
+                    }
+                );
                 
-                return {
-                    code: response.data.code,
-                    message: response.data.message,
-                    data: response.data.data,
-                    qr_code: qrCodeDataURL
-                };
-            } else {
-                throw new Error(`Phản hồi không thành công từ SePay API: ${response.data?.message || 'Unknown error'}`);
+                console.log("SePay API response:", JSON.stringify(response.data));
+                
+                if (response.data && response.data.code === '00') {
+                    // Tạo QR code cho URL thanh toán
+                    const qrCodeDataURL = await this.generateQRCode(response.data.data);
+                    
+                    return {
+                        code: response.data.code,
+                        message: response.data.message,
+                        data: response.data.data,
+                        qr_code: qrCodeDataURL
+                    };
+                } else {
+                    console.log("SePay response not successful, creating fallback payment");
+                    // Nếu SePay trả về lỗi, chuyển sang phương án dự phòng
+                    return this.createFallbackPayment(orderId, amount, orderInfo);
+                }
+            } catch (apiError) {
+                console.error("SePay API call failed:", apiError.message);
+                // Nếu gọi API lỗi, chuyển sang phương án dự phòng
+                return this.createFallbackPayment(orderId, amount, orderInfo);
             }
         } catch (error) {
-            throw new Error(`Lỗi tạo thanh toán SePay: ${error.message}`);
+            console.error(`Error in createSePayPayment: ${error.message}`);
+            // Đảm bảo không bao giờ throw lỗi, luôn tạo phương án dự phòng
+            return this.createFallbackPayment(orderId, amount, orderInfo);
         }
     }
 
     // Tạo URL thanh toán dự phòng
     static async createFallbackPayment(orderId, amount, orderInfo) {
         try {
-            console.log("[SePay] Tạo URL thanh toán dự phòng");
+            console.log("[SePay] Tạo URL thanh toán dự phòng cho orderId:", orderId);
             
             // Sử dụng URL động dựa vào môi trường
             const baseUrl = SITE_CONFIG.baseUrl;
@@ -80,9 +102,36 @@ class PaymentService {
             // URL thanh toán dự phòng
             const fallbackUrl = `${baseUrl}/payment-result?orderId=${orderId}&status=success&amount=${amount}`;
             
-            // Tạo QR code cho URL thanh toán
-            const qrCodeDataURL = await this.generateQRCode(fallbackUrl);
+            // Tạo QR chuyển khoản ngân hàng
+            const bankQr = this.generateBankQRCode(
+                "0326743391", // Số tài khoản MBBank
+                "MB",         // Mã ngân hàng
+                amount,
+                `Thanh toan don hang ${orderId}`
+            );
             
+            // Tạo QR code cho URL thanh toán
+            const qrCodeDataURL = await this.generateQRCode(bankQr || fallbackUrl);
+            
+            // Nếu tạo QR ngân hàng thành công, trả về thông tin đầy đủ
+            if (bankQr) {
+                console.log("[SePay] Đã tạo thành công QR ngân hàng dự phòng");
+                return {
+                    code: '01', // Dùng code "01" cho thanh toán dự phòng
+                    message: 'Sử dụng mã QR chuyển khoản ngân hàng',
+                    data: fallbackUrl, 
+                    qr_code: qrCodeDataURL,
+                    method: 'bank_transfer',
+                    bank_info: {
+                        accountNumber: "0326743391",
+                        accountName: "NGUYEN TRONG KHIEM",
+                        bankCode: "MB",
+                        bankName: "MBBank - Ngân hàng Thương mại Cổ phần Quân đội"
+                    }
+                };
+            }
+            
+            // Fallback nếu không tạo được QR ngân hàng
             return {
                 code: '01', // Dùng code "01" cho thanh toán dự phòng
                 message: 'Sử dụng URL thanh toán dự phòng',
@@ -93,15 +142,43 @@ class PaymentService {
             console.error("[SePay] Lỗi khi tạo thanh toán dự phòng:", error);
             
             // Đảm bảo luôn trả về kết quả hợp lệ
-            const baseUrl = SITE_CONFIG.baseUrl;
-            const emergencyUrl = `${baseUrl}/payment-result?orderId=${orderId}&status=success&amount=${amount}`;
-            
-            return {
-                code: '01',
-                message: 'Sử dụng URL thanh toán dự phòng khẩn cấp',
-                data: emergencyUrl,
-                qr_code: null
-            };
+            try {
+                const baseUrl = SITE_CONFIG.baseUrl;
+                const emergencyUrl = `${baseUrl}/payment-result?orderId=${orderId}&status=success&amount=${amount}`;
+                
+                // Tạo một QR code text-only trong trường hợp khẩn cấp
+                const emergencyQR = `MBBank: 0326743391\nAmount: ${amount} VND\nContent: Thanh toan don hang ${orderId}`;
+                let qrCodeEmergency = null;
+                
+                try {
+                    qrCodeEmergency = await this.generateQRCode(emergencyQR);
+                } catch (qrError) {
+                    console.error("[SePay] Không thể tạo QR khẩn cấp:", qrError);
+                }
+                
+                return {
+                    code: '01',
+                    message: 'Sử dụng thông tin chuyển khoản ngân hàng',
+                    data: emergencyUrl,
+                    qr_code: qrCodeEmergency,
+                    bank_info: {
+                        accountNumber: "0326743391",
+                        accountName: "NGUYEN TRONG KHIEM",
+                        bankCode: "MB",
+                        bankName: "MBBank - Ngân hàng Thương mại Cổ phần Quân đội"
+                    }
+                };
+            } catch (emergencyError) {
+                console.error("[SePay] Lỗi nghiêm trọng khi tạo phương án khẩn cấp:", emergencyError);
+                
+                // Trả về thông tin tối thiểu
+                return {
+                    code: '01',
+                    message: 'Chuyển khoản đến: MB Bank - 0326743391 - NGUYEN TRONG KHIEM',
+                    data: null,
+                    qr_code: null
+                };
+            }
         }
     }
 
