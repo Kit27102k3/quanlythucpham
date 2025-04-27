@@ -15,7 +15,7 @@ export const getPaymentById = async (paymentId) => {
 // Tạo link QR chuyển khoản ngân hàng trực tiếp
 function createDirectBankQRUrl(orderId, amount, bankCode = "MB", accountNumber = "0326743391") {
   // Chuẩn bị nội dung chuyển khoản
-  const description = encodeURIComponent(`Thanh toan don hang #${orderId}`);
+  const description = encodeURIComponent(`Thanh toan don hang ${orderId}`);
   
   // Tạo URL QR theo cấu trúc của SePay - sử dụng thông tin Napas 247 đúng định dạng
   return `https://qr.sepay.vn/img?acc=${accountNumber}&bank=${bankCode}&amount=${amount}&des=${description}`;
@@ -92,10 +92,10 @@ const paymentApi = {
         redirectUrl
       };
       
-      console.log("Sending payment request with data:", JSON.stringify(requestData));
-      
       try {
-        // Thử gọi API SePay với timeout ngắn hơn để không đợi quá lâu
+        // Gọi API thanh toán với timeout cao hơn để đảm bảo xử lý
+        console.log("Gọi API tạo URL thanh toán với dữ liệu:", requestData);
+        
         const response = await axios.post(
           `${API_URLS.PAYMENTS}/sepay/create-payment-url`, 
           requestData, 
@@ -107,40 +107,36 @@ const paymentApi = {
           }
         );
         
-        console.log("SePay API response:", response.data);
+        // Ghi log phản hồi để kiểm tra
+        console.log("Phản hồi từ API tạo URL thanh toán:", response.data);
         
         // Kiểm tra response
-        if (response.data && response.data.success) {
+        if (response.data && response.data.paymentUrl) {
           return {
             success: false, // Chuyển thành false ban đầu, chỉ true khi webhook xác nhận đã thanh toán
             data: response.data.paymentUrl,
             qrCode: response.data.qrCode,
             method: "sepay"
           };
+        } else if (response.data && response.data.success) {
+          // Xử lý khi API trả về success nhưng không có paymentUrl
+          console.log("API trả về thành công nhưng không có URL thanh toán, chuyển sang QR chuyển khoản");
+          return createBankTransferQR(orderId, amount, orderInfo);
+        } else {
+          // Nếu phản hồi không chứa URL thanh toán, chuyển sang phương án dự phòng
+          throw new Error(response.data?.message || "Không nhận được URL thanh toán");
         }
-        
-        console.log("SePay API returned success=false, falling back to bank transfer");
-        // Nếu SePay trả về lỗi, chuyển sang phương án dự phòng
-        return createBankTransferQR(orderId, amount, orderInfo);
       } catch (sepayError) {
-        console.log("Lỗi SePay, chuyển sang QR chuyển khoản:", sepayError.message);
+        console.log("Lỗi khi gọi API SePay, chuyển sang QR chuyển khoản:", sepayError.message);
         // Phương án dự phòng: Tạo QR chuyển khoản ngân hàng
         return createBankTransferQR(orderId, amount, orderInfo);
       }
     } catch (error) {
       console.error("Lỗi toàn bộ quá trình thanh toán:", error);
-      // Đảm bảo luôn trả về QR code ngân hàng thay vì throw error
-      const bankQR = createBankTransferQR(orderId, amount, orderInfo);
       return {
         success: false,
         error: error.response?.data?.message || error.message || "Không thể tạo URL thanh toán",
-        fallbackQR: createDirectBankQRUrl(orderId, amount),
-        // Thêm toàn bộ thông tin từ bankQR để client có thể hiển thị
-        qrCode: bankQR.qrCode,
-        bankInfo: bankQR.bankInfo,
-        message: "Vui lòng quét mã QR để thanh toán qua ngân hàng",
-        method: "bank_transfer",
-        isManualVerification: true
+        fallbackQR: createDirectBankQRUrl(orderId, amount)
       };
     }
   },
@@ -210,7 +206,29 @@ const paymentApi = {
           timeout: 5000
         }
       );
-      return response.data;
+      
+      console.log("Payment status response:", response.data);
+      
+      // Đảm bảo trả về định dạng chuẩn với trường success rõ ràng
+      const result = response.data;
+      
+      // Kiểm tra trạng thái hoàn thành
+      if (result.status === "completed") {
+        return {
+          success: true,
+          status: "completed",
+          message: result.message || "Thanh toán thành công",
+          data: result.data
+        };
+      }
+      
+      // Các trạng thái khác
+      return {
+        success: false, // Đảm bảo success = false khi chưa thanh toán thành công
+        status: result.status || "pending",
+        message: result.message || "Đang chờ thanh toán",
+        data: result.data
+      };
     } catch (error) {
       // Xử lý lỗi 404 (API endpoint không tồn tại hoặc chưa khởi động)
       if (error.response && error.response.status === 404) {
@@ -220,7 +238,7 @@ const paymentApi = {
       
       // Log các lỗi khác
       console.error("Error checking payment status:", error);
-      throw error;
+      return { success: false, status: "error", message: "Lỗi kiểm tra thanh toán" };
     }
   }
 };

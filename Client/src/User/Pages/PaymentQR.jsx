@@ -30,9 +30,9 @@ const PaymentQR = () => {
       const timeRemaining = Math.max(0, Math.floor((parseInt(storedExpiry) - Date.now()) / 1000));
       return timeRemaining > 0 ? timeRemaining : 0;
     }
-    const expiryTime = Date.now() + (300 * 1000); // 5 phút
+    const expiryTime = Date.now() + (3600 * 1000); // 60 phút (1 giờ)
     localStorage.setItem(`qr_expiry_${orderId}`, expiryTime.toString());
-    return 300;
+    return 3600;
   }
 
   useEffect(() => {
@@ -213,9 +213,9 @@ const PaymentQR = () => {
               <div>
                 <p className="text-sm text-gray-500 mb-1">Nội dung chuyển khoản</p>
                 <div className="flex items-center justify-between">
-                  <p className="font-medium">{`Thanh toan don hang #${orderId}`}</p>
+                  <p className="font-medium">{`Thanh toan don hang ${orderId}`}</p>
                   <button 
-                    onClick={() => copyToClipboard(`Thanh toan don hang #${orderId}`)}
+                    onClick={() => copyToClipboard(`Thanh toan don hang ${orderId}`)}
                     className="text-[#51bb1a] p-2 hover:bg-gray-200 rounded-full"
                   >
                     <FaCopy />
