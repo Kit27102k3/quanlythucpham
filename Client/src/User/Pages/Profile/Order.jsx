@@ -5,6 +5,19 @@ import { useNavigate } from "react-router-dom";
 import orderApi from "../../../api/orderApi"; // Giả sử bạn có file API này
 import formatCurrency from "../../Until/FotmatPrice"; // Hàm định dạng tiền tệ
 import { toast } from "sonner";
+import { translateStatus } from "../../component/OrderStatusDisplay"; // Import hàm dịch trạng thái
+
+// Hàm kiểm tra trạng thái thanh toán
+const isOrderPaid = (order) => {
+  return (
+    order.isPaid === true || 
+    order.paymentStatus === 'completed' ||
+    order.status === 'processing' ||
+    order.status === 'shipped' ||
+    order.status === 'delivered' ||
+    order.status === 'completed'
+  );
+};
 
 export default function Order() {
   const [orders, setOrders] = useState([]);
@@ -222,14 +235,14 @@ export default function Order() {
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 text-xs rounded-full ${
-                          order.status === "paid" || order.status === "completed"
+                          isOrderPaid(order)
                             ? "bg-green-100 text-green-800"
                             : order.status === "awaiting_payment"
                             ? "bg-orange-100 text-orange-800"
                             : "bg-yellow-100 text-yellow-800"
                         }`}
                       >
-                        {order.status === "paid" || order.status === "completed"
+                        {isOrderPaid(order)
                           ? "Đã thanh toán"
                           : order.status === "awaiting_payment"
                           ? "Chờ thanh toán"
@@ -372,22 +385,7 @@ export default function Order() {
 
 // Helper function
 function getShippingStatus(status) {
-  switch (status) {
-    case "pending":
-      return "Đang xử lý";
-    case "paid":
-      return "Đã thanh toán";
-    case "completed":
-      return "Đã giao";
-    case "cancelled":
-      return "Đã hủy";
-    case "awaiting_payment":
-      return "Chờ thanh toán";
-    case "delivering":
-      return "Đang giao hàng";
-    default:
-      return status;
-  }
+  return translateStatus(status);
 }
 
 const OrderStatusCard = ({ icon, title, count }) => (

@@ -5,6 +5,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import HeaderAdmin from "./Admin/Layout/HeaderAdmin";
 import BlockedAccountAlert from "./User/component/BlockedAccountAlert";
+import FixPaymentStatus from './components/FixPaymentStatus';
 
 function App() {
   return (
@@ -92,6 +93,7 @@ function App() {
             />
           )
         )}
+        <Route path="/fix-payment" element={<FixPaymentStatus />} />
       </Routes>
       
       <ToastContainer

@@ -651,4 +651,55 @@ function generateMockTrackingData(orderCode) {
       }
     ]
   };
-} 
+}
+
+// Cập nhật trạng thái thanh toán của đơn hàng
+export const updateOrderPaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paymentStatus, isPaid } = req.body;
+
+    // Validate input
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Order ID is required"
+      });
+    }
+
+    // Find and update the order
+    const order = await Order.findById(id);
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    // Update payment status and isPaid fields
+    order.paymentStatus = paymentStatus || 'completed';
+    order.isPaid = isPaid !== undefined ? isPaid : true;
+    
+    // If order is paid, update status to processing if it's currently pending
+    if (order.isPaid && order.status === 'pending') {
+      order.status = 'processing';
+    }
+
+    // Save the updated order
+    await order.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Order payment status updated successfully",
+      data: order
+    });
+  } catch (error) {
+    console.error("Error updating order payment status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error updating order payment status",
+      error: error.message
+    });
+  }
+}; 

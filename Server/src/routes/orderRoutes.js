@@ -8,7 +8,8 @@ import {
   cancelOrder,
   getOrderTracking,
   updateOrder,
-  markOrderAsPaid
+  markOrderAsPaid,
+  updateOrderPaymentStatus
 } from "../Controller/orderController.js";
 
 const router = Router();
@@ -22,5 +23,6 @@ router.delete("/:id", orderDelete);
 router.post("/:id/cancel", cancelOrder);
 router.patch("/:id", updateOrder);
 router.patch("/:id/mark-paid", markOrderAsPaid);
+router.patch("/:id/payment-status", updateOrderPaymentStatus);
 
 export default router;

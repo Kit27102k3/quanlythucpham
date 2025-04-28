@@ -579,6 +579,18 @@ export default function OrderDetail() {
     setShowTracking(!showTracking);
   };
 
+  // Hàm kiểm tra trạng thái thanh toán
+  const isOrderPaid = (order) => {
+    return (
+      order.isPaid === true || 
+      order.paymentStatus === 'completed' ||
+      order.status === 'processing' ||
+      order.status === 'shipped' ||
+      order.status === 'delivered' ||
+      order.status === 'completed'
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -678,8 +690,24 @@ export default function OrderDetail() {
               </div>
               <div className="flex justify-between items-center">
                 <div className="text-gray-600">Trạng thái đơn hàng:</div>
-                <div className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                  {getStatusText(order.status)}
+                <div>
+                  <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(order.status)}`}>
+                    {getStatusText(order.status)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between items-center">
+                <div className="text-gray-600">Trạng thái thanh toán:</div>
+                <div>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      isOrderPaid(order)
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {isOrderPaid(order) ? "Đã thanh toán" : "Chưa thanh toán"}
+                  </span>
                 </div>
               </div>
               <div className="flex justify-between items-center">
