@@ -226,12 +226,21 @@ class PaymentService {
             }
 
             // Chuẩn hóa mã ngân hàng để đảm bảo tương thích với Napas 247
-            // Đảm bảo mã ngân hàng đúng định dạng Napas yêu cầu
             const normalizedBankCode = this.normalizeBankCode(bankCode);
             
-            // Mã hóa nội dung chuyển khoản nếu có
-            const encodedDescription = description ? encodeURIComponent(description) : '';
-
+            // Trích xuất orderId từ description
+            let orderId = '';
+            if (description) {
+                const idMatch = description.match(/([a-f0-9]{24})/i);
+                if (idMatch && idMatch[1]) {
+                    orderId = idMatch[1];
+                }
+            }
+            
+            // Tạo nội dung chuyển khoản cực kỳ đơn giản - CHỈ CÓ ID
+            // Bỏ qua "TT DH" và các text khác để đảm bảo không có vấn đề khi nhận diện
+            const simpleDescription = orderId || description;
+            
             // Tạo URL QR Code với định dạng tương thích Napas 247
             let qrUrl = `https://qr.sepay.vn/img?acc=${accountNumber}&bank=${normalizedBankCode}`;
             
@@ -240,10 +249,8 @@ class PaymentService {
                 qrUrl += `&amount=${amount}`;
             }
             
-            // Thêm nội dung chuyển khoản nếu có
-            if (encodedDescription) {
-                qrUrl += `&des=${encodedDescription}`;
-            }
+            // Thêm nội dung chuyển khoản - CHỈ LÀ ID không thêm bất kỳ prefix nào
+            qrUrl += `&des=${simpleDescription}`;
             
             return qrUrl;
         } catch (error) {

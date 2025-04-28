@@ -63,8 +63,11 @@ export const createSepayPaymentUrl = async (req, res) => {
         // Tạo QR code trực tiếp nếu không có URL từ SePay
         console.log("Không nhận được URL thanh toán từ SePay, tạo QR code trực tiếp");
         
+        // Tạo nội dung chuyển khoản chuẩn hóa (TT = Thanh toán, DH = đơn hàng)
+        const transferContent = `TT DH ${orderId}`;
+        
         // Tạo QR code chuyển khoản ngân hàng
-        const bankQRUrl = await PaymentService.generateBankQRCode("0326743391", "MB", numericAmount, `Thanh toan ${orderId}`);
+        const bankQRUrl = await PaymentService.generateBankQRCode("0326743391", "MB", numericAmount, transferContent);
         
         return res.json({
           success: true,
@@ -76,8 +79,11 @@ export const createSepayPaymentUrl = async (req, res) => {
     } catch (serviceError) {
       console.error("Lỗi từ PaymentService:", serviceError);
       
+      // Tạo nội dung chuyển khoản chuẩn hóa
+      const transferContent = `TT DH ${orderId}`;
+      
       // Tạo QR code trực tiếp trong trường hợp lỗi
-      const bankQRUrl = await PaymentService.generateBankQRCode("0326743391", "MB", numericAmount, `Thanh toan ${orderId}`);
+      const bankQRUrl = await PaymentService.generateBankQRCode("0326743391", "MB", numericAmount, transferContent);
       
       return res.json({
         success: true,
@@ -570,214 +576,121 @@ export const getPaymentStatus = async (req, res) => {
 // Xử lý webhook từ SePay và ngân hàng
 export const handleBankWebhook = async (req, res) => {
   try {
-    console.log("Received webhook data:", JSON.stringify(req.body));
-    console.log("Webhook headers:", JSON.stringify(req.headers));
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] Received webhook data:`, JSON.stringify(req.body));
     
-    // Đảm bảo luôn trả về 200 cho ngân hàng, xử lý lỗi bên trong hàm
-    try {
-      // Phân tích request body để xác định loại webhook (MBBank, SePay, etc.)
-      const { 
-        // Fields từ SePay
-        transaction_id,
-        order_id,
-        amount,
-        status,
-        id,
-        
-        // Fields từ MBBank
-        gateway,
-        transactionDate,
-        accountNumber,
-        content,
-        transferAmount,
-        referenceCode
-      } = req.body;
-
-      // Ghi log dữ liệu webhook
-      PaymentService.logWebhook(req.body);
-
-      // Xử lý theo loại webhook
-      let orderId = order_id || req.body.orderId || null;
-      let transactionId = transaction_id || id || referenceCode || null;
-      let paymentAmount = amount || transferAmount || null;
-      
-      // Tìm mã đơn hàng từ nội dung chuyển khoản nếu là MBBank
-      if (gateway === 'MBBank' && content) {
-        console.log("Parsing MBBank content for order ID:", content);
-        // Tìm mã đơn hàng trong chuỗi nội dung của MBBank
-        // Format: "IBFT Thanh toan don hang 6807d657ea22e6300e5927e9 Ma giao dich Trace747513"
-        const orderIdMatch = content.match(/don hang\s+([a-zA-Z0-9]+)/i);
-        if (orderIdMatch && orderIdMatch[1]) {
-          orderId = orderIdMatch[1];
-          console.log("Extracted order ID from MBBank content:", orderId);
-        }
-      }
-
-      // Nếu không tìm được orderId, trả về thành công nhưng ghi log
-      if (!orderId) {
-        console.log("Could not find order ID in webhook data");
-        return res.status(200).json({
-          success: false,
-          code: "00",
-          message: "Webhook received but no order ID found",
-          data: null
-        });
-      }
-
-      console.log(`Processing webhook for order ID: ${orderId}, transaction: ${transactionId}`);
-
-      try {
-        // Tìm đơn hàng với nhiều điều kiện
-        const order = await Order.findOne({
-          $or: [
-            { _id: orderId },
-            { orderId: orderId }
-          ]
-        });
-        
-        if (!order) {
-          console.log(`Order not found with ID: ${orderId}`);
-          return res.status(200).json({
-            success: false,
-            code: "00",
-            message: "Webhook received - order not found",
-            data: null
-          });
-        }
-
-        // Đánh dấu đã thanh toán thành công
-        const isSuccessful = 
-          status === 'success' || 
-          status === 'completed' || 
-          status === '0' || 
-          status === 0 || 
-          (gateway === 'MBBank' && transferAmount > 0);
-          
-        if (isSuccessful) {
-          // Chỉ cập nhật nếu đơn hàng chưa thanh toán
-          if (order.paymentStatus !== 'completed') {
-            order.paymentStatus = 'completed';
-            order.status = 'processing';
-            await order.save();
-            console.log(`Updated order ${order._id} status to 'completed'`);
-          } else {
-            console.log(`Order ${order._id} already marked as completed`);
-          }
-
-          try {
-            // Cập nhật hoặc tạo payment record
-            let payment = await Payment.findOne({ 
-              $or: [
-                { orderId: order._id },
-                { orderId: orderId }
-              ]
-            });
-            
-            if (payment) {
-              // Chỉ cập nhật nếu payment chưa complete
-              if (payment.status !== 'completed') {
-                payment.status = 'completed';
-                payment.transactionId = transactionId || `webhook_${Date.now()}`;
-                payment.amount = paymentAmount || payment.amount;
-                payment.paidAt = new Date();
-                await payment.save();
-                console.log(`Updated payment ${payment._id} status to 'completed'`);
-              } else {
-                console.log(`Payment ${payment._id} already marked as completed`);
-              }
-            } else {
-              // Tạo payment mới
-              try {
-                const newPayment = new Payment({
-                  orderId: order._id,
-                  amount: paymentAmount || order.totalAmount,
-                  paymentMethod: gateway === 'MBBank' ? 'bank_transfer' : 'sepay',
-                  status: 'completed',
-                  transactionId: transactionId || `webhook_${Date.now()}`,
-                  paidAt: new Date()
-                });
-                await newPayment.save();
-                console.log(`Created new payment record for order ${order._id}`);
-              } catch (paymentCreateError) {
-                console.error("Error creating new payment:", paymentCreateError);
-              }
-            }
-          } catch (paymentError) {
-            console.error("Error updating payment:", paymentError);
-          }
-
-          // Trả về thành công và đánh dấu success là true
-          return res.status(200).json({
-            success: true,
-            code: "00",
-            message: "Payment confirmed successfully",
-            data: {
-              order_id: orderId,
-              status: "completed",
-              success: true // Thêm trường success là true khi thanh toán thành công
-            }
-          });
-        } else {
-          // Không thành công hoặc trạng thái khác
-          console.log(`Webhook received with non-success status: ${status}`);
-          return res.status(200).json({
-            success: false,
-            code: "00",
-            message: "Webhook received with non-success status",
-            data: {
-              order_id: orderId,
-              status: status || "pending",
-              success: false // Đánh dấu success là false khi thanh toán chưa hoàn tất
-            }
-          });
-        }
-      } catch (orderError) {
-        console.error("Error processing order:", orderError);
-        // Vẫn trả về 200 để tránh webhook retry
-        return res.status(200).json({
-          success: false,
-          code: "00",
-          message: "Webhook received, but error processing order",
-          error: orderError.message,
-          data: null
-        });
-      }
-    } catch (processingError) {
-      console.error("Error processing webhook:", processingError);
-      // Vẫn trả về 200 để tránh webhook retry
+    // Luôn trả về 200 OK trước, sau đó xử lý webhook bất đồng bộ
+    // Điều này ngăn ngừa webhook timeout và hệ thống ngân hàng gửi lại webhook nhiều lần
+    const response = {
+      success: true,
+      code: "00",
+      message: "Webhook received successfully",
+      timestamp
+    };
+    
+    // Trả về ngay để tránh timeout
+    res.status(200).json(response);
+    
+    // Tiếp tục xử lý webhook bất đồng bộ
+    processWebhook(req.body, req.headers).catch(err => {
+      console.error("Error processing webhook:", err);
+    });
+  } catch (error) {
+    console.error("Fatal error handling webhook:", error);
+    // Nếu chưa trả về, trả về 200 OK
+    if (!res.headersSent) {
       return res.status(200).json({
-        success: false,
+        success: true,
         code: "00",
-        message: "Webhook received with processing error",
-        error: processingError.message,
-        data: null
+        message: "Webhook received with error",
+        error: error.message
       });
     }
-  } catch (error) {
-    console.error("Fatal error processing webhook:", error);
-    // Luôn trả về 200 để SePay/ngân hàng biết webhook đã được nhận
-    return res.status(200).json({
-      success: false,
-      code: "00",
-      message: "Webhook received with error",
-      data: null
-    });
   }
 };
 
-// Kiểm tra trạng thái thanh toán qua SePay
-export const checkPaymentStatus = async (req, res) => {
+// Hàm xử lý webhook bất đồng bộ
+async function processWebhook(webhookData, headers) {
   try {
-    const { orderId } = req.params;
+    // Phân tích dữ liệu webhook
+    const { 
+      // Fields từ SePay
+      transaction_id,
+      order_id,
+      amount,
+      status,
+      id,
+      
+      // Fields từ MBBank
+      gateway,
+      transactionDate,
+      accountNumber,
+      content,
+      transferAmount,
+      referenceCode
+    } = webhookData;
 
-    console.log("Checking payment status for orderId:", orderId);
+    // Ghi log dữ liệu webhook
+    PaymentService.logWebhook(webhookData);
 
-    if (!orderId) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing orderId parameter"
-      });
+    // Xử lý theo loại webhook
+    let orderId = order_id || webhookData.orderId || null;
+    let transactionId = transaction_id || id || referenceCode || null;
+    let paymentAmount = amount || transferAmount || null;
+    
+    // Tìm mã đơn hàng từ nội dung chuyển khoản nếu là MBBank
+    if (gateway === 'MBBank' && content) {
+      console.log("Parsing MBBank content for order ID:", content);
+      
+      // Tìm chuỗi 24 ký tự hex - mã đơn hàng MongoDB
+      const hexIdPattern = /[a-f0-9]{24}/i;
+      const hexMatch = content.match(hexIdPattern);
+      
+      if (hexMatch) {
+        orderId = hexMatch[0];
+        console.log("Extracted MongoDB ID from content:", orderId);
+      } 
+      // Nếu không tìm được mã hex, thử tìm theo các format khác
+      else {
+        let orderIdMatch = null;
+        const patterns = [
+          /TT DH\s+([a-zA-Z0-9]+)/i,
+          /don hang\s+([a-zA-Z0-9]+)/i,
+          /DH\s+([a-zA-Z0-9]+)/i
+        ];
+        
+        // Thử từng pattern
+        for (const pattern of patterns) {
+          const match = content.match(pattern);
+          if (match && match[1]) {
+            orderIdMatch = match;
+            break;
+          }
+        }
+        
+        if (orderIdMatch && orderIdMatch[1]) {
+          // Xử lý mã đơn hàng tìm được
+          let extractedId = orderIdMatch[1];
+          const cleanHexMatch = extractedId.match(/^([a-f0-9]{24})/i);
+          
+          if (cleanHexMatch) {
+            orderId = cleanHexMatch[1];
+          } else {
+            orderId = extractedId;
+          }
+          
+          console.log("Extracted order ID from MBBank content:", orderId);
+        }
+      }
     }
+
+    // Nếu không tìm được orderId, dừng xử lý
+    if (!orderId) {
+      console.log("Could not find order ID in webhook data");
+      return;
+    }
+
+    console.log(`Processing webhook for order ID: ${orderId}, transaction: ${transactionId}`);
 
     // Tìm đơn hàng
     const order = await Order.findOne({
@@ -786,61 +699,214 @@ export const checkPaymentStatus = async (req, res) => {
         { orderId: orderId }
       ]
     });
-
+    
     if (!order) {
-      return res.status(404).json({
+      console.log(`Order not found with ID: ${orderId}`);
+      return;
+    }
+
+    // Xác định trạng thái thanh toán thành công
+    const isSuccessful = 
+      status === 'success' || 
+      status === 'completed' || 
+      status === '0' || 
+      status === 0 || 
+      (gateway === 'MBBank' && transferAmount > 0);
+      
+    if (isSuccessful) {
+      // Cập nhật trạng thái đơn hàng
+      if (order.paymentStatus !== 'completed') {
+        order.paymentStatus = 'completed';
+        order.status = 'processing';
+        order.isPaid = true;
+        // Lưu giao dịch vào đơn hàng
+        if (!order.transactionId && transactionId) {
+          order.transactionId = transactionId;
+        }
+        await order.save();
+        console.log(`Updated order ${order._id} status to 'completed'`);
+      } else {
+        console.log(`Order ${order._id} already marked as completed`);
+      }
+
+      // Tìm hoặc tạo payment record
+      try {
+        let payment = await Payment.findOne({ 
+          $or: [
+            { orderId: order._id },
+            { orderId: orderId }
+          ]
+        });
+        
+        if (payment) {
+          // Cập nhật payment record nếu tồn tại
+          if (payment.status !== 'completed') {
+            payment.status = 'completed';
+            payment.transactionId = transactionId || `webhook_${Date.now()}`;
+            payment.amount = paymentAmount || payment.amount;
+            payment.paidAt = new Date();
+            await payment.save();
+            console.log(`Updated payment ${payment._id} status to 'completed'`);
+          } else {
+            console.log(`Payment ${payment._id} already marked as completed`);
+          }
+        } else {
+          // Tạo payment record mới
+          try {
+            // Đảm bảo có đủ thông tin
+            const userId = order.userId || order.user;
+            const amount = paymentAmount || order.totalAmount;
+            
+            if (!userId) {
+              console.warn("Cannot create payment record: missing userId");
+            } else if (!amount) {
+              console.warn("Cannot create payment record: missing amount");
+            } else {
+              const newPayment = new Payment({
+                orderId: order._id,
+                userId: userId,
+                totalAmount: amount,
+                amount: amount,
+                paymentMethod: gateway === 'MBBank' ? 'bank_transfer' : 'sepay',
+                status: 'completed',
+                transactionId: transactionId || `webhook_${Date.now()}`,
+                paidAt: new Date()
+              });
+              await newPayment.save();
+              console.log(`Created new payment record for order ${order._id}`);
+            }
+          } catch (paymentCreateError) {
+            console.error("Error creating payment record:", paymentCreateError);
+          }
+        }
+      } catch (paymentError) {
+        console.error("Error updating payment:", paymentError);
+      }
+      
+      console.log(`Webhook processing for order ${orderId} completed successfully`);
+    } else {
+      console.log(`Webhook received with non-success status: ${status}`);
+    }
+  } catch (error) {
+    console.error("Error processing webhook:", error);
+  }
+}
+
+// Kiểm tra trạng thái thanh toán qua SePay
+export const checkPaymentStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    // Cache-busting: Đảm bảo luôn lấy dữ liệu mới nhất từ DB
+    const cacheKey = req.query._ || Date.now();
+    console.log(`Checking payment status for orderId: ${orderId}, cache key: ${cacheKey}`);
+
+    if (!orderId) {
+      return res.status(400).json({
         success: false,
-        message: "Order not found"
+        message: "Missing orderId parameter"
       });
     }
 
-    // Tìm payment liên quan đến đơn hàng
-    const payment = await Payment.findOne({ orderId: order._id });
+    // Kiểm tra đơn hàng trong database
+    console.log("Querying order status from database");
+    
+    try {
+      // Tìm đơn hàng
+      const order = await Order.findOne({
+        $or: [
+          { _id: orderId },
+          { orderId: orderId }
+        ]
+      });
+      
+      if (!order) {
+        console.log(`Order not found with ID: ${orderId}`);
+        return res.status(404).json({
+          success: false, 
+          message: "Order not found"
+        });
+      }
+      
+      console.log("Found order:", JSON.stringify(order));
+      console.log(`Order ID: ${order._id}, Payment Status: ${order.paymentStatus}`);
+      
+      // Kiểm tra trạng thái thanh toán dựa trên dữ liệu thực tế
+      if (order.paymentStatus === 'completed' || order.isPaid === true || order.status === 'processing') {
+        return res.status(200).json({
+          success: true,
+          status: "completed",
+          message: "Thanh toán đã được xác nhận thành công",
+          data: {
+            orderId: order._id,
+            totalAmount: order.totalAmount,
+            paymentMethod: order.paymentMethod,
+            timestamp: Date.now()
+          }
+        });
+      }
 
-    // Kiểm tra trạng thái thanh toán
-    if (payment && payment.status === 'completed') {
+      // Kiểm tra nếu có payment record đã hoàn thành
+      const payment = await Payment.findOne({ 
+        $or: [
+          { orderId: order._id },
+          { orderId: orderId }
+        ],
+        status: 'completed'
+      });
+      
+      if (payment) {
+        // Cập nhật trạng thái đơn hàng nếu chưa cập nhật
+        if (order.paymentStatus !== 'completed') {
+          order.paymentStatus = 'completed';
+          order.status = 'processing';
+          await order.save();
+          console.log(`Updated order ${order._id} payment status to completed`);
+        }
+        
+        return res.status(200).json({
+          success: true,
+          status: "completed",
+          message: "Thanh toán đã được xác nhận thành công",
+          data: {
+            orderId: order._id,
+            totalAmount: order.totalAmount,
+            paymentMethod: payment.paymentMethod,
+            timestamp: Date.now()
+          }
+        });
+      }
+
+      // Trường hợp chưa thanh toán
       return res.json({
-        success: true,
-        status: "completed",
-        message: "Thanh toán đã hoàn tất",
+        success: false,
+        status: "pending",
+        message: "Đang chờ thanh toán",
         data: {
           orderId: order._id,
           totalAmount: order.totalAmount,
-          paymentMethod: payment.paymentMethod,
-          paidAt: payment.paidAt
+          timestamp: Date.now()
         }
       });
-    }
-
-    // Nếu đơn hàng đã được đánh dấu hoàn tất thanh toán (nhưng chưa có payment record)
-    if (order.paymentStatus === 'completed') {
-        return res.json({
-          success: true,
-        status: "completed",
-        message: "Đơn hàng đã thanh toán",
-        data: {
-          orderId: order._id,
-          totalAmount: order.totalAmount
-        }
+      
+    } catch (dbError) {
+      console.error("Error in database query:", dbError);
+      
+      // Trả về lỗi cụ thể
+      return res.status(500).json({
+        success: false,
+        message: "Lỗi truy vấn cơ sở dữ liệu",
+        error: dbError.message,
+        timestamp: Date.now()
       });
     }
-
-    // Trường hợp chưa thanh toán hoặc đang xử lý
-          return res.json({
-      success: false, // Ban đầu trạng thái success sẽ là false khi chưa thanh toán
-      status: order.paymentStatus || "pending",
-      message: "Đang chờ thanh toán",
-      data: {
-        orderId: order._id,
-        totalAmount: order.totalAmount
-      }
-    });
   } catch (error) {
     console.error("Error checking payment status:", error);
     return res.status(500).json({
       success: false,
       message: "Error checking payment status",
-      error: error.message
+      error: error.message,
+      timestamp: Date.now() 
     });
   }
 };

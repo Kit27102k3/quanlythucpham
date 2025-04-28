@@ -191,11 +191,21 @@ app.post("/webhook", (req, res) => {
 });
 
 // Khởi động server với cơ chế xử lý lỗi cổng
-const startServer = (port) => {
+const startServer = (port, retryCount = 0) => {
   // Đảm bảo port là số và trong phạm vi hợp lệ
   const portNumber = parseInt(port, 10);
   if (isNaN(portNumber)) {
     port = 8080;
+  } 
+  // else {
+  //   port = portNumber; // Ensure port is a number, not a string
+  // }
+
+  // Giới hạn số lần thử lại để tránh đệ quy vô hạn
+  if (retryCount > 10) {
+    console.error('Failed to start server after 10 retries');
+    process.exit(1);
+    return;
   }
 
   try {
@@ -206,8 +216,8 @@ const startServer = (port) => {
     server.on('error', (error) => {
       if (error.code === 'EADDRINUSE') {
         console.log(`Port ${port} is in use, trying next port...`);
-        // Thử port tiếp theo
-        startServer(port + 1);
+        // Thử port tiếp theo với tăng số lần thử
+        startServer(parseInt(port) + 1, retryCount + 1);
       } else {
         console.error('Server error:', error);
         process.exit(1);
@@ -215,8 +225,8 @@ const startServer = (port) => {
     });
   } catch (error) {
     console.error('Error starting server:', error);
-    // Thử port tiếp theo
-    startServer(port + 1);
+    // Thử port tiếp theo với tăng số lần thử
+    startServer(parseInt(port) + 1, retryCount + 1);
   }
 };
 
