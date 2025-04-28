@@ -13,11 +13,12 @@ export const getPaymentById = async (paymentId) => {
 };
 
 // Tạo link QR chuyển khoản ngân hàng trực tiếp
-function createDirectBankQRUrl(orderId, amount, bankCode = "MB", accountNumber = "0326743391") {
-  // Chuẩn bị nội dung chuyển khoản
-  const description = encodeURIComponent(`Thanh toan don hang ${orderId}`);
+function createDirectBankQRUrl(orderId, amount, bankCode = "MB", accountNumber = "0326743391", transferContent = "") {
+  // Chuẩn bị nội dung chuyển khoản - chỉ dùng đúng OrderID, không thêm tiền tố
+  // Lấy 24 ký tự hex nếu có thể (MongoDB ID)
+  let description = orderId;
   
-  // Tạo URL QR theo cấu trúc của SePay - sử dụng thông tin Napas 247 đúng định dạng
+  // Tạo URL QR theo cấu trúc của SePay - KHÔNG thêm tiền tố vào nội dung
   return `https://qr.sepay.vn/img?acc=${accountNumber}&bank=${bankCode}&amount=${amount}&des=${description}`;
 }
 
@@ -31,8 +32,11 @@ function createBankTransferQR(orderId, amount, orderInfo) {
     bankCode: "MB"  // Mã ngân hàng phải đúng định dạng Napas (MB thay vì MBBank)
   };
   
+  // Tạo nội dung chuyển khoản chuẩn hóa
+  const transferContent = `TT DH ${orderId}`;
+  
   // Tạo QR URL
-  const qrUrl = createDirectBankQRUrl(orderId, amount, bankInfo.bankCode, bankInfo.accountNumber);
+  const qrUrl = createDirectBankQRUrl(orderId, amount, bankInfo.bankCode, bankInfo.accountNumber, transferContent);
   
   // Tạo URL redirect xử lý thủ công
   const baseUrl = window.location.origin;
@@ -196,51 +200,85 @@ const paymentApi = {
     }
     
     try {
+      // Thêm timestamp và random để tránh cache hoàn toàn
+      const timestamp = new Date().getTime();
+      const randomParam = Math.floor(Math.random() * 1000000);
+      
+      // Force reload dữ liệu API không lấy từ cache
       const response = await axios.get(
-        `${API_URLS.PAYMENTS}/status/${orderId}`,
+        `${API_URLS.PAYMENTS}/status/${orderId}?_=${timestamp}&random=${randomParam}`,
         {
           headers: {
             "Content-Type": "application/json",
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "X-Requested-With": "XMLHttpRequest"
           },
-          // Giảm timeout để không chờ quá lâu nếu server không phản hồi
+          // Thêm fetchPolicy: 'network-only' để đảm bảo không dùng cache
+          // Đây là trick để axios luôn gọi mới
+          params: {
+            _: timestamp,
+            random: randomParam
+          },
           timeout: 5000
         }
       );
       
-      console.log("Payment status response:", response.data);
+      // Log kết quả
+      console.log(`Payment status check [${timestamp}]:`, JSON.stringify(response.data));
       
-      // Đảm bảo trả về định dạng chuẩn với trường success rõ ràng
-      const result = response.data;
-      
-      // Kiểm tra trạng thái hoàn thành
-      if (result.status === "completed") {
+      // Kiểm tra thành công
+      if (isSuccessful(response.data)) {
+        console.log(`Payment SUCCESSFUL for order ${orderId}`);
         return {
           success: true,
           status: "completed",
-          message: result.message || "Thanh toán thành công",
-          data: result.data
+          message: response.data.message || "Thanh toán thành công",
+          data: response.data.data,
+          timestamp
         };
       }
       
-      // Các trạng thái khác
+      // Trường hợp không thành công
+      console.log(`Payment PENDING for order ${orderId}`);
       return {
-        success: false, // Đảm bảo success = false khi chưa thanh toán thành công
-        status: result.status || "pending",
-        message: result.message || "Đang chờ thanh toán",
-        data: result.data
+        success: false,
+        status: response.data.status || "pending",
+        message: response.data.message || "Đang chờ thanh toán",
+        data: response.data.data,
+        timestamp
       };
     } catch (error) {
-      // Xử lý lỗi 404 (API endpoint không tồn tại hoặc chưa khởi động)
+      // Xử lý lỗi 404
       if (error.response && error.response.status === 404) {
-        // Trả về trạng thái mặc định thay vì ném lỗi
         return { success: false, status: "pending", message: "Đang chờ thanh toán" };
       }
       
-      // Log các lỗi khác
+      // Log các lỗi
       console.error("Error checking payment status:", error);
       return { success: false, status: "error", message: "Lỗi kiểm tra thanh toán" };
     }
   }
 };
+
+// Helper function to check if payment is successful
+function isSuccessful(response) {
+  if (!response) return false;
+  
+  // Kiểm tra tất cả các dấu hiệu thành công có thể có
+  const successIndicators = [
+    response.success === true,
+    response.status === "completed",
+    response.data?.status === "completed",
+    response.order?.paymentStatus === "completed",
+    response.message?.includes("thành công"),
+    response.data?.success === true,
+    response.data?.paymentStatus === "completed"
+  ];
+  
+  // Nếu bất kỳ điều kiện nào true, trả về true
+  return successIndicators.some(indicator => indicator === true);
+}
 
 export default paymentApi; 

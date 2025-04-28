@@ -22,6 +22,7 @@ const PaymentQR = () => {
   const [timeLeft, setTimeLeft] = useState(initializeTimer());
   const [expired, setExpired] = useState(timeLeft === 0);
   const [checking, setChecking] = useState(false);
+  const [refreshCount, setRefreshCount] = useState(0);
 
   // Khởi tạo thời gian từ localStorage hoặc mặc định
   function initializeTimer() {
@@ -49,23 +50,36 @@ const PaymentQR = () => {
       });
     }, 1000);
 
-    // Check payment status every 10 seconds
+    // Check payment status every 10 seconds thay vì 2 giây
     const statusChecker = setInterval(async () => {
       if (!checking && !expired) {
         setChecking(true);
         try {
+          // Thêm timestamp vào URL để tránh cache
+          const timestamp = new Date().getTime();
+          
+          // Gọi API kiểm tra trạng thái thanh toán
           const response = await paymentApi.checkPaymentStatus(orderId);
-          if (response && response.status === "completed") {
+          
+          console.log("Payment status check:", JSON.stringify(response));
+          
+          // Kiểm tra thanh toán thành công
+          if (response && (response.success === true || response.status === "completed")) {
+            // Dừng các interval và xóa localStorage
             clearInterval(statusChecker);
             clearInterval(timer);
             localStorage.removeItem(`qr_expiry_${orderId}`);
+            
+            // Hiển thị thông báo thành công
             toast.success("Thanh toán thành công!");
-            navigate(`/payment-result?orderId=${orderId}&status=success&amount=${amount}`);
+            
+            // Đợi 1.5 giây để hiển thị thông báo rồi chuyển trang
+            setTimeout(() => {
+              navigate(`/payment-result?orderId=${orderId}&status=success&amount=${amount}`);
+            }, 1500);
           }
         } catch (error) {
-          // Không hiển thị lỗi liên tục trên console nếu server chưa khởi động xong
-          // hoặc không tìm thấy endpoint - đây là lỗi tạm thời và không ảnh hưởng
-          // đến người dùng, chúng ta sẽ thử lại sau
+          // Chỉ log lỗi nếu không phải 404
           if (error.response && error.response.status !== 404) {
             console.error("Error checking payment status:", error);
           }
@@ -73,7 +87,33 @@ const PaymentQR = () => {
           setChecking(false);
         }
       }
-    }, 5000);
+    }, 10000); // Tăng lên 10 giây
+    
+    // Chỉ kiểm tra một lần khi trang được tải thay vì 3 lần liên tiếp
+    const initialCheck = async () => {
+      try {
+        if (!expired) {
+          const response = await paymentApi.checkPaymentStatus(orderId);
+          console.log("Initial check:", JSON.stringify(response));
+          
+          if (response && (response.success === true || response.status === "completed")) {
+            clearInterval(statusChecker);
+            clearInterval(timer);
+            localStorage.removeItem(`qr_expiry_${orderId}`);
+            
+            toast.success("Thanh toán thành công!");
+            setTimeout(() => {
+              navigate(`/payment-result?orderId=${orderId}&status=success&amount=${amount}`);
+            }, 1500);
+          }
+        }
+      } catch (error) {
+        // Bỏ qua lỗi trong kiểm tra ban đầu
+      }
+    };
+    
+    // Chỉ gọi một lần ban đầu
+    initialCheck();
 
     // Cleanup
     return () => {
@@ -106,6 +146,39 @@ const PaymentQR = () => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // Thêm hàm force reload trạng thái
+  const forceCheckStatus = async () => {
+    if (!checking && !expired) {
+      setChecking(true);
+      try {
+        toast.info("Đang kiểm tra trạng thái thanh toán...");
+        
+        // Tăng số lần refresh
+        setRefreshCount(prev => prev + 1);
+        
+        // Thêm parameter ngẫu nhiên để buộc API gọi mới
+        const response = await paymentApi.checkPaymentStatus(orderId);
+        
+        console.log(`Manual check #${refreshCount+1}:`, JSON.stringify(response));
+        
+        if (response && (response.success === true || response.status === "completed")) {
+          toast.success("Thanh toán thành công!");
+          setTimeout(() => {
+            navigate(`/payment-result?orderId=${orderId}&status=success&amount=${amount}`);
+          }, 1500);
+        } else {
+          // Nếu vẫn chưa thành công, hiển thị thông báo
+          toast.info("Chưa nhận được xác nhận thanh toán, vui lòng đợi thêm");
+        }
+      } catch (error) {
+        toast.error("Lỗi kiểm tra thanh toán");
+        console.error("Error in manual check:", error);
+      } finally {
+        setChecking(false);
+      }
+    }
   };
 
   if (expired) {
@@ -213,14 +286,17 @@ const PaymentQR = () => {
               <div>
                 <p className="text-sm text-gray-500 mb-1">Nội dung chuyển khoản</p>
                 <div className="flex items-center justify-between">
-                  <p className="font-medium">{`Thanh toan don hang ${orderId}`}</p>
+                  <p className="font-medium">{orderId}</p>
                   <button 
-                    onClick={() => copyToClipboard(`Thanh toan don hang ${orderId}`)}
+                    onClick={() => copyToClipboard(orderId)}
                     className="text-[#51bb1a] p-2 hover:bg-gray-200 rounded-full"
                   >
                     <FaCopy />
                   </button>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Lưu ý: Chỉ điền chính xác mã đơn hàng, không thêm ký tự khác
+                </p>
               </div>
             </div>
           </div>
@@ -229,6 +305,17 @@ const PaymentQR = () => {
             <p>Hệ thống sẽ tự động xác nhận sau khi bạn chuyển khoản thành công.</p>
             <p>Vui lòng không đóng trang này trong quá trình thanh toán.</p>
             {checking && <p className="text-[#51bb1a] mt-2">Đang kiểm tra trạng thái thanh toán...</p>}
+            
+            {/* Thêm nút kiểm tra thủ công */}
+            <div className="mt-4">
+              <button
+                onClick={forceCheckStatus}
+                disabled={checking || expired}
+                className={`py-2 px-4 rounded-md ${checking ? 'bg-gray-400' : 'bg-[#51bb1a] hover:bg-[#3d8b14]'} text-white transition-colors`}
+              >
+                {checking ? 'Đang kiểm tra...' : 'Kiểm tra thanh toán thủ công'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
