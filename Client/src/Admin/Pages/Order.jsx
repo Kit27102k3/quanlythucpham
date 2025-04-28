@@ -988,7 +988,7 @@ const OrderAdmin = () => {
     // Hàm cập nhật trạng thái đơn hàng
     const updateOrderStatus = useCallback(async (orderId, newStatus) => {
       try {
-        const response = await fetch(`${API_BASE_URL}/orders/${orderId}/update-status`, {
+        const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -1143,7 +1143,7 @@ const OrderAdmin = () => {
       // Cập nhật tuần tự để tránh quá tải server
       for (const order of selectedOrders) {
         try {
-          const response = await fetch(`${API_BASE_URL}/orders/${order._id}/update-status`, {
+          const response = await fetch(`${API_BASE_URL}/orders/${order._id}`, {
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",

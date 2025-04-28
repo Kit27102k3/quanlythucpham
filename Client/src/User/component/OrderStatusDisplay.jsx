@@ -6,23 +6,60 @@ const isOrderPaid = (order) => {
     order.paymentStatus === 'completed' ||
     order.status === 'processing' ||
     order.status === 'shipped' ||
-    order.status === 'delivered'
+    order.status === 'delivered' ||
+    order.status === 'shipping' ||
+    order.status === 'delivering' ||
+    order.status === 'completed'
   );
 };
 
 // Hàm dịch trạng thái từ tiếng Anh sang tiếng Việt
-const translateStatus = (status) => {
-  const statusMap = {
-    'pending': 'Chờ xử lý',
-    'processing': 'Đang chuẩn bị hàng',
-    'shipped': 'Đang giao',
-    'delivered': 'Đã giao',
-    'completed': 'Hoàn thành',
-    'cancelled': 'Đã hủy',
-    'awaiting_payment': 'Chờ thanh toán'
-  };
-  
-  return statusMap[status] || status;
+export const translateStatus = (status) => {
+  switch (status) {
+    case "pending":
+      return "Chờ xử lý";
+    case "confirmed":
+      return "Đã xác nhận";
+    case "processing":
+      return "Đang xử lý";
+    case "preparing":
+      return "Đang chuẩn bị hàng";
+    case "packaging":
+      return "Hoàn tất đóng gói";
+    case "shipping":
+      return "Đang vận chuyển";
+    case "shipped":
+      return "Đã giao cho vận chuyển";
+    case "delivering":
+      return "Đang giao hàng";
+    case "delivered":
+      return "Đã giao hàng";
+    case "completed":
+      return "Hoàn thành";
+    case "paid":
+      return "Đã thanh toán";
+    case "cancelled":
+      return "Đã hủy";
+    case "awaiting_payment":
+      return "Chờ thanh toán";
+    case "refunded":
+      return "Đã hoàn tiền";
+    case "failed":
+      return "Thất bại";
+    case "delivery_failed":
+      return "Giao hàng thất bại";
+    case "collected":
+      return "Đã lấy hàng";
+    case "accepted":
+      return "Đã nhận đơn";
+    case "on_the_way":
+    case "in_transit":
+      return "Đang giao hàng";
+    case "ready_for_pickup":
+      return "Sẵn sàng nhận hàng";
+    default:
+      return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
+  }
 };
 
 // Hàm hiển thị trạng thái thanh toán
@@ -55,14 +92,21 @@ const getStatusColor = (status) => {
       return 'bg-red-100 text-red-800';
     case 'delivering':
     case 'shipped':
+    case 'shipping':
       return 'bg-indigo-100 text-indigo-800';
     case 'processing':
+    case 'preparing':
+    case 'packaging':
       return 'bg-blue-100 text-blue-800';
     case 'awaiting_payment':
       return 'bg-orange-100 text-orange-800';
+    case 'delivery_failed':
+      return 'bg-red-100 text-red-800';
+    case 'confirmed':
+      return 'bg-green-100 text-green-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
 };
 
-export { isOrderPaid, PaymentStatus, OrderStatus, translateStatus }; 
+export { isOrderPaid, PaymentStatus, OrderStatus }; 

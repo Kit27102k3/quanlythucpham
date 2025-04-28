@@ -613,43 +613,64 @@ export const getOrderTracking = async (req, res) => {
   }
 };
 
-// Hàm tạo dữ liệu tracking giả lập khi API lỗi (cho mục đích phát triển)
+// Hàm tạo dữ liệu giả lập cho tracking đơn hàng
 function generateMockTrackingData(orderCode) {
-  const currentDate = new Date();
-  const yesterday = new Date(currentDate);
-  yesterday.setDate(currentDate.getDate() - 1);
+  const now = new Date();
   
+  // Tạo các mốc thời gian giả lập
+  const timeDay2 = new Date(now);
+  timeDay2.setHours(now.getHours() - 24); // 1 ngày trước
+  
+  const timeToday1 = new Date(now);
+  timeToday1.setHours(now.getHours() - 10); // 10 giờ trước
+  
+  const timeToday2 = new Date(now);
+  timeToday2.setHours(now.getHours() - 5); // 5 giờ trước
+  
+  const timeLatest = new Date(now);
+  timeLatest.setMinutes(now.getMinutes() - 30); // 30 phút trước
+  
+  // Tạo ngày dự kiến giao hàng (3 ngày từ hiện tại)
+  const estimatedDelivery = new Date(now);
+  estimatedDelivery.setDate(now.getDate() + 3); // Dự kiến giao sau 3 ngày
+  
+  // Tạo danh sách các log vận chuyển giả lập (từ mới đến cũ)
+  const trackingLogs = [
+    {
+      status: "packaging",
+      status_name: "Hoàn tất đóng gói",
+      timestamp: timeDay2.toISOString(),
+      location: "Cửa hàng DNC FOOD"
+    },
+    {
+      status: "shipping",
+      status_name: "Đã giao cho vận chuyển",
+      timestamp: timeToday1.toISOString(),
+      location: "Cửa hàng DNC FOOD"
+    },
+    {
+      status: "collected",
+      status_name: "Đã lấy hàng",
+      timestamp: timeToday2.toISOString(),
+      location: "Cửa hàng DNC FOOD"
+    },
+    {
+      status: "delivering",
+      status_name: "Đang giao hàng",
+      timestamp: timeLatest.toISOString(),
+      location: "Trung tâm phân loại"
+    }
+  ];
+
+  // Trả về cấu trúc dữ liệu tracking giả lập
   return {
     order_code: orderCode,
     status: "delivering",
     status_name: "Đang giao hàng",
-    estimated_delivery_time: new Date(currentDate.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-    tracking_logs: [
-      {
-        status: "ready_to_pick",
-        status_name: "Đã tiếp nhận đơn hàng",
-        timestamp: yesterday.toISOString(),
-        location: "Kho Giao Hàng Nhanh"
-      },
-      {
-        status: "picking",
-        status_name: "Nhân viên đang lấy hàng",
-        timestamp: new Date(currentDate.getTime() - 12 * 60 * 60 * 1000).toISOString(),
-        location: "Cửa hàng DNC FOOD"
-      },
-      {
-        status: "picked",
-        status_name: "Đã lấy hàng",
-        timestamp: new Date(currentDate.getTime() - 6 * 60 * 60 * 1000).toISOString(),
-        location: "Cửa hàng DNC FOOD"
-      },
-      {
-        status: "delivering",
-        status_name: "Đang giao hàng",
-        timestamp: currentDate.toISOString(),
-        location: "Trung tâm phân loại"
-      }
-    ]
+    estimated_delivery_time: estimatedDelivery.toISOString(),
+    tracking_logs: trackingLogs,
+    current_location: "Trung tâm phân phối",
+    delivery_note: "Hàng dễ vỡ, xin nhẹ tay"
   };
 }
 

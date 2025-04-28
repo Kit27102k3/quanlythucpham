@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ClipboardListIcon, PackageIcon, CreditCardIcon, XCircleIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import orderApi from "../../../api/orderApi"; // Giả sử bạn có file API này
@@ -12,8 +12,13 @@ const isOrderPaid = (order) => {
   return (
     order.isPaid === true || 
     order.paymentStatus === 'completed' ||
+    order.status === 'confirmed' ||
+    order.status === 'preparing' ||
+    order.status === 'packaging' ||
+    order.status === 'shipping' ||
     order.status === 'processing' ||
     order.status === 'shipped' ||
+    order.status === 'delivering' ||
     order.status === 'delivered' ||
     order.status === 'completed'
   );
@@ -25,7 +30,8 @@ export default function Order() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const navigate = useNavigate();
 
-  const fetchOrders = async () => {
+  // Tạo hàm fetchOrders với useCallback để có thể sử dụng trong useEffect và các event handlers
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -62,7 +68,7 @@ export default function Order() {
       console.error("Lỗi khi lấy đơn hàng:", error);
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
   useEffect(() => {
     let isMounted = true;
@@ -74,11 +80,19 @@ export default function Order() {
 
     getOrders();
 
+    // Thiết lập interval để cập nhật trạng thái đơn hàng mỗi 15 giây
+    const intervalId = setInterval(() => {
+      if (isMounted) {
+        fetchOrders();
+      }
+    }, 15000); // 15 giây cập nhật một lần
+
     // Cleanup function
     return () => {
       isMounted = false;
+      clearInterval(intervalId);
     };
-  }, []);
+  }, [fetchOrders]);
 
   // Filter out awaiting_payment orders (SePay payments not yet completed)
   const filteredOrders = orders.filter(order => 
@@ -111,11 +125,9 @@ export default function Order() {
     
     try {
       setCancelLoading(true);
-      // console.log("Đang gửi yêu cầu hủy đơn hàng ID:", orderId);
       
       // Gọi API để hủy đơn hàng
       const response = await orderApi.cancelOrder(orderId);
-      // console.log("Kết quả hủy đơn hàng:", response);
       
       if (response && response.success) {
         // Cập nhật UI ngay lập tức

@@ -40,6 +40,19 @@ export const getOrderById = async (orderId) => {
   }
 };
 
+// Hàm kiểm tra trạng thái đơn hàng (để theo dõi cập nhật real-time)
+export const checkOrderStatus = async (orderId) => {
+  try {
+    // Thêm timestamp để tránh cache
+    const timestamp = new Date().getTime();
+    const response = await axios.get(`${API_URL}/orders/${orderId}?_t=${timestamp}`);
+    return response.data;
+  } catch (error) {
+    console.error("Lỗi khi kiểm tra trạng thái đơn hàng:", error);
+    throw error;
+  }
+};
+
 const orderApi = {
   createOrder: async (orderData) => {
     const response = await axios.post(`${API_URL}/orders`, orderData);
@@ -55,8 +68,11 @@ const orderApi = {
         return [];
       }
       
+      // Thêm timestamp để tránh cache
+      const timestamp = new Date().getTime();
+      
       // Sử dụng userId để lấy đơn hàng của người dùng hiện tại
-      const url = `${API_URL}/orders/user?userId=${userId}`;
+      const url = `${API_URL}/orders/user?userId=${userId}&_t=${timestamp}`;
       
       const response = await axios.get(url, {
         headers: {
@@ -72,6 +88,7 @@ const orderApi = {
     }
   },
   getOrderById,
+  checkOrderStatus,
   
   // Thêm hàm hủy đơn hàng
   cancelOrder: async (orderId) => {
