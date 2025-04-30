@@ -219,6 +219,57 @@ export const updateOrder = async (req, res) => {
     const previousStatus = order.status;
     const newStatus = filteredData.status;
     
+    // THÊM MỚI: Xử lý cập nhật tracking_logs khi có thay đổi trạng thái
+    if (newStatus && newStatus !== previousStatus) {
+      // Khởi tạo tracking object nếu chưa có
+      if (!order.tracking) {
+        order.tracking = { status_name: "", tracking_logs: [] };
+      }
+      
+      // Lấy tên hiển thị cho trạng thái
+      let statusName = "";
+      switch (newStatus) {
+        case 'pending': statusName = "Chờ xử lý"; break;
+        case 'confirmed': statusName = "Đã xác nhận"; break;
+        case 'processing': statusName = "Đang xử lý"; break;
+        case 'preparing': statusName = "Đang chuẩn bị hàng"; break;
+        case 'packaging': statusName = "Hoàn tất đóng gói"; break;
+        case 'shipping': statusName = "Đang vận chuyển"; break;
+        case 'shipped': statusName = "Đã giao cho vận chuyển"; break;
+        case 'delivering': statusName = "Đang giao hàng"; break;
+        case 'delivered': statusName = "Đã giao hàng"; break;
+        case 'completed': statusName = "Hoàn thành"; break;
+        case 'cancelled': statusName = "Đã hủy"; break;
+        case 'awaiting_payment': statusName = "Chờ thanh toán"; break;
+        case 'refunded': statusName = "Đã hoàn tiền"; break;
+        case 'failed': statusName = "Thất bại"; break;
+        case 'delivery_failed': statusName = "Giao hàng thất bại"; break;
+        default: statusName = newStatus;
+      }
+      
+      // Thêm bản ghi mới vào đầu mảng tracking_logs
+      const newTrackingLog = {
+        status: newStatus,
+        status_name: statusName,
+        timestamp: new Date().toISOString(),
+        location: "Cửa hàng DNC FOOD",
+      };
+      
+      // Khởi tạo mảng tracking_logs nếu chưa có
+      if (!order.tracking.tracking_logs) {
+        order.tracking.tracking_logs = [];
+      }
+      
+      // Thêm log mới vào đầu mảng (để log mới nhất nằm đầu tiên)
+      order.tracking.tracking_logs.unshift(newTrackingLog);
+      
+      // Cập nhật status_name chính
+      order.tracking.status_name = statusName;
+      
+      // Lưu tracking vào filteredData để cập nhật
+      filteredData.tracking = order.tracking;
+    }
+    
     // Nếu đang cập nhật trạng thái thành 'completed', tự động đánh dấu đã thanh toán
     if (newStatus === 'completed') {
       filteredData.isPaid = true;
@@ -364,10 +415,68 @@ export const markOrderAsPaid = async (req, res) => {
     
     // Theo dõi trạng thái trước khi cập nhật
     const wasPaid = order.isPaid;
+    const previousStatus = order.status;
     
     // Nếu có trạng thái mới được gửi lên, cập nhật trạng thái đơn hàng
     if (status) {
       updateData.status = status;
+    }
+    
+    // THÊM MỚI: Xử lý cập nhật tracking_logs khi có thay đổi trạng thái hoặc thanh toán
+    if ((status && status !== previousStatus) || (isPaid && !wasPaid)) {
+      // Khởi tạo tracking object nếu chưa có
+      if (!order.tracking) {
+        order.tracking = { status_name: "", tracking_logs: [] };
+      }
+      
+      // Lấy tên hiển thị cho trạng thái
+      let statusName = "";
+      if (status) {
+        switch (status) {
+          case 'pending': statusName = "Chờ xử lý"; break;
+          case 'confirmed': statusName = "Đã xác nhận"; break;
+          case 'processing': statusName = "Đang xử lý"; break;
+          case 'preparing': statusName = "Đang chuẩn bị hàng"; break;
+          case 'packaging': statusName = "Hoàn tất đóng gói"; break;
+          case 'shipping': statusName = "Đang vận chuyển"; break;
+          case 'shipped': statusName = "Đã giao cho vận chuyển"; break;
+          case 'delivering': statusName = "Đang giao hàng"; break;
+          case 'delivered': statusName = "Đã giao hàng"; break;
+          case 'completed': statusName = "Hoàn thành"; break;
+          case 'cancelled': statusName = "Đã hủy"; break;
+          case 'awaiting_payment': statusName = "Chờ thanh toán"; break;
+          case 'refunded': statusName = "Đã hoàn tiền"; break;
+          case 'failed': statusName = "Thất bại"; break;
+          case 'delivery_failed': statusName = "Giao hàng thất bại"; break;
+          default: statusName = status;
+        }
+      } else if (isPaid && !wasPaid) {
+        statusName = "Đã thanh toán";
+      }
+      
+      // Thêm bản ghi mới vào đầu mảng tracking_logs
+      const newTrackingLog = {
+        status: status || order.status,
+        status_name: statusName || "Cập nhật thanh toán",
+        timestamp: new Date().toISOString(),
+        location: "Cửa hàng DNC FOOD",
+      };
+      
+      // Khởi tạo mảng tracking_logs nếu chưa có
+      if (!order.tracking.tracking_logs) {
+        order.tracking.tracking_logs = [];
+      }
+      
+      // Thêm log mới vào đầu mảng (để log mới nhất nằm đầu tiên)
+      order.tracking.tracking_logs.unshift(newTrackingLog);
+      
+      // Cập nhật status_name chính
+      if (statusName) {
+        order.tracking.status_name = statusName;
+      }
+      
+      // Lưu tracking vào updateData để cập nhật
+      updateData.tracking = order.tracking;
     }
     
     // Nếu đánh dấu là đã thanh toán và hoàn thành, cập nhật thời gian hoàn thành
@@ -499,6 +608,43 @@ export const getOrderTracking = async (req, res) => {
       });
     }
     
+    // Tìm đơn hàng trong database dựa trên orderCode
+    const order = await Order.findOne({ orderCode });
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng với mã vận đơn này"
+      });
+    }
+    
+    // Nếu đơn hàng đã có thông tin tracking, ưu tiên sử dụng
+    if (order.tracking && order.tracking.tracking_logs && order.tracking.tracking_logs.length > 0) {
+      console.log("Sử dụng thông tin tracking từ database");
+      
+      // Tạo estimated_delivery_time nếu chưa có
+      if (!order.tracking.estimated_delivery_time) {
+        const estimatedDelivery = new Date();
+        estimatedDelivery.setDate(estimatedDelivery.getDate() + 3);
+        order.tracking.estimated_delivery_time = estimatedDelivery.toISOString();
+      }
+      
+      return res.status(200).json({
+        success: true,
+        data: {
+          order_code: order.orderCode,
+          status: order.status,
+          status_name: order.tracking.status_name || getStatusText(order.status),
+          estimated_delivery_time: order.tracking.estimated_delivery_time,
+          tracking_logs: order.tracking.tracking_logs,
+          current_location: "Cửa hàng DNC FOOD",
+          delivery_note: order.notes || "Hàng dễ vỡ, xin nhẹ tay"
+        },
+        isMocked: false
+      });
+    }
+    
+    // Tiếp tục với code gọi API GHN nếu cần
     const SHOP_ID = process.env.SHOP_ID;
     const SHOP_TOKEN_API = process.env.SHOP_TOKEN_API;
     const USE_MOCK_ON_ERROR = process.env.USE_MOCK_ON_ERROR === 'true';
@@ -506,8 +652,8 @@ export const getOrderTracking = async (req, res) => {
     if (!SHOP_ID || !SHOP_TOKEN_API) {
       console.log("Thiếu thông tin cấu hình GHN trong biến môi trường");
       if (USE_MOCK_ON_ERROR) {
-        // Sử dụng dữ liệu giả lập khi thiếu cấu hình
-        const mockData = generateMockTrackingData(orderCode);
+        // Tạo dữ liệu giả lập dựa trên thông tin đơn hàng thực tế
+        const mockData = generateMockTrackingDataFromOrder(order);
         return res.status(200).json({
           success: true,
           data: mockData,
@@ -546,8 +692,8 @@ export const getOrderTracking = async (req, res) => {
         console.log("Lỗi từ GHN API:", response.data);
         
         if (USE_MOCK_ON_ERROR) {
-          // Sử dụng dữ liệu giả lập thay vì trả về lỗi nếu cấu hình cho phép
-          const mockData = generateMockTrackingData(orderCode);
+          // Tạo dữ liệu giả lập dựa trên thông tin đơn hàng thực tế
+          const mockData = generateMockTrackingDataFromOrder(order);
           return res.status(200).json({
             success: true,
             data: mockData,
@@ -573,8 +719,8 @@ export const getOrderTracking = async (req, res) => {
       console.error("Lỗi gọi API GHN:", apiError.message);
       
       if (USE_MOCK_ON_ERROR) {
-        // Sử dụng dữ liệu giả lập nếu API GHN bị lỗi và cấu hình cho phép
-        const mockData = generateMockTrackingData(orderCode);
+        // Tạo dữ liệu giả lập dựa trên thông tin đơn hàng thực tế
+        const mockData = generateMockTrackingDataFromOrder(order);
         return res.status(200).json({
           success: true,
           data: mockData,
@@ -595,7 +741,25 @@ export const getOrderTracking = async (req, res) => {
     const USE_MOCK_ON_ERROR = process.env.USE_MOCK_ON_ERROR === 'true';
     
     if (USE_MOCK_ON_ERROR) {
-      // Luôn trả về dữ liệu giả lập khi có lỗi nếu cấu hình cho phép
+      try {
+        // Tìm đơn hàng trong database dựa trên orderCode
+        const order = await Order.findOne({ orderCode: req.params.orderCode });
+        
+        if (order) {
+          // Tạo dữ liệu giả lập dựa trên thông tin đơn hàng thực tế
+          const mockData = generateMockTrackingDataFromOrder(order);
+          return res.status(200).json({
+            success: true,
+            data: mockData,
+            isMocked: true,
+            message: "Đang sử dụng dữ liệu giả lập do lỗi hệ thống"
+          });
+        }
+      } catch (dbError) {
+        console.error("Lỗi khi tìm đơn hàng:", dbError);
+      }
+      
+      // Nếu không tìm thấy đơn hàng hoặc có lỗi, sử dụng dữ liệu giả lập mặc định
       const mockData = generateMockTrackingData(req.params.orderCode);
       return res.status(200).json({
         success: true,
@@ -613,7 +777,174 @@ export const getOrderTracking = async (req, res) => {
   }
 };
 
-// Hàm tạo dữ liệu giả lập cho tracking đơn hàng
+// Hàm chuyển đổi trạng thái đơn hàng thành text hiển thị
+function getStatusText(status) {
+  switch (status) {
+    case 'pending': return "Chờ xử lý";
+    case 'confirmed': return "Đã xác nhận";
+    case 'processing': return "Đang xử lý";
+    case 'preparing': return "Đang chuẩn bị hàng";
+    case 'packaging': return "Hoàn tất đóng gói";
+    case 'shipping': return "Đang vận chuyển";
+    case 'shipped': return "Đã giao cho vận chuyển";
+    case 'delivering': return "Đang giao hàng";
+    case 'delivered': return "Đã giao hàng";
+    case 'completed': return "Hoàn thành";
+    case 'cancelled': return "Đã hủy";
+    case 'awaiting_payment': return "Chờ thanh toán";
+    case 'refunded': return "Đã hoàn tiền";
+    case 'failed': return "Thất bại";
+    case 'delivery_failed': return "Giao hàng thất bại";
+    default: return status;
+  }
+}
+
+// Hàm tạo dữ liệu giả lập từ đơn hàng thực tế
+function generateMockTrackingDataFromOrder(order) {
+  const now = new Date();
+  let trackingLogs = [];
+  
+  // Sử dụng tracking_logs nếu đã có
+  if (order.tracking && order.tracking.tracking_logs && order.tracking.tracking_logs.length > 0) {
+    trackingLogs = order.tracking.tracking_logs;
+  } 
+  // Nếu không có tracking_logs, tạo dữ liệu giả lập dựa vào trạng thái hiện tại
+  else {
+    // Tạo các mốc thời gian giả lập
+    const timeDay2 = new Date(now);
+    timeDay2.setHours(now.getHours() - 24); // 1 ngày trước
+    
+    const timeToday1 = new Date(now);
+    timeToday1.setHours(now.getHours() - 10); // 10 giờ trước
+    
+    const timeToday2 = new Date(now);
+    timeToday2.setHours(now.getHours() - 5); // 5 giờ trước
+    
+    const timeLatest = new Date(now);
+    timeLatest.setMinutes(now.getMinutes() - 30); // 30 phút trước
+    
+    // Tạo logs dựa trên trạng thái đơn hàng
+    switch (order.status) {
+      case 'completed':
+        trackingLogs = [
+          {
+            status: "completed",
+            status_name: "Hoàn thành",
+            timestamp: now.toISOString(),
+            location: "Địa chỉ giao hàng"
+          },
+          {
+            status: "delivered",
+            status_name: "Đã giao hàng",
+            timestamp: timeLatest.toISOString(),
+            location: "Địa chỉ giao hàng"
+          },
+          {
+            status: "delivering",
+            status_name: "Đang giao hàng",
+            timestamp: timeToday2.toISOString(),
+            location: "Trung tâm phân loại"
+          },
+          {
+            status: "shipping",
+            status_name: "Đang vận chuyển",
+            timestamp: timeToday1.toISOString(),
+            location: "Cửa hàng DNC FOOD"
+          },
+          {
+            status: "packaging",
+            status_name: "Hoàn tất đóng gói",
+            timestamp: timeDay2.toISOString(),
+            location: "Cửa hàng DNC FOOD"
+          }
+        ];
+        break;
+        
+      case 'delivering':
+        trackingLogs = [
+          {
+            status: "delivering",
+            status_name: "Đang giao hàng",
+            timestamp: timeLatest.toISOString(),
+            location: "Trung tâm phân loại"
+          },
+          {
+            status: "shipping",
+            status_name: "Đang vận chuyển",
+            timestamp: timeToday1.toISOString(),
+            location: "Cửa hàng DNC FOOD"
+          },
+          {
+            status: "packaging",
+            status_name: "Hoàn tất đóng gói",
+            timestamp: timeDay2.toISOString(),
+            location: "Cửa hàng DNC FOOD"
+          }
+        ];
+        break;
+        
+      case 'shipping':
+        trackingLogs = [
+          {
+            status: "shipping",
+            status_name: "Đang vận chuyển",
+            timestamp: timeLatest.toISOString(),
+            location: "Cửa hàng DNC FOOD"
+          },
+          {
+            status: "packaging",
+            status_name: "Hoàn tất đóng gói",
+            timestamp: timeToday1.toISOString(),
+            location: "Cửa hàng DNC FOOD"
+          }
+        ];
+        break;
+        
+      case 'packaging':
+        trackingLogs = [
+          {
+            status: "packaging",
+            status_name: "Hoàn tất đóng gói",
+            timestamp: timeLatest.toISOString(),
+            location: "Cửa hàng DNC FOOD"
+          }
+        ];
+        break;
+        
+      default:
+        // Với các trạng thái khác, tạo một bản ghi phù hợp
+        trackingLogs = [
+          {
+            status: order.status,
+            status_name: getStatusText(order.status),
+            timestamp: now.toISOString(),
+            location: "Cửa hàng DNC FOOD"
+          }
+        ];
+    }
+  }
+  
+  // Tạo ngày dự kiến giao hàng (3 ngày từ hiện tại)
+  const estimatedDelivery = new Date(now);
+  estimatedDelivery.setDate(now.getDate() + 3);
+  
+  // Lấy trạng thái và tên trạng thái từ bản ghi mới nhất
+  const status = trackingLogs.length > 0 ? trackingLogs[0].status : order.status;
+  const status_name = trackingLogs.length > 0 ? trackingLogs[0].status_name : getStatusText(order.status);
+  
+  // Trả về cấu trúc dữ liệu tracking
+  return {
+    order_code: order.orderCode,
+    status: status,
+    status_name: status_name,
+    estimated_delivery_time: estimatedDelivery.toISOString(),
+    tracking_logs: trackingLogs,
+    current_location: "Cửa hàng DNC FOOD",
+    delivery_note: order.notes || "Hàng dễ vỡ, xin nhẹ tay"
+  };
+}
+
+// Giữ lại hàm cũ để tương thích ngược
 function generateMockTrackingData(orderCode) {
   const now = new Date();
   
@@ -688,9 +1019,8 @@ export const updateOrderPaymentStatus = async (req, res) => {
       });
     }
 
-    // Find and update the order
+    // Find order
     const order = await Order.findById(id);
-    
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -698,28 +1028,98 @@ export const updateOrderPaymentStatus = async (req, res) => {
       });
     }
 
-    // Update payment status and isPaid fields
-    order.paymentStatus = paymentStatus || 'completed';
-    order.isPaid = isPaid !== undefined ? isPaid : true;
-    
-    // If order is paid, update status to processing if it's currently pending
-    if (order.isPaid && order.status === 'pending') {
-      order.status = 'processing';
+    // Track old values for comparison
+    const oldPaymentStatus = order.paymentStatus;
+    const oldIsPaid = order.isPaid;
+
+    // Update payment status
+    const updateData = {};
+    if (paymentStatus !== undefined) {
+      updateData.paymentStatus = paymentStatus;
+    }
+    if (isPaid !== undefined) {
+      updateData.isPaid = isPaid;
     }
 
-    // Save the updated order
-    await order.save();
+    // THÊM MỚI: Cập nhật tracking_logs khi trạng thái thanh toán thay đổi
+    if ((paymentStatus && paymentStatus !== oldPaymentStatus) || 
+        (isPaid !== undefined && isPaid !== oldIsPaid)) {
+      
+      // Khởi tạo tracking object nếu chưa có
+      if (!order.tracking) {
+        order.tracking = { status_name: "", tracking_logs: [] };
+      }
+      
+      // Tạo status_name theo trạng thái thanh toán mới
+      let statusName = "";
+      if (paymentStatus) {
+        switch (paymentStatus) {
+          case 'pending': statusName = "Chờ thanh toán"; break;
+          case 'completed': statusName = "Đã thanh toán"; break;
+          case 'failed': statusName = "Thanh toán thất bại"; break;
+          case 'refunded': statusName = "Đã hoàn tiền"; break;
+          default: statusName = `Trạng thái thanh toán: ${paymentStatus}`;
+        }
+      } else if (isPaid !== undefined) {
+        statusName = isPaid ? "Đã thanh toán" : "Chưa thanh toán";
+      }
+      
+      // Thêm bản ghi mới vào đầu mảng tracking_logs
+      const newTrackingLog = {
+        status: order.status,
+        status_name: statusName || "Cập nhật thanh toán",
+        timestamp: new Date().toISOString(),
+        location: "Cửa hàng DNC FOOD",
+      };
+      
+      // Khởi tạo mảng tracking_logs nếu chưa có
+      if (!order.tracking.tracking_logs) {
+        order.tracking.tracking_logs = [];
+      }
+      
+      // Thêm log mới vào đầu mảng (để log mới nhất nằm đầu tiên)
+      order.tracking.tracking_logs.unshift(newTrackingLog);
+      
+      // Lưu tracking vào updateData để cập nhật
+      updateData.tracking = order.tracking;
+    }
+
+    // Update order in database
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true }
+    ).populate("userId").populate("products.productId");
+
+    // Handle inventory and sales data if newly paid
+    if (isPaid && !oldIsPaid) {
+      // Update bestselling products
+      try {
+        for (const item of updatedOrder.products) {
+          if (item.productId) {
+            await BestSellingProduct.updateSalesData(
+              item.productId._id,
+              item.productId,
+              item.quantity,
+              id
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error updating bestselling products:", error);
+      }
+    }
 
     return res.status(200).json({
       success: true,
-      message: "Order payment status updated successfully",
-      data: order
+      message: "Payment status updated successfully",
+      order: updatedOrder
     });
   } catch (error) {
-    console.error("Error updating order payment status:", error);
+    console.error("Error updating payment status:", error);
     return res.status(500).json({
       success: false,
-      message: "Error updating order payment status",
+      message: "Error updating payment status",
       error: error.message
     });
   }

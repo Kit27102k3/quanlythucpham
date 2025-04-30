@@ -573,6 +573,44 @@ const intents = {
       }
     }
   },
+  categorySearch: {
+    patterns: [
+      "tìm rau", "các loại rau", "hiển thị rau", "rau gì", "rau nào", 
+      "tìm trái cây", "các loại trái cây", "hiển thị trái cây", "trái cây gì", "trái cây nào",
+      "tìm thịt", "các loại thịt", "hiển thị thịt", "thịt gì", "thịt nào",
+      "tìm theo danh mục", "hiển thị danh mục", "sản phẩm của danh mục"
+    ],
+    response: async (categoryName) => {
+      try {
+        // Tìm sản phẩm thuộc danh mục được chỉ định
+        const products = await Product.find({
+          productCategory: { $regex: categoryName, $options: 'i' }
+        }).limit(5);
+        
+        if (products.length > 0) {
+          let response = `Chúng tôi có các sản phẩm ${categoryName} sau:\n`;
+          products.forEach((product, index) => {
+            response += `${index + 1}. ${product.productName} - ${formatCurrency(product.productPrice)}\n`;
+          });
+          response += 'Bạn có thể hỏi thêm thông tin cụ thể về sản phẩm bạn quan tâm.';
+          
+          return {
+            text: response,
+            products: products.map(p => ({
+              _id: p._id,
+              productName: p.productName,
+              productPrice: p.productPrice
+            }))
+          };
+        } else {
+          return `Hiện tại chúng tôi không có sản phẩm ${categoryName} nào. Bạn có thể xem các sản phẩm khác như trái cây, rau củ, thịt hoặc đồ uống.`;
+        }
+      } catch (error) {
+        console.error(`Lỗi khi tìm kiếm danh mục ${categoryName}:`, error);
+        return `Xin lỗi, đã xảy ra lỗi khi tìm kiếm sản phẩm ${categoryName}. Vui lòng thử lại sau.`;
+      }
+    },
+  },
 };
 
 // Cấu hình Rasa
@@ -706,6 +744,11 @@ const priorityRules = [
   { 
     patterns: ["sản phẩm dưới", "tìm sản phẩm giá", "tìm sản phẩm theo giá", "tìm hàng giá"],
     priorityIntent: "priceRange" 
+  },
+  // Nếu tin nhắn chứa các từ khóa liên quan đến tìm kiếm theo danh mục, ưu tiên intent categorySearch
+  {
+    patterns: ["tìm rau", "các loại rau", "hiển thị rau", "rau gì", "rau nào"],
+    priorityIntent: "categorySearch"
   }
 ];
 
@@ -832,6 +875,53 @@ export const handleMessage = async (req, res) => {
     
     // Chuyển tin nhắn sang chữ thường để dễ xử lý
     const lowerMessage = message.toLowerCase();
+    
+    // Xử lý đặc biệt cho các trường hợp tìm kiếm danh mục sản phẩm
+    if (lowerMessage.includes("rau") && (
+        lowerMessage.includes("tìm") || 
+        lowerMessage.includes("các loại") || 
+        lowerMessage.includes("hiển thị") || 
+        lowerMessage.includes("có") || 
+        lowerMessage.includes("muốn") || 
+        lowerMessage.includes("cho tôi") ||
+        lowerMessage.includes("trong shop") ||
+        lowerMessage.includes("có những loại")
+      )) {
+      console.log("Phát hiện câu hỏi về danh mục rau");
+      try {
+        // Tìm sản phẩm thuộc danh mục 'Rau'
+        const products = await Product.find({
+          productCategory: { $regex: 'rau', $options: 'i' }
+        }).limit(5);
+        
+        if (products.length > 0) {
+          let response = 'Chúng tôi có các loại rau sau:\n';
+          products.forEach((product, index) => {
+            response += `${index + 1}. ${product.productName} - ${formatCurrency(product.productPrice)}\n`;
+          });
+          response += 'Bạn có thể hỏi thêm thông tin cụ thể về sản phẩm bạn quan tâm.';
+          
+          return res.json({
+            success: true,
+            message: response,
+            intent: 'categorySearch',
+            products: products.map(p => ({
+              _id: p._id,
+              productName: p.productName,
+              productPrice: p.productPrice
+            }))
+          });
+        } else {
+          return res.json({
+            success: true,
+            message: 'Hiện tại chúng tôi không có sản phẩm rau nào. Bạn có thể xem các sản phẩm khác như trái cây, thịt hoặc đồ uống.',
+            intent: 'categorySearch'
+          });
+        }
+      } catch (error) {
+        console.error('Lỗi khi tìm kiếm danh mục rau:', error);
+      }
+    }
     
     // Xử lý đặc biệt cho các từ khóa đặc trưng trước khi tìm intent
     if (lowerMessage.includes("thực phẩm tươi") || 
@@ -984,6 +1074,53 @@ export const handleMessage = async (req, res) => {
           return res.json({
             success: false,
             message: 'Xin lỗi, tôi không thể truy xuất thông tin giá vào lúc này.',
+            intent: null
+          });
+        }
+      }
+      
+      // Xử lý cho categorySearch (tìm kiếm sản phẩm theo danh mục)
+      if (intent === 'categorySearch') {
+        try {
+          console.log(`Xử lý categorySearch intent với tin nhắn: "${message}"`);
+          
+          // Xác định danh mục từ tin nhắn
+          let categoryName = "rau"; // Mặc định là rau nếu không xác định được
+          
+          // Trích xuất tên danh mục từ tin nhắn
+          const lowerMessage = message.toLowerCase();
+          if (lowerMessage.includes("rau")) {
+            categoryName = "rau";
+          } else if (lowerMessage.includes("trái cây") || lowerMessage.includes("trai cay") || lowerMessage.includes("quả")) {
+            categoryName = "trái cây";
+          } else if (lowerMessage.includes("thịt") || lowerMessage.includes("thit")) {
+            categoryName = "thịt";
+          } else if (lowerMessage.includes("đồ uống") || lowerMessage.includes("nước") || lowerMessage.includes("nuoc")) {
+            categoryName = "nước";
+          }
+          
+          const response = await intents[intent].response(categoryName);
+          
+          // Kiểm tra nếu response là object
+          if (response && typeof response === 'object') {
+            return res.json({
+              success: true,
+              message: response.text || response,
+              intent: intent,
+              products: response.products || []
+            });
+          } else {
+            return res.json({
+              success: true,
+              message: response,
+              intent: intent
+            });
+          }
+        } catch (error) {
+          console.error('Lỗi khi xử lý intent categorySearch:', error);
+          return res.json({
+            success: false,
+            message: 'Xin lỗi, tôi không thể tìm thấy sản phẩm trong danh mục này vào lúc này.',
             intent: null
           });
         }

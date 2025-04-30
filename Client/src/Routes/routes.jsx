@@ -24,13 +24,12 @@ import DefaultDiscount from "../User/Pages/Product/ProductDiscount/DefaultDiscou
 import OrderAdmin from "../Admin/Pages/Order";
 import Employees from "../Admin/Pages/AddEmployees";
 import OrderConfirmation from "../User/Cart/OrderConfirmation";
-import NewsPage from "../User/Pages/NewsPage/NewsPage";
-import TipsPage from "../User/Pages/TipsPage/TipsPage";
 import PaymentResult from "../User/Pages/PaymentResult";
 import PaymentQR from "../User/Pages/PaymentQR";
 import CategoryProducts from "../User/Pages/Product/CategoryProducts";
 import TipsManagement from "../Admin/Pages/Tips/TipsManagement";
 import TipForm from "../Admin/Pages/Tips/TipForm";
+import ContactList from "../Admin/Pages/Contacts/ContactList";
 
 const publicRoutes = [
   {
@@ -90,14 +89,6 @@ const publicRoutes = [
   {
     path: "/khuyen-mai",
     page: DefaultDiscount,
-  },
-  {
-    path: "/tin-tuc",
-    page: NewsPage,
-  },
-  {
-    path: "/meo-hay",
-    page: TipsPage,
   },
   {
     path: "/gio-hang",
@@ -189,6 +180,10 @@ const privateRoutes = [
   {
     path: "/admin/tips/edit/:id",
     page: TipForm,
+  },
+  {
+    path: "/admin/contacts",
+    page: ContactList,
   },
 ];
 

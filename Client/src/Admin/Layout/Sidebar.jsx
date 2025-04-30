@@ -12,7 +12,8 @@ import {
   ReaderIcon,
   TriangleLeftIcon,
   TriangleRightIcon,
-  InfoCircledIcon
+  InfoCircledIcon,
+  EnvelopeClosedIcon
 } from "@radix-ui/react-icons";
 
 const AdminSidebar = () => {
@@ -93,6 +94,12 @@ const AdminSidebar = () => {
       text: "Mẹo hay",
       path: "/admin/tips",
       key: "tips",
+    },
+    {
+      icon: <EnvelopeClosedIcon className="size-5 md:size-6" />,
+      text: "Liên hệ",
+      path: "/admin/contacts",
+      key: "contacts",
     },
     {
       icon: <PersonIcon className="size-5 md:size-6" />,
@@ -239,7 +246,7 @@ const AdminSidebar = () => {
       <div className="p-4 bg-gray-900 border-t border-gray-700">
         <div className="flex items-center space-x-3">
           <img
-            src="https://scontent.fsgn5-10.fna.fbcdn.net/v/t39.30808-6/481456016_1231192658376202_738067928430088828_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=6ee11a&_nc_eui2=AeGvtO3WvuAtPyTXjbwJ7dFv5gipTJpZ4ODmCKlMmlng4GSv5lrR8EWLC0Dh64gktUtMbQJaJKREsRlVQj8YgHU3&_nc_ohc=zKWou0iuSL4Q7kNvwEDpG7E&_nc_oc=AdmvRXPpd9GT98oZ-wZ1k9p7mwfaXWh6WLQ8ybBuo7IPNzguehpoeANFdqjDkflCOrWR6exsPiXUxBC6BpaML2nP&_nc_zt=23&_nc_ht=scontent.fsgn5-10.fna&_nc_gid=UwDtT7VeVKA70Sjo6VnSFg&oh=00_AfFAH7OZYZ01fBtiEIkOnjXreS9ctcC-lqy6tLDvARGZ6A&oe=67FB4D9C"
+            src="/images/avatar.png"
             alt="Admin"
             className="w-10 h-10 rounded-full object-cover border-2 border-gray-600"
           />

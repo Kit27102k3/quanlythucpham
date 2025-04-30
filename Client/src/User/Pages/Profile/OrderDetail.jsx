@@ -1221,19 +1221,28 @@ export default function OrderDetail() {
                 ) : !trackingInfo ? (
                   <div className="text-center py-4 sm:py-6">
                     <ClockIcon className="w-10 h-10 sm:w-12 sm:h-12 text-yellow-500 mx-auto mb-2" />
-                    <p className="text-gray-600">Đang chờ thông tin vận chuyển</p>
+                    <p className="text-xs sm:text-sm text-gray-600">Đang chờ thông tin vận chuyển</p>
                   </div>
                 ) : (
                   <div>
-                    <div className="mb-4 sm:mb-6 py-3 px-4 sm:py-4 sm:px-5 bg-blue-50 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    {console.log("Debug tracking status:", {
+                      main_status: trackingInfo.status_name,
+                      latest_log: trackingInfo.tracking_logs && trackingInfo.tracking_logs.length > 0 ? trackingInfo.tracking_logs[0].status_name : null,
+                      all_logs: trackingInfo.tracking_logs
+                    })}
+                    <div className="mb-3 sm:mb-4 py-2 px-3 sm:py-3 sm:px-4 bg-blue-50 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <div>
-                        <div className="text-xs text-gray-500">Trạng thái hiện tại</div>
-                        <div className="font-medium text-blue-700 text-sm sm:text-lg">{trackingInfo.status_name || "Đang vận chuyển"}</div>
+                        <div className="text-xs text-gray-500">Trạng thái</div>
+                        <div className="font-medium text-blue-700 text-sm sm:text-lg">
+                          {trackingInfo.tracking_logs && trackingInfo.tracking_logs.length > 0 
+                            ? trackingInfo.tracking_logs[0].status_name 
+                            : trackingInfo.status_name || "Đang vận chuyển"}
+                        </div>
                       </div>
                       {trackingInfo.estimated_delivery_time && (
                         <div className="sm:text-right">
                           <div className="text-xs text-gray-500">Dự kiến giao hàng</div>
-                          <div className="font-medium text-blue-700">
+                          <div className="font-medium text-blue-700 text-xs sm:text-sm">
                             {formatDateOnly(trackingInfo.estimated_delivery_time)}
                           </div>
                         </div>
@@ -1360,8 +1369,12 @@ export default function OrderDetail() {
                 <div>
                   <div className="mb-3 sm:mb-4 py-2 px-3 sm:py-3 sm:px-4 bg-blue-50 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
-                      <div className="text-xs text-gray-500">Trạng thái</div>
-                      <div className="font-medium text-blue-700 text-sm sm:text-lg">{trackingInfo.status_name || "Đang vận chuyển"}</div>
+                      <div className="text-xs text-gray-500">Trạng thái hiện tại</div>
+                      <div className="font-medium text-blue-700 text-sm sm:text-lg">
+                        {trackingInfo.tracking_logs && trackingInfo.tracking_logs.length > 0 
+                          ? trackingInfo.tracking_logs[0].status_name 
+                          : trackingInfo.status_name || "Đang vận chuyển"}
+                      </div>
                     </div>
                     {trackingInfo.estimated_delivery_time && (
                       <div className="sm:text-right">

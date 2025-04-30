@@ -51,15 +51,31 @@ const CustomTooltip = ({ active, payload, label }) => {
     return (
       <div className="bg-white p-3 border border-gray-200 shadow-lg rounded-lg">
         <p className="font-semibold text-gray-700">{label}</p>
-        {payload.map((entry, index) => (
-          <p key={`item-${index}`} style={{ color: entry.color }} className="flex items-center mt-1">
-            <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: entry.color }}></span>
-            <span className="mr-2">{entry.name === "Doanh Thu" || entry.name === "doanh_thu" ? "Doanh Thu" : entry.name === "Đơn Hàng" || entry.name === "don_hang" ? "Đơn Hàng" : entry.name}: </span>
-            <span className="font-medium">
-              {entry.name === "Doanh Thu" || entry.name === "doanh_thu" ? formatCurrency(entry.value) : entry.value}
-            </span>
-          </p>
-        ))}
+        {payload.map((entry, index) => {
+          // Kiểm tra giá trị hợp lệ
+          const value = entry.value !== undefined && entry.value !== null && !isNaN(entry.value) 
+            ? entry.value 
+            : 0;
+            
+          // Xác định hiển thị giá trị
+          const displayValue = entry.name === "Doanh Thu" || entry.name === "doanh_thu" 
+            ? formatCurrency(value) 
+            : value;
+            
+          return (
+            <p key={`item-${index}`} style={{ color: entry.color }} className="flex items-center mt-1">
+              <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: entry.color }}></span>
+              <span className="mr-2">
+                {entry.name === "Doanh Thu" || entry.name === "doanh_thu" 
+                  ? "Doanh Thu" 
+                  : entry.name === "Đơn Hàng" || entry.name === "don_hang" 
+                    ? "Đơn Hàng" 
+                    : entry.name}:
+              </span>
+              <span className="font-medium">{displayValue}</span>
+            </p>
+          );
+        })}
       </div>
     );
   }
@@ -169,6 +185,29 @@ const Dashboard = () => {
       
       if (response && response.success) {
         console.log("Dashboard API response:", response.data);
+        
+        // Kiểm tra và xử lý dữ liệu doanh thu trước khi lưu vào state
+        if (!response.data.dailyRevenue) {
+          console.warn("Không có dữ liệu doanh thu theo ngày");
+          response.data.dailyRevenue = []; // Đảm bảo có mảng rỗng để tránh lỗi
+        }
+        
+        if (!response.data.weeklyRevenue) {
+          console.warn("Không có dữ liệu doanh thu theo tuần");
+          response.data.weeklyRevenue = []; // Đảm bảo có mảng rỗng để tránh lỗi
+        }
+        
+        if (!response.data.monthlyRevenue) {
+          console.warn("Không có dữ liệu doanh thu theo tháng");
+          response.data.monthlyRevenue = []; // Đảm bảo có mảng rỗng để tránh lỗi
+        }
+        
+        // Kiểm tra tổng doanh thu
+        if (response.data.totalRevenue === undefined || response.data.totalRevenue === null) {
+          console.warn("Không có dữ liệu tổng doanh thu");
+          response.data.totalRevenue = 0; // Đặt giá trị mặc định
+        }
+        
         console.log("Product categories:", response.data.productsByCategory);
         setStats(response.data);
       } else {
@@ -195,36 +234,113 @@ const Dashboard = () => {
   };
 
   const getRevenueData = () => {
-    if (!stats || !stats.dailyRevenue) return [];
+    if (!stats) return [];
 
-    let result;
-    switch (timeRange) {
-      case 'daily':
-        result = stats.dailyRevenue?.map(item => ({
-          date: formatDate(new Date(item._id.year, item._id.month - 1, item._id.day)),
-          doanh_thu: item.revenue,
-          don_hang: item.orders
-        })).slice(-7) || [];
-        break;
-      case 'weekly':
-        result = stats.weeklyRevenue?.map(item => ({
-          date: `Tuần ${item._id.week}/${item._id.year}`,
-          doanh_thu: item.revenue,
-          don_hang: item.orders
-        })) || [];
-        break;
-      case 'monthly':
-        result = stats.monthlyRevenue?.map(item => ({
-          date: `Tháng ${item._id.month}/${item._id.year}`,
-          doanh_thu: item.revenue,
-          don_hang: item.orders
-        })) || [];
-        break;
-      default:
-        result = [];
+    try {
+      let result = [];
+      
+      switch (timeRange) {
+        case 'daily':
+          // Kiểm tra dữ liệu mỗi ngày
+          if (Array.isArray(stats.dailyRevenue) && stats.dailyRevenue.length > 0) {
+            result = stats.dailyRevenue
+              .filter(item => item && item._id && item._id.year && item._id.month && item._id.day)
+              .map(item => ({
+                date: formatDate(new Date(item._id.year, item._id.month - 1, item._id.day)),
+                doanh_thu: item.revenue || 0,
+                don_hang: item.orders || 0
+              }))
+              .slice(-7);
+          }
+          break;
+          
+        case 'weekly':
+          // Kiểm tra dữ liệu mỗi tuần
+          if (Array.isArray(stats.weeklyRevenue) && stats.weeklyRevenue.length > 0) {
+            result = stats.weeklyRevenue
+              .filter(item => item && item._id && item._id.week && item._id.year)
+              .map(item => ({
+                date: `Tuần ${item._id.week}/${item._id.year}`,
+                doanh_thu: item.revenue || 0,
+                don_hang: item.orders || 0
+              }));
+          }
+          break;
+          
+        case 'monthly':
+          // Kiểm tra dữ liệu mỗi tháng
+          if (Array.isArray(stats.monthlyRevenue) && stats.monthlyRevenue.length > 0) {
+            result = stats.monthlyRevenue
+              .filter(item => item && item._id && item._id.month && item._id.year)
+              .map(item => ({
+                date: `Tháng ${item._id.month}/${item._id.year}`,
+                doanh_thu: item.revenue || 0,
+                don_hang: item.orders || 0
+              }));
+          }
+          break;
+          
+        default:
+          result = [];
+      }
+      
+      // Nếu không có dữ liệu, tạo dữ liệu mẫu để tránh biểu đồ trống
+      if (result.length === 0) {
+        console.warn(`Không có dữ liệu doanh thu cho ${timeRange}`);
+        
+        // Tạo dữ liệu mẫu cho 7 ngày gần nhất
+        if (timeRange === 'daily') {
+          const today = new Date();
+          for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(today.getDate() - i);
+            result.push({
+              date: formatDate(date),
+              doanh_thu: 0,
+              don_hang: 0
+            });
+          }
+        } 
+        // Tạo dữ liệu mẫu cho 4 tuần gần nhất
+        else if (timeRange === 'weekly') {
+          for (let i = 4; i >= 1; i--) {
+            result.push({
+              date: `Tuần ${i}/${new Date().getFullYear()}`,
+              doanh_thu: 0,
+              don_hang: 0
+            });
+          }
+        }
+        // Tạo dữ liệu mẫu cho 6 tháng gần nhất
+        else if (timeRange === 'monthly') {
+          const today = new Date();
+          const currentMonth = today.getMonth();
+          const currentYear = today.getFullYear();
+          
+          for (let i = 5; i >= 0; i--) {
+            let month = currentMonth - i;
+            let year = currentYear;
+            
+            if (month < 0) {
+              month += 12;
+              year -= 1;
+            }
+            
+            result.push({
+              date: `Tháng ${month + 1}/${year}`,
+              doanh_thu: 0,
+              don_hang: 0
+            });
+          }
+        }
+      }
+      
+      console.log(`Dữ liệu biểu đồ doanh thu (${timeRange}):`, result);
+      return result;
+    } catch (error) {
+      console.error("Lỗi xử lý dữ liệu doanh thu:", error);
+      return [];
     }
-
-    return result;
   };
 
   const getOrderStatusData = () => {
@@ -356,6 +472,11 @@ const Dashboard = () => {
           .slice(0, 5)
       : [];
 
+    // Đảm bảo totalRevenue luôn là số hợp lệ
+    const totalRevenue = typeof stats.totalRevenue === 'number' && !isNaN(stats.totalRevenue) 
+      ? stats.totalRevenue 
+      : 0;
+
     return (
       <div className="p-3 md:p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8">
@@ -370,7 +491,7 @@ const Dashboard = () => {
           <StatCard 
             icon={TrendingUp} 
             title="Doanh Thu" 
-            value={formatCurrency(stats.totalRevenue) || '0đ'} 
+            value={formatCurrency(totalRevenue)} 
             bgColor="bg-blue-100" 
           />
           <StatCard 
@@ -436,13 +557,14 @@ const Dashboard = () => {
                     tick={{ fill: '#6b7280', fontSize: 12 }}
                     tickLine={false}
                     axisLine={{ stroke: '#e5e7eb' }}
-                    tickFormatter={(value) => 
-                      value >= 1000000 
+                    tickFormatter={(value) => {
+                      if (value === undefined || value === null || isNaN(value)) return '0';
+                      return value >= 1000000 
                         ? `${(value / 1000000).toFixed(1)}M` 
                         : value >= 1000 
                           ? `${(value / 1000).toFixed(0)}K` 
-                          : value
-                    }
+                          : value;
+                    }}
                   />
                   <YAxis 
                     yAxisId="right" 
@@ -468,7 +590,8 @@ const Dashboard = () => {
                     name="Doanh Thu" 
                     fill="#6366f1" 
                     radius={[4, 4, 0, 0]}
-                    barSize={30} 
+                    barSize={30}
+                    isAnimationActive={true}
                   />
                   <Bar 
                     yAxisId="right"
@@ -476,7 +599,8 @@ const Dashboard = () => {
                     name="Đơn Hàng" 
                     fill="#10b981" 
                     radius={[4, 4, 0, 0]}
-                    barSize={30} 
+                    barSize={30}
+                    isAnimationActive={true}
                   />
                 </BarChart>
               </ResponsiveContainer>

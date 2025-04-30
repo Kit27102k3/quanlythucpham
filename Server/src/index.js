@@ -26,6 +26,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import tipsRoutes from "./routes/tipsRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
 import { handleSepayCallback, handleBankWebhook } from "./Controller/paymentController.js";
 
 dotenv.config({ path: ".env" });
@@ -91,6 +92,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/orders", orderRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", tipsRoutes);
+app.use("/api/contact", contactRoutes);
 
 // Dọn dẹp các webhook handler trùng lặp
 // Đây là danh sách các đường dẫn webhook cần hỗ trợ

@@ -532,6 +532,7 @@ const OrderAdmin = () => {
     const [selectedStatus, setSelectedStatus] = useState("");
     const [bulkActionVisible, setBulkActionVisible] = useState(false);
     const [bulkStatus, setBulkStatus] = useState("");
+    const [bulkConfirmVisible, setBulkConfirmVisible] = useState(false);
     const [transitionHistoryVisible, setTransitionHistoryVisible] = useState(false);
     const [autoTransitionConfigVisible, setAutoTransitionConfigVisible] = useState(false);
     
@@ -1120,17 +1121,9 @@ const OrderAdmin = () => {
     const confirmBulkAction = useCallback(() => {
       if (!bulkStatus || selectedOrders.length === 0) return;
       
-      confirmDialog({
-        message: `Bạn có chắc chắn muốn cập nhật ${selectedOrders.length} đơn hàng sang trạng thái "${
-          bulkActionOptions.find(op => op.value === bulkStatus)?.label || bulkStatus
-        }"?`,
-        header: 'Xác nhận cập nhật hàng loạt',
-        icon: 'pi pi-exclamation-triangle',
-        acceptClassName: 'p-button-primary',
-        accept: () => executeBulkUpdate(),
-        reject: () => setBulkStatus(null)
-      });
-    }, [bulkStatus, selectedOrders, bulkActionOptions]);
+      // Mở dialog xác nhận thay vì sử dụng confirmDialog
+      setBulkConfirmVisible(true);
+    }, [bulkStatus, selectedOrders]);
     
     // Thực hiện cập nhật hàng loạt
     const executeBulkUpdate = useCallback(async () => {
@@ -1919,6 +1912,85 @@ const OrderAdmin = () => {
             <p className="text-gray-600 text-center">
               Khi xác nhận, đơn hàng sẽ được đánh dấu là đã thanh toán và chuyển trạng thái thành &ldquo;Giao hàng thành công&rdquo;. Bạn có chắc chắn không?
             </p>
+          </div>
+        </Dialog>
+        
+        {/* Dialog xác nhận cập nhật hàng loạt */}
+        <Dialog
+          header="Xác nhận cập nhật hàng loạt"
+          visible={bulkConfirmVisible}
+          style={{ width: '500px' }}
+          modal
+          onHide={() => setBulkConfirmVisible(false)}
+          footer={
+            <div className="pt-3 flex justify-end gap-3 p-4">
+              <Button 
+                label="Hủy" 
+                icon="pi pi-times" 
+                onClick={() => setBulkConfirmVisible(false)} 
+                className="px-4 py-2.5 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg transition-colors" 
+              />
+              <Button 
+                label="Xác nhận" 
+                icon="pi pi-check" 
+                onClick={executeBulkUpdate} 
+                autoFocus 
+                className="px-6 py-2.5 bg-blue-600 text-white hover:bg-blue-700 font-medium rounded-lg transition-colors flex items-center gap-2" 
+              />
+            </div>
+          }
+          contentClassName="p-5"
+          pt={{
+            root: { className: 'rounded-lg border border-gray-200 shadow-lg' },
+            header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg text-lg font-semibold' },
+            closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full transition-colors' },
+            content: { className: 'p-5' }
+          }}
+        >
+          <div className="flex flex-col items-center justify-center p-3">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+              <i className="pi pi-exclamation-circle text-blue-500" style={{ fontSize: '1.75rem' }} />
+            </div>
+            <h3 className="text-xl font-medium text-gray-800 mb-3">Xác nhận cập nhật hàng loạt</h3>
+            <p className="text-gray-600 text-center mb-4">
+              Bạn có chắc chắn muốn cập nhật <span className="font-semibold text-blue-600">{selectedOrders.length}</span> đơn hàng sang trạng thái 
+              &quot;<span className="font-semibold text-blue-600">{bulkActionOptions.find(op => op.value === bulkStatus)?.label || bulkStatus}</span>&quot;?
+            </p>
+            
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 w-full mb-3">
+              <div className="flex items-start">
+                <i className="pi pi-info-circle text-yellow-500 mr-3 mt-0.5" style={{ fontSize: '1.2rem' }} />
+                <div>
+                  <h4 className="font-medium text-yellow-700 mb-1">Lưu ý quan trọng</h4>
+                  <p className="text-sm text-yellow-600">
+                    Hành động này sẽ thay đổi trạng thái của nhiều đơn hàng cùng lúc và có thể ảnh hưởng đến thông báo cho khách hàng.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="w-full border border-gray-200 rounded-lg overflow-hidden">
+              <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
+                <p className="font-medium text-gray-700 text-sm">Các đơn hàng được chọn ({selectedOrders.length})</p>
+              </div>
+              <div className="max-h-36 overflow-y-auto p-3">
+                <ul className="text-sm">
+                  {selectedOrders.slice(0, 5).map((order, index) => (
+                    <li key={index} className="py-1 flex items-center">
+                      <i className="pi pi-circle-fill text-blue-500 mr-2" style={{ fontSize: '0.5rem' }} />
+                      <span className="font-medium">#{order._id.slice(-6).toUpperCase()}</span>
+                      <span className="mx-2 text-gray-400">-</span>
+                      <span className="text-gray-600 truncate">{getCustomerName(order)}</span>
+                    </li>
+                  ))}
+                  {selectedOrders.length > 5 && (
+                    <li className="py-1 text-gray-500 italic">
+                      ...và {selectedOrders.length - 5} đơn hàng khác
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </div>
           </div>
         </Dialog>
       </div>

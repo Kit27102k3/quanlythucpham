@@ -1,5 +1,8 @@
 import "primeicons/primeicons.css";
 import "../../../index.css";
+import { useState } from "react";
+import { toast, Toaster } from "sonner";
+import axios from "axios";
 
 const information = [
   {
@@ -20,8 +23,55 @@ const information = [
 ];
 
 function Contact() {
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    message: ""
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email || !formData.message) {
+      toast.error("Vui lòng điền đầy đủ họ tên, email và nội dung");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const apiUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8081";
+      const response = await axios.post(`${apiUrl}/api/contact`, formData);
+      
+      if (response.status === 201) {
+        toast.success("Tin nhắn của bạn đã được gửi thành công. Chúng tôi sẽ liên hệ lại sớm!");
+        // Reset form
+        setFormData({
+          name: "",
+          phone: "",
+          email: "",
+          message: ""
+        });
+      }
+    } catch (error) {
+      console.error("Lỗi khi gửi liên hệ:", error);
+      toast.error("Đã có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="px-4 mt-4 mb-4 lg:px-[240px]">
+      <Toaster position="top-right" richColors />
       <div className=" border-b">
         <div className="">
           <div className="grid grid-cols-3 ">
@@ -56,7 +106,7 @@ function Contact() {
           Chúng tôi sẽ trả lời bạn sau khi nhận được.
         </p>
 
-        <form className="mt-4 space-y-4">
+        <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
           <div className=" mb-4">
             <div className="grid grid-cols-2 gap-5 mb-2">
               <label className="block text-[12px] font-normal">HỌ VÀ TÊN</label>
@@ -67,15 +117,20 @@ function Contact() {
             <div className="grid grid-cols-2 gap-5">
               <input
                 type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
                 placeholder="Nhập họ và tên"
                 className="mt-1 p-4 block w-full border border-border outline-none border-[#c8c8d4] text-[12px] font-normal"
                 required
               />
               <input
                 type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
                 placeholder="Nhập số điện thoại"
                 className="mt-1 p-4 block w-full border border-border outline-none border-[#c8c8d4] text-[12px] font-normal"
-                required
               />
             </div>
           </div>
@@ -84,6 +139,9 @@ function Contact() {
             <label className="block text-[12px] font-normal">EMAIL</label>
             <input
               type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
               placeholder="Nhập địa chỉ Email"
               className="mt-1 p-4 block w-full border border-border outline-none border-[#c8c8d4] text-[12px] font-normal"
               required
@@ -92,6 +150,9 @@ function Contact() {
           <div>
             <label className="block text-[12px] font-normal">NỘI DUNG</label>
             <textarea
+              name="message"
+              value={formData.message}
+              onChange={handleChange}
               placeholder="Nội dung liên hệ"
               className="mt-1 p-4 block w-full border border-border outline-none border-[#c8c8d4] text-[12px] font-normal"
               required
@@ -99,9 +160,10 @@ function Contact() {
           </div>
           <button
             type="submit"
-            className="w-full bg-[#51aa1b] text-white hover:bg-primary/80 p-3 mt-5 mb-10 cursor-pointer text-[12px]"
+            disabled={isSubmitting}
+            className="w-full bg-[#51aa1b] text-white hover:bg-primary/80 p-3 mt-5 mb-10 cursor-pointer text-[12px] disabled:opacity-70"
           >
-            GỬI TIN NHẮN
+            {isSubmitting ? "ĐANG GỬI..." : "GỬI TIN NHẮN"}
           </button>
         </form>
       </div>

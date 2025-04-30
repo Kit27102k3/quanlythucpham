@@ -1,8 +1,7 @@
-import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "../Admin/components/ProtectedRoute";
 import AdminLayout from "../Admin/components/AdminLayout";
-import Login from "../Admin/Pages/Login";
+import Login from "../User/Pages/Account/Login";
 import Dashboard from "../Admin/Pages/Dashboard";
 import AddEmployees from "../Admin/Pages/AddEmployees";
 import AddProduct from "../Admin/Pages/AddProduct";
@@ -11,6 +10,7 @@ import ProductList from "../Admin/Pages/ProductList";
 import CategoryList from "../Admin/Pages/CategoryList";
 import OrderList from "../Admin/Pages/OrderList";
 import UserList from "../Admin/Pages/UserList";
+import ContactList from "../Admin/Pages/Contacts/ContactList";
 import Home from "../User/Pages/Home";
 import ProductDetail from "../User/Pages/ProductDetail";
 import Cart from "../User/Pages/Cart";
@@ -101,6 +101,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <AdminLayout>
               <OrderList />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/contacts"
+        element={
+          <ProtectedRoute>
+            <AdminLayout>
+              <ContactList />
             </AdminLayout>
           </ProtectedRoute>
         }
