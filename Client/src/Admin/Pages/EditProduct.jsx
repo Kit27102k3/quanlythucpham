@@ -9,14 +9,13 @@ import { Dropdown } from "primereact/dropdown";
 import { InputNumber } from "primereact/inputnumber";
 import { Card } from "primereact/card";
 import { toast } from "sonner";
-
 import categoriesApi from "../../api/categoriesApi";
 import productsApi from "../../api/productsApi";
 
 const EditProduct = ({
   product,
   setVisible,
-  handleUpdateProduct,
+  onUpdateSuccess,
   setProducts,
 }) => {
   const [categories, setCategories] = useState([]);
@@ -271,7 +270,7 @@ const EditProduct = ({
 
       console.log("Product data being submitted:", productData);
       
-      const response = await handleUpdateProduct(editedProduct._id, productData);
+      const response = await onUpdateSuccess(editedProduct._id, productData);
       toast.success("Cập nhật sản phẩm thành công!");
       if (response?.data?.product && setProducts) {
         setProducts((prev) =>
@@ -465,7 +464,7 @@ const EditProduct = ({
                 />
                 {parseInt(editedProduct.productStock) === 0 && (
                   <small className="text-orange-500 mt-1 block">
-                    Trạng thái tự động chuyển thành "Hết hàng" khi số lượng bằng 0
+                    Trạng thái tự động chuyển thành &quot;Hết hàng&quot; khi số lượng bằng 0
                   </small>
                 )}
               </div>
@@ -755,7 +754,7 @@ EditProduct.propTypes = {
     productImages: PropTypes.arrayOf(PropTypes.string),
   }).isRequired,
   setVisible: PropTypes.func.isRequired,
-  handleUpdateProduct: PropTypes.func.isRequired,
+  onUpdateSuccess: PropTypes.func.isRequired,
   setProducts: PropTypes.func,
 };
 

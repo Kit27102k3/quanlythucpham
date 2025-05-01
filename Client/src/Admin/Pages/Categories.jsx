@@ -240,7 +240,7 @@ const Categories = () => {
         header="Thêm Danh Mục"
         visible={visible}
         onHide={() => setVisible(false)}
-        className="w-[90vw] sm:w-[80vw] md:w-[60vw] lg:w-[40vw]"
+        className="w-[90vw] sm:w-[80vw] md:w-[60vw] lg:w-[40vw] "
       >
         <div className="p-2 md:p-4">
           <div className="mb-3 md:mb-4">
@@ -250,7 +250,7 @@ const Categories = () => {
                 name="codeCategory"
                 value={newCategory.codeCategory}
                 onChange={handleInputChange}
-                className="w-full p-2 md:p-3 text-xs md:text-sm"
+                className="w-full p-2 md:p-3 text-xs md:text-sm border"
                 readOnly
               />
               <label htmlFor="codeCategory" className="text-xs md:text-sm">Mã Danh Mục</label>
@@ -263,7 +263,7 @@ const Categories = () => {
                 name="nameCategory"
                 value={newCategory.nameCategory}
                 onChange={handleInputChange}
-                className="w-full p-2 md:p-3 text-xs md:text-sm"
+                className="w-full p-2 md:p-3 text-xs md:text-sm border"
               />
               <label htmlFor="nameCategory" className="text-xs md:text-sm">Tên Danh Mục</label>
             </FloatLabel>
@@ -273,13 +273,13 @@ const Categories = () => {
               label="Hủy"
               icon="pi pi-times"
               onClick={() => setVisible(false)}
-              className="p-button-text text-xs md:text-sm"
+              className="p-button-text text-xs md:text-sm border bg-green-500"
             />
             <Button
               label="Lưu"
               icon="pi pi-check"
               onClick={handleAddCategory}
-              className="p-button-success text-xs md:text-sm"
+              className="p-button-success text-xs md:text-sm border bg-green-500"
             />
           </div>
         </div>

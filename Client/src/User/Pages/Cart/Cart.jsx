@@ -1,10 +1,13 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react/prop-types */
+/* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, memo } from "react";
 import { MinusIcon, PlusIcon, CheckIcon } from "@radix-ui/react-icons";
-import cartApi from "../../api/cartApi";
-import formatCurrency from "../Until/FotmatPrice";
+import cartApi from "../../../api/cartApi";
+import formatCurrency from "../../Until/FotmatPrice";
 import { toast } from "sonner";
-import paymentApi from "../../api/paymentApi";
+import paymentApi from "../../../api/paymentApi";
 import { useNavigate } from "react-router-dom";
 
 // Custom event to notify components about cart updates

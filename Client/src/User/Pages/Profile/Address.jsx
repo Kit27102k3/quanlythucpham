@@ -1,5 +1,5 @@
 import { useState} from "react";
-import UpdateAddress from "../../../Until/UpdateAddress";
+import UpdateAddress from "../../../utils/UpdateAddress";
 import useFetchUserProfile from "../../Until/useFetchUserProfile";
 
 function Address() {

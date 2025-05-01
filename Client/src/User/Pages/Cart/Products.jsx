@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Cross1Icon } from "@radix-ui/react-icons";
 import { Scrollbars } from "react-custom-scrollbars-2";
 import { MinusIcon, PlusIcon } from "@radix-ui/react-icons";
-import cartApi from "../../api/cartApi";
-import formatCurrency from "../Until/FotmatPrice";
+import cartApi from "../../../api/cartApi";
+import formatCurrency from "../../Until/FotmatPrice";
 import { useNavigate } from "react-router-dom";
 
 function Products() {

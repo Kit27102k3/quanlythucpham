@@ -1,7 +1,8 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaCheckCircle, FaTimesCircle } from "react-icons/fa";
-import { formatCurrency } from "../../utils/formatCurrency";
+import { formatCurrency } from "../../../utils/formatCurrency";
 import axios from "axios";
 
 const PaymentResult = () => {
@@ -81,7 +82,7 @@ const PaymentResult = () => {
   };
 
   const handleViewOrder = () => {
-    navigate(`/orders/${orderData.orderId}`);
+    navigate(`/tai-khoan/don-hang/${orderData.orderId}`);
   };
 
   if (loading && checkCount < MAX_CHECKS) {
@@ -98,8 +99,8 @@ const PaymentResult = () => {
                     location.search.includes("vnp_ResponseCode=00");
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-xl mx-auto">
         <div className="bg-white shadow rounded-lg p-6">
           <div className="text-center">
             {isSuccess ? (
@@ -117,7 +118,7 @@ const PaymentResult = () => {
             </p>
           </div>
 
-          <div className="mt-8 border-t border-gray-200 pt-8">
+          <div className="mt-8 border-t border-gray-200 pt-4">
             <dl className="divide-y divide-gray-200">
               <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
                 <dt className="text-sm font-medium text-gray-500">Mã đơn hàng</dt>
@@ -142,17 +143,17 @@ const PaymentResult = () => {
             </dl>
           </div>
 
-          <div className="mt-8 flex justify-center space-x-4">
+          <div className="mt-8 text-sm lg:text-[16px] flex justify-center gap-4 space-x-4">
             <button
               onClick={handleContinueShopping}
-              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+              className="px-4 py-2 bg-[#51bb1a] text-white rounded-md hover:bg-green-600 cursor-pointer"
             >
               Tiếp tục mua sắm
             </button>
             {isSuccess && (
               <button
                 onClick={handleViewOrder}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 cursor-pointer"
               >
                 Xem đơn hàng
               </button>

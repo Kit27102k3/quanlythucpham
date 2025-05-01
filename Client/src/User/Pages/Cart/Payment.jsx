@@ -5,14 +5,14 @@ import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCar, faMoneyCheckDollar } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams } from "react-router-dom";
-import paymentApi from "../../api/paymentApi";
+import paymentApi from "../../../api/paymentApi";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import formatCurrency from "../Until/FotmatPrice";
-import orderApi from "../../api/orderApi";
-import authApi from "../../api/authApi";
+import formatCurrency from "../../Until/FotmatPrice";
+import orderApi from "../../../api/orderApi";
+import authApi from "../../../api/authApi";
 import axios from "axios";
-import { API_URLS } from "../../config/apiConfig";
+import { API_URLS } from "../../../config/apiConfig";
 
 export default function Payment() {
   const [users, setUsers] = useState(null);
@@ -30,12 +30,10 @@ export default function Payment() {
   const { paymentId } = useParams();
   const [loading, setLoading] = useState(false);
 
-  // Tính phí vận chuyển dựa trên phương thức thanh toán
   const calculateShippingFee = () => {
-    return selectedPayment === 'sepay' ? 0 : 40000;
+    return selectedPayment === "sepay" ? 0 : 40000;
   };
 
-  // Tính tổng tiền cuối cùng
   const calculateFinalTotal = () => {
     const subtotal = orderDetails.totalAmount;
     const shippingFee = calculateShippingFee();
@@ -50,10 +48,8 @@ export default function Payment() {
           return;
         }
         const response = await paymentApi.getPaymentById(paymentId);
-        // Kiểm tra cấu trúc response thực tế 
         const paymentData = response.data || response;
-        console.log("Payment data:", paymentData);
-        
+
         setOrderDetails({
           products: paymentData.products || [],
           totalAmount: paymentData.totalAmount || 0,
@@ -64,11 +60,9 @@ export default function Payment() {
           const userResponse = await authApi.getProfile();
           setUsers(userResponse.data);
         } catch (userError) {
-          console.error("Lỗi khi lấy thông tin người dùng:", userError);
           toast.error("Không thể tải thông tin người dùng");
         }
       } catch (error) {
-        console.error("Lỗi khi lấy thông tin thanh toán:", error);
         toast.error("Không thể tải thông tin thanh toán");
         navigate("/gio-hang");
       }
@@ -83,21 +77,18 @@ export default function Payment() {
       await paymentApi.deletePayment(paymentId);
       navigate("/gio-hang");
     } catch (error) {
-      console.log(error);
       toast.error("Xoá đơn hàng thất bại");
     }
   };
 
   const handleApplyCoupon = () => {
-    // console.log(`Applying coupon: ${couponCode}`);
+    // Coupon application logic can be added here
   };
 
-  // Xử lý khi thay đổi phương thức thanh toán
   const handlePaymentMethodChange = (method) => {
     setSelectedPayment(method);
   };
 
-  // Xử lý khi thay đổi phương thức giao hàng
   const handleDeliveryMethodChange = (method) => {
     setSelectedDelivery(method);
   };
@@ -117,18 +108,19 @@ export default function Payment() {
     }
 
     try {
-      const orderId = `${new Date().getTime()}-${Math.floor(Math.random() * 1000)}`;
+      const orderId = `${new Date().getTime()}-${Math.floor(
+        Math.random() * 1000
+      )}`;
       const totalAmount = calculateFinalTotal();
       const orderInfo = `Thanh toán đơn hàng ${orderId}`;
       const currentShippingFee = calculateShippingFee();
 
-      // Create order first for both payment methods
       const orderData = {
         userId: users._id,
-        products: orderDetails.products.map(product => ({
+        products: orderDetails.products.map((product) => ({
           productId: product.productId._id,
           quantity: product.quantity,
-          price: product.productId.productPrice
+          price: product.productId.productPrice,
         })),
         totalAmount: totalAmount,
         deliveryMethod: selectedMethod,
@@ -136,48 +128,40 @@ export default function Payment() {
         address: users.address,
         note: note,
         paymentMethod: selectedPayment,
-        status: "awaiting_payment" // Always set to awaiting_payment initially for all payment methods
+        status: "awaiting_payment",
       };
 
       if (selectedPayment === "sepay") {
         try {
-          // For online payment, create payment record first before creating order
           const paymentData = {
             userId: users._id,
             amount: totalAmount,
-            products: orderDetails.products.map(product => ({
+            products: orderDetails.products.map((product) => ({
               productId: product.productId._id,
               quantity: product.quantity,
-              price: product.productId.productPrice
+              price: product.productId.productPrice,
             })),
-            paymentMethod: selectedPayment
+            paymentMethod: selectedPayment,
           };
 
-          // Create payment first
           const paymentResponse = await paymentApi.createPayment(paymentData);
           const paymentId = paymentResponse.data._id;
 
-          // Create SePay payment URL
           const sepayResponse = await paymentApi.createSepayPaymentUrl(
             paymentId,
             totalAmount,
             orderInfo
           );
 
-          console.log("SePay response:", sepayResponse);
-
-          // Kiểm tra cấu trúc phản hồi và xử lý tương ứng với từng trường hợp
           if (sepayResponse) {
-            // Create order after successful payment setup
             const orderResponse = await orderApi.createOrder(orderData);
             const orderIdCreated = orderResponse._id;
 
-            // Update the payment with order ID
             try {
-              await paymentApi.updatePayment(paymentId, { orderId: orderIdCreated });
+              await paymentApi.updatePayment(paymentId, {
+                orderId: orderIdCreated,
+              });
             } catch (updateError) {
-              console.log("Using alternative method to update payment");
-              // Use direct API call as fallback
               await axios.patch(
                 `${API_URLS.PAYMENTS}/${paymentId}`,
                 { orderId: orderIdCreated },
@@ -189,58 +173,64 @@ export default function Payment() {
               );
             }
 
-            // Xử lý theo loại phương thức thanh toán trả về
             if (sepayResponse.method === "bank_transfer") {
-              // Phương án QR chuyển khoản ngân hàng
               toast.info("Sử dụng phương thức thanh toán QR chuyển khoản");
-              
-              // Chuyển đến trang QR với orderId để theo dõi trạng thái
-              navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(sepayResponse.qrCode)}&bankName=${encodeURIComponent(sepayResponse.bankInfo.name)}&accountNumber=${sepayResponse.bankInfo.accountNumber}&accountName=${encodeURIComponent(sepayResponse.bankInfo.accountName)}&amount=${totalAmount}`);
+              navigate(
+                `/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(
+                  sepayResponse.qrCode
+                )}&bankName=${encodeURIComponent(
+                  sepayResponse.bankInfo.name
+                )}&accountNumber=${
+                  sepayResponse.bankInfo.accountNumber
+                }&accountName=${encodeURIComponent(
+                  sepayResponse.bankInfo.accountName
+                )}&amount=${totalAmount}`
+              );
               return;
-            } 
-            
-            // Xử lý trường hợp phương thức SePay
+            }
+
             if (sepayResponse.method === "sepay" && sepayResponse.data) {
-              // Redirect to payment URL
               window.location.href = sepayResponse.data;
               return;
             }
-            
-            // Xử lý trường hợp có QR dự phòng
+
             if (sepayResponse.fallbackQR) {
-              toast.info("Chuyển sang phương thức thanh toán chuyển khoản ngân hàng");
-              
-              // Chuyển đến trang QR với orderId để theo dõi trạng thái
-              navigate(`/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(sepayResponse.fallbackQR)}&bankName=MBBank&accountNumber=0326743391&accountName=NGUYEN%20TRONG%20KHIEM&amount=${totalAmount}`);
+              toast.info(
+                "Chuyển sang phương thức thanh toán chuyển khoản ngân hàng"
+              );
+              navigate(
+                `/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(
+                  sepayResponse.fallbackQR
+                )}&bankName=MBBank&accountNumber=0326743391&accountName=NGUYEN%20TRONG%20KHIEM&amount=${totalAmount}`
+              );
               return;
             }
-            
-            // Nếu không rơi vào các trường hợp trên, nhưng có dữ liệu - thử redirect
+
             if (sepayResponse.data) {
               window.location.href = sepayResponse.data;
               return;
             }
-            
-            // Các trường hợp còn lại - báo lỗi
+
             throw new Error("Không nhận được thông tin thanh toán hợp lệ");
           } else {
             throw new Error("Không nhận được phản hồi từ cổng thanh toán");
           }
         } catch (error) {
-          console.error("Lỗi khi tạo cổng thanh toán:", error);
-          toast.error(`Không thể kết nối đến cổng thanh toán: ${error.message}`);
+          toast.error(
+            `Không thể kết nối đến cổng thanh toán: ${error.message}`
+          );
         }
       } else {
-        // For COD, we can create the order directly
-        orderData.status = "pending"; // Set status to pending for COD
+        orderData.status = "pending";
         const orderResponse = await orderApi.createOrder(orderData);
         const orderIdCreated = orderResponse._id;
-        
+
         toast.success("Đặt hàng thành công!");
-        navigate(`/payment-result?orderId=${orderIdCreated}&status=success&amount=${totalAmount}`);
+        navigate(
+          `/payment-result?orderId=${orderIdCreated}&status=success&amount=${totalAmount}`
+        );
       }
     } catch (error) {
-      console.error("Lỗi khi đặt hàng:", error);
       toast.error("Không thể đặt hàng. Vui lòng thử lại!");
     } finally {
       setLoading(false);
@@ -248,16 +238,16 @@ export default function Payment() {
   };
 
   const handlePhoneChange = (e) => {
-    setUsers(prev => ({
+    setUsers((prev) => ({
       ...prev,
-      phone: e.target.value
+      phone: e.target.value,
     }));
   };
 
   const handleAddressChange = (e) => {
-    setUsers(prev => ({
+    setUsers((prev) => ({
       ...prev,
-      address: e.target.value
+      address: e.target.value,
     }));
   };
 
@@ -278,7 +268,10 @@ export default function Payment() {
             <h1 className="text-3xl font-bold text-[#51bb1a]">
               DNC <span className="text-[#51bb1a]">FOOD</span>
             </h1>
-            <button onClick={handleLogout} className="text-[#51bb1a] flex items-center gap-2 hover:text-[#51bb1a] transition">
+            <button
+              onClick={handleLogout}
+              className="text-[#51bb1a] flex items-center gap-2 hover:text-[#51bb1a] transition"
+            >
               <ExitIcon />
               Đăng xuất
             </button>
@@ -339,7 +332,6 @@ export default function Payment() {
           </div>
 
           <div className="space-y-4 mt-2">
-            {/* Vận chuyển */}
             <div>
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-3 mb-3">
                 <FontAwesomeIcon icon={faCar} className="text-[#51bb1a]" />
@@ -356,13 +348,12 @@ export default function Payment() {
                   />
                   <span className="flex-grow">Giao hàng tiêu chuẩn</span>
                   <span className="font-semibold text-[#51bb1a]">
-                    {selectedPayment === 'sepay' ? 'Miễn phí' : '40.000đ'}
+                    {selectedPayment === "sepay" ? "Miễn phí" : "40.000đ"}
                   </span>
                 </label>
               </div>
             </div>
 
-            {/* Thanh toán */}
             <div>
               <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-3 mb-3 mt-2">
                 <FontAwesomeIcon
@@ -382,7 +373,9 @@ export default function Payment() {
                       className="mr-3 text-[#51bb1a] focus:ring-[#51bb1a]"
                     />
                     <div className="flex items-center">
-                      <span className="mr-2">Thanh toán khi nhận hàng (COD)</span>
+                      <span className="mr-2">
+                        Thanh toán khi nhận hàng (COD)
+                      </span>
                     </div>
                   </label>
                   <label className="flex items-center p-3 hover:bg-gray-50 transition cursor-pointer border-t border-gray-200">
@@ -394,11 +387,13 @@ export default function Payment() {
                       className="mr-3 text-[#51bb1a] focus:ring-[#51bb1a]"
                     />
                     <div className="flex items-center">
-                      <span className="mr-2">Thanh toán qua SePay (Miễn phí vận chuyển)</span>
-                      <img 
-                        src="https://itviec.com/rails/active_storage/representations/proxy/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaHBBekduUkE9PSIsImV4cCI6bnVsbCwicHVyIjoiYmxvYl9pZCJ9fQ==--34ce2c5002b6b16c71516dab0edcb87b75222107/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaDdCem9MWm05eWJXRjBPZ2wzWldKd09oSnlaWE5wZW1WZmRHOWZabWwwV3dkcEFhb3ciLCJleHAiOm51bGwsInB1ciI6InZhcmlhdGlvbiJ9fQ==--bb0ebae071595ab1791dc0ad640ef70a76504047/logo.png" 
-                        alt="SePay" 
-                        className="h-6 ml-2" 
+                      <span className="mr-2">
+                        Thanh toán qua MbBank (Miễn phí vận chuyển)
+                      </span>
+                      <img
+                        src="https://imgs.search.brave.com/c32x_Ya9gIz9oeR2LflnKsJQrHPvswMor65hM7AmCf8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9ydXli/YW5ncGh1b25naG9h/bmcuY29tL3dwLWNv/bnRlbnQvdXBsb2Fk/cy8yMDI0LzEwL0xP/R09NQkJBTkstMTMy/OHg4MDAuanBn"
+                        alt="SePay"
+                        className="h-6 ml-2"
                       />
                     </div>
                   </label>
@@ -412,7 +407,7 @@ export default function Payment() {
               className="w-full cursor-pointer bg-[#51bb1a] text-white py-3 rounded-lg hover:opacity-90  transition"
               disabled={loading}
             >
-              {loading ? 'Đang xử lý...' : 'Đặt hàng'}
+              {loading ? "Đang xử lý..." : "Đặt hàng"}
             </button>
             <button
               onClick={handleRemoveItem}

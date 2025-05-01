@@ -109,7 +109,7 @@ function Fruit() {
     const fetchProductCategory = async () => {
       try {
         setIsLoading(true);
-        const res = await productsApi.getProductByCategory("Trái");
+        const res = await productsApi.getProductByCategory("Trái cây");
         console.log(res);
 
         setProducts(res);

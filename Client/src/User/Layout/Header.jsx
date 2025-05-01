@@ -20,7 +20,7 @@ import authApi from "../../api/authApi";
 import ProductDetail from "../Pages/Product/ProductDetail";
 import SidebarLeft from "../Until/SidebarLeft";
 import "../../index.css";
-import Products from "../Cart/Products";
+import Products from "../Pages/Cart/Products";
 import productsApi from "../../api/productsApi";
 import cartApi from "../../api/cartApi";
 

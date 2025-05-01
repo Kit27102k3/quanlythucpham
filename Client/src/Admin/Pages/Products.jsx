@@ -260,7 +260,7 @@ const Products = () => {
         {editingProduct && (
           <EditProduct
             product={editingProduct}
-            onHide={() => setEditVisible(false)}
+            setVisible={setEditVisible}
             onUpdateSuccess={handleUpdateProduct}
           />
         )}

@@ -1,43 +1,43 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { FaCopy, FaArrowLeft } from "react-icons/fa";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import { formatCurrency } from "../../utils/formatCurrency";
-import paymentApi from "../../api/paymentApi";
+import { toast } from "sonner";
+import { formatCurrency } from "../../../utils/formatCurrency";
+import paymentApi from "../../../api/paymentApi";
 
 const PaymentQR = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Lấy thông tin từ query params
   const orderId = searchParams.get("orderId");
   const amount = searchParams.get("amount");
   const qrCode = searchParams.get("qrCode");
   const bankName = searchParams.get("bankName");
   const accountNumber = searchParams.get("accountNumber");
   const accountName = searchParams.get("accountName");
-  
+
   const [timeLeft, setTimeLeft] = useState(initializeTimer());
   const [expired, setExpired] = useState(timeLeft === 0);
   const [checking, setChecking] = useState(false);
   const [refreshCount, setRefreshCount] = useState(0);
 
-  // Khởi tạo thời gian từ localStorage hoặc mặc định
   function initializeTimer() {
     const storedExpiry = localStorage.getItem(`qr_expiry_${orderId}`);
     if (storedExpiry) {
-      const timeRemaining = Math.max(0, Math.floor((parseInt(storedExpiry) - Date.now()) / 1000));
+      const timeRemaining = Math.max(
+        0,
+        Math.floor((parseInt(storedExpiry) - Date.now()) / 1000)
+      );
       return timeRemaining > 0 ? timeRemaining : 0;
     }
-    const expiryTime = Date.now() + (3600 * 1000); // 60 phút (1 giờ)
+    const expiryTime = Date.now() + 3600 * 1000;
     localStorage.setItem(`qr_expiry_${orderId}`, expiryTime.toString());
     return 3600;
   }
 
   useEffect(() => {
-    // Timer for QR code expiration
     const timer = setInterval(() => {
       setTimeLeft((prevTime) => {
         if (prevTime <= 1) {
@@ -50,36 +50,26 @@ const PaymentQR = () => {
       });
     }, 1000);
 
-    // Check payment status every 10 seconds thay vì 2 giây
     const statusChecker = setInterval(async () => {
       if (!checking && !expired) {
         setChecking(true);
         try {
-          // Thêm timestamp vào URL để tránh cache
-          const timestamp = new Date().getTime();
-          
-          // Gọi API kiểm tra trạng thái thanh toán
           const response = await paymentApi.checkPaymentStatus(orderId);
-          
-          console.log("Payment status check:", JSON.stringify(response));
-          
-          // Kiểm tra thanh toán thành công
-          if (response && (response.success === true || response.status === "completed")) {
-            // Dừng các interval và xóa localStorage
+          if (
+            response &&
+            (response.success === true || response.status === "completed")
+          ) {
             clearInterval(statusChecker);
             clearInterval(timer);
             localStorage.removeItem(`qr_expiry_${orderId}`);
-            
-            // Hiển thị thông báo thành công
             toast.success("Thanh toán thành công!");
-            
-            // Đợi 1.5 giây để hiển thị thông báo rồi chuyển trang
             setTimeout(() => {
-              navigate(`/payment-result?orderId=${orderId}&status=success&amount=${amount}`);
+              navigate(
+                `/payment-result?orderId=${orderId}&status=success&amount=${amount}`
+              );
             }, 1500);
           }
         } catch (error) {
-          // Chỉ log lỗi nếu không phải 404
           if (error.response && error.response.status !== 404) {
             console.error("Error checking payment status:", error);
           }
@@ -87,35 +77,35 @@ const PaymentQR = () => {
           setChecking(false);
         }
       }
-    }, 10000); // Tăng lên 10 giây
-    
-    // Chỉ kiểm tra một lần khi trang được tải thay vì 3 lần liên tiếp
+    }, 10000);
+
     const initialCheck = async () => {
       try {
         if (!expired) {
           const response = await paymentApi.checkPaymentStatus(orderId);
-          console.log("Initial check:", JSON.stringify(response));
-          
-          if (response && (response.success === true || response.status === "completed")) {
+          if (
+            response &&
+            (response.success === true || response.status === "completed")
+          ) {
             clearInterval(statusChecker);
             clearInterval(timer);
             localStorage.removeItem(`qr_expiry_${orderId}`);
-            
+
             toast.success("Thanh toán thành công!");
             setTimeout(() => {
-              navigate(`/payment-result?orderId=${orderId}&status=success&amount=${amount}`);
+              navigate(
+                `/payment-result?orderId=${orderId}&status=success&amount=${amount}`
+              );
             }, 1500);
           }
         }
       } catch (error) {
-        // Bỏ qua lỗi trong kiểm tra ban đầu
+        console.log(error);
       }
     };
-    
-    // Chỉ gọi một lần ban đầu
+
     initialCheck();
 
-    // Cleanup
     return () => {
       clearInterval(timer);
       clearInterval(statusChecker);
@@ -125,7 +115,6 @@ const PaymentQR = () => {
     };
   }, [orderId, amount, navigate, expired, checking]);
 
-  // Xử lý copy vào clipboard
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(
       () => {
@@ -137,7 +126,6 @@ const PaymentQR = () => {
     );
   };
 
-  // Xử lý quay lại
   const handleGoBack = () => {
     navigate(-1);
   };
@@ -145,36 +133,32 @@ const PaymentQR = () => {
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
-  // Thêm hàm force reload trạng thái
   const forceCheckStatus = async () => {
     if (!checking && !expired) {
       setChecking(true);
       try {
         toast.info("Đang kiểm tra trạng thái thanh toán...");
-        
-        // Tăng số lần refresh
-        setRefreshCount(prev => prev + 1);
-        
-        // Thêm parameter ngẫu nhiên để buộc API gọi mới
+        setRefreshCount((prev) => prev + 1);
         const response = await paymentApi.checkPaymentStatus(orderId);
-        
-        console.log(`Manual check #${refreshCount+1}:`, JSON.stringify(response));
-        
-        if (response && (response.success === true || response.status === "completed")) {
+
+        if (
+          response &&
+          (response.success === true || response.status === "completed")
+        ) {
           toast.success("Thanh toán thành công!");
           setTimeout(() => {
-            navigate(`/payment-result?orderId=${orderId}&status=success&amount=${amount}`);
+            navigate(
+              `/payment-result?orderId=${orderId}&status=success&amount=${amount}`
+            );
           }, 1500);
         } else {
-          // Nếu vẫn chưa thành công, hiển thị thông báo
           toast.info("Chưa nhận được xác nhận thanh toán, vui lòng đợi thêm");
         }
       } catch (error) {
         toast.error("Lỗi kiểm tra thanh toán");
-        console.error("Error in manual check:", error);
       } finally {
         setChecking(false);
       }
@@ -185,7 +169,9 @@ const PaymentQR = () => {
     return (
       <div className="max-w-lg mx-auto bg-white rounded-lg shadow-md overflow-hidden">
         <div className="p-6 text-center">
-          <h2 className="text-2xl font-bold text-red-500 mb-4">Mã QR đã hết hạn</h2>
+          <h2 className="text-2xl font-bold text-red-500 mb-4">
+            Mã QR đã hết hạn
+          </h2>
           <p className="text-gray-600 mb-4">Vui lòng thực hiện lại giao dịch</p>
           <button
             onClick={handleGoBack}
@@ -202,8 +188,12 @@ const PaymentQR = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-lg w-full">
-          <h2 className="text-2xl font-bold text-red-500 mb-4">Thông tin QR code không hợp lệ</h2>
-          <p className="mb-4">Không tìm thấy thông tin thanh toán cần thiết. Vui lòng thử lại.</p>
+          <h2 className="text-2xl font-bold text-red-500 mb-4">
+            Thông tin QR code không hợp lệ
+          </h2>
+          <p className="mb-4">
+            Không tìm thấy thông tin thanh toán cần thiết. Vui lòng thử lại.
+          </p>
           <button
             onClick={() => navigate("/")}
             className="w-full bg-[#51bb1a] text-white py-3 rounded-md hover:bg-opacity-90"
@@ -217,12 +207,10 @@ const PaymentQR = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <ToastContainer position="top-right" autoClose={3000} />
-
       <div className="max-w-lg mx-auto bg-white rounded-lg shadow-md overflow-hidden">
         <div className="p-6">
           <div className="flex items-center justify-between mb-6">
-            <button 
+            <button
               onClick={handleGoBack}
               className="flex items-center text-gray-600 hover:text-[#51bb1a]"
             >
@@ -232,42 +220,54 @@ const PaymentQR = () => {
           </div>
 
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Quét mã QR để thanh toán</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              Quét mã QR để thanh toán
+            </h2>
             <p className="text-gray-600">
               Đơn hàng: <span className="font-semibold">#{orderId}</span>
             </p>
             <p className="text-gray-600">
-              Số tiền: <span className="font-semibold text-red-500">{formatCurrency(amount)}</span>
+              Số tiền:{" "}
+              <span className="font-semibold text-red-500">
+                {formatCurrency(amount)}
+              </span>
             </p>
             <p className="text-yellow-600 mt-2">
-              Mã QR sẽ hết hạn sau: <span className="font-bold">{formatTime(timeLeft)}</span>
+              Mã QR sẽ hết hạn sau:{" "}
+              <span className="font-bold">{formatTime(timeLeft)}</span>
             </p>
           </div>
 
           <div className="flex justify-center mb-6">
             <div className="p-3 border border-gray-200 rounded-lg">
-              <img 
-                src={qrCode} 
-                alt="QR Code Thanh Toán" 
+              <img
+                src={qrCode}
+                alt="QR Code Thanh Toán"
                 className="w-64 h-64 object-contain"
               />
             </div>
           </div>
 
           <div className="bg-gray-50 p-4 rounded-md mb-6">
-            <h3 className="font-semibold text-gray-800 mb-3">Thông tin chuyển khoản:</h3>
-            
+            <h3 className="font-semibold text-gray-800 mb-3">
+              Thông tin chuyển khoản:
+            </h3>
+
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-500 mb-1">Ngân hàng</p>
-                <p className="font-medium">{decodeURIComponent(bankName || "MBBank - Ngân hàng Thương mại Cổ phần Quân đội")}</p>
+                <p className="font-medium">
+                  {decodeURIComponent(
+                    bankName || "MBBank - Ngân hàng Thương mại Cổ phần Quân đội"
+                  )}
+                </p>
               </div>
-              
+
               <div>
                 <p className="text-sm text-gray-500 mb-1">Số tài khoản</p>
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{accountNumber}</p>
-                  <button 
+                  <button
                     onClick={() => copyToClipboard(accountNumber)}
                     className="text-[#51bb1a] p-2 hover:bg-gray-200 rounded-full"
                   >
@@ -275,19 +275,23 @@ const PaymentQR = () => {
                   </button>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-sm text-gray-500 mb-1">Chủ tài khoản</p>
                 <div className="flex items-center justify-between">
-                  <p className="font-medium">{decodeURIComponent(accountName || "NGUYEN TRONG KHIEM")}</p>
+                  <p className="font-medium">
+                    {decodeURIComponent(accountName || "NGUYEN TRONG KHIEM")}
+                  </p>
                 </div>
               </div>
-              
+
               <div>
-                <p className="text-sm text-gray-500 mb-1">Nội dung chuyển khoản</p>
+                <p className="text-sm text-gray-500 mb-1">
+                  Nội dung chuyển khoản
+                </p>
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{orderId}</p>
-                  <button 
+                  <button
                     onClick={() => copyToClipboard(orderId)}
                     className="text-[#51bb1a] p-2 hover:bg-gray-200 rounded-full"
                   >
@@ -302,18 +306,25 @@ const PaymentQR = () => {
           </div>
 
           <div className="text-center text-sm text-gray-500">
-            <p>Hệ thống sẽ tự động xác nhận sau khi bạn chuyển khoản thành công.</p>
+            <p>
+              Hệ thống sẽ tự động xác nhận sau khi bạn chuyển khoản thành công.
+            </p>
             <p>Vui lòng không đóng trang này trong quá trình thanh toán.</p>
-            {checking && <p className="text-[#51bb1a] mt-2">Đang kiểm tra trạng thái thanh toán...</p>}
-            
-            {/* Thêm nút kiểm tra thủ công */}
+            {checking && (
+              <p className="text-[#51bb1a] mt-2">
+                Đang kiểm tra trạng thái thanh toán...
+              </p>
+            )}
+
             <div className="mt-4">
               <button
                 onClick={forceCheckStatus}
                 disabled={checking || expired}
-                className={`py-2 px-4 rounded-md ${checking ? 'bg-gray-400' : 'bg-[#51bb1a] hover:bg-[#3d8b14]'} text-white transition-colors`}
+                className={`py-2 px-4 rounded-md ${
+                  checking ? "bg-gray-400" : "bg-[#51bb1a] hover:bg-[#3d8b14]"
+                } text-white transition-colors`}
               >
-                {checking ? 'Đang kiểm tra...' : 'Kiểm tra thanh toán thủ công'}
+                {checking ? "Đang kiểm tra..." : "Kiểm tra thanh toán thủ công"}
               </button>
             </div>
           </div>
@@ -323,4 +334,4 @@ const PaymentQR = () => {
   );
 };
 
-export default PaymentQR; 
+export default PaymentQR;
