@@ -7,7 +7,6 @@ import {
   deleteContact,
   replyToContact
 } from "../Controller/contactController.js";
-import { verifyToken } from "../middleware/auth.js";
 
 const router = express.Router();
 

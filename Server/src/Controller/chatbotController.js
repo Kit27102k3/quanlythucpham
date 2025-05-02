@@ -6,6 +6,9 @@
 import axios from 'axios';
 import Product from "../Model/Products.js";
 import dotenv from 'dotenv';
+import { spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
 
 // Load environment variables
 dotenv.config();
@@ -752,9 +755,9 @@ const priorityRules = [
   }
 ];
 
-// Sửa hàm detectIntent để áp dụng quy tắc ưu tiên
+// Sửa hàm detectIntent để áp dụng quy tắc ưu tiên và trả về score thay vì similarity
 function detectIntent(message) {
-  let bestMatch = { intent: null, similarity: 0, pattern: null };
+  let bestMatch = { intent: null, score: 0, pattern: null };
   const matches = [];
 
   // Ghi lại tất cả các match tiềm năng
@@ -764,9 +767,9 @@ function detectIntent(message) {
         const similarity = calculateSimilarity(message, pattern);
         if (similarity >= 0.5) {
           console.log(`Potential match: ${intent} with pattern "${pattern}" - score: ${similarity.toFixed(2)}`);
-          matches.push({ intent, similarity, pattern });
-          if (similarity > bestMatch.similarity) {
-            bestMatch = { intent, similarity, pattern };
+          matches.push({ intent, score: similarity, pattern });
+          if (similarity > bestMatch.score) {
+            bestMatch = { intent, score: similarity, pattern };
           }
         }
       }
@@ -785,7 +788,7 @@ function detectIntent(message) {
         const priorityMatch = matches.find(match => match.intent === rule.priorityIntent);
         
         // Nếu tìm thấy match với intent ưu tiên và độ tương đồng trên 0.6
-        if (priorityMatch && priorityMatch.similarity >= 0.6) {
+        if (priorityMatch && priorityMatch.score >= 0.6) {
           console.log(`Applying priority rule for "${rule.priorityIntent}" because message contains prioritized keywords`);
           bestMatch = priorityMatch;
           break;
@@ -793,24 +796,37 @@ function detectIntent(message) {
       }
     }
   }
-
-  if (bestMatch.similarity >= 0.5) {
-    console.log(`Clear top match: ${bestMatch.intent} with score ${bestMatch.similarity.toFixed(2)} (pattern: "${bestMatch.pattern}")`);
-  }
   
   return bestMatch;
 }
 
 // Hàm xử lý context của cuộc trò chuyện
 function handleContext(context, currentIntent) {
-  if (!context || !context.lastIntent) return currentIntent;
-
-  // Nếu câu hỏi mới không rõ ràng, thử sử dụng context trước đó
-  if (!currentIntent && context.lastIntent) {
-    return context.lastIntent;
+  if (!context || !context.type) {
+    return null;
   }
 
-  return currentIntent;
+  try {
+    // Handle product context
+    if (context.type === 'product' && context.data) {
+      const product = context.data;
+      
+      // If there's no specific intent, provide general product info
+      if (!currentIntent) {
+        return `Sản phẩm ${product.productName} có giá ${formatCurrency(product.productPrice)}. ${product.productDiscount > 0 ? `Đang giảm giá ${product.productDiscount}%.` : ''} Bạn muốn biết thêm thông tin gì về sản phẩm này?`;
+      }
+      
+      // If there's a specific intent that needs product info, use the intent handler
+      if (intents[currentIntent] && typeof intents[currentIntent].response === 'function') {
+        return intents[currentIntent].response(product);
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error handling context: ${error.message}`);
+    return null;
+  }
 }
 
 // Hàm gửi tin nhắn đến Rasa và nhận phản hồi
@@ -857,422 +873,186 @@ const generalIntents = [
   'importedFood', 'vegetarianFood', 'storeLocation', 'promotions', 'mobileApp', 'nutritionAdvice'
 ];
 
+/**
+ * Get answer from RAG chatbot
+ * @param {string} message - User message
+ * @returns {Promise<string>} - RAG chatbot response
+ */
+async function getAnswerFromRagChatbot(message) {
+  try {
+    // Create a temporary JSON file with the user message
+    const tempFile = path.join(process.cwd(), 'temp_message.json');
+    fs.writeFileSync(tempFile, JSON.stringify({ message }), 'utf8');
+
+    // Return a promise that will resolve with the chatbot's response
+    return new Promise((resolve, reject) => {
+      // Spawn Python process to run the RAG chatbot
+      const pythonProcess = spawn('python', [
+        path.join(process.cwd(), 'src/chatbot/app.py'),
+        '--message', message
+      ]);
+
+      let output = '';
+      let errorOutput = '';
+
+      // Collect output from the Python process
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+
+      // When the Python process exits, check if it was successful
+      pythonProcess.on('close', (code) => {
+        // Clean up temp file
+        try {
+          fs.unlinkSync(tempFile);
+        } catch (err) {
+          console.error('Error cleaning up temp file:', err);
+        }
+
+        if (code !== 0) {
+          console.error(`Python process exited with code ${code}`);
+          console.error(`Error: ${errorOutput}`);
+          reject(new Error(`Python process failed with code ${code}`));
+          return;
+        }
+
+        try {
+          // Try to parse the output as JSON
+          const jsonStart = output.indexOf('{');
+          const jsonEnd = output.lastIndexOf('}');
+          
+          if (jsonStart >= 0 && jsonEnd >= 0) {
+            const jsonStr = output.substring(jsonStart, jsonEnd + 1);
+            const response = JSON.parse(jsonStr);
+            resolve(response.answer || response.text || "Không thể xử lý phản hồi");
+          } else {
+            // If not valid JSON, just return the raw output
+            resolve(output.trim() || "Không có phản hồi từ chatbot");
+          }
+        } catch (error) {
+          console.error('Error parsing RAG chatbot response:', error);
+          // If JSON parsing fails, return the raw output
+          resolve(output.trim() || "Không thể phân tích phản hồi");
+        }
+      });
+      
+      // Handle errors from the Python process
+      pythonProcess.on('error', (error) => {
+        console.error('Error spawning Python process:', error);
+        reject(error);
+      });
+    });
+      } catch (error) {
+    console.error('Error getting answer from RAG chatbot:', error);
+    return "Xin lỗi, tôi không thể xử lý câu hỏi của bạn lúc này. Vui lòng thử lại sau.";
+  }
+}
+
 // Hàm xử lý tin nhắn từ người dùng
 export const handleMessage = async (req, res) => {
   try {
-    const { message, userId, productId } = req.body;
-    
-    console.log(`Nhận tin nhắn: "${message}" | userId: ${userId} | productId: ${productId ? productId : 'không có'}`);
-    
-    // Kiểm tra tin nhắn trống
+    const { message, user_id = "anonymous", productId } = req.body;
+
     if (!message || message.trim() === '') {
-      return res.json({
-        success: true,
-        message: 'Xin chào, tôi có thể giúp gì cho bạn?',
-        intent: null
+      return res.status(400).json({
+        success: false,
+        message: "Tin nhắn không được để trống"
       });
     }
-    
-    // Chuyển tin nhắn sang chữ thường để dễ xử lý
-    const lowerMessage = message.toLowerCase();
-    
-    // Xử lý đặc biệt cho các trường hợp tìm kiếm danh mục sản phẩm
-    if (lowerMessage.includes("rau") && (
-        lowerMessage.includes("tìm") || 
-        lowerMessage.includes("các loại") || 
-        lowerMessage.includes("hiển thị") || 
-        lowerMessage.includes("có") || 
-        lowerMessage.includes("muốn") || 
-        lowerMessage.includes("cho tôi") ||
-        lowerMessage.includes("trong shop") ||
-        lowerMessage.includes("có những loại")
-      )) {
-      console.log("Phát hiện câu hỏi về danh mục rau");
-      try {
-        // Tìm sản phẩm thuộc danh mục 'Rau'
-        const products = await Product.find({
-          productCategory: { $regex: 'rau', $options: 'i' }
-        }).limit(5);
-        
-        if (products.length > 0) {
-          let response = 'Chúng tôi có các loại rau sau:\n';
-          products.forEach((product, index) => {
-            response += `${index + 1}. ${product.productName} - ${formatCurrency(product.productPrice)}\n`;
-          });
-          response += 'Bạn có thể hỏi thêm thông tin cụ thể về sản phẩm bạn quan tâm.';
-          
-          return res.json({
+
+    console.log(`Nhận tin nhắn: "${message}" từ người dùng: ${user_id} | productId: ${productId ? productId : 'không có'}`);
+
+    // First try to get response from RAG chatbot
+    try {
+      const ragResponse = await getAnswerFromRagChatbot(message);
+      
+      if (ragResponse && typeof ragResponse === 'string' && ragResponse.length > 0 && 
+          ragResponse !== "Không thể xử lý phản hồi" && 
+          ragResponse !== "Không có phản hồi từ chatbot" &&
+          ragResponse !== "Không thể phân tích phản hồi") {
+        // Return the response from the RAG chatbot
+        return res.status(200).json({
             success: true,
-            message: response,
-            intent: 'categorySearch',
-            products: products.map(p => ({
-              _id: p._id,
-              productName: p.productName,
-              productPrice: p.productPrice
-            }))
-          });
-        } else {
-          return res.json({
-            success: true,
-            message: 'Hiện tại chúng tôi không có sản phẩm rau nào. Bạn có thể xem các sản phẩm khác như trái cây, thịt hoặc đồ uống.',
-            intent: 'categorySearch'
-          });
-        }
-      } catch (error) {
-        console.error('Lỗi khi tìm kiếm danh mục rau:', error);
+          message: "Phản hồi từ RAG chatbot",
+          response: {
+            text: ragResponse,
+            source: "rag"
+          }
+        });
       }
+        } catch (error) {
+      console.error("Error from RAG chatbot:", error);
+      // Continue with pattern-based chatbot if RAG fails
     }
-    
-    // Xử lý đặc biệt cho các từ khóa đặc trưng trước khi tìm intent
-    if (lowerMessage.includes("thực phẩm tươi") || 
-        (lowerMessage.includes("thực phẩm") && lowerMessage.includes("tươi"))) {
-      console.log("Phát hiện câu hỏi về thực phẩm tươi");
-      return res.json({
-        success: true,
-        message: intents.freshFood.response(),
-        intent: 'freshFood'
-      });
-    }
-    
-    if (lowerMessage.includes("thực phẩm sạch") || 
-        (lowerMessage.includes("thực phẩm") && lowerMessage.includes("sạch"))) {
-      console.log("Phát hiện câu hỏi về thực phẩm sạch");
-      return res.json({
-        success: true,
-        message: intents.foodSafety.response(),
-        intent: 'foodSafety'
-      });
-    }
-    
-    if (lowerMessage.includes("thực phẩm hữu cơ") || lowerMessage.includes("organic") || 
-        (lowerMessage.includes("thực phẩm") && lowerMessage.includes("hữu cơ"))) {
-      console.log("Phát hiện câu hỏi về thực phẩm hữu cơ/organic");
-      return res.json({
-        success: true,
-        message: intents.organicFood.response(),
-        intent: 'organicFood'
-      });
-    }
-    
-    if (lowerMessage.includes("thực phẩm nhập khẩu") || 
-        (lowerMessage.includes("thực phẩm") && lowerMessage.includes("nhập khẩu"))) {
-      console.log("Phát hiện câu hỏi về thực phẩm nhập khẩu");
-      return res.json({
-        success: true,
-        message: intents.importedFood.response(),
-        intent: 'importedFood'
-      });
-    }
-    
-    if (lowerMessage.includes("thực phẩm chay") || 
-        (lowerMessage.includes("thực phẩm") && lowerMessage.includes("chay"))) {
-      console.log("Phát hiện câu hỏi về thực phẩm chay");
-      return res.json({
-        success: true,
-        message: intents.vegetarianFood.response(),
-        intent: 'vegetarianFood'
-      });
-    }
-    
-    // Tìm intent từ tin nhắn
-    const { intent, similarity, pattern } = detectIntent(lowerMessage);
-    console.log(`Kết quả nhận dạng: Intent: ${intent || 'không có'} | Độ tương đồng: ${similarity.toFixed(2)} | Pattern: "${pattern || 'không có'}"`);
-    
-    // Kiểm tra các intent đặc biệt cần xử lý riêng
-    if (intent === 'buyingMethods') {
-      // Xử lý riêng cho câu hỏi về cách mua hàng
-      console.log('Phát hiện câu hỏi về cách mua hàng với độ tin cậy: ' + similarity.toFixed(2));
-      const response = intents.buyingMethods.response();
-      return res.json({
-        success: true,
-        message: response,
-        intent: 'buyingMethods'
-      });
-    }
-    
-    // Nếu không nhận ra intent và có productId, thử tìm sản phẩm để trả lời chung
-    if ((!intent || similarity < 0.5) && productId) {
-      console.log(`Intent không đủ mạnh, tìm thông tin sản phẩm với ID: ${productId}`);
+
+    // If RAG chatbot fails or doesn't provide a good response, fall back to pattern-based approach
+    // Sử dụng context nếu có
+    let context = null;
+
+    // Nếu có productId, lấy thông tin sản phẩm
+    let product = null;
+    if (productId) {
       try {
-        const product = await Product.findById(productId);
+        product = await Product.findById(productId);
         if (product) {
-          return res.json({
-            success: true,
-            message: `Sản phẩm ${product.productName} có giá ${formatCurrency(product.productPrice)}. Bạn muốn biết thêm thông tin gì về sản phẩm này?`,
-            intent: 'general_product_info'
-          });
-        }
-      } catch (error) {
-        console.error('Lỗi khi tìm sản phẩm:', error);
+          context = { type: 'product', data: product };
+          }
+        } catch (error) {
+        console.error(`Lỗi khi lấy thông tin sản phẩm: ${error.message}`);
       }
     }
-    
-    // Nếu không nhận ra intent và không có productId, thử tìm sản phẩm trong tin nhắn
-    if ((!intent || similarity < 0.5) && !productId) {
-      // Tìm sản phẩm dựa trên tin nhắn
-      console.log('Tìm kiếm sản phẩm dựa trên nội dung tin nhắn');
-      try {
-        const products = await Product.find({
-          $or: [
-            { productName: { $regex: message, $options: 'i' } },
-            { productInfo: { $regex: message, $options: 'i' } },
-            { productDetails: { $regex: message, $options: 'i' } }
-          ]
-        }).limit(3);
+
+    // Tìm intent phù hợp nhất với tin nhắn
+    const { intent, score } = detectIntent(message);
+
+    // Lấy phản hồi dựa trên intent và context
+    let response = await handleContext(context, intent);
+
+    // Nếu không có phản hồi từ context, sử dụng response theo intent
+    if (!response) {
+      if (intent && score > 0.5) {
+        const intentHandler = intents[intent].response;
         
-        if (products.length > 0) {
-          let response = 'Tôi tìm thấy những sản phẩm sau có thể phù hợp:\n';
-          products.forEach((product, index) => {
-            response += `${index + 1}. ${product.productName} - ${formatCurrency(product.productPrice)}\n`;
-          });
-          response += 'Bạn có thể hỏi thêm thông tin cụ thể về sản phẩm bạn quan tâm.';
-          
-          return res.json({
-            success: true,
-            message: response,
-            intent: 'product_search',
-            products: products.map(p => ({
-              _id: p._id,
-              productName: p.productName,
-              productPrice: p.productPrice
-            }))
-          });
-        }
-      } catch (error) {
-        console.error('Lỗi khi tìm kiếm sản phẩm:', error);
-      }
-    }
-    
-    // Xử lý intent đã nhận dạng nếu có và đủ đáng tin cậy
-    if (intent && intents[intent] && similarity >= 0.5) {
-      console.log(`Xử lý tin nhắn với intent: ${intent} (độ tin cậy: ${similarity.toFixed(2)})`);
-      
-      // Kiểm tra intent đặc biệt cần xử lý riêng
-      if (intent === 'priceRange') {
-        try {
-          console.log(`Xử lý priceRange intent với tin nhắn: "${message}"`);
-          
-          // Kiểm tra khả năng trích xuất khoảng giá trước khi gọi response
-          const testExtraction = extractPriceRanges(message);
-          console.log(`Test extraction result: minPrice=${testExtraction.minPrice}, maxPrice=${testExtraction.maxPrice}`);
-          
-          // Truyền tin nhắn gốc để phân tích khoảng giá
-          const response = await intents[intent].response(message);
-          
-          console.log(`priceRange response generated successfully, type: ${typeof response}`, 
-                     response.text ? `text: ${response.text}` : '',
-                     response.products ? `products: ${response.products.length}` : '');
-          
-          return res.json({
-            success: true,
-            message: response,
-            intent: intent,
-            data: response // Trả về dữ liệu để chatbot có thể hiển thị products
-          });
-        } catch (error) {
-          console.error('Lỗi khi xử lý intent priceRange:', error);
-          return res.json({
-            success: false,
-            message: 'Xin lỗi, tôi không thể truy xuất thông tin giá vào lúc này.',
-            intent: null
-          });
-        }
-      }
-      
-      // Xử lý cho categorySearch (tìm kiếm sản phẩm theo danh mục)
-      if (intent === 'categorySearch') {
-        try {
-          console.log(`Xử lý categorySearch intent với tin nhắn: "${message}"`);
-          
-          // Xác định danh mục từ tin nhắn
-          let categoryName = "rau"; // Mặc định là rau nếu không xác định được
-          
-          // Trích xuất tên danh mục từ tin nhắn
-          const lowerMessage = message.toLowerCase();
-          if (lowerMessage.includes("rau")) {
-            categoryName = "rau";
-          } else if (lowerMessage.includes("trái cây") || lowerMessage.includes("trai cay") || lowerMessage.includes("quả")) {
-            categoryName = "trái cây";
-          } else if (lowerMessage.includes("thịt") || lowerMessage.includes("thit")) {
-            categoryName = "thịt";
-          } else if (lowerMessage.includes("đồ uống") || lowerMessage.includes("nước") || lowerMessage.includes("nuoc")) {
-            categoryName = "nước";
-          }
-          
-          const response = await intents[intent].response(categoryName);
-          
-          // Kiểm tra nếu response là object
-          if (response && typeof response === 'object') {
-            return res.json({
-              success: true,
-              message: response.text || response,
-              intent: intent,
-              products: response.products || []
-            });
+        if (typeof intentHandler === 'function') {
+          if (product) {
+            response = await intentHandler(product);
           } else {
-            return res.json({
-              success: true,
-              message: response,
-              intent: intent
-            });
+            response = await intentHandler();
           }
-        } catch (error) {
-          console.error('Lỗi khi xử lý intent categorySearch:', error);
-          return res.json({
-            success: false,
-            message: 'Xin lỗi, tôi không thể tìm thấy sản phẩm trong danh mục này vào lúc này.',
-            intent: null
-          });
-        }
-      }
-      
-      // Xử lý cho relatedProducts (khi có productId)
-      if (intent === 'relatedProducts' && productId) {
-        try {
-          console.log(`Xử lý relatedProducts intent với productId: ${productId}`);
-          
-          // Gọi handler từ productHandlers.js để lấy kết quả
-          const product = await Product.findById(productId);
-          if (!product) {
-            return res.json({
-              success: false,
-              message: 'Không tìm thấy sản phẩm để hiển thị sản phẩm tương tự.',
-              intent: null
-            });
-          }
-          
-          // Gọi handler import từ productHandlers
-          const productHandlers = require('../chatbot/handlers/productHandlers');
-          const response = await productHandlers.handleRelatedProducts(productId);
-          
-          // Kiểm tra nếu response trả về là một object thì gửi trực tiếp
-          if (response && typeof response === 'object' && response.type === 'relatedProducts') {
-            return res.json({
-              success: true,
-              message: response,
-              intent: intent,
-              data: response
-            });
-          } else {
-            // Nếu response là string (thông báo lỗi), hiển thị text thông thường
-            return res.json({
-              success: true,
-              message: response,
-              intent: intent
-            });
-          }
-        } catch (error) {
-          console.error('Lỗi khi xử lý intent relatedProducts:', error);
-          return res.json({
-            success: false,
-            message: 'Xin lỗi, tôi không thể tìm thấy sản phẩm tương tự vào lúc này.',
-            intent: null
-          });
-        }
-      } else if (intent === 'relatedProducts' && !productId) {
-        // Xử lý trường hợp người dùng hỏi về sản phẩm tương tự nhưng không có productId
-        return res.json({
-          success: true,
-          message: 'Bạn có thể cho tôi biết bạn đang quan tâm đến sản phẩm nào không?',
-          intent: 'general_product_query'
-        });
-      }
-      
-      // Kiểm tra xem intent có cần product không
-      if (!generalIntents.includes(intent) && productId) {
-        // Lấy thông tin sản phẩm
-        try {
-          const product = await Product.findById(productId);
-          if (!product) {
-            console.log(`Không tìm thấy sản phẩm với ID: ${productId}`);
-            return res.json({
-              success: false,
-              message: 'Không tìm thấy thông tin sản phẩm bạn đang hỏi.',
-              intent: null
-            });
-          }
-          
-          // Gọi hàm phản hồi tương ứng với intent và truyền thông tin sản phẩm
-          const response = intents[intent].response(product);
-          
-          return res.json({
-            success: true,
-            message: response,
-            intent: intent
-          });
-        } catch (error) {
-          console.error('Lỗi khi truy vấn sản phẩm:', error);
-          return res.json({
-            success: false,
-            message: 'Đã xảy ra lỗi khi tìm thông tin sản phẩm.',
-            intent: null
-          });
-        }
-      } else if (!generalIntents.includes(intent) && !productId) {
-        // Xử lý trường hợp intent cần product nhưng không có productId
-        console.log(`Intent ${intent} cần thông tin sản phẩm nhưng không có productId`);
-        return res.json({
-          success: true,
-          message: 'Bạn muốn biết thông tin về sản phẩm nào? Vui lòng cho tôi biết tên sản phẩm.',
-          intent: 'product_inquiry'
-        });
-      } else {
-        // Với các intent không cần thông tin sản phẩm
-        console.log(`Xử lý intent không cần product: ${intent}`);
-        
-        // Xử lý đặc biệt cho intent cần userId
-        if (intent === 'userInfo') {
-          return res.json({
-            success: true,
-            message: intents[intent].response(userId),
-            intent: intent
-          });
-        }
-        
-        // Đảm bảo rằng hàm response tồn tại
-        if (typeof intents[intent].response === 'function') {
-          const response = intents[intent].response();
-          
-          // Xử lý đặc biệt cho các intent có thể trả về đối tượng thay vì chuỗi
-          if (typeof response === 'object' || response instanceof Promise) {
-            const finalResponse = await response;
-            return res.json({
-              success: true,
-              message: finalResponse,
-              intent: intent,
-              data: finalResponse // Thêm data để trả về đầy đủ thông tin cho frontend
-            });
-          }
-          
-          return res.json({
-            success: true,
-            message: response,
-            intent: intent
-          });
         } else {
-          console.error(`Intent ${intent} có cấu trúc không hợp lệ, thiếu hàm response`);
-          return res.json({
-            success: false,
-            message: 'Xin lỗi, tôi không thể xử lý yêu cầu này vào lúc này.',
-            intent: null
-          });
+          response = intentHandler;
+        }
+      } else {
+        // Gửi tin nhắn đến Rasa nếu không tìm thấy intent phù hợp
+        try {
+          response = await sendToRasa(message, user_id);
+        } catch (error) {
+          console.error(`Lỗi khi gửi tin nhắn đến Rasa: ${error.message}`);
+          response = "Xin lỗi, tôi không hiểu ý của bạn. Bạn có thể diễn đạt lại được không?";
         }
       }
     }
-    
-    // Trường hợp không nhận ra intent hoặc độ tương đồng quá thấp
-    console.log(`Không thể xác định ý định của người dùng hoặc độ tương đồng thấp: ${similarity.toFixed(2)}`);
-    return res.json({
-      success: true,
-      message: 'Xin lỗi, tôi không hiểu câu hỏi của bạn. Bạn có thể hỏi về giá, thông tin, cách sử dụng, cách đặt hàng hoặc xuất xứ của sản phẩm.',
-      intent: null
+
+    // Trả về phản hồi
+    return res.status(200).json({
+              success: true,
+      message: "Xử lý tin nhắn thành công",
+      response: {
+        text: response,
+              intent: intent,
+        score: score,
+        source: "pattern"
+      }
     });
-    
   } catch (error) {
-    console.error('Lỗi xử lý tin nhắn:', error);
+    console.error(`Lỗi xử lý tin nhắn: ${error.message}`);
     return res.status(500).json({
       success: false,
-      message: 'Đã xảy ra lỗi khi xử lý tin nhắn.',
+      message: "Lỗi xử lý tin nhắn",
       error: error.message
     });
   }
