@@ -24,8 +24,8 @@ import DefaultDiscount from "../User/Pages/Product/ProductDiscount/DefaultDiscou
 import OrderAdmin from "../Admin/Pages/Order";
 import Employees from "../Admin/Pages/AddEmployees";
 import OrderConfirmation from "../User/Pages/Cart/OrderConfirmation";
-import PaymentResult from "../User/Pages/PaymentResult";
-import PaymentQR from "../User/Pages/PaymentQR";
+import PaymentResult from "../User/Pages/Cart/PaymentResult";
+import PaymentQR from "../User/Pages/Cart/PaymentQR";
 import CategoryProducts from "../User/Pages/Product/CategoryProducts";
 import TipsManagement from "../Admin/Pages/Tips/TipsManagement";
 import TipForm from "../Admin/Pages/Tips/TipForm";
