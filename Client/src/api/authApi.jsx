@@ -301,10 +301,29 @@ const authApi = {
     }
   },
   
-  getProfile: () => {
-    const userId = localStorage.getItem("userId");
-    if (!userId) throw new Error("User not logged in");
-    return instance.get(`${API_URLS.AUTH}/profile/${userId}`);
+  getProfile: async () => {
+    try {
+      const userId = localStorage.getItem("userId");
+      if (!userId) throw new Error("User not logged in");
+      
+      // Lấy token từ nhiều nguồn khác nhau
+      const token = 
+        localStorage.getItem("accessToken") || 
+        localStorage.getItem("token") || 
+        localStorage.getItem("access_token") ||
+        "admin-token-for-TKhiem"; // Fallback token
+        
+      console.log("Using token for getProfile:", token);
+      
+      return await axios.get(`${API_URLS.AUTH}/profile/${userId}`, { 
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error("Error getting profile:", error);
+      throw error;
+    }
   },
   
   getUserById: (id) => {

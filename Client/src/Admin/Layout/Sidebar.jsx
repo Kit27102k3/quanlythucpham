@@ -13,8 +13,10 @@ import {
   TriangleLeftIcon,
   TriangleRightIcon,
   InfoCircledIcon,
-  EnvelopeClosedIcon
+  EnvelopeClosedIcon,
+  ChatBubbleIcon
 } from "@radix-ui/react-icons";
+import messagesApi from "../../api/messagesApi";
 
 const AdminSidebar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -22,6 +24,7 @@ const AdminSidebar = () => {
   const [activeItem, setActiveItem] = useState(() => {
     return localStorage.getItem("activeItem") || "dashboard";
   });
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,6 +67,29 @@ const AdminSidebar = () => {
     }
   }, []);
 
+  // Lấy số lượng tin nhắn chưa đọc
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await messagesApi.getUnreadCount();
+        if (response && response.count) {
+          setUnreadMessages(response.count);
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy số tin nhắn chưa đọc:", error);
+      }
+    };
+
+    // Lấy dữ liệu khi component mount
+    fetchUnreadCount();
+
+    // Thiết lập interval để cập nhật mỗi 30 giây
+    const intervalId = setInterval(fetchUnreadCount, 30000);
+
+    // Dọn dẹp interval khi component unmount
+    return () => clearInterval(intervalId);
+  }, []);
+
   const menuItems = [
     {
       icon: <HomeIcon className="size-5 md:size-6" />,
@@ -88,6 +114,14 @@ const AdminSidebar = () => {
       text: "Đơn hàng",
       path: "/admin/orders",
       key: "orders",
+    },
+    {
+      icon: <ChatBubbleIcon className="size-5 md:size-6" />,
+      text: "Tin nhắn",
+      path: "/admin/messages",
+      key: "messages",
+      badge: unreadMessages > 0 ? unreadMessages : null,
+      badgeClassName: "bg-danger text-white",
     },
     {
       icon: <InfoCircledIcon className="size-5 md:size-6" />,
@@ -147,6 +181,13 @@ const AdminSidebar = () => {
               >
                 <span>{item.icon}</span>
                 <span className="text-[10px] mt-1">{item.text}</span>
+                {item.badge && (
+                  <span 
+                    className={`badge inline-block px-2 py-1 text-xs font-semibold rounded-full ${item.badgeClassName || 'bg-primary text-white'}`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
               </div>
             ))}
             {/* More button to toggle sidebar for additional options */}
@@ -237,6 +278,8 @@ const AdminSidebar = () => {
               onClick={() => handleNavigation(item.path, item.key)}
               isSidebarOpen={isSidebarOpen}
               isActive={activeItem === item.key}
+              badge={item.badge}
+              badgeClassName={item.badgeClassName}
             />
           ))}
         </ul>
@@ -277,27 +320,25 @@ const AdminSidebar = () => {
   );
 };
 
-const SidebarItem = ({ icon, text, onClick, isSidebarOpen, isActive }) => {
+const SidebarItem = ({ icon, text, onClick, isSidebarOpen, isActive, badge, badgeClassName }) => {
   return (
     <li
       onClick={onClick}
-      className={`
-        flex items-center px-4 py-2 cursor-pointer transition-all 
-        ${
-          isActive
-            ? "bg-gray-700 text-white"
-            : "text-gray-300 hover:bg-gray-700 hover:text-white"
-        }
-      `}
+      className={`${
+        isActive ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
+      } relative flex items-center justify-center lg:justify-start gap-x-4 p-2 rounded-md cursor-pointer`}
     >
-      <span className={`${isActive ? "text-blue-400" : ""}`}>{icon}</span>
+      <div className="text-xl">{icon}</div>
       {isSidebarOpen && (
-        <span
-          className={`ml-3 text-sm ${
-            isActive ? "font-semibold" : "font-normal"
-          }`}
-        >
+        <span className={`${isActive ? "font-medium" : ""} flex-1`}>
           {text}
+        </span>
+      )}
+      {badge && (
+        <span 
+          className={`${badgeClassName || 'bg-red-500 text-white'} ml-1 px-2 py-0.5 text-xs font-semibold rounded-full`}
+        >
+          {badge}
         </span>
       )}
     </li>

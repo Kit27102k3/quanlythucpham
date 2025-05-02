@@ -30,6 +30,8 @@ import CategoryProducts from "../User/Pages/Product/CategoryProducts";
 import TipsManagement from "../Admin/Pages/Tips/TipsManagement";
 import TipForm from "../Admin/Pages/Tips/TipForm";
 import ContactList from "../Admin/Pages/Contacts/ContactList";
+import Checkout from "../User/Pages/Cart/Checkout";
+import Messages from "../Admin/Pages/Messages";
 
 const publicRoutes = [
   {
@@ -129,6 +131,10 @@ const publicRoutes = [
     page: PaymentQR,
   },
   {
+    path: "/checkout",
+    page: Checkout,
+  },
+  {
     path: "/dang-ky",
     page: Register,
     layout: null,
@@ -155,6 +161,10 @@ const privateRoutes = [
   {
     path: "/admin/orders",
     page: OrderAdmin,
+  },
+  {
+    path: "/admin/messages",
+    page: Messages,
   },
   {
     path: "/admin/customers",

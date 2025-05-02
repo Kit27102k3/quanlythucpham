@@ -1,4 +1,4 @@
-import Contact from "../Model/Contact.js";
+import Contact from "../models/Contact.js";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 

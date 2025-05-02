@@ -5,6 +5,7 @@ import SEO from "../../../components/SEO";
 // Lazy load components
 const Fruit = lazy(() => import("../../Pages/Product/Fruit"));
 const Kitchen = lazy(() => import("../../Pages/Product/Kitchen"));
+const Drinks = lazy(() => import("../../Pages/Product/Drinks"));
 const ProductNew = lazy(() => import("./ProductNew"));
 
 // Loading component
@@ -57,8 +58,13 @@ function Home() {
         </Suspense>
         
         <Suspense fallback={<Loading />}>
+          <Drinks />
+        </Suspense>
+
+        <Suspense fallback={<Loading />}>
           <Kitchen />
         </Suspense>
+
       </div>
     </>
   );

@@ -2,6 +2,7 @@
 const getApiBaseUrl = () => {
   // Trong môi trường phát triển (development/local)
   if (import.meta.env.DEV) {
+    // Thử kết nối port 3000 (default Express) thay vì 8080
     return import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
   }
   
@@ -23,5 +24,6 @@ export const API_URLS = {
   ADMIN: `${API_BASE_URL}/api`,
   DASHBOARD: `${API_BASE_URL}/api/dashboard`,
   CHATBOT: `${API_BASE_URL}/api/chatbot`,
-  SCRAPER: `${API_BASE_URL}/api/scrape`
+  SCRAPER: `${API_BASE_URL}/api/scrape`,
+  MESSAGES: `${API_BASE_URL}/api/messages`
 }; 

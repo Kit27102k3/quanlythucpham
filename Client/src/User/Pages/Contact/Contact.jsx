@@ -52,6 +52,24 @@ function Contact() {
       const response = await axios.post(`${apiUrl}/api/contact`, formData);
       
       if (response.status === 201) {
+        try {
+          await axios.post(
+            `${API_URLS.MESSAGES}/send`,
+            {
+              text: formData.message,
+              sender: "user",
+              receiverId: "admin"
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          );
+        } catch (error) {
+          console.error("Error sending message:", error);
+        }
+        
         toast.success("Tin nhắn của bạn đã được gửi thành công. Chúng tôi sẽ liên hệ lại sớm!");
         // Reset form
         setFormData({

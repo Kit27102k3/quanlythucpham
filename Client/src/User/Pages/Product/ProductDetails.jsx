@@ -4,7 +4,7 @@ import { Card, CardContent } from "../../component/ui/card";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import productsApi from "../../../api/productsApi";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import formatCurrency from "../../Until/FotmatPrice";
 import "../../../index.css";
 import RelatedProducts from "./RelatedProducts";
@@ -23,6 +23,7 @@ export default function ProductDetails() {
   const [products, setProducts] = useState(null);
   const { slug } = useParams();
   const topElementRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -74,6 +75,23 @@ export default function ProductDetails() {
 
   const toggleIntroduce = () => {
     setIntroduce(!introduce);
+  };
+
+  const handleBuyNow = () => {
+    if (products) {
+      // Tạo đối tượng sản phẩm để thêm vào giỏ hàng
+      const cartItem = {
+        product: products,
+        quantity: count,
+        price: products.productPrice
+      };
+
+      // Lưu thông tin sản phẩm vào localStorage để truy cập trong trang thanh toán
+      localStorage.setItem('checkoutItems', JSON.stringify([cartItem]));
+      
+      // Chuyển hướng đến trang thanh toán
+      navigate('/checkout');
+    }
   };
 
   const descriptionArray =
@@ -234,7 +252,10 @@ export default function ProductDetails() {
                     <span className="text-[12px]">Vui lòng quay lại sau</span>
                   </button>
                 ) : (
-                  <button className="bg-[#51bb1a] w-full cursor-pointer text-white text-sm p-2 mt-4 flex flex-col hover:opacity-90">
+                  <button 
+                    onClick={handleBuyNow}
+                    className="bg-[#51bb1a] w-full cursor-pointer text-white text-sm p-2 mt-4 flex flex-col hover:opacity-90"
+                  >
                     <span className="uppercase">
                       {" "}
                       MUA NGAY VỚI GIÁ {formatCurrency(products?.productPrice)}đ

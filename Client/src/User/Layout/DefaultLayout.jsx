@@ -3,6 +3,7 @@ import Header from "./Header";
 import { useEffect, useState } from "react";
 import React from "react";
 import ChatBotWithErrorBoundary from "../component/Chatbot";
+import UserChat from "../Pages/Chat/UserChat";
 
 const DefaultLayout = ({ children }) => {
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
@@ -19,6 +20,7 @@ const DefaultLayout = ({ children }) => {
       <div>{children}</div>
       <Footer />
       <ChatBotWithErrorBoundary isOpen={isChatbotOpen} setIsOpen={setIsChatbotOpen} />
+      <UserChat />
     </div>
   );
 };

@@ -48,7 +48,7 @@ const INITIAL_PRODUCT_STATE = {
   discountEndDate: null,
 };
 
-const AddProduct = ({ setVisible, onProductAdd }) => {
+const AddProduct = ({ onHide, onAddSuccess }) => {
   const [product, setProduct] = useState(INITIAL_PRODUCT_STATE);
   const [productDescription, setProductDescription] = useState("");
   const [categories, setCategories] = useState([]);
@@ -328,10 +328,10 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
       
       const response = await productsApi.createProduct(productData);
       toast.success("Thêm sản phẩm thành công!");
-      if (onProductAdd) {
-        onProductAdd(response.data); 
+      if (onAddSuccess) {
+        onAddSuccess(response.data); 
       }
-      setVisible(false);
+      onHide();
     } catch (error) {
       const errorMessage =
         error.response?.data?.message || error.message || "Lỗi không xác định";
@@ -750,7 +750,7 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
               type="button"
               label="Hủy"
               icon="pi pi-times"
-              onClick={() => setVisible(false)}
+              onClick={onHide}
               className="p-button-sm h-11 px-4 rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-100 hover:border-gray-400 transition-colors"
               style={{ minWidth: '120px', fontWeight: '500' }}
             />
@@ -770,8 +770,8 @@ const AddProduct = ({ setVisible, onProductAdd }) => {
 };
 
 AddProduct.propTypes = {
-  setVisible: PropTypes.func.isRequired,
-  onProductAdd: PropTypes.func,
+  onHide: PropTypes.func.isRequired,
+  onAddSuccess: PropTypes.func,
 };
 
 export default AddProduct;

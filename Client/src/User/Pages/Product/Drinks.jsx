@@ -99,7 +99,7 @@ const ProductItem = memo(
 // Đặt tên hiển thị cho component để dễ debug
 ProductItem.displayName = "ProductItem";
 
-function Fruit() {
+function Drinks() {
   const [isChangingPage, setIsChangingPage] = useState(false);
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,8 +109,8 @@ function Fruit() {
     const fetchProductCategory = async () => {
       try {
         setIsLoading(true);
-        const res = await productsApi.getProductByCategory("Trái cây");
-        console.log(res);
+        const res = await productsApi.getProductByCategory("Nước giải khát");
+        console.log("Nước",res);
 
         setProducts(res);
       } catch (error) {
@@ -137,7 +137,7 @@ function Fruit() {
         transition={{ duration: 0.3 }}
       >
         <SEO
-          title="Trái cây nhập khẩu"
+          title="Đồ uống các loại"
           description="Trái cây tươi ngon nhập khẩu từ các nước, đảm bảo chất lượng, giá cả hợp lý."
         />
 
@@ -148,11 +148,11 @@ function Fruit() {
           viewport={{ once: false }}
           transition={{ duration: 0.3 }}
         >
-          Trái cây nhập khẩu
+          Đồ uống các loại
         </motion.h2>
 
         <motion.div
-          className="mt-4 gap-10 lg:grid lg:grid-cols-[70%_30%]"
+          className="mt-4 gap-10 lg:grid lg:grid-cols-1"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: false }}
@@ -165,7 +165,7 @@ function Fruit() {
               </div>
             ) : (
               <motion.div
-                className="w-full grid grid-cols-2 lg:grid-cols-3 justify-around gap-4"
+                className="w-full grid grid-cols-2 lg:grid-cols-5 justify-around gap-4"
                 initial={{ opacity: 0 }}
                 whileInView={{ opacity: 1 }}
                 viewport={{ once: false }}
@@ -184,7 +184,7 @@ function Fruit() {
             )}
           </div>
 
-          <div className="w-full grid grid-cols-2 lg:grid-cols-1 mt-4 items-center justify-between gap-4">
+          {/* <div className="w-full grid grid-cols-2 lg:grid-cols-1 mt-4 items-center justify-between gap-4">
             <motion.img
               src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_col_product_banner_1.jpg?1721896755861"
               alt="Khuyến mãi đặc biệt cho trái cây"
@@ -209,10 +209,10 @@ function Fruit() {
               viewport={{ once: false }}
               transition={{ duration: 0.5, delay: 0.5 }}
             />
-          </div>
+          </div> */}
         </motion.div>
 
-        {/* <motion.img
+        <motion.img
           src="https://bizweb.dktcdn.net/100/360/151/themes/727143/assets/evo_banner_full_1.jpg?1721896755861"
           alt="Banner khuyến mãi trái cây"
           loading="lazy"
@@ -223,10 +223,10 @@ function Fruit() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false }}
           transition={{ duration: 0.5, delay: 0.6 }}
-        /> */}
+        />
       </motion.div>
     </AnimatePresence>
   );
 }
 
-export default Fruit;
+export default Drinks;
