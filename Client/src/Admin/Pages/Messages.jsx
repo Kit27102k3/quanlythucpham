@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from "react";
 import { Card } from "primereact/card";
 import { Avatar } from "primereact/avatar";
@@ -69,8 +70,11 @@ const Messages = () => {
       const messageData = {
         receiverId: selectedContact.id,
         text: text,
-        sender: 'admin'
+        sender: 'admin',
+        userId: selectedContact.id  // Thêm userId khi admin gửi tin nhắn
       };
+      
+      console.log("Admin sending message to user:", selectedContact.id);
       
       const newMessage = await messagesApi.sendMessage(messageData);
       setMessages(prev => [...prev, newMessage]);
@@ -99,16 +103,71 @@ const Messages = () => {
     // Cài đặt interval để kiểm tra tin nhắn mới
     const intervalId = setInterval(() => {
       if (selectedContact) {
-        fetchMessages(selectedContact.id);
+        // Kiểm tra có tin nhắn mới thay vì tải lại toàn bộ
+        const checkNewMessages = async () => {
+          try {
+            const userId = selectedContact.id;
+            const response = await messagesApi.getMessagesByUserId(userId);
+            
+            // Kiểm tra sự khác biệt về số lượng tin nhắn
+            const messagesCount = messages.length;
+            const responseCount = response.length;
+            
+            // Hoặc kiểm tra ID tin nhắn cuối cùng
+            const lastMessageId = messagesCount > 0 ? messages[messagesCount - 1].id : null;
+            const lastResponseId = responseCount > 0 ? response[responseCount - 1].id : null;
+            
+            if (messagesCount !== responseCount || lastMessageId !== lastResponseId) {
+              console.log("Phát hiện tin nhắn mới trong admin, cập nhật giao diện");
+              setMessages(response);
+              
+              // Đánh dấu tin nhắn đã đọc nếu cần
+              const hasUnread = response.some(m => !m.read && m.sender !== 'admin');
+              if (hasUnread) {
+                await messagesApi.markAllAsRead(userId);
+              }
+              
+              setTimeout(scrollToBottom, 100);
+            }
+          } catch (error) {
+            console.error("Lỗi khi kiểm tra tin nhắn mới:", error);
+          }
+        };
+        
+        checkNewMessages();
       } else {
-        fetchContacts();
+        // Kiểm tra danh sách liên hệ mới
+        const checkNewContacts = async () => {
+          try {
+            const contactsData = await messagesApi.getAllContacts();
+            
+            // Chỉ cập nhật nếu có thay đổi về số lượng
+            if (contactsData.length !== contacts.length) {
+              console.log("Phát hiện thay đổi về danh sách liên hệ, cập nhật giao diện");
+              setContacts(contactsData);
+            } else {
+              // Hoặc kiểm tra số tin nhắn chưa đọc
+              const totalNewUnread = contactsData.reduce((sum, contact) => sum + (contact.unread || 0), 0);
+              const totalOldUnread = contacts.reduce((sum, contact) => sum + (contact.unread || 0), 0);
+              
+              if (totalNewUnread !== totalOldUnread) {
+                console.log("Phát hiện thay đổi về số lượng tin nhắn chưa đọc, cập nhật giao diện");
+                setContacts(contactsData);
+              }
+            }
+          } catch (error) {
+            console.error("Lỗi khi kiểm tra liên hệ mới:", error);
+          }
+        };
+        
+        checkNewContacts();
       }
-    }, 3000); // Tăng lên 15 giây thay vì 3 giây
+    }, 5000); // Tăng lên 5 giây thay vì 3 giây
     
     return () => clearInterval(intervalId);
-  }, []);
+  }, [selectedContact]);
 
-  // Lấ, 15000y tin nhắn khi chọn một liên hệ
+  // Lấy tin nhắn khi chọn một liên hệ
   useEffect(() => {
     if (selectedContact) {
       fetchMessages(selectedContact.id);
@@ -117,15 +176,49 @@ const Messages = () => {
 
   // Lọc danh sách liên hệ theo từ khóa tìm kiếm
   useEffect(() => {
+    // Loại bỏ các liên hệ trùng lặp dựa trên userId
+    const uniqueContacts = [];
+    const userIdSet = new Set();
+    
+    contacts.forEach(contact => {
+      // Nếu userId chưa có trong Set, thêm vào và thêm contact vào danh sách uniqueContacts
+      if (!userIdSet.has(contact.id)) {
+        userIdSet.add(contact.id);
+        uniqueContacts.push(contact);
+      }
+    });
+    
+    // Tìm kiếm trong danh sách liên hệ không trùng lặp
     setFilteredContacts(
-      contacts.filter(contact => 
+      uniqueContacts.filter(contact => 
         contact.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
     );
   }, [contacts, searchTerm]);
 
+  // Cuộn xuống dưới chỉ khi cần thiết
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Sử dụng setTimeout để đảm bảo thực hiện sau khi DOM cập nhật
+    setTimeout(() => {
+      if (!messagesEndRef.current) return;
+      
+      // Lấy container chứa các tin nhắn
+      const messageContainer = messagesEndRef.current.parentElement.parentElement;
+      if (!messageContainer) return;
+      
+      // Tính toán vị trí cuộn
+      const { scrollTop, scrollHeight, clientHeight } = messageContainer;
+      const isScrolledNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+      
+      // Kiểm tra tin nhắn cuối cùng để quyết định có nên cuộn hay không
+      const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null;
+      const isOwnLastMessage = lastMessage && lastMessage.sender === 'admin';
+      
+      // Chỉ cuộn nếu đang ở gần cuối hoặc tin nhắn cuối là của mình
+      if (isScrolledNearBottom || isOwnLastMessage) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 100);
   };
 
   const handleSendMessage = () => {
@@ -189,40 +282,69 @@ const Messages = () => {
 
   // Format thời gian tin nhắn
   const formatMessageTime = (timestamp) => {
+    if (!timestamp) return "";
+    
     const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // Định dạng ngày tháng
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    
+    // Định dạng giờ phút
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    // Nếu là ngày hôm nay, chỉ hiển thị giờ:phút
+    const today = new Date();
+    if (date.getDate() === today.getDate() && 
+        date.getMonth() === today.getMonth() && 
+        date.getFullYear() === today.getFullYear()) {
+      return `${hours}:${minutes}`;
+    }
+    
+    // Ngày khác thì hiển thị đầy đủ ngày/tháng/năm giờ:phút
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
 
   return (
-    <div className="p-4 h-screen overflow-hidden">
+    <div className="p-4 h-screen overflow-hidden bg-gray-50">
       <Toaster position="top-right" richColors />
       
-      <h1 className="text-2xl font-bold mb-4">Quản lý tin nhắn</h1>
+      <div className="flex items-center mb-4">
+        <h1 className="text-2xl font-bold text-gray-800">Quản lý tin nhắn</h1>
+        <div className="ml-auto">
+          <Badge value={contacts.reduce((sum, contact) => sum + (contact.unread || 0), 0)} 
+                 severity="danger" 
+                 className={contacts.some(c => c.unread > 0) ? "animate-pulse" : ""}>
+          </Badge>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-[calc(100vh-150px)]">
         {/* Danh sách liên hệ */}
         <div className="lg:col-span-1 h-full overflow-hidden">
-          <Card className="shadow-md h-full flex flex-col">
-            <div className="mb-3">
+          <Card className="shadow-sm h-full flex flex-col border border-gray-200 rounded-xl bg-white">
+            <div className="mb-3 p-3 border-b">
               <span className="p-input-icon-left w-full">
-                <i className="pi pi-search" />
+                <i className="pi pi-search text-gray-400" />
                 <InputText 
                   placeholder="Tìm kiếm liên hệ" 
-                  className="w-full"
+                  className="w-full border-gray-300 rounded-lg"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </span>
             </div>
             
-            <div className="custom-scrollbar force-scrollbar flex-1 overflow-hidden" style={{ height: 'calc(100% - 50px)' }}>
+            <div className="custom-scrollbar force-scrollbar flex-1 overflow-hidden px-2" style={{ height: 'calc(100% - 50px)' }}>
               {loading ? (
-                <div className="flex justify-center items-center h-64">
+                <div className="flex justify-center items-center h-64 text-green-500">
                   <i className="pi pi-spin pi-spinner text-xl"></i>
                 </div>
               ) : filteredContacts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                  <i className="pi pi-inbox text-4xl mb-2"></i>
+                  <i className="pi pi-inbox text-4xl mb-2 text-gray-300"></i>
                   <p>{searchTerm ? "Không tìm thấy liên hệ nào" : "Chưa có tin nhắn nào"}</p>
                 </div>
               ) : (
@@ -231,8 +353,8 @@ const Messages = () => {
                     <div
                       key={contact.id}
                       className={`
-                        flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200
-                        ${selectedContact?.id === contact.id ? 'bg-blue-100' : 'hover:bg-gray-100'}
+                        contact-item flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200
+                        ${selectedContact?.id === contact.id ? 'bg-green-50 border-l-4 border-green-500' : 'hover:bg-gray-100 border-l-4 border-transparent'}
                       `}
                       onClick={() => setSelectedContact(contact)}
                     >
@@ -250,16 +372,18 @@ const Messages = () => {
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
-                          <h3 className="text-sm font-semibold truncate">{contact.name}</h3>
+                          <h3 className={`text-sm ${selectedContact?.id === contact.id ? 'font-semibold text-green-800' : 'font-medium text-gray-800'} truncate`}>
+                            {contact.name}
+                          </h3>
                           <span className="text-xs text-gray-500">{formatTimestamp(contact.lastSeen || contact.lastActive)}</span>
                         </div>
                         
                         <div className="flex justify-between items-center">
-                          <p className="text-xs text-gray-600 truncate w-40">
+                          <p className={`text-xs ${contact.unread > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'} truncate w-40`}>
                             {contact.lastMessage}
                           </p>
                           {contact.unread > 0 && (
-                            <Badge value={contact.unread} severity="danger" className="ml-1" />
+                            <Badge value={contact.unread} severity="danger" className="ml-1 animate-pulse" />
                           )}
                         </div>
                       </div>
@@ -273,46 +397,52 @@ const Messages = () => {
         
         {/* Khung chat */}
         <div className="lg:col-span-3 h-full overflow-hidden">
-          <Card className="shadow-md h-full flex flex-col overflow-hidden">
+          <Card className="shadow-sm h-full flex flex-col overflow-hidden border border-gray-200 rounded-xl bg-white">
             {selectedContact ? (
               <>
                 {/* Header chat */}
-                <div className="flex items-center p-3 border-b shrink-0">
+                <div className="flex items-center p-4 border-b border-gray-200 shrink-0 bg-white">
                   <Avatar 
                     image={selectedContact.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedContact.name)}&background=random`}
                     shape="circle"
                     className="mr-3"
                   />
                   <div className="flex-1">
-                    <h3 className="font-semibold">{selectedContact.name}</h3>
+                    <h3 className="font-semibold text-gray-800">{selectedContact.name}</h3>
                     <p className="text-xs text-gray-500">
                       {selectedContact.online ? (
-                        <span className="text-green-500">Đang trực tuyến</span>
+                        <span className="text-green-500 flex items-center">
+                          <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                          Đang trực tuyến
+                        </span>
                       ) : (
-                        `Hoạt động ${formatTimestamp(selectedContact.lastSeen || selectedContact.lastActive)}`
+                        <span className="flex items-center">
+                          <span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-1"></span>
+                          Hoạt động {formatTimestamp(selectedContact.lastSeen || selectedContact.lastActive)}
+                        </span>
                       )}
                     </p>
                   </div>
                   <div>
                     <Button 
                       icon="pi pi-user" 
-                      className="p-button-text p-button-rounded p-button-sm mr-2"
+                      className="p-button-text p-button-rounded p-button-sm mr-2 text-gray-600"
                       tooltip="Xem thông tin" 
                     />
                     <Button 
                       icon="pi pi-ellipsis-v" 
-                      className="p-button-text p-button-rounded p-button-sm"
+                      className="p-button-text p-button-rounded p-button-sm text-gray-600"
                       tooltip="Tùy chọn" 
                     />
                   </div>
                 </div>
                 
                 {/* Nội dung chat */}
-                <div className="custom-scrollbar force-scrollbar p-3 flex-1 overflow-hidden">
+                <div className="custom-scrollbar force-scrollbar p-4 flex-1 overflow-y-scroll overflow-x-hidden bg-[#f0f2f5]" style={{ minHeight: "300px" }}>
                   <div className="flex flex-col gap-3">
                     {messagesLoading ? (
                       <div className="flex justify-center items-center h-64">
-                        <i className="pi pi-spin pi-spinner text-xl"></i>
+                        <i className="pi pi-spin pi-spinner text-green-500 text-2xl"></i>
                       </div>
                     ) : messages.length === 0 ? (
                       <div className="flex justify-center items-center h-64 text-gray-500">
@@ -326,25 +456,39 @@ const Messages = () => {
                             flex ${message.sender === 'admin' ? 'justify-end' : 'justify-start'}
                           `}
                         >
+                          {message.sender !== 'admin' && (
+                            <Avatar 
+                              image={selectedContact?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedContact?.name || 'User')}&background=random`} 
+                              shape="circle"
+                              size="small"
+                              className="mr-2 mt-1"
+                            />
+                          )}
                           <div 
                             className={`
-                              max-w-[75%] p-3 rounded-lg shadow-sm
-                              ${message.sender === 'admin' 
-                                ? 'bg-blue-600 text-white' 
-                                : 'bg-gray-100 text-gray-800'}
+                              message-bubble ${message.sender === 'admin' ? 'message-bubble--admin' : 'message-bubble--user'}
                             `}
                           >
+                            <div className="text-xs font-semibold mb-1">
+                              {message.sender === 'admin' ? 'Admin' : selectedContact?.name || 'Người dùng'}
+                            </div>
                             <p className="text-sm">{message.text}</p>
-                            <div className={`
-                              text-xs mt-1 flex items-center justify-end
-                              ${message.sender === 'admin' ? 'text-blue-100' : 'text-gray-500'}
-                            `}>
+                            <div className="message-time">
                               {formatMessageTime(message.createdAt || message.timestamp)}
                               {message.sender === 'admin' && (
                                 <i className={`pi ${message.read ? 'pi-check-circle' : 'pi-check'} ml-1`}></i>
                               )}
                             </div>
                           </div>
+                          {message.sender === 'admin' && (
+                            <Avatar 
+                              icon="pi pi-user"
+                              shape="circle"
+                              size="small"
+                              className="ml-2 mt-1"
+                              style={{ backgroundColor: "#22c55e" }}
+                            />
+                          )}
                         </div>
                       ))
                     )}
@@ -353,29 +497,29 @@ const Messages = () => {
                 </div>
                 
                 {/* Input chat */}
-                <div className="p-3 border-t flex items-center mt-auto shrink-0">
+                <div className="p-3 border-t flex items-center mt-auto shrink-0 bg-white">
                   <Button 
                     icon="pi pi-paperclip" 
-                    className="p-button-text p-button-rounded p-button-sm mr-2"
+                    className="p-button-text p-button-rounded p-button-sm mr-2 text-gray-600"
                     tooltip="Đính kèm file" 
                   />
                   <InputText 
                     placeholder="Nhập tin nhắn..."
-                    className="flex-1 p-inputtext-sm"
+                    className="flex-1 p-inputtext-sm border-gray-300 rounded-full"
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                   />
                   <Button 
                     icon="pi pi-send" 
-                    className="p-button-rounded p-button-sm ml-2"
+                    className="p-button-rounded p-button-sm ml-2 bg-green-500 hover:bg-green-600"
                     onClick={handleSendMessage}
                     disabled={!messageText.trim()} 
                   />
                 </div>
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full">
+              <div className="flex flex-col items-center justify-center h-full bg-white">
                 <i className="pi pi-comments text-5xl text-gray-300 mb-4"></i>
                 <h3 className="text-xl font-semibold text-gray-500">Chọn một liên hệ để bắt đầu trò chuyện</h3>
                 <p className="text-gray-400 mt-2">Hoặc tìm kiếm khách hàng trong danh sách bên trái</p>

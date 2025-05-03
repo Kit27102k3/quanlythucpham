@@ -7,15 +7,24 @@ const getAuthHeader = () => {
   const token = 
     localStorage.getItem("accessToken") || 
     localStorage.getItem("token") || 
-    localStorage.getItem("access_token") ||
-    localStorage.getItem("admin-token-for-TKhiem") ||
-    "admin-token-for-TKhiem"; // Fallback đến token admin đặc biệt
-
+    localStorage.getItem("access_token");
   
-  if (!token) return {};
-  return {
-    Authorization: `Bearer ${token}`
-  };
+  const userRole = localStorage.getItem("userRole");
+  const isAdmin = userRole === "admin";
+  
+  console.log("Using token for API request:", token);
+  
+  const headers = {};
+  
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  
+  if (isAdmin) {
+    headers["admin-token"] = "admin-token-for-TKhiem";
+  }
+  
+  return headers;
 };
 
 const messagesApi = {
@@ -35,9 +44,22 @@ const messagesApi = {
   // Lấy lịch sử tin nhắn với một người dùng
   getMessagesByUserId: async (userId) => {
     try {
-      const response = await axios.get(`${API_URLS.MESSAGES}/user/${userId}`, {
-        headers: getAuthHeader()
+      // Lấy userId từ localStorage
+      const currentUserId = localStorage.getItem("userId");
+      console.log("Current userId from localStorage:", currentUserId);
+      console.log("Requested userId for messages:", userId);
+      
+      // Sử dụng currentUserId nếu không có userId được truyền vào
+      const targetUserId = userId === "admin" ? "admin" : (userId || currentUserId);
+      
+      const headers = getAuthHeader();
+      console.log("Auth headers:", headers);
+      
+      const response = await axios.get(`${API_URLS.MESSAGES}/user/${targetUserId}`, {
+        headers: headers
       });
+      
+      console.log("Messages response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi lấy tin nhắn:", error);
@@ -45,18 +67,15 @@ const messagesApi = {
     }
   },
 
-  // Gửi tin nhắn
-  sendMessage: async (messageData) => {
+  // Gửi tin nhắn mới
+  sendMessage: async (data) => {
     try {
-      console.log("Sending message data:", messageData);
-      
-      const response = await axios.post(`${API_URLS.MESSAGES}/send`, messageData, {
+      const response = await axios.post(`${API_URLS.MESSAGES}/send`, data, {
         headers: {
           ...getAuthHeader(),
           "Content-Type": "application/json",
-        }
+        },
       });
-      
       return response.data;
     } catch (error) {
       console.error("Lỗi khi gửi tin nhắn:", error);

@@ -1,8 +1,6 @@
 import { Routes, Route, Link } from "react-router-dom";
 import { publicRoutes, privateRoutes } from "./Routes/routes";
 import DefaultLayout from "./User/Layout/DefaultLayout";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
 import HeaderAdmin from "./Admin/Layout/HeaderAdmin";
 import BlockedAccountAlert from "./User/component/BlockedAccountAlert";
 import FixPaymentStatus from './components/FixPaymentStatus';
@@ -96,18 +94,6 @@ function App() {
         <Route path="/fix-payment" element={<FixPaymentStatus />} />
       </Routes>
       
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="light"
-      />
     </div>
   );
 }

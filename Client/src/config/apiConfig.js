@@ -2,7 +2,6 @@
 const getApiBaseUrl = () => {
   // Trong môi trường phát triển (development/local)
   if (import.meta.env.DEV) {
-    // Thử kết nối port 3000 (default Express) thay vì 8080
     return import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
   }
   

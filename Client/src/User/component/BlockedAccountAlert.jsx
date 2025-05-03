@@ -29,6 +29,14 @@ const BlockedAccountAlert = () => {
       // Kiểm tra trạng thái tài khoản từ API
       const checkAccountStatus = async () => {
         try {
+          // Kiểm tra token trước khi gọi API
+          const token = localStorage.getItem("accessToken");
+          if (!token) {
+            console.log("Không có token, bỏ qua kiểm tra trạng thái tài khoản");
+            setLoading(false);
+            return;
+          }
+          
           const response = await authApi.getProfile();
           
           if (response.data && response.data.isBlocked) {
@@ -39,6 +47,12 @@ const BlockedAccountAlert = () => {
           setLoading(false);
         } catch (error) {
           console.error("Lỗi khi kiểm tra trạng thái tài khoản:", error);
+          
+          // Không cần hiển thị lỗi 401 vì có thể là chưa đăng nhập
+          if (error.response?.status === 401) {
+            console.log("Lỗi xác thực, có thể chưa đăng nhập");
+          }
+          
           setLoading(false);
         }
       };

@@ -32,6 +32,7 @@ import TipForm from "../Admin/Pages/Tips/TipForm";
 import ContactList from "../Admin/Pages/Contacts/ContactList";
 import Checkout from "../User/Pages/Cart/Checkout";
 import Messages from "../Admin/Pages/Messages";
+import ChatPage from "../User/Pages/Chat/ChatPage";
 
 const publicRoutes = [
   {
@@ -61,6 +62,10 @@ const publicRoutes = [
       {
         path: "doi-mat-khau",
         page: ResetPassword,
+      },
+      {
+        path: "tin-nhan",
+        page: ChatPage,
       },
     ],
   },
