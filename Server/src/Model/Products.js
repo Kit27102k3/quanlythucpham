@@ -23,6 +23,8 @@ const productSchema = new mongoose.Schema(
     discountStartDate: { type: Date },
     discountEndDate: { type: Date },
     soldCount: { type: Number, default: 0 },
+    averageRating: { type: Number, default: 0 },
+    numOfReviews: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

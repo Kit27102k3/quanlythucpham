@@ -331,7 +331,31 @@ const authApi = {
     return instance.get(`${API_URLS.AUTH}/profile/${id}`);
   },
   
-  updateProfile: (userId, data) => instance.put(`${API_URLS.AUTH}/update/${userId}`, data),
+  updateProfile: async (userId, data) => {
+    try {
+      // Lấy token từ localStorage
+      const token = 
+        localStorage.getItem("accessToken") || 
+        localStorage.getItem("token") || 
+        localStorage.getItem("access_token");
+      
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
+      
+      console.log("Using token for updateProfile:", token);
+      
+      return await axios.put(`${API_URLS.AUTH}/update/${userId}`, data, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      throw error;
+    }
+  },
   
   requestPasswordReset: (data) =>
     instance.post(`${API_URLS.AUTH}/request-password-reset`, data),

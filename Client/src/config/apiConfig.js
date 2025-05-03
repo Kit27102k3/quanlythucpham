@@ -24,5 +24,6 @@ export const API_URLS = {
   DASHBOARD: `${API_BASE_URL}/api/dashboard`,
   CHATBOT: `${API_BASE_URL}/api/chatbot`,
   SCRAPER: `${API_BASE_URL}/api/scrape`,
-  MESSAGES: `${API_BASE_URL}/api/messages`
+  MESSAGES: `${API_BASE_URL}/api/messages`,
+  REVIEWS: `${API_BASE_URL}/api/reviews`
 }; 

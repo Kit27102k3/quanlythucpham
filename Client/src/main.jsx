@@ -7,6 +7,8 @@ import { HelmetProvider } from "react-helmet-async";
 import { PrimeReactProvider } from "primereact/api";
 import { Theme } from "@radix-ui/themes";
 import { Toaster } from "sonner"
+import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
 
 // Cấu hình thêm cho PrimeReact
 const primeReactConfig = {
@@ -22,10 +24,14 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <Router>
       <HelmetProvider>
         <PrimeReactProvider value={primeReactConfig}>
-          <Theme accentColor="green">
-            <App />
-            <Toaster richColors position="bottom-right" />
-          </Theme>
+          <AuthProvider>
+            <CartProvider>
+              <Theme accentColor="green">
+                <App />
+                <Toaster richColors position="bottom-right" />
+              </Theme>
+            </CartProvider>
+          </AuthProvider>
         </PrimeReactProvider>
       </HelmetProvider>
     </Router>

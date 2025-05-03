@@ -3,7 +3,6 @@ import { publicRoutes, privateRoutes } from "./Routes/routes";
 import DefaultLayout from "./User/Layout/DefaultLayout";
 import HeaderAdmin from "./Admin/Layout/HeaderAdmin";
 import BlockedAccountAlert from "./User/component/BlockedAccountAlert";
-import FixPaymentStatus from './components/FixPaymentStatus';
 
 function App() {
   return (
@@ -91,7 +90,6 @@ function App() {
             />
           )
         )}
-        <Route path="/fix-payment" element={<FixPaymentStatus />} />
       </Routes>
       
     </div>

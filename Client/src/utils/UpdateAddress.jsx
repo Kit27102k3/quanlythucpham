@@ -124,6 +124,13 @@ function UpdateAddress({ onUpdate }) {
 
   const handleUpdate = async () => {
     if (!user) return;
+    
+    // Validate inputs
+    if (!selectedCity || !selectedDistrict || !selectedWard || !houseNumber) {
+      toast.error("Vui lòng điền đầy đủ thông tin địa chỉ");
+      return;
+    }
+    
     const cityName =
       cities.find((city) => city.code === Number(selectedCity))?.name || "";
     const districtName =
@@ -140,13 +147,22 @@ function UpdateAddress({ onUpdate }) {
         address: `${houseNumber}, ${wardName}, ${districtName}, ${cityName}`,
       };
 
-      await authApi.updateProfile(user._id, updatedData);
-      toast.success("Cập nhật thành công");
-      onUpdate();
-      setIsHide(true);
+      console.log("Sending update with data:", updatedData);
+      console.log("User ID:", user._id);
+      
+      const response = await authApi.updateProfile(user._id, updatedData);
+      console.log("Update response:", response);
+      
+      if (response.data && response.data.success) {
+        toast.success("Cập nhật thành công");
+        onUpdate();
+        setIsHide(true);
+      } else {
+        toast.error(response.data?.message || "Cập nhật thất bại");
+      }
     } catch (error) {
       console.error("Lỗi khi cập nhật thông tin:", error);
-      toast.error("Có lỗi xảy ra khi cập nhật thông tin.");
+      toast.error(`Có lỗi xảy ra khi cập nhật thông tin: ${error.message}`);
     }
   };
 

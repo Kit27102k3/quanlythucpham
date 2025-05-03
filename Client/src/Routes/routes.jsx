@@ -33,6 +33,7 @@ import ContactList from "../Admin/Pages/Contacts/ContactList";
 import Checkout from "../User/Pages/Cart/Checkout";
 import Messages from "../Admin/Pages/Messages";
 import ChatPage from "../User/Pages/Chat/ChatPage";
+import Reviews from "../Admin/Pages/Reviews";
 
 const publicRoutes = [
   {
@@ -166,6 +167,10 @@ const privateRoutes = [
   {
     path: "/admin/orders",
     page: OrderAdmin,
+  },
+  {
+    path: "/admin/reviews",
+    page: Reviews,
   },
   {
     path: "/admin/messages",

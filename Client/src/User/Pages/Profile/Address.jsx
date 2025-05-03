@@ -1,10 +1,36 @@
-import { useState} from "react";
+import { useState, useEffect } from "react";
 import UpdateAddress from "../../../utils/UpdateAddress";
 import useFetchUserProfile from "../../Until/useFetchUserProfile";
+import authApi from "../../../api/authApi";
 
 function Address() {
   const [isShow, setIsShow] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   const users = useFetchUserProfile();
+  
+  // Refresh data when needed
+  const fetchUserData = async () => {
+    try {
+      const response = await authApi.getProfile();
+      setUserProfile(response.data);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchUserData();
+  }, []);
+  
+  // Hàm callback khi cập nhật địa chỉ thành công
+  const handleUpdateSuccess = () => {
+    setIsShow(false);
+    // Refresh the user data after update
+    fetchUserData();
+  };
+
+  // Use the latest data from either source
+  const userData = userProfile || users;
 
   return (
     <div className="mt-2">
@@ -21,7 +47,7 @@ function Address() {
             Họ tên:
             <span className="font-normal">
               {" "}
-              {`${users?.firstName} ${users?.lastName}`}
+              {`${userData?.firstName || ""} ${userData?.lastName || ""}`}
             </span>
             <span className="font-normal text-[#51bb1a] text-[10px] ml-2 lg:text-[12px]">
               {" "}
@@ -30,11 +56,11 @@ function Address() {
           </p>
           <p className="text-[#1c1c1c] text-[12px] font-medium lg:text-sm">
             Địa chỉ:
-            <span className="font-normal"> {users?.address}</span>
+            <span className="font-normal"> {userData?.address || "Chưa có địa chỉ"}</span>
           </p>
           <p className="text-[#1c1c1c] text-[12px] font-medium lg:text-sm">
             Số điện thoại:
-            <span className="font-normal"> {users?.phone}</span>
+            <span className="font-normal"> {userData?.phone || ""}</span>
           </p>
         </div>
         <button
@@ -50,7 +76,7 @@ function Address() {
           Chỉnh sửa địa chỉ
         </button>
       </div>
-      {isShow && <UpdateAddress onUpdate={users} />}
+      {isShow && <UpdateAddress onUpdate={handleUpdateSuccess} />}
     </div>
   );
 }

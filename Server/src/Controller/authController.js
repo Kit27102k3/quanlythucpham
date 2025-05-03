@@ -5,6 +5,14 @@ import RefreshToken from "../Model/RefreshToken.js";
 import { generateOTP } from "../Untils/otp.until.js";
 import { sendOTPEmail } from "../Services/email.service.js";
 import Admin from "../Model/adminModel.js";
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
+
+// Fallback secret keys in case environment variables aren't set
+const JWT_SECRET_ACCESS = process.env.JWT_SECRET_ACCESS || "a5e2c2e7-bf3a-4aa1-b5e2-eab36d9db2ea";
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5d6f7e8c9d0a1b2";
 
 export const register = async (req, res) => {
   try {
@@ -294,7 +302,10 @@ export const getAllUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword, firstName, lastName, phone, address } = req.body;
+
+    console.log("Updating user profile:", userId);
+    console.log("Request body:", req.body);
 
     const user = await User.findById(userId);
     if (!user) {
@@ -304,6 +315,7 @@ export const updateUser = async (req, res) => {
       });
     }
 
+    // Xử lý cập nhật mật khẩu nếu có
     if (newPassword) {
       if (!currentPassword) {
         return res.status(400).json({
@@ -349,20 +361,37 @@ export const updateUser = async (req, res) => {
       user.password = await bcrypt.hash(newPassword, salt);
     }
 
+    // Xử lý cập nhật thông tin cá nhân
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) {
+      console.log("Updating address to:", address);
+      user.address = address;
+    }
+
     await user.save();
+    console.log("User updated successfully:", user);
+    
+    // Trả về thông tin người dùng đã được cập nhật
     res.json({
       success: true,
-      message: "Đổi mật khẩu thành công",
+      message: "Cập nhật thông tin thành công",
       user: {
         _id: user._id,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         email: user.email,
+        phone: user.phone,
+        address: user.address,
       },
     });
-  } catch (error) {
+  } catch (err) {
+    console.error("Error updating user:", err);
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi cập nhật thông tin",
+      error: err.message
     });
   }
 };
