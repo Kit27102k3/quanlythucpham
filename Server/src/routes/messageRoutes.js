@@ -17,4 +17,4 @@ router.post('/send', verifyToken, sendMessage);
 router.patch('/user/:userId/read-all', verifyToken, markAllAsRead);
 router.get('/unread-count', verifyToken, getUnreadCount);
 
-export default router;
+export default router; 

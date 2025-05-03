@@ -43,7 +43,7 @@ const ConversationSchema = new Schema({
     type: Number,
     default: 0
   }
-}, { timestamps: true });
+});
 
 // Tự động cập nhật lastUpdated khi có tin nhắn mới
 ConversationSchema.pre('save', function(next) {
@@ -51,9 +51,7 @@ ConversationSchema.pre('save', function(next) {
   next();
 });
 
-// Tạo model từ schema với collection name tường minh
-const COLLECTION_NAME = "chats";
-const Conversation = mongoose.model("Conversation", ConversationSchema, COLLECTION_NAME);
+// Tạo model từ schema với tên collection cụ thể (để tránh xung đột)
+const Conversation = mongoose.model("Conversation", ConversationSchema, "conversations");
 
-export const getCollectionName = () => COLLECTION_NAME;
 export default Conversation; 

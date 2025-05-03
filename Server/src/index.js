@@ -33,6 +33,13 @@ import { handleSepayCallback, handleBankWebhook } from "./Controller/paymentCont
 dotenv.config({ path: ".env" });
 const app = express();
 
+// Xóa model cache để tránh lỗi OverwriteModelError
+Object.keys(mongoose.models).forEach(modelName => {
+  if (modelName === 'Messages' || modelName === 'Conversation') {
+    delete mongoose.models[modelName];
+  }
+});
+
 app.use(
   cors({
     origin: ["http://localhost:3000", "https://quanlythucpham.vercel.app", process.env.NODE_ENV !== 'production' ? '*' : null].filter(Boolean),

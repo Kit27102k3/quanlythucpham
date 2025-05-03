@@ -1,7 +1,14 @@
 import Conversation from "../Model/Message.js";
 import User from "../Model/Register.js";
+import Admin from "../Model/Admin.js";
 import { getAdminId } from "../config/admin.js";
-import mongoose from "mongoose";
+import dotenv from 'dotenv';
+
+// Cấu hình dotenv
+dotenv.config();
+
+// Mã token admin cố định
+const ADMIN_SECRET_TOKEN = "admin-token-for-TKhiem";
 
 // Hàm lấy tất cả người dùng đã nhắn tin với admin
 export const getAllContacts = async (req, res) => {
@@ -13,19 +20,28 @@ export const getAllContacts = async (req, res) => {
     const userIds = conversations.map(conv => conv.userId);
     const users = await User.find({ _id: { $in: userIds } });
     
+    // Lấy thông tin admin nếu có adminId
+    const adminIds = conversations
+      .map(conv => conv.adminId)
+      .filter(id => id !== null);
+    const admins = await Admin.find({ _id: { $in: adminIds } });
+    
     // Map thông tin người dùng vào kết quả
     const contacts = conversations.map(conv => {
       const user = users.find(u => u._id.toString() === conv.userId.toString());
+      const admin = admins.find(a => a && conv.adminId && a._id.toString() === conv.adminId.toString());
       const lastMessage = conv.messages.length > 0 ? conv.messages[conv.messages.length - 1] : null;
       
       return {
         id: user?._id.toString() || conv.userId.toString(),
-        name: user?.userName || user?.firstName + " " + user?.lastName || 'Người dùng',
+        name: user?.firstName ? `${user.firstName} ${user.lastName}` : 'Người dùng',
         avatar: user?.userImage || null,
         online: false, // Có thể triển khai sau với Socket.io
         lastSeen: lastMessage ? formatTimeAgo(lastMessage.timestamp) : null,
         lastMessage: lastMessage ? lastMessage.text : '',
-        unread: conv.messages.filter(msg => msg.sender === 'user' && !msg.read).length
+        unread: conv.messages.filter(msg => msg.sender === 'user' && !msg.read).length,
+        adminName: admin?.fullName || 'Admin',
+        adminId: conv.adminId?.toString()
       };
     });
     
@@ -40,18 +56,18 @@ export const getAllContacts = async (req, res) => {
 export const getMessagesByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
-    
-    // Lấy thông tin người dùng hiện tại từ token
-    const currentUserId = req.user ? req.user.id : null;
+    console.log("Đang lấy tin nhắn cho userId:", userId);
     
     // Kiểm tra xem người dùng có phải là admin không
-    const isAdmin = req.headers['admin-token'] === process.env.ADMIN_SECRET_TOKEN 
+    const isAdmin = req.headers['admin-token'] === ADMIN_SECRET_TOKEN 
       || (req.user && req.user.role === 'admin');
+    console.log("Người dùng là admin:", isAdmin);
     
     // Nếu userId là "admin", thay thế bằng ID admin thực
     let actualUserId = userId;
     if (userId === "admin") {
       actualUserId = await getAdminId();
+      console.log("Changed userId from 'admin' to:", actualUserId);
     }
     
     // Tìm cuộc hội thoại với userId
@@ -61,32 +77,8 @@ export const getMessagesByUserId = async (req, res) => {
       conversation = await Conversation.findOne({ userId: actualUserId });
     } else {
       // Người dùng đang xem tin nhắn của họ với admin
+      const currentUserId = req.user ? req.user.id : actualUserId;
       conversation = await Conversation.findOne({ userId: currentUserId });
-    }
-    
-    if (!conversation) {
-      // Nếu là người dùng đang xem tin nhắn với admin và conversation không tồn tại
-      // Tạo conversation trống
-      if (!isAdmin && currentUserId) {
-        const adminId = await getAdminId();
-        
-        conversation = new Conversation({
-          userId: new mongoose.Types.ObjectId(currentUserId),
-          adminId,
-          messages: [],
-          unreadCount: 0
-        });
-        
-        // Thêm tin nhắn chào mừng
-        conversation.messages.push({
-          text: "Chào mừng bạn đến với hỗ trợ trực tuyến! Tôi có thể giúp gì cho bạn?",
-          sender: "admin",
-          read: false,
-          timestamp: new Date()
-        });
-        
-        await conversation.save();
-      }
     }
     
     if (!conversation) {
@@ -114,56 +106,47 @@ export const getMessagesByUserId = async (req, res) => {
 export const sendMessage = async (req, res) => {
   try {
     const { text, sender, receiverId, userId: requestUserId } = req.body;
+    console.log("Parameters:", { text, sender, receiverId, requestUserId });
     
     if (!text || !sender) {
       return res.status(400).json({ message: "Thiếu thông tin tin nhắn" });
     }
     
-    // Xác định userId (người dùng gửi hoặc nhận tin nhắn)
-    let userId = requestUserId;
-    if (!userId && req.user) {
-      userId = req.user.id;
+    // Xác định userId và adminId
+    let userId, adminId;
+    
+    // Lấy adminId
+    adminId = await getAdminId();
+    
+    // Xác định userId dựa vào sender
+    if (sender === 'admin') {
+      // Nếu admin gửi tin nhắn, receiverId chính là userId
+      userId = receiverId;
+      console.log("Admin đang gửi tin nhắn cho userId:", userId);
+    } else {
+      // Nếu user gửi tin nhắn, lấy userId từ request hoặc token
+      userId = requestUserId || (req.user ? req.user.id : null);
+      console.log("User đang gửi tin nhắn, userId:", userId);
     }
     
     if (!userId) {
-      return res.status(400).json({ message: "Không xác định được userId" });
+      return res.status(400).json({ message: "Không xác định được người nhận tin nhắn" });
     }
     
-    // Xử lý đặc biệt khi admin gửi tin nhắn cho user
-    let userObjectId;
+    console.log(`Tìm cuộc hội thoại với userId: ${userId} và adminId: ${adminId}`);
     
-    if (sender === 'admin' && receiverId !== 'admin') {
-      // Admin gửi tin nhắn cho user
-      if (typeof receiverId === 'string' && mongoose.Types.ObjectId.isValid(receiverId)) {
-        userObjectId = new mongoose.Types.ObjectId(receiverId);
-      } else {
-        return res.status(400).json({ message: "receiverId không hợp lệ" });
-      }
-    } else {
-      // User gửi tin nhắn cho admin hoặc khác
-      // Kiểm tra và chuyển đổi userId thành ObjectId
-      try {
-        if (typeof userId === 'string' && mongoose.Types.ObjectId.isValid(userId)) {
-          userObjectId = new mongoose.Types.ObjectId(userId);
-        } else {
-          return res.status(400).json({ message: "userId không hợp lệ" });
-        }
-      } catch (error) {
-        console.error("Lỗi khi chuyển đổi userId:", error);
-        return res.status(400).json({ message: "Lỗi khi xử lý userId" });
-      }
-    }
+    // Tìm cuộc hội thoại hiện có
+    let conversation = await Conversation.findOne({ 
+      userId: userId 
+    });
     
-    // Xác định adminId
-    const adminId = await getAdminId();
-    
-    // Tìm hoặc tạo cuộc hội thoại
-    let conversation = await Conversation.findOne({ userId: userObjectId });
+    console.log("Kết quả tìm kiếm conversation:", conversation ? "Tìm thấy" : "Không tìm thấy");
     
     if (!conversation) {
       // Tạo mới cuộc hội thoại nếu chưa tồn tại
+      console.log("Tạo conversation mới");
       conversation = new Conversation({
-        userId: userObjectId,
+        userId,
         adminId,
         messages: [],
         unreadCount: 0
@@ -186,7 +169,7 @@ export const sendMessage = async (req, res) => {
     }
     
     // Lưu cuộc hội thoại
-    const savedConversation = await conversation.save();
+    await conversation.save();
     
     // Lấy tin nhắn vừa thêm vào
     const addedMessage = conversation.messages[conversation.messages.length - 1];
@@ -201,7 +184,6 @@ export const sendMessage = async (req, res) => {
     });
   } catch (error) {
     console.error("Lỗi khi gửi tin nhắn:", error);
-    console.error("Chi tiết lỗi:", error.stack);
     return res.status(500).json({ message: "Lỗi server: " + error.message });
   }
 };
@@ -211,6 +193,8 @@ export const markAllAsRead = async (req, res) => {
   try {
     const { userId } = req.params;
     
+    console.log(`Đánh dấu tất cả tin nhắn đã đọc cho userId: ${userId}`);
+    
     // Tìm cuộc hội thoại
     const conversation = await Conversation.findOne({ userId });
     
@@ -218,10 +202,11 @@ export const markAllAsRead = async (req, res) => {
       return res.status(404).json({ message: "Không tìm thấy cuộc hội thoại" });
     }
     
-    // Cập nhật trạng thái đã đọc cho tất cả tin nhắn từ user
+    // Cập nhật trạng thái đã đọc cho tất cả tin nhắn từ admin
     let updated = false;
+    
     conversation.messages = conversation.messages.map(msg => {
-      if (msg.sender === 'user' && !msg.read) {
+      if (msg.sender === 'admin' && !msg.read) {
         updated = true;
         return { ...msg.toObject(), read: true };
       }
@@ -232,6 +217,9 @@ export const markAllAsRead = async (req, res) => {
     if (updated) {
       conversation.unreadCount = 0;
       await conversation.save();
+      console.log(`Đã cập nhật ${conversation.messages.length} tin nhắn, đánh dấu đã đọc`);
+    } else {
+      console.log("Không có tin nhắn nào cần cập nhật");
     }
     
     return res.status(200).json({ success: true });
@@ -245,7 +233,7 @@ export const markAllAsRead = async (req, res) => {
 export const getUnreadCount = async (req, res) => {
   try {
     // Kiểm tra admin token
-    const isAdmin = req.headers['admin-token'] === process.env.ADMIN_SECRET_TOKEN;
+    const isAdmin = req.headers['admin-token'] === ADMIN_SECRET_TOKEN;
     if (!isAdmin) {
       return res.status(403).json({ message: "Không có quyền truy cập" });
     }
