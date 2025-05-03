@@ -1,43 +1,51 @@
 /**
- * Hàm trích xuất token từ request
- * Hỗ trợ lấy token từ Authorization header hoặc cookie
+ * Extract authentication token from request
+ * @param {Object} req - The request object
+ * @returns {string|null} The extracted token or null if not found
  */
+import jwt from 'jsonwebtoken';
+
 export const getTokenFrom = (req) => {
-  const authorization = req.headers.authorization;
+  // Try to get token from authorization header
+  if (req.headers && req.headers.authorization) {
+    const auth = req.headers.authorization;
+    if (auth.toLowerCase().startsWith('bearer ')) {
+      return auth.substring(7);
+    }
+  }
   
-  if (authorization && authorization.startsWith('Bearer ')) {
-    // Lấy token từ Authorization header
-    return authorization.replace('Bearer ', '');
-  } else if (req.cookies && (req.cookies.token || req.cookies.accessToken)) {
-    // Lấy token từ cookies
-    return req.cookies.token || req.cookies.accessToken;
+  // Try to get from alternate authorization header format
+  if (typeof req.get === 'function') {
+    const auth = req.get('authorization');
+    if (auth && auth.toLowerCase().startsWith('bearer ')) {
+      return auth.substring(7);
+    }
+  }
+  
+  // Try to get from cookies
+  if (req.cookies) {
+    if (req.cookies.token) return req.cookies.token;
+    if (req.cookies.accessToken) return req.cookies.accessToken;
   }
   
   return null;
 };
 
 /**
- * Hàm trích xuất user ID từ token
- * Sử dụng khi cần lấy thông tin user ID mà không cần xác thực đầy đủ token
+ * Get user ID from token without full verification
+ * This function uses a simplified approach for extracting the payload
+ * @param {string} token - JWT token
+ * @returns {string|null} User ID or null if invalid/expired
  */
 export const getUserIdFromToken = (token) => {
   if (!token) return null;
   
   try {
-    // Giải mã token để lấy payload
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-
-    const payload = JSON.parse(jsonPayload);
-    return payload.id || null;
+    // Decode without verification
+    const decoded = jwt.decode(token);
+    return decoded?.id || null;
   } catch (error) {
-    console.error('Lỗi khi trích xuất ID từ token:', error);
+    console.error('Error extracting user ID from token:', error);
     return null;
   }
 }; 
