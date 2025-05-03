@@ -2,7 +2,7 @@ import Review from "../Model/Review.js";
 import Product from "../Model/Products.js";
 import User from "../Model/Register.js";
 import mongoose from "mongoose";
-import { getTokenFrom } from "../Utils/tokenExtractor.js";
+import { getTokenFrom } from "../utils/tokenExtractor.js";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
