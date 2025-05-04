@@ -9,8 +9,8 @@ import dotenv from "dotenv";
 // Khởi tạo cấu hình dotenv
 dotenv.config();
 
-// Lấy JWT_SECRET từ biến môi trường
-const JWT_SECRET = "dnc-food-review-secret-key-123456";
+// Lấy JWT_SECRET từ biến môi trường - process is available in Node.js by default
+const JWT_SECRET = process.env.JWT_SECRET_ACCESS || "SECRET_ACCESS";
 
 // Lấy tất cả đánh giá cho một sản phẩm
 export const getProductReviews = async (req, res) => {

@@ -880,75 +880,14 @@ const generalIntents = [
  */
 async function getAnswerFromRagChatbot(message) {
   try {
-    // Create a temporary JSON file with the user message
-    const tempFile = path.join(process.cwd(), 'temp_message.json');
-    fs.writeFileSync(tempFile, JSON.stringify({ message }), 'utf8');
-
-    // Return a promise that will resolve with the chatbot's response
-    return new Promise((resolve, reject) => {
-      // Spawn Python process to run the RAG chatbot
-      const pythonProcess = spawn('python', [
-        path.join(process.cwd(), 'src/chatbot/app.py'),
-        '--message', message
-      ]);
-
-      let output = '';
-      let errorOutput = '';
-
-      // Collect output from the Python process
-      pythonProcess.stdout.on('data', (data) => {
-        output += data.toString();
-      });
-
-      pythonProcess.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
-
-      // When the Python process exits, check if it was successful
-      pythonProcess.on('close', (code) => {
-        // Clean up temp file
-        try {
-          fs.unlinkSync(tempFile);
-        } catch (err) {
-          console.error('Error cleaning up temp file:', err);
-        }
-
-        if (code !== 0) {
-          console.error(`Python process exited with code ${code}`);
-          console.error(`Error: ${errorOutput}`);
-          reject(new Error(`Python process failed with code ${code}`));
-          return;
-        }
-
-        try {
-          // Try to parse the output as JSON
-          const jsonStart = output.indexOf('{');
-          const jsonEnd = output.lastIndexOf('}');
-          
-          if (jsonStart >= 0 && jsonEnd >= 0) {
-            const jsonStr = output.substring(jsonStart, jsonEnd + 1);
-            const response = JSON.parse(jsonStr);
-            resolve(response.answer || response.text || "Không thể xử lý phản hồi");
-          } else {
-            // If not valid JSON, just return the raw output
-            resolve(output.trim() || "Không có phản hồi từ chatbot");
-          }
-        } catch (error) {
-          console.error('Error parsing RAG chatbot response:', error);
-          // If JSON parsing fails, return the raw output
-          resolve(output.trim() || "Không thể phân tích phản hồi");
-        }
-      });
-      
-      // Handle errors from the Python process
-      pythonProcess.on('error', (error) => {
-        console.error('Error spawning Python process:', error);
-        reject(error);
-      });
-    });
-      } catch (error) {
-    console.error('Error getting answer from RAG chatbot:', error);
-    return "Xin lỗi, tôi không thể xử lý câu hỏi của bạn lúc này. Vui lòng thử lại sau.";
+    console.log("Đang thử sử dụng RAG chatbot...");
+    
+    // TẠM THỜI TẮT RAG CHATBOT ĐỂ TRÁNH LỖI
+    console.log("RAG chatbot bị tắt để tránh lỗi. Chuyển sang chatbot đơn giản.");
+    return null; // Luôn trả về null để sử dụng chatbot pattern-based
+  } catch (error) {
+    console.error('Lỗi tổng quát khi sử dụng RAG chatbot:', error);
+    return null; // Trả về null để sử dụng chatbot pattern-based
   }
 }
 
@@ -966,30 +905,7 @@ export const handleMessage = async (req, res) => {
 
     console.log(`Nhận tin nhắn: "${message}" từ người dùng: ${user_id} | productId: ${productId ? productId : 'không có'}`);
 
-    // First try to get response from RAG chatbot
-    try {
-      const ragResponse = await getAnswerFromRagChatbot(message);
-      
-      if (ragResponse && typeof ragResponse === 'string' && ragResponse.length > 0 && 
-          ragResponse !== "Không thể xử lý phản hồi" && 
-          ragResponse !== "Không có phản hồi từ chatbot" &&
-          ragResponse !== "Không thể phân tích phản hồi") {
-        // Return the response from the RAG chatbot
-        return res.status(200).json({
-            success: true,
-          message: "Phản hồi từ RAG chatbot",
-          response: {
-            text: ragResponse,
-            source: "rag"
-          }
-        });
-      }
-        } catch (error) {
-      console.error("Error from RAG chatbot:", error);
-      // Continue with pattern-based chatbot if RAG fails
-    }
-
-    // If RAG chatbot fails or doesn't provide a good response, fall back to pattern-based approach
+    // Trực tiếp sử dụng chatbot pattern-based, bỏ qua RAG
     // Sử dụng context nếu có
     let context = null;
 
@@ -1000,8 +916,8 @@ export const handleMessage = async (req, res) => {
         product = await Product.findById(productId);
         if (product) {
           context = { type: 'product', data: product };
-          }
-        } catch (error) {
+        }
+      } catch (error) {
         console.error(`Lỗi khi lấy thông tin sản phẩm: ${error.message}`);
       }
     }
@@ -1027,26 +943,17 @@ export const handleMessage = async (req, res) => {
           response = intentHandler;
         }
       } else {
-        // Gửi tin nhắn đến Rasa nếu không tìm thấy intent phù hợp
-        try {
-          response = await sendToRasa(message, user_id);
-        } catch (error) {
-          console.error(`Lỗi khi gửi tin nhắn đến Rasa: ${error.message}`);
-          response = "Xin lỗi, tôi không hiểu ý của bạn. Bạn có thể diễn đạt lại được không?";
-        }
+        // Nếu không tìm thấy intent nào phù hợp, trả về tin nhắn mặc định
+        response = "Xin lỗi, tôi không hiểu ý của bạn. Bạn có thể diễn đạt lại hoặc hỏi về sản phẩm, giá cả, hoặc dịch vụ giao hàng của chúng tôi.";
       }
     }
 
     // Trả về phản hồi
-    return res.status(200).json({
-              success: true,
-      message: "Xử lý tin nhắn thành công",
-      response: {
-        text: response,
-              intent: intent,
-        score: score,
-        source: "pattern"
-      }
+    res.status(200).json({
+      success: true,
+      message: response,
+      intent: intent,
+      score: score
     });
   } catch (error) {
     console.error(`Lỗi xử lý tin nhắn: ${error.message}`);

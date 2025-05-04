@@ -22,7 +22,7 @@ const addReview = async (reviewData) => {
     }
 
     const response = await axios.post(
-      `${API_URLS.REVIEWS}`,
+      `${API_URLS.REVIEWS}/product/${reviewData.productId}`,
       reviewData,
       {
         headers: {
