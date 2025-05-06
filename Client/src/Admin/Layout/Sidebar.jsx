@@ -22,6 +22,7 @@ import messagesApi from "../../api/messagesApi";
 const AdminSidebar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeItem, setActiveItem] = useState(() => {
     return localStorage.getItem("activeItem") || "dashboard";
   });
@@ -47,7 +48,11 @@ const AdminSidebar = () => {
   }, [isSidebarOpen]);
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    if (isMobile) {
+      setShowMobileMenu(!showMobileMenu);
+    } else {
+      setIsSidebarOpen(!isSidebarOpen);
+    }
   };
 
   const handleNavigation = (path, item) => {
@@ -57,7 +62,7 @@ const AdminSidebar = () => {
     
     // Auto close sidebar on mobile after navigation
     if (isMobile) {
-      setIsSidebarOpen(false);
+      setShowMobileMenu(false);
     }
   };
 
@@ -169,11 +174,11 @@ const AdminSidebar = () => {
   ];
 
   // Render mobile bottom navigation bar
-  if (isMobile && !isSidebarOpen) {
+  if (isMobile) {
     return (
       <>
         {/* Mobile bottom navigation */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg">
           <div className="flex justify-between items-center px-2 py-2">
             {/* Only show first 5 menu items in the bottom bar */}
             {menuItems.slice(0, 5).map((item) => (
@@ -200,7 +205,9 @@ const AdminSidebar = () => {
             {/* More button to toggle sidebar for additional options */}
             <div
               onClick={toggleSidebar}
-              className="flex flex-col items-center justify-center p-2 rounded-md text-gray-500 hover:text-green-500"
+              className={`flex flex-col items-center justify-center p-2 rounded-md ${
+                showMobileMenu ? "text-green-600" : "text-gray-500 hover:text-green-500"
+              }`}
             >
               <span>
                 <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -215,7 +222,7 @@ const AdminSidebar = () => {
         </div>
 
         {/* Floating action button for adding - positioned above bottom nav */}
-        <div className="fixed right-4 bottom-16 z-50">
+        <div className="fixed right-4 bottom-16 z-30">
           <button 
             onClick={() => navigate('/admin/products')}
             className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full shadow-lg transition-colors"
@@ -226,6 +233,79 @@ const AdminSidebar = () => {
             </svg>
           </button>
         </div>
+
+        {/* Mobile menu popup */}
+        {showMobileMenu && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div 
+              className="absolute inset-0 bg-black bg-opacity-50" 
+              onClick={toggleSidebar}
+            ></div>
+            <div className="relative bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl z-10 max-h-[80vh] overflow-y-auto">
+              <div className="p-4 bg-gradient-to-r from-green-500 to-green-400 rounded-t-lg">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-white">Menu chức năng</h2>
+                  <button
+                    onClick={toggleSidebar}
+                    className="p-2 hover:bg-green-400 rounded-full text-white"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="p-2">
+                <div className="grid grid-cols-3 gap-2">
+                  {menuItems.map((item) => (
+                    <div
+                      key={item.key}
+                      onClick={() => handleNavigation(item.path, item.key)}
+                      className={`flex flex-col items-center justify-center p-3 rounded-lg ${
+                        activeItem === item.key
+                          ? "bg-green-50 text-green-600 border border-green-200"
+                          : "text-gray-700 hover:bg-gray-50 border border-transparent"
+                      }`}
+                    >
+                      <div className="relative">
+                        <span>{item.icon}</span>
+                        {item.badge && (
+                          <span 
+                            className={`badge absolute -top-2 -right-2 inline-block px-2 py-0.5 min-w-[20px] text-center text-xs font-semibold rounded-full ${item.badgeClassName || 'bg-green-500 text-white'}`}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs mt-2 text-center">{item.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex items-center space-x-3">
+                    <img
+                      src="/images/avatar.png"
+                      alt="Admin"
+                      className="w-10 h-10 rounded-full object-cover border-2 border-green-200"
+                    />
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-gray-700">Admin</span>
+                      <span className="text-xs text-gray-500">Quản trị viên</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleNavigation("/logout", "logout")}
+                    className="flex items-center justify-center mt-3 p-2 w-full bg-red-50 text-red-500 hover:bg-red-100 rounded-md transition-colors"
+                  >
+                    <ExitIcon className="size-5 mr-2" />
+                    <span className="font-medium">Đăng xuất</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Add padding to main content to prevent overlap with bottom nav */}
         <div className="pb-16"></div>

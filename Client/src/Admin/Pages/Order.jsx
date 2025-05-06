@@ -1017,15 +1017,24 @@ const OrderAdmin = () => {
             return updatedOrders;
           });
           
+          // Hiển thị thông báo phù hợp dựa trên trạng thái
+          if (newStatus === ORDER_STATUSES.DELIVERING) {
+            showToast('success', 'Đã cập nhật trạng thái', 'Email thông báo giao hàng đã được gửi đến khách hàng kèm thông tin thanh toán');
+          } else {
+            showToast('success', 'Đã cập nhật trạng thái', 'Trạng thái đơn hàng đã được cập nhật thành công');
+          }
+          
           setStatusDialog(false);
           setSelectedOrderForStatus(null);
         } else {
           console.error("Lỗi khi cập nhật trạng thái đơn hàng");
+          showToast('error', 'Lỗi cập nhật', 'Không thể cập nhật trạng thái đơn hàng');
         }
       } catch (error) {
         console.error("Lỗi khi gọi API cập nhật trạng thái:", error);
+        showToast('error', 'Lỗi hệ thống', 'Đã xảy ra lỗi khi cập nhật trạng thái');
       }
-    }, [ORDER_STATUSES.COMPLETED, calculateOrderStats]);
+    }, [ORDER_STATUSES.COMPLETED, ORDER_STATUSES.DELIVERING, calculateOrderStats, showToast]);
 
     const confirmMarkAsPaid = useCallback((orderId) => {
       setPaymentOrderId(orderId);

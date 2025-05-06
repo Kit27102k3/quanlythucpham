@@ -18,6 +18,14 @@ const BlockedAccountAlert = () => {
         return;
       }
 
+      // Kiểm tra nếu là tài khoản admin thì bỏ qua
+      const userRole = localStorage.getItem("userRole");
+      if (userRole === "admin") {
+        console.log("Tài khoản admin, bỏ qua kiểm tra trạng thái khóa");
+        setLoading(false);
+        return;
+      }
+
       // Kiểm tra nhanh từ localStorage trước
       const isBlockedLocal = localStorage.getItem("isBlocked") === "true";
       if (isBlockedLocal) {
@@ -30,7 +38,7 @@ const BlockedAccountAlert = () => {
       const checkAccountStatus = async () => {
         try {
           // Kiểm tra token trước khi gọi API
-          const token = localStorage.getItem("accessToken");
+          const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
           if (!token) {
             console.log("Không có token, bỏ qua kiểm tra trạng thái tài khoản");
             setLoading(false);
@@ -48,9 +56,9 @@ const BlockedAccountAlert = () => {
         } catch (error) {
           console.error("Lỗi khi kiểm tra trạng thái tài khoản:", error);
           
-          // Không cần hiển thị lỗi 401 vì có thể là chưa đăng nhập
-          if (error.response?.status === 401) {
-            console.log("Lỗi xác thực, có thể chưa đăng nhập");
+          // Không hiển thị lỗi nếu là 404 (không tìm thấy) hoặc 401 (không xác thực)
+          if (error.response?.status === 404 || error.response?.status === 401) {
+            console.log(`Lỗi ${error.response?.status}, có thể là tài khoản không tồn tại hoặc chưa đăng nhập`);
           }
           
           setLoading(false);
@@ -62,10 +70,7 @@ const BlockedAccountAlert = () => {
 
     const handleLogout = () => {
       // Xóa dữ liệu đăng nhập
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("userId");
-      localStorage.removeItem("userRole");
+      localStorage.clear(); // Xóa tất cả dữ liệu localStorage
       
       // Đóng dialog
       setVisible(false);

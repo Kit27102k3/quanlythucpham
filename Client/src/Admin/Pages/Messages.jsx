@@ -44,7 +44,21 @@ const Messages = () => {
       
       // Đánh dấu tin nhắn đã đọc
       if (messagesData.some(m => !m.read && m.sender !== 'admin')) {
-        await messagesApi.markAllAsRead(userId);
+        try {
+          await messagesApi.markAllAsRead(userId);
+          console.log("Đã đánh dấu tin nhắn của người dùng", userId, "là đã đọc");
+          
+          // Cập nhật trạng thái unread trong danh sách liên hệ ngay lập tức
+          setContacts(prevContacts => 
+            prevContacts.map(contact => 
+              contact.id === userId 
+                ? { ...contact, unread: 0 } 
+                : contact
+            )
+          );
+        } catch (error) {
+          console.error("Lỗi khi đánh dấu tin nhắn đã đọc:", error);
+        }
       }
       
       // Cập nhật danh sách liên hệ (đánh dấu đã đọc)
@@ -314,10 +328,13 @@ const Messages = () => {
       <div className="flex items-center mb-4">
         <h1 className="text-2xl font-bold text-gray-800">Quản lý tin nhắn</h1>
         <div className="ml-auto">
-          <Badge value={contacts.reduce((sum, contact) => sum + (contact.unread || 0), 0)} 
-                 severity="danger" 
-                 className={contacts.some(c => c.unread > 0) ? "animate-pulse" : ""}>
-          </Badge>
+          {contacts.reduce((sum, contact) => sum + (contact.unread || 0), 0) > 0 && (
+            <Badge 
+              value={contacts.reduce((sum, contact) => sum + (contact.unread || 0), 0)} 
+              severity="danger" 
+              className="animate-pulse" 
+            />
+          )}
         </div>
       </div>
       
@@ -356,7 +373,19 @@ const Messages = () => {
                         contact-item flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200
                         ${selectedContact?.id === contact.id ? 'bg-green-50 border-l-4 border-green-500' : 'hover:bg-gray-100 border-l-4 border-transparent'}
                       `}
-                      onClick={() => setSelectedContact(contact)}
+                      onClick={() => {
+                        // Cập nhật trạng thái unread ngay lập tức khi click
+                        if (contact.unread > 0) {
+                          setContacts(prevContacts => 
+                            prevContacts.map(c => 
+                              c.id === contact.id 
+                                ? { ...c, unread: 0 } 
+                                : c
+                            )
+                          );
+                        }
+                        setSelectedContact(contact);
+                      }}
                     >
                       <div className="relative">
                         <Avatar 

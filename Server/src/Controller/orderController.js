@@ -2,7 +2,7 @@ import Order from "../Model/Order.js";
 import Product from "../Model/Products.js";
 import axios from "axios";
 import dotenv from "dotenv";
-import { sendOrderConfirmationEmail } from "../utils/emailService.js";
+import { sendOrderConfirmationEmail, sendOrderShippingEmail } from "../utils/emailService.js";
 import BestSellingProduct from "../Model/BestSellingProduct.js";
 
 dotenv.config();
@@ -191,8 +191,12 @@ export const updateOrder = async (req, res) => {
     const orderId = req.params.id;
     const updateData = req.body;
     
+    console.log("updateOrder được gọi với dữ liệu:", JSON.stringify(updateData));
+    
     // Tìm và cập nhật đơn hàng
-    const order = await Order.findById(orderId);
+    const order = await Order.findById(orderId)
+      .populate("userId", "firstName lastName userName email phone address")
+      .populate("products.productId");
     
     if (!order) {
       return res.status(404).json({ 
@@ -200,6 +204,10 @@ export const updateOrder = async (req, res) => {
         message: "Không tìm thấy đơn hàng" 
       });
     }
+    
+    // Lưu trạng thái cũ trước khi cập nhật
+    const previousStatus = order.status;
+    const newStatus = updateData.status;
 
     // Lọc các trường được phép cập nhật
     const allowedFields = ['status', 'orderCode', 'shippingInfo', 'notes'];
@@ -215,9 +223,6 @@ export const updateOrder = async (req, res) => {
     if (!order.orderCode && !filteredData.orderCode) {
       filteredData.orderCode = generateOrderCode();
     }
-    
-    const previousStatus = order.status;
-    const newStatus = filteredData.status;
     
     // THÊM MỚI: Xử lý cập nhật tracking_logs khi có thay đổi trạng thái
     if (newStatus && newStatus !== previousStatus) {
@@ -359,8 +364,53 @@ export const updateOrder = async (req, res) => {
       { new: true }
     ).populate("userId").populate("products.productId");
     
+    // GỬI EMAIL THÔNG BÁO KHI CHUYỂN TRẠNG THÁI SANG "DELIVERING"
+    if (newStatus === 'delivering' && previousStatus !== 'delivering') {
+      try {
+        console.log("Đang chuẩn bị gửi email thông báo giao hàng...");
+        console.log("Thông tin đơn hàng để gửi email:", {
+          orderCode: order.orderCode,
+          email: order.userId?.email,
+          address: order.userId?.address,
+          phone: order.userId?.phone,
+          userName: order.userId?.userName,
+          firstName: order.userId?.firstName, 
+          lastName: order.userId?.lastName
+        });
+        
+        // Đảm bảo order.userId đã được populate đầy đủ
+        if (order.userId && typeof order.userId === 'object') {
+          // Gửi email thông báo đơn hàng đang được giao
+          const emailSent = await sendOrderShippingEmail(order);
+          
+          if (emailSent) {
+            console.log(`Đã gửi email thông báo giao hàng cho đơn hàng #${order.orderCode || order._id}`);
+          } else {
+            console.log(`Không thể gửi email thông báo giao hàng cho đơn hàng #${order.orderCode || order._id}`);
+            console.log("Chi tiết đơn hàng:", JSON.stringify({
+              id: order._id,
+              orderCode: order.orderCode,
+              userId: {
+                email: order.userId?.email,
+                firstName: order.userId?.firstName,
+                lastName: order.userId?.lastName,
+                address: order.userId?.address,
+                phone: order.userId?.phone
+              }
+            }, null, 2));
+          }
+        } else {
+          console.log("Không thể gửi email: order.userId không được populate đầy đủ");
+        }
+      } catch (emailError) {
+        console.error('Lỗi khi gửi email thông báo giao hàng:', emailError);
+        console.error('Stack trace:', emailError.stack);
+        // Không trả về lỗi cho client, chỉ log lỗi
+      }
+    }
+    
     // Gửi email thông báo khi trạng thái đơn hàng thay đổi (nếu có email)
-    if (newStatus && newStatus !== previousStatus && updatedOrder.shippingInfo && updatedOrder.shippingInfo.email) {
+    else if (newStatus && newStatus !== previousStatus && updatedOrder.shippingInfo && updatedOrder.shippingInfo.email) {
       try {
         await sendOrderConfirmationEmail(updatedOrder);
         console.log(`Đã gửi email cập nhật trạng thái đơn hàng ${updatedOrder.orderCode} đến ${updatedOrder.shippingInfo.email}`);
@@ -375,6 +425,8 @@ export const updateOrder = async (req, res) => {
       data: updatedOrder
     });
   } catch (error) {
+    console.error("Error in updateOrder:", error);
+    console.error(error.stack);
     return res.status(500).json({
       success: false,
       message: "Lỗi khi cập nhật đơn hàng",
@@ -386,13 +438,74 @@ export const updateOrder = async (req, res) => {
 export const orderUpdate = async (req, res) => {
   try {
     const { status } = req.body;
-    const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-    res.json(order);
+    
+    console.log("orderUpdate called with status:", status);
+    console.log("Request body:", JSON.stringify(req.body));
+    
+    // Trước tiên lấy thông tin đơn hàng hiện tại để theo dõi thay đổi trạng thái
+    // Đảm bảo populate đầy đủ thông tin để gửi email
+    const currentOrder = await Order.findById(req.params.id)
+      .populate("userId", "firstName lastName userName email phone address")
+      .populate("products.productId");
+    
+    if (!currentOrder) {
+      console.log("Không tìm thấy đơn hàng với ID:", req.params.id);
+      return res.status(404).json({ error: "Không tìm thấy đơn hàng" });
+    }
+    
+    console.log("Thông tin đơn hàng trước khi cập nhật:", {
+      id: currentOrder._id,
+      status: currentOrder.status,
+      email: currentOrder.userId?.email,
+      orderCode: currentOrder.orderCode
+    });
+    
+    // Lưu trạng thái cũ trước khi cập nhật
+    const previousStatus = currentOrder.status;
+    
+    // Cập nhật trạng thái đơn hàng
+    currentOrder.status = status;
+    await currentOrder.save();
+    
+    // Gửi email thông báo khi đơn hàng chuyển sang trạng thái "đang giao đến khách"
+    if (status === 'delivering' && previousStatus !== 'delivering') {
+      try {
+        console.log("Đang chuẩn bị gửi email thông báo giao hàng...");
+        console.log("Đơn hàng có userId với email:", currentOrder.userId?.email);
+        
+        // Gửi email thông báo đơn hàng đang được giao
+        const emailSent = await sendOrderShippingEmail(currentOrder);
+        
+        if (emailSent) {
+          console.log(`Đã gửi email thông báo giao hàng cho đơn hàng #${currentOrder.orderCode || currentOrder._id}`);
+        } else {
+          console.log(`Không thể gửi email thông báo giao hàng cho đơn hàng #${currentOrder.orderCode || currentOrder._id}`);
+          console.log("Chi tiết đơn hàng:", JSON.stringify({
+            id: currentOrder._id,
+            orderCode: currentOrder.orderCode,
+            userId: {
+              email: currentOrder.userId?.email,
+              firstName: currentOrder.userId?.firstName,
+              lastName: currentOrder.userId?.lastName,
+            }
+          }, null, 2));
+        }
+      } catch (emailError) {
+        console.error('Lỗi khi gửi email thông báo giao hàng:', emailError);
+        console.error('Stack trace:', emailError.stack);
+        // Không trả về lỗi cho client, chỉ log lỗi
+      }
+    }
+    
+    // Trả về đơn hàng đã cập nhật với đầy đủ thông tin
+    const updatedOrder = await Order.findById(req.params.id)
+      .populate("userId")
+      .populate("products.productId");
+    
+    res.json(updatedOrder);
   } catch (err) {
+    console.error("Lỗi khi cập nhật trạng thái đơn hàng:", err);
+    console.error("Stack trace:", err.stack);
     res.status(500).json({ error: err.message });
   }
 };

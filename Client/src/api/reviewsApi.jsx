@@ -86,18 +86,17 @@ const deleteReview = async (reviewId) => {
 // API cho Admin
 const getAllReviews = async (page = 1, limit = 10) => {
   try {
-    const token = localStorage.getItem("adminToken");
+    // Sử dụng token đặc biệt cho admin TKhiem
+    const token = localStorage.getItem("accessToken");
+    
     if (!token) {
       throw new Error("Bạn cần đăng nhập với quyền admin để xem tất cả đánh giá");
     }
 
+    console.log('Sử dụng token để xem đánh giá:', token);
+
     const response = await axios.get(
-      `${API_URLS.REVIEWS}/admin/all?page=${page}&limit=${limit}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      `${API_URLS.REVIEWS}/admin/all?page=${page}&limit=${limit}&token=${token}`
     );
     return response.data.data;
   } catch (error) {
@@ -109,19 +108,18 @@ const getAllReviews = async (page = 1, limit = 10) => {
 // Hàm cập nhật trạng thái hiển thị của đánh giá (admin)
 const toggleReviewStatus = async (reviewId) => {
   try {
-    const token = localStorage.getItem("adminToken");
+    // Sử dụng token đặc biệt cho admin TKhiem
+    const token = localStorage.getItem("accessToken");
+    
     if (!token) {
       throw new Error("Bạn cần đăng nhập với quyền admin để thực hiện hành động này");
     }
 
+    console.log('Sử dụng token để cập nhật trạng thái đánh giá:', token);
+
     const response = await axios.patch(
-      `${API_URLS.REVIEWS}/admin/toggle/${reviewId}`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      `${API_URLS.REVIEWS}/admin/toggle/${reviewId}?token=${token}`,
+      {}
     );
     return response.data;
   } catch (error) {
@@ -133,19 +131,8 @@ const toggleReviewStatus = async (reviewId) => {
 // Thêm phản hồi cho đánh giá
 export const addReplyToReview = async (reviewId, text) => {
   try {
-    // Kiểm tra tất cả các token có thể có
-    const token = localStorage.getItem('accessToken') || 
-                  localStorage.getItem('token') || 
-                  localStorage.getItem('userAccessToken') || 
-                  localStorage.getItem('adminAccessToken');
-    
-    // Log để debug
-    console.log('Tokens available:', {
-      accessToken: localStorage.getItem('accessToken'),
-      token: localStorage.getItem('token'),
-      userAccessToken: localStorage.getItem('userAccessToken'),
-      adminAccessToken: localStorage.getItem('adminAccessToken')
-    });
+    // Sử dụng token đặc biệt cho admin TKhiem
+    const token = localStorage.getItem("accessToken");
     
     // Kiểm tra nếu token tồn tại
     if (!token) {
@@ -155,12 +142,11 @@ export const addReplyToReview = async (reviewId, text) => {
     console.log('Using token for reply:', token);
     
     const response = await axios.post(
-      `${API_URLS.REVIEWS}/${reviewId}/replies`,
+      `${API_URLS.REVIEWS}/${reviewId}/replies?token=${token}`,
       { text },
       {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         }
       }
     );
@@ -174,11 +160,8 @@ export const addReplyToReview = async (reviewId, text) => {
 // Cập nhật phản hồi
 export const updateReply = async (reviewId, replyId, text) => {
   try {
-    // Kiểm tra tất cả các token có thể có
-    const token = localStorage.getItem('accessToken') || 
-                  localStorage.getItem('token') || 
-                  localStorage.getItem('userAccessToken') || 
-                  localStorage.getItem('adminAccessToken');
+    // Sử dụng token đặc biệt cho admin TKhiem
+    const token = localStorage.getItem("accessToken");
     
     // Kiểm tra nếu token tồn tại
     if (!token) {
@@ -188,12 +171,11 @@ export const updateReply = async (reviewId, replyId, text) => {
     console.log('Using token for update reply:', token);
     
     const response = await axios.put(
-      `${API_URLS.REVIEWS}/${reviewId}/replies/${replyId}`,
+      `${API_URLS.REVIEWS}/${reviewId}/replies/${replyId}?token=${token}`,
       { text },
       {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         }
       }
     );
@@ -207,11 +189,8 @@ export const updateReply = async (reviewId, replyId, text) => {
 // Xóa phản hồi
 export const deleteReply = async (reviewId, replyId) => {
   try {
-    // Kiểm tra tất cả các token có thể có
-    const token = localStorage.getItem('accessToken') || 
-                  localStorage.getItem('token') || 
-                  localStorage.getItem('userAccessToken') || 
-                  localStorage.getItem('adminAccessToken');
+    // Sử dụng token đặc biệt cho admin TKhiem
+    const token = localStorage.getItem("accessToken");
     
     // Kiểm tra nếu token tồn tại
     if (!token) {
@@ -221,12 +200,7 @@ export const deleteReply = async (reviewId, replyId) => {
     console.log('Using token for delete reply:', token);
     
     const response = await axios.delete(
-      `${API_URLS.REVIEWS}/${reviewId}/replies/${replyId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }
+      `${API_URLS.REVIEWS}/${reviewId}/replies/${replyId}?token=${token}`
     );
     return response.data;
   } catch (error) {

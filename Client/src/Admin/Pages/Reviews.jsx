@@ -20,6 +20,7 @@ import "./styles.css";
  function Reviews() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [replyText, setReplyText] = useState("");
   const [replyingTo, setReplyingTo] = useState(null);
   const [products, setProducts] = useState([]);
@@ -31,12 +32,14 @@ import "./styles.css";
   useEffect(() => {
     const fetchReviews = async () => {
       setLoading(true);
+      setError(null);
       try {
         const data = await reviewsApi.getAllReviews();
         setReviews(data.reviews || []);
       } catch (error) {
         console.error("Lỗi khi tải đánh giá:", error);
-        toast.error("Không thể tải đánh giá. Vui lòng thử lại sau.");
+        setError(error.message || "Không thể tải đánh giá. Vui lòng thử lại sau.");
+        toast.error("Không thể tải đánh giá: " + (error.response?.data?.message || error.message));
       } finally {
         setLoading(false);
       }
@@ -48,12 +51,30 @@ import "./styles.css";
         setProducts(data || []);
       } catch (error) {
         console.error("Lỗi khi tải sản phẩm:", error);
+        toast.error("Không thể tải danh sách sản phẩm");
       }
     };
 
     fetchReviews();
     fetchProducts();
   }, []);
+
+  // Hàm tải lại dữ liệu đánh giá
+  const handleRefresh = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await reviewsApi.getAllReviews();
+      setReviews(data.reviews || []);
+      toast.success("Đã cập nhật dữ liệu đánh giá");
+    } catch (error) {
+      console.error("Lỗi khi tải lại đánh giá:", error);
+      setError(error.message || "Không thể tải đánh giá. Vui lòng thử lại sau.");
+      toast.error("Không thể tải lại đánh giá: " + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Hàm hiển thị sao dựa trên rating
   const renderStars = (rating) => {
@@ -201,6 +222,25 @@ import "./styles.css";
       <Toaster position="top-right" richColors />
       <h1 className="text-2xl font-bold mb-6">Quản lý đánh giá sản phẩm</h1>
       
+      {/* Hiển thị lỗi nếu có */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div className="flex items-center">
+            <XCircle className="mr-2" size={20} />
+            <div>
+              <p className="font-medium">Lỗi tải dữ liệu</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleRefresh}
+            className="mt-2 flex items-center bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1 rounded-md text-sm"
+          >
+            <RefreshCcw size={16} className="mr-1" /> Thử lại
+          </button>
+        </div>
+      )}
+      
       {/* Thống kê */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow">
@@ -292,13 +332,7 @@ import "./styles.css";
         <div className="flex justify-end">
           <button 
             className="px-4 py-2 bg-gray-200 rounded-md flex items-center gap-2 hover:bg-gray-300 transition-colors"
-            onClick={async () => {
-              setLoading(true);
-              const data = await reviewsApi.getAllReviews();
-              setReviews(data.reviews || []);
-              setLoading(false);
-              toast.success("Đã làm mới danh sách đánh giá");
-            }}
+            onClick={handleRefresh}
           >
             <RefreshCcw size={16} />
             Làm mới
@@ -325,7 +359,18 @@ import "./styles.css";
             {filteredReviews.map((review) => {
               // Tìm tên sản phẩm
               const product = products.find(p => p._id === review.productId);
-              const productName = product ? product.productName : 'Sản phẩm không xác định';
+              let productName = 'Sản phẩm không xác định';
+              
+              // Hiển thị productId hoặc tên sản phẩm
+              if (product) {
+                productName = product.productName;
+              } else if (review.productId && typeof review.productId === 'object') {
+                // Trường hợp productId đã được populate từ API
+                productName = review.productId.productName || `Sản phẩm ID: ${review.productId._id}`;
+              } else if (review.productId) {
+                // Trường hợp chỉ có ID
+                productName = `Sản phẩm ID: ${review.productId}`;
+              }
               
               return (
                 <div key={review._id} className={`p-4 ${!review.isPublished ? 'bg-gray-50' : ''}`}>

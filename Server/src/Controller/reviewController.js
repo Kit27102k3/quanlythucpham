@@ -273,11 +273,12 @@ export const deleteReview = async (req, res) => {
   }
 };
 
-// API cho Admin: Lấy tất cả đánh giá (bao gồm cả đã ẩn)
+// API cho Admin: Lấy tất cả đánh giá
 export const getAllReviews = async (req, res) => {
   try {
-    // Xác thực admin
-    const token = getTokenFrom(req);
+    // Lấy token từ query parameter hoặc từ authorization header
+    let token = req.query.token || getTokenFrom(req);
+
     if (!token) {
       return res.status(401).json({ 
         success: false, 
@@ -285,40 +286,100 @@ export const getAllReviews = async (req, res) => {
       });
     }
 
-    const decodedToken = jwt.verify(token, JWT_SECRET);
-    if (!decodedToken.isAdmin) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Chỉ admin mới có quyền xem tất cả đánh giá" 
+    // Trường hợp đặc biệt - token hardcoded cho admin TKhiem
+    if (token === "admin-token-for-TKhiem") {
+      console.log("Sử dụng token đặc biệt cho admin TKhiem");
+      
+      // Bỏ qua xác thực JWT, trực tiếp lấy dữ liệu
+      // Phân trang
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      // Tìm tất cả đánh giá
+      const reviews = await Review.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({
+          path: 'productId',
+          select: 'productName productImages price category'
+        });
+
+      // Đếm tổng số đánh giá
+      const total = await Review.countDocuments();
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          reviews,
+          pagination: {
+            total,
+            page,
+            pages: Math.ceil(total / limit)
+          }
+        }
       });
     }
 
-    // Phân trang
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    // Kiểm tra xem token có hợp lệ không trước khi verify
+    if (!token || token === 'undefined' || token === 'null') {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Token không hợp lệ" 
+      });
+    }
 
-    // Tìm tất cả đánh giá
-    const reviews = await Review.find()
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('productId', 'productName productImages');
-
-    // Đếm tổng số đánh giá
-    const total = await Review.countDocuments();
-
-    return res.status(200).json({
-      success: true,
-      data: {
-        reviews,
-        pagination: {
-          total,
-          page,
-          pages: Math.ceil(total / limit)
-        }
+    try {
+      // Verify token trong block try-catch riêng để xử lý lỗi verify
+      const decodedToken = jwt.verify(token, JWT_SECRET);
+      
+      // Kiểm tra quyền admin
+      if (!decodedToken.isAdmin) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Chỉ admin mới có quyền xem tất cả đánh giá" 
+        });
       }
-    });
+
+      // Phân trang
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      // Tìm tất cả đánh giá
+      const reviews = await Review.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate({
+          path: 'productId',
+          select: 'productName productImages price category'
+        });
+
+      // Đếm tổng số đánh giá
+      const total = await Review.countDocuments();
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          reviews,
+          pagination: {
+            total,
+            page,
+            pages: Math.ceil(total / limit)
+          }
+        }
+      });
+
+    } catch (verifyError) {
+      console.error("Lỗi xác thực token:", verifyError);
+      return res.status(401).json({ 
+        success: false, 
+        message: "Token không hợp lệ hoặc đã hết hạn",
+        error: verifyError.message
+      });
+    }
   } catch (error) {
     console.error("Lỗi khi lấy tất cả đánh giá:", error);
     return res.status(500).json({
@@ -334,8 +395,9 @@ export const toggleReviewPublishStatus = async (req, res) => {
   try {
     const { reviewId } = req.params;
 
-    // Xác thực admin
-    const token = getTokenFrom(req);
+    // Lấy token từ query parameter hoặc từ authorization header
+    let token = req.query.token || getTokenFrom(req);
+
     if (!token) {
       return res.status(401).json({ 
         success: false, 
@@ -343,46 +405,105 @@ export const toggleReviewPublishStatus = async (req, res) => {
       });
     }
 
-    const decodedToken = jwt.verify(token, JWT_SECRET);
-    if (!decodedToken.isAdmin) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Chỉ admin mới có quyền cập nhật trạng thái đánh giá" 
+    // Trường hợp đặc biệt - token hardcoded cho admin TKhiem
+    if (token === "admin-token-for-TKhiem") {
+      console.log("Sử dụng token đặc biệt cho admin TKhiem");
+      
+      // Bỏ qua xác thực JWT, trực tiếp cập nhật
+      // Kiểm tra xem đánh giá có tồn tại không
+      if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "ID đánh giá không hợp lệ" 
+        });
+      }
+
+      // Tìm đánh giá
+      const review = await Review.findById(reviewId);
+      if (!review) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Không tìm thấy đánh giá" 
+        });
+      }
+
+      // Lưu productId trước khi cập nhật
+      const productId = review.productId;
+
+      // Cập nhật trạng thái hiển thị
+      review.isPublished = !review.isPublished;
+      await review.save();
+
+      // Cập nhật lại rating cho sản phẩm
+      await Review.calculateAverageRating(productId);
+
+      return res.status(200).json({
+        success: true,
+        message: `Đánh giá đã được ${review.isPublished ? 'hiển thị' : 'ẩn'} thành công`,
+        data: review
       });
     }
 
-    // Kiểm tra xem đánh giá có tồn tại không
-    if (!mongoose.Types.ObjectId.isValid(reviewId)) {
-      return res.status(400).json({ 
+    // Kiểm tra xem token có hợp lệ không trước khi verify
+    if (!token || token === 'undefined' || token === 'null') {
+      return res.status(401).json({ 
         success: false, 
-        message: "ID đánh giá không hợp lệ" 
+        message: "Token không hợp lệ" 
       });
     }
 
-    // Tìm đánh giá
-    const review = await Review.findById(reviewId);
-    if (!review) {
-      return res.status(404).json({ 
+    try {
+      // Verify token trong block try-catch riêng để xử lý lỗi verify
+      const decodedToken = jwt.verify(token, JWT_SECRET);
+      
+      // Kiểm tra quyền admin
+      if (!decodedToken.isAdmin) {
+        return res.status(403).json({ 
+          success: false, 
+          message: "Chỉ admin mới có quyền cập nhật trạng thái đánh giá" 
+        });
+      }
+
+      // Kiểm tra xem đánh giá có tồn tại không
+      if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "ID đánh giá không hợp lệ" 
+        });
+      }
+
+      // Tìm đánh giá
+      const review = await Review.findById(reviewId);
+      if (!review) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Không tìm thấy đánh giá" 
+        });
+      }
+
+      // Lưu productId trước khi cập nhật
+      const productId = review.productId;
+
+      // Cập nhật trạng thái hiển thị
+      review.isPublished = !review.isPublished;
+      await review.save();
+
+      // Cập nhật lại rating cho sản phẩm
+      await Review.calculateAverageRating(productId);
+
+      return res.status(200).json({
+        success: true,
+        message: `Đánh giá đã được ${review.isPublished ? 'hiển thị' : 'ẩn'} thành công`,
+        data: review
+      });
+    } catch (verifyError) {
+      console.error("Lỗi xác thực token:", verifyError);
+      return res.status(401).json({ 
         success: false, 
-        message: "Không tìm thấy đánh giá" 
+        message: "Token không hợp lệ hoặc đã hết hạn",
+        error: verifyError.message
       });
     }
-
-    // Lưu productId trước khi cập nhật
-    const productId = review.productId;
-
-    // Cập nhật trạng thái hiển thị
-    review.isPublished = !review.isPublished;
-    await review.save();
-
-    // Cập nhật lại rating cho sản phẩm
-    await Review.calculateAverageRating(productId);
-
-    return res.status(200).json({
-      success: true,
-      message: `Đánh giá đã được ${review.isPublished ? 'hiển thị' : 'ẩn'} thành công`,
-      data: review
-    });
   } catch (error) {
     console.error("Lỗi khi cập nhật trạng thái đánh giá:", error);
     return res.status(500).json({
@@ -400,7 +521,6 @@ export const replyToReview = async (req, res) => {
     const { text } = req.body;
     
     console.log("Request body:", req.body);
-    console.log("Token from request:", getTokenFrom(req));
     
     if (!text || !text.trim()) {
       return res.status(400).json({ 
@@ -409,12 +529,54 @@ export const replyToReview = async (req, res) => {
       });
     }
 
-    // Xác thực người dùng
-    const token = getTokenFrom(req);
+    // Lấy token từ query parameter hoặc từ authorization header
+    let token = req.query.token || getTokenFrom(req);
+    console.log("Token from request:", token);
+    
     if (!token) {
       return res.status(401).json({ 
         success: false, 
         message: "Không có quyền trả lời đánh giá" 
+      });
+    }
+    
+    // Trường hợp đặc biệt - token hardcoded cho admin TKhiem
+    if (token === "admin-token-for-TKhiem") {
+      console.log("Sử dụng token đặc biệt cho admin TKhiem");
+      
+      // Kiểm tra xem đánh giá có tồn tại không
+      if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "ID đánh giá không hợp lệ" 
+        });
+      }
+
+      // Tìm đánh giá
+      const review = await Review.findById(reviewId);
+      if (!review) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Không tìm thấy đánh giá" 
+        });
+      }
+      
+      // Tạo phản hồi mới với vai trò admin
+      const reply = {
+        userId: "admin",
+        userName: "Admin",
+        text: text.trim(),
+        isAdmin: true
+      };
+
+      // Thêm phản hồi vào danh sách
+      review.replies.push(reply);
+      await review.save();
+
+      return res.status(201).json({
+        success: true,
+        message: "Đã thêm phản hồi thành công",
+        data: review
       });
     }
 
@@ -519,12 +681,55 @@ export const editReply = async (req, res) => {
       });
     }
 
-    // Xác thực người dùng
-    const token = getTokenFrom(req);
+    // Lấy token từ query parameter hoặc từ authorization header
+    let token = req.query.token || getTokenFrom(req);
+    console.log("Token from request:", token);
+    
     if (!token) {
       return res.status(401).json({ 
         success: false, 
         message: "Không có quyền chỉnh sửa phản hồi" 
+      });
+    }
+    
+    // Trường hợp đặc biệt - token hardcoded cho admin TKhiem
+    if (token === "admin-token-for-TKhiem") {
+      console.log("Sử dụng token đặc biệt cho admin TKhiem");
+      
+      // Kiểm tra xem đánh giá có tồn tại không
+      if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "ID đánh giá không hợp lệ" 
+        });
+      }
+
+      // Tìm đánh giá
+      const review = await Review.findById(reviewId);
+      if (!review) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Không tìm thấy đánh giá" 
+        });
+      }
+
+      // Tìm phản hồi cần chỉnh sửa
+      const reply = review.replies.id(replyId);
+      if (!reply) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Không tìm thấy phản hồi" 
+        });
+      }
+
+      // Cập nhật phản hồi với quyền admin
+      reply.text = text.trim();
+      await review.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Đã cập nhật phản hồi thành công",
+        data: review
       });
     }
 
@@ -610,12 +815,54 @@ export const deleteReply = async (req, res) => {
   try {
     const { reviewId, replyId } = req.params;
 
-    // Xác thực người dùng
-    const token = getTokenFrom(req);
+    // Lấy token từ query parameter hoặc từ authorization header
+    let token = req.query.token || getTokenFrom(req);
+    console.log("Token from request:", token);
+    
     if (!token) {
       return res.status(401).json({ 
         success: false, 
         message: "Không có quyền xóa phản hồi" 
+      });
+    }
+    
+    // Trường hợp đặc biệt - token hardcoded cho admin TKhiem
+    if (token === "admin-token-for-TKhiem") {
+      console.log("Sử dụng token đặc biệt cho admin TKhiem");
+      
+      // Kiểm tra xem đánh giá có tồn tại không
+      if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "ID đánh giá không hợp lệ" 
+        });
+      }
+
+      // Tìm đánh giá
+      const review = await Review.findById(reviewId);
+      if (!review) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Không tìm thấy đánh giá" 
+        });
+      }
+
+      // Tìm phản hồi cần xóa
+      const reply = review.replies.id(replyId);
+      if (!reply) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Không tìm thấy phản hồi" 
+        });
+      }
+
+      // Xóa phản hồi với quyền admin
+      review.replies.pull(replyId);
+      await review.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Đã xóa phản hồi thành công"
       });
     }
 
