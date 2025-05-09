@@ -10,6 +10,8 @@ import {
   requestPasswordReset,
   resetPassword,
   blockUser,
+  facebookLogin,
+  googleLogin
 } from "../Controller/authController.js";
 import { verifyToken } from "../Middleware/authMiddleware.js";
 
@@ -25,5 +27,9 @@ router.put("/update/:userId", verifyToken, updateUser);
 router.post("/request-password-reset", requestPasswordReset);
 router.post("/reset-password", resetPassword);
 router.put("/profile/block/:userId", blockUser);
+
+// Thêm các route cho OAuth
+router.post("/facebook-login", facebookLogin);
+router.post("/google-login", googleLogin);
 
 export default router;

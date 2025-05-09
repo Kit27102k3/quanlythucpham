@@ -5,36 +5,121 @@ import productsApi from "../../../api/productsApi";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
 import "../../../index.css";
 import { motion, AnimatePresence } from "framer-motion";
-// import ProductList from "../../Until/ProductsList";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartShopping } from "@fortawesome/free-solid-svg-icons";
 import formatCurrency from "../../Until/FotmatPrice";
 
-// Thêm style để căn giữa carousel
 const carouselStyle = `
+  .related-products-container {
+    width: 100%;
+    overflow: hidden;
+    padding: 0 8px;
+    margin: 30px 0;
+  }
+  
+  .related-products-carousel {
+    width: 100%;
+    margin: 0 auto;
+  }
+  
   .related-products-carousel .p-carousel-items-container {
-    justify-content: center;
+    display: flex;
+    align-items: stretch;
   }
   
   .related-products-carousel .p-carousel-item {
+    padding: 0 4px;
     display: flex;
-    justify-content: center;
+    height: auto;
   }
   
   .related-products-carousel .p-carousel-indicators {
+    padding: 12px 0;
+  }
+  
+  .related-product-card {
+    width: 100%;
+    max-width: 240px;
+    margin: 0 auto;
+  }
+  
+  .related-products-carousel .p-carousel-next,
+  .related-products-carousel .p-carousel-prev {
+    background-color: rgba(81, 170, 27, 0.8);
+    border-radius: 50%;
+    color: white;
+    width: 2rem;
+    height: 2rem;
+    margin: 0 -5px;
+    z-index: 10;
+  }
+
+  .related-products-carousel .p-carousel-next:hover,
+  .related-products-carousel .p-carousel-prev:hover {
+    background-color: rgba(81, 170, 27, 1);
+  }
+  
+  .cart-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
     display: flex;
+    align-items: center;
     justify-content: center;
+    background-color: #51aa1b;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .cart-btn:hover {
+    background-color: #458f17;
+    transform: translateY(-2px);
+  }
+  
+  @media (max-width: 767px) {
+    .related-products-container {
+      padding: 0 4px;
+      margin: 20px 0;
+    }
+    
+    .related-products-carousel .p-carousel-item {
+      padding: 0 6px;
+    }
+    
+    .related-product-card {
+      max-width: 100%;
+    }
+
+    .related-products-carousel .p-carousel-next,
+    .related-products-carousel .p-carousel-prev {
+      width: 1.8rem;
+      height: 1.8rem;
+      margin: 0 -8px;
+    }
+    
+    .cart-btn {
+      width: 32px;
+      height: 32px;
+    }
   }
 `;
 
 function RelatedProducts({ currentProduct }) {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const { handleAddToCart, handleClick, getPrice } = useCartAndNavigation();
-  const [key, setKey] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // Force re-render animation khi component mount
-    setKey((prevKey) => prevKey + 1);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 767);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const fetchRelatedProducts = async (categoryName, currentProductId) => {
@@ -55,7 +140,6 @@ function RelatedProducts({ currentProduct }) {
     }
   }, [currentProduct]);
 
-  // Cấu hình animation
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -87,64 +171,52 @@ function RelatedProducts({ currentProduct }) {
 
   const productTemplate = (product) => {
     return (
-      <div className="w-full lg:w-[272px] mx-auto">
-        <motion.div
-          variants={itemVariants}
+      <motion.div
+        variants={itemVariants}
+        className="related-product-card"
+      >
+        <div 
           onClick={() => handleClick(product)}
-          className="items-center justify-center bg-white rounded-md overflow-hidden shadow-lg hover:shadow-md transition-shadow duration-300"
+          className="flex flex-col h-full bg-white rounded-md overflow-hidden shadow-sm hover:shadow transition-all"
         >
-          <div>
+          <div className="aspect-square overflow-hidden relative">
             <img
               src={`${product.productImages[0]}`}
               alt={product.productName}
-              className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px]"
+              className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
               loading="lazy"
             />
           </div>
-          <div className="flex flex-col mt-auto p-4 gap-2">
-            <p className="text-gray-400 text-[10px] lg:text-[14px]">
-              {product.productCategory}
-            </p>
-            <p className="font-medium text-[10px] hover:text-[#51aa1b] line-clamp-1 lg:text-[16px] transition-colors duration-300">
+          <div className="flex flex-col p-3 flex-grow">
+            <p className="text-gray-500 text-xs mb-1">{product.productCategory}</p>
+            <h3 className="font-medium text-sm mb-3 line-clamp-2 hover:text-[#51aa1b] transition-colors">
               {product.productName}
-            </p>
-            {product.productDiscount > 0 ? (
-              <div className="flex items-center gap-2 mt-4 justify-between">
-                <div className="flex items-center gap-2">
-                  <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                    {formatCurrency(getPrice(product))}
-                  </p>
-                  <p className="text-gray-400 text-[10px] mt-1 lg:text-[14px] line-through">
+            </h3>
+            <div className="mt-auto pt-1 flex items-center justify-between">
+              <div className="flex flex-col">
+                {product.productDiscount > 0 && (
+                  <span className="text-xs text-gray-400 line-through">
                     {formatCurrency(product.productPrice)}
-                  </p>
-                </div>
-                <FontAwesomeIcon
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddToCart(product._id);
-                  }}
-                  icon={faCartShopping}
-                  className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5 mt-1 lg:text-[14px]"
-                />
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 justify-between mt-4">
-                <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[16px]">
+                  </span>
+                )}
+                <span className={`text-sm font-medium ${product.productDiscount > 0 ? 'text-[#51aa1b]' : 'text-gray-800'}`}>
                   {formatCurrency(getPrice(product))}
-                </p>
-                <FontAwesomeIcon
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddToCart(product._id);
-                  }}
-                  icon={faCartShopping}
-                  className="text-white p-2 rounded-full bg-[#51aa1b] text-[16px] size-5 mt-1 lg:text-[14px]"
-                />
+                </span>
               </div>
-            )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddToCart(product._id);
+                }}
+                className="cart-btn"
+                aria-label="Thêm vào giỏ hàng"
+              >
+                <FontAwesomeIcon icon={faCartShopping} size="sm" />
+              </button>
+            </div>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
     );
   };
 
@@ -152,8 +224,8 @@ function RelatedProducts({ currentProduct }) {
     <AnimatePresence mode="sync">
       <style>{carouselStyle}</style>
       <motion.div 
-        key={key} 
-        className="px-2 sm:px-8 md:px-16 lg:px-[120px] my-8"
+        key="related-products-container"
+        className="related-products-container"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -161,44 +233,37 @@ function RelatedProducts({ currentProduct }) {
       >
         {relatedProducts.length > 0 && (
           <>
-            <motion.h1
-              className="uppercase text-lg sm:text-xl md:text-2xl lg:text-[26px] text-[#1c1c1c] text-center font-medium mb-6"
+            <motion.h2
+              className="text-center text-xl font-semibold mb-6 text-gray-800 uppercase"
               initial={{ opacity: 0, y: -10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: false }}
-              transition={{ duration: 0.5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
             >
               Sản phẩm liên quan
-            </motion.h1>
+            </motion.h2>
 
-            <div className="card">
-              <Carousel
-                value={relatedProducts}
-                numVisible={4}
-                numScroll={1}
-                responsiveOptions={[
-                  {
-                    breakpoint: "1400px",
-                    numVisible: 3,
-                    numScroll: 1,
-                  },
-                  {
-                    breakpoint: "1199px",
-                    numVisible: 2,
-                    numScroll: 1,
-                  },
-                  {
-                    breakpoint: "767px",
-                    numVisible: 1,
-                    numScroll: 1,
-                  },
-                ]}
-                itemTemplate={productTemplate}
-                circular
-                showNavigators
-                className="related-products-carousel"
-              />
-            </div>
+            <Carousel
+              value={relatedProducts}
+              numVisible={isMobile ? 1 : 4}
+              numScroll={1}
+              responsiveOptions={[
+                {
+                  breakpoint: '1024px',
+                  numVisible: 3,
+                  numScroll: 1
+                },
+                {
+                  breakpoint: '768px',
+                  numVisible: 2,
+                  numScroll: 1
+                }
+              ]}
+              itemTemplate={productTemplate}
+              circular
+              showNavigators={!isMobile}
+              showIndicators={isMobile}
+              className="related-products-carousel"
+            />
           </>
         )}
       </motion.div>

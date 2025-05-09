@@ -110,9 +110,21 @@ const intents = {
     ],
     response: async (product) => {
       try {
+        console.log("Tìm sản phẩm liên quan cho product:", product ? 
+          { id: product._id, name: product.productName, category: product.productCategory } 
+          : "Không có thông tin sản phẩm");
+        
+        // Nếu không có product, trả về thông báo lỗi
+        if (!product) {
+          console.log("Không có product, trả về thông báo lỗi");
+          return "Vui lòng truy cập trang chi tiết sản phẩm để xem sản phẩm liên quan.";
+        }
+        
         // Sử dụng trường category hoặc productCategory (tùy theo schema)
         const categoryField = product.productCategory ? 'productCategory' : 'category';
         const categoryValue = product.productCategory || product.category;
+        
+        console.log(`Danh mục sản phẩm: field=${categoryField}, value=${categoryValue}`);
         
         // Kiểm tra nếu là nước uống, tìm theo từ khóa trong tên
         let query = { _id: { $ne: product._id } };
@@ -122,6 +134,7 @@ const intents = {
             product.productName.toLowerCase().includes('cocacola') ||
             product.productName.toLowerCase().includes('strongbow')) {
           // Nếu là nước uống, tìm các sản phẩm cùng loại nước uống
+          console.log("Sản phẩm thuộc danh mục đồ uống, tìm kiếm đồ uống tương tự");
           query.$or = [
             { productName: { $regex: 'nước', $options: 'i' } },
             { productName: { $regex: 'pepsi', $options: 'i' } },
@@ -133,9 +146,11 @@ const intents = {
           ];
         } else if (categoryValue) {
           // Sử dụng category nếu có
+          console.log(`Tìm kiếm sản phẩm theo category: ${categoryField}=${categoryValue}`);
           query[categoryField] = categoryValue;
         } else {
           // Nếu không có category, tìm sản phẩm có tên tương tự
+          console.log("Không có thông tin danh mục, tìm kiếm theo tên sản phẩm tương tự");
           const words = product.productName.split(' ').filter(word => word.length > 3);
           if (words.length > 0) {
             const regexPatterns = words.map(word => new RegExp(word, 'i'));
@@ -143,14 +158,19 @@ const intents = {
           }
         }
         
+        console.log("Query tìm sản phẩm liên quan:", JSON.stringify(query));
+        
         // Tìm sản phẩm liên quan với query đã xây dựng
         const relatedProducts = await Product.find(query).limit(4);
+        console.log(`Đã tìm thấy ${relatedProducts.length} sản phẩm liên quan`);
 
         if (relatedProducts.length === 0) {
           // Nếu không tìm thấy sản phẩm liên quan, thử tìm bất kỳ sản phẩm nào
+          console.log("Không tìm thấy sản phẩm liên quan, tìm kiếm sản phẩm ngẫu nhiên");
           const randomProducts = await Product.find({ _id: { $ne: product._id } }).limit(4);
           
           if (randomProducts.length === 0) {
+            console.log("Không tìm thấy sản phẩm nào, trả về thông báo");
             return "Hiện tại chưa có sản phẩm liên quan nào.";
           }
           
@@ -166,19 +186,25 @@ const intents = {
               name: p.productName,
               price: p.productPrice,
               image: imageUrl,
-              slug: createSlug(p.productName)
+              slug: createSlug(p.productName),
+              category: p.productCategory || p.category || "Không xác định"
             };
           });
           
           return {
             text: `Các sản phẩm khác bạn có thể quan tâm:\n\n`,
             products: productElements,
-            type: "relatedProducts"
+            type: "relatedProducts",
+            nameCategory: "Các sản phẩm đề xuất"
           };
         }
 
+        // Tạo tiêu đề hiển thị cho danh mục
+        const categoryDisplayName = categoryValue || "Sản phẩm tương tự";
+        console.log("Tên danh mục hiển thị:", categoryDisplayName);
+        
         // Tạo phản hồi dạng HTML với hình ảnh và link
-        let responseHtml = `Các sản phẩm liên quan:\n\n`;
+        let responseHtml = `Các sản phẩm liên quan thuộc danh mục ${categoryDisplayName}:\n\n`;
         
         // Thêm thẻ HTML cho các sản phẩm liên quan
         const productElements = relatedProducts.map(p => {
@@ -193,16 +219,20 @@ const intents = {
             name: p.productName,
             price: p.productPrice,
             image: imageUrl,
-            slug: createSlug(p.productName)
+            slug: createSlug(p.productName),
+            category: p.productCategory || p.category || "Không xác định"
           };
         });
         
+        console.log("Trả về danh sách sản phẩm liên quan với tên danh mục:", categoryDisplayName);
         return {
           text: responseHtml,
           products: productElements,
-          type: "relatedProducts"
+          type: "relatedProducts",
+          nameCategory: categoryDisplayName
         };
       } catch (error) {
+        console.error("Lỗi khi tìm sản phẩm liên quan:", error);
         return "Xin lỗi, tôi không thể tìm thấy sản phẩm liên quan lúc này.";
       }
     }
@@ -398,7 +428,7 @@ const intents = {
       "địa chỉ các chi nhánh", "tìm chi nhánh", "tìm cửa hàng gần nhất",
       "chi nhánh gần nhất", "cửa hàng gần đây", "cửa hàng ở đâu", "cửa hàng gần nhà"
     ],
-    response: () => "Hệ thống siêu thị thực phẩm sạch của chúng tôi hiện có các chi nhánh sau:\n\n1. Chi nhánh Quận 1: 273 An Dương Vương, Phường 3, Quận 5, TP. HCM\n2. Chi nhánh Quận 2: 18 Trần Não, Phường Bình An, Quận 2, TP. HCM\n3. Chi nhánh Quận 7: 1060 Nguyễn Văn Linh, Phường Tân Phong, Quận 7, TP. HCM\n4. Chi nhánh Quận 9: 54 Lê Văn Việt, Phường Hiệp Phú, Quận 9, TP. HCM\n5. Chi nhánh Hà Nội: 85 Láng Hạ, Quận Đống Đa, Hà Nội\n\nGiờ mở cửa: 8h00 - 22h00 các ngày trong tuần.\n\nBạn có thể sử dụng tính năng 'Tìm cửa hàng gần nhất' trên website hoặc ứng dụng của chúng tôi để tìm chi nhánh gần bạn nhất."
+    response: () => "Hệ thống siêu thị thực phẩm sạch của chúng tôi hiện có các chi nhánh sau:\n\n1. Chi nhánh Quận 1: 273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Quận 1 2.5km)\n2. Chi nhánh Quận 2: 18 Trần Não, Phường Bình An, Quận 2, TP. HCM\n3. Chi nhánh Quận 7: 1060 Nguyễn Văn Linh, Phường Tân Phong, Quận 7, TP. HCM\n4. Chi nhánh Quận 9: 54 Lê Văn Việt, Phường Hiệp Phú, Quận 9, TP. HCM\n5. Chi nhánh Hà Nội: 85 Láng Hạ, Quận Đống Đa, Hà Nội\n\nGiờ mở cửa: 8h00 - 22h00 các ngày trong tuần.\n\nBạn có thể sử dụng tính năng 'Tìm cửa hàng gần nhất' trên website hoặc ứng dụng của chúng tôi để tìm chi nhánh gần bạn nhất."
   },
   promotions: {
     patterns: [
@@ -614,6 +644,850 @@ const intents = {
       }
     },
   },
+  
+  productSearch: {
+    patterns: [
+      "tìm sản phẩm", "tìm", "tìm kiếm", "tìm giúp", "tìm cho tôi", 
+      "tìm cho mình", "kiếm", "kiếm giúp", "kiếm cho tôi", "kiếm cho mình",
+      "tìm hiểu", "tìm hiểu về", "tìm hiểu sản phẩm", "tìm hiểu về sản phẩm",
+      "sản phẩm", "có sản phẩm", "có sản phẩm nào", "sản phẩm gì",
+      "tìm mối đề nhậu", "tìm đồ nhậu", "tìm đồ ăn", "tìm thức ăn", "tìm nước uống",
+      "tìm món ăn", "tìm món", "tìm đồ", "tìm thức", "tìm nước"
+    ],
+    response: async (message) => {
+      try {
+        const productName = extractProductNameFromMessage(message);
+        
+        if (!productName) {
+          return "Bạn muốn tìm sản phẩm gì? Vui lòng cung cấp tên hoặc mô tả sản phẩm cụ thể.";
+        }
+        
+        console.log(`Đang tìm kiếm sản phẩm: "${productName}"`);
+        
+        // Sử dụng hàm searchProducts để tìm sản phẩm
+        const products = await searchProducts(productName);
+        
+        if (products.length > 0) {
+          // Tạo phản hồi với sản phẩm tìm thấy
+          const productElements = products.map(p => {
+            const imageUrl = p.productImages && p.productImages.length > 0 
+              ? p.productImages[0] 
+              : "default-product.jpg";
+            
+            return {
+              type: "product",
+              id: p._id,
+              name: p.productName,
+              price: p.productPrice,
+              image: imageUrl,
+              slug: createSlug(p.productName),
+              category: p.productCategory || p.category || "Không xác định",
+              discount: p.productDiscount || 0,
+              promotionalPrice: p.productDiscount > 0 ? p.productPrice * (1 - p.productDiscount/100) : null
+            };
+          });
+          
+          return {
+            text: `Tôi đã tìm thấy ${products.length} sản phẩm phù hợp với "${productName}":`,
+            products: productElements,
+            type: "productSearch",
+            nameCategory: `Kết quả tìm kiếm: ${productName}`
+          };
+        }
+        
+        // Nếu không tìm thấy sản phẩm nào, đề xuất danh mục phổ biến
+        const popularCategories = await Product.aggregate([
+          { $group: { _id: "$productCategory", count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: 5 }
+        ]);
+        
+        if (popularCategories.length > 0) {
+          const categoryNames = popularCategories.map(cat => cat._id).filter(Boolean);
+          
+          return `Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với "${productName}". Bạn có thể xem các danh mục phổ biến: ${categoryNames.join(', ')} hoặc thử tìm kiếm với từ khóa khác.`;
+        }
+        
+        return `Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với "${productName}". Vui lòng thử tìm kiếm với từ khóa khác.`;
+      } catch (error) {
+        console.error("Lỗi khi tìm kiếm sản phẩm:", error);
+        return "Xin lỗi, đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau.";
+      }
+    }
+  },
+  productExpiry: {
+    patterns: [
+      "hạn sử dụng", "hsd", "date", "hạn dùng", "hết hạn", "còn hạn", 
+      "hạn sử dụng của", "hsd của", "bao lâu thì hết hạn", "sử dụng trong bao lâu",
+      "dùng được bao lâu", "sử dụng trong", "tươi trong bao lâu", "còn tươi không",
+      "hạn sử dụng còn bao lâu", "hạn sử dụng đến khi nào",
+      "sản phẩm sử dụng được bao lâu"
+    ],
+    response: (product) => {
+      if (!product) {
+        return "Vui lòng cho biết bạn muốn biết hạn sử dụng của sản phẩm nào?";
+      }
+      
+      if (product.productExpiry) {
+        return `Hạn sử dụng của ${product.productName} là ${product.productExpiry}.`;
+      } else if (product.expiryDate) {
+        return `Hạn sử dụng của ${product.productName} là ${product.expiryDate}.`;
+      } else {
+        return `Hạn sử dụng cụ thể của ${product.productName} được in trên bao bì sản phẩm. Thông thường, sản phẩm này có thể sử dụng từ 6-12 tháng kể từ ngày sản xuất tùy thuộc vào điều kiện bảo quản.`;
+      }
+    }
+  },
+  
+  productAvailability: {
+    patterns: [
+      "còn hàng", "hết hàng", "còn sản phẩm", "còn bán", "có sẵn", 
+      "sản phẩm còn không", "còn sản phẩm không", "còn không", 
+      "tình trạng hàng", "đang có hàng", "hàng còn không", 
+      "có sẵn hàng", "còn bao nhiêu", "còn mấy cái", "còn mấy sản phẩm",
+      "hiện còn", "hàng sẵn", "còn tồn", "còn kinh doanh", "còn được bán",
+      "hiện đang có", "hiện còn bán", "có bán không"
+    ],
+    response: (product) => {
+      if (!product) {
+        return "Vui lòng cho biết bạn muốn kiểm tra tình trạng của sản phẩm nào?";
+      }
+      
+      if (product.productStatus === "Hết hàng") {
+        return `Rất tiếc, sản phẩm ${product.productName} hiện đã hết hàng. Bạn có thể đăng ký nhận thông báo khi có hàng hoặc xem các sản phẩm tương tự khác.`;
+      } else if (product.productQuantity !== undefined && product.productQuantity <= 0) {
+        return `Rất tiếc, sản phẩm ${product.productName} hiện đã hết hàng. Bạn có thể đăng ký nhận thông báo khi có hàng hoặc xem các sản phẩm tương tự khác.`;
+      } else if (product.productQuantity !== undefined) {
+        return `Sản phẩm ${product.productName} hiện còn ${product.productQuantity} trong kho.`;
+      } else {
+        return `Sản phẩm ${product.productName} hiện đang có sẵn để mua tại cửa hàng và trên website.`;
+      }
+    }
+  },
+  productCategories: {
+    patterns: [
+      "có những loại", "danh mục sản phẩm", "phân loại", "các loại", 
+      "các danh mục", "các nhóm", "các ngành hàng", "các mặt hàng",
+      "phân chia sản phẩm", "chia nhóm", "sản phẩm được chia",
+      "loại sản phẩm", "dòng sản phẩm", "kiểu sản phẩm", "nhóm sản phẩm",
+      "có mấy loại", "có bao nhiêu loại", "có bao nhiêu dòng",
+      "có những gì", "có những danh mục nào", "có những nhóm nào",
+      "liệt kê các loại", "danh sách các loại", "xem các loại"
+    ],
+    response: async (categoryQuery) => {
+      try {
+        // Nếu người dùng nhắc đến một danh mục cụ thể
+        let specificCategory = null;
+        
+        // Xác định categoryQuery - nếu không có tham số, gọi như một general intent
+        if (!categoryQuery || typeof categoryQuery !== 'string') {
+          // Danh sách các danh mục phổ biến
+          const topCategories = await Product.aggregate([
+            { $group: { _id: "$productCategory", count: { $sum: 1 } } },
+            { $match: { _id: { $ne: null } } },
+            { $match: { _id: { $ne: "" } } },
+            { $sort: { count: -1 } },
+            { $limit: 10 }
+          ]);
+          
+          if (topCategories && topCategories.length > 0) {
+            const categories = topCategories.map(cat => cat._id).filter(Boolean);
+            return `Chúng tôi có các danh mục sản phẩm chính sau đây: ${categories.join(', ')}. Bạn có thể hỏi chi tiết về từng danh mục để biết thêm thông tin.`;
+          }
+          
+          return "Chúng tôi có nhiều danh mục sản phẩm khác nhau như thực phẩm tươi sống, đồ uống, hàng đông lạnh, hóa mỹ phẩm, đồ dùng gia đình và nhiều mặt hàng khác. Bạn quan tâm đến danh mục nào?";
+        } else {
+          // Nếu người dùng hỏi về một nhóm sản phẩm cụ thể
+          const message = categoryQuery.toLowerCase();
+          
+          // Kiểm tra xem người dùng đang hỏi về nhóm sản phẩm nào
+          const categoryKeywords = {
+            "nước giải khát": ["nước", "giải khát", "đồ uống", "nước uống", "nước ngọt", "thức uống"],
+            "đồ cho bé": ["bé", "trẻ em", "trẻ nhỏ", "em bé", "sơ sinh", "bé yêu", "con nít"],
+            "thực phẩm hữu cơ": ["hữu cơ", "organic", "sạch", "không hóa chất"],
+            "đồ ăn": ["thực phẩm", "đồ ăn", "món ăn", "thức ăn"],
+            "giá rẻ": ["giá rẻ", "rẻ", "phải chăng", "bình dân", "tiết kiệm", "giảm giá"]
+          };
+          
+          // Tìm xem người dùng đang hỏi về nhóm nào
+          for (const [category, keywords] of Object.entries(categoryKeywords)) {
+            if (keywords.some(keyword => message.includes(keyword))) {
+              specificCategory = category;
+              break;
+            }
+          }
+          
+          // Xử lý câu hỏi theo từng nhóm cụ thể
+          if (specificCategory === "nước giải khát") {
+            // Tìm các loại nước giải khát
+            const beverages = await Product.find({
+              $or: [
+                { productCategory: { $regex: 'đồ uống', $options: 'i' } },
+                { productCategory: { $regex: 'nước', $options: 'i' } },
+                { productCategory: { $regex: 'giải khát', $options: 'i' } },
+                { productName: { $regex: 'nước', $options: 'i' } },
+                { productName: { $regex: 'chai', $options: 'i' } },
+                { productName: { $regex: 'lon', $options: 'i' } }
+              ]
+            }).distinct('productName').limit(20);
+            
+            if (beverages && beverages.length > 0) {
+              return `Chúng tôi có các loại nước giải khát như: ${beverages.slice(0, 10).join(', ')} và nhiều loại khác. Bạn muốn tìm hiểu về loại nào cụ thể?`;
+            }
+            
+            return "Chúng tôi có nhiều loại nước giải khát như nước có gas, nước ép trái cây, nước khoáng, trà đóng chai, cà phê đóng chai, nước tăng lực và nhiều loại khác. Bạn quan tâm đến loại nào?";
+          }
+          
+          if (specificCategory === "thực phẩm hữu cơ") {
+            return "Chúng tôi có nhiều loại thực phẩm hữu cơ (organic) bao gồm rau củ hữu cơ, trái cây hữu cơ, ngũ cốc hữu cơ, các sản phẩm từ sữa hữu cơ, và thịt hữu cơ. Tất cả đều được chứng nhận theo tiêu chuẩn hữu cơ và không sử dụng hóa chất trong quá trình sản xuất.";
+          }
+          
+          if (specificCategory === "đồ cho bé") {
+            return "Chúng tôi có đa dạng sản phẩm dành cho bé bao gồm: thực phẩm dinh dưỡng cho bé (sữa, bột ăn dặm, bánh ăn dặm), đồ dùng cho bé (bình sữa, ty ngậm, khăn sữa), tã bỉm các loại, đồ chơi an toàn cho bé, và các sản phẩm chăm sóc da cho bé. Bạn cần tìm sản phẩm cụ thể nào cho bé?";
+          }
+          
+          // Xử lý trường hợp lọc theo giá
+          if (specificCategory === "giá rẻ" || message.includes("theo giá") || message.includes("lọc sản phẩm")) {
+            return "Bạn có thể lọc sản phẩm theo giá trên website bằng cách sử dụng thanh trượt giá ở phần bộ lọc bên trái, hoặc bạn có thể nói với tôi khoảng giá bạn muốn tìm (ví dụ: 'tìm sản phẩm dưới 100k', 'sản phẩm từ 100k đến 200k').";
+          }
+          
+          // Trường hợp chung nếu không nhận diện được category cụ thể
+          return `Chúng tôi có nhiều danh mục sản phẩm khác nhau. Bạn có thể cho tôi biết cụ thể hơn bạn đang tìm kiếm loại sản phẩm nào không?`;
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy thông tin danh mục sản phẩm:", error);
+        return "Xin lỗi, đã xảy ra lỗi khi lấy thông tin danh mục sản phẩm. Vui lòng thử lại sau.";
+      }
+    }
+  },
+  
+  productFiltering: {
+    patterns: [
+      "lọc sản phẩm", "sắp xếp sản phẩm", "tìm theo", "lọc theo", 
+      "tìm sản phẩm theo", "sắp xếp theo", "tìm sản phẩm",
+      "tìm đồ theo", "tìm hàng theo", "lọc đồ theo", "lọc hàng theo",
+      "phân loại theo", "sắp theo", "tìm theo giá", "lọc theo giá",
+      "sắp xếp theo giá", "sắp xếp theo thương hiệu", "tìm theo nhãn hiệu"
+    ],
+    response: (message) => {
+      if (!message) {
+        return "Bạn có thể lọc sản phẩm theo nhiều tiêu chí như giá, thương hiệu, danh mục, khuyến mãi, đánh giá và nhiều tiêu chí khác. Bạn muốn lọc sản phẩm theo tiêu chí nào?";
+      }
+      
+      const normalizedMessage = message.toLowerCase();
+      
+      if (normalizedMessage.includes("giá") || normalizedMessage.includes("tiền")) {
+        return "Bạn có thể lọc sản phẩm theo giá bằng cách sử dụng thanh trượt giá ở phần bộ lọc bên trái trên trang danh sách sản phẩm. Hoặc bạn có thể nói với tôi khoảng giá bạn muốn tìm (ví dụ: 'tìm sản phẩm dưới 100k', 'sản phẩm từ 100k đến 200k').";
+      }
+      
+      if (normalizedMessage.includes("thương hiệu") || normalizedMessage.includes("nhãn hiệu") || normalizedMessage.includes("brand")) {
+        return "Bạn có thể lọc sản phẩm theo thương hiệu bằng cách chọn các thương hiệu mong muốn ở phần bộ lọc bên trái trên trang danh sách sản phẩm. Hoặc bạn có thể nói với tôi thương hiệu bạn quan tâm (ví dụ: 'tìm sản phẩm của Vinamilk', 'sản phẩm thương hiệu Pepsi').";
+      }
+      
+      if (normalizedMessage.includes("khuyến mãi") || normalizedMessage.includes("giảm giá") || normalizedMessage.includes("sale")) {
+        return "Bạn có thể xem các sản phẩm đang khuyến mãi bằng cách vào mục 'Khuyến mãi' trên menu chính hoặc chọn bộ lọc 'Đang giảm giá' trên trang danh sách sản phẩm. Hoặc bạn có thể hỏi tôi 'Các sản phẩm đang giảm giá' để xem danh sách.";
+      }
+      
+      if (normalizedMessage.includes("đánh giá") || normalizedMessage.includes("rating") || normalizedMessage.includes("sao")) {
+        return "Bạn có thể lọc sản phẩm theo đánh giá bằng cách chọn số sao (từ 1-5) ở phần bộ lọc bên trái trên trang danh sách sản phẩm. Các sản phẩm có đánh giá cao thường được nhiều khách hàng ưa chuộng.";
+      }
+      
+      return "Bạn có thể lọc sản phẩm theo nhiều tiêu chí khác nhau như giá, thương hiệu, danh mục, khuyến mãi, đánh giá và nhiều tiêu chí khác trên trang danh sách sản phẩm. Bạn muốn tìm sản phẩm có tiêu chí cụ thể nào không?";
+    }
+  },
+  nearestStore: {
+    patterns: [
+      "chi nhánh gần nhất", "cửa hàng gần nhất", "cửa hàng gần đây", "chi nhánh gần đây",
+      "cửa hàng gần tôi", "chi nhánh gần tôi", "cửa hàng gần nhà", "chi nhánh gần nhà",
+      "tìm cửa hàng gần nhất", "tìm chi nhánh gần nhất", "cửa hàng nào gần nhất",
+      "gần nơi tôi ở", "gần chỗ tôi", "gần vị trí của tôi", "từ vị trí của tôi",
+      "cửa hàng gần khu vực", "chi nhánh khu vực", "tìm cửa hàng gần"
+    ],
+    response: (location) => {
+      if (!location) {
+        return "Để tìm cửa hàng gần nhất, vui lòng cho tôi biết khu vực bạn đang ở (ví dụ: quận, huyện, hoặc địa chỉ cụ thể). Hoặc bạn có thể sử dụng tính năng 'Tìm cửa hàng gần nhất' trên website để tự động định vị.";
+      }
+      
+      // Xử lý nếu có vị trí được cung cấp
+      const locationLower = location.toLowerCase();
+      
+      // Danh sách cửa hàng mẫu theo khu vực
+      const storesByDistrict = {
+        "quận 1": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Quận 1 2.5km)"],
+        "quận 2": ["18 Trần Não, Phường Bình An, Quận 2, TP. HCM"],
+        "quận 3": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Quận 3 1.8km)"],
+        "quận 4": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Quận 4 2.3km)"],
+        "quận 5": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM"],
+        "quận 6": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Quận 6 1.5km)"],
+        "quận 7": ["1060 Nguyễn Văn Linh, Phường Tân Phong, Quận 7, TP. HCM"],
+        "quận 8": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Quận 8 2.7km)"],
+        "quận 9": ["54 Lê Văn Việt, Phường Hiệp Phú, Quận 9, TP. HCM"],
+        "quận 10": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Quận 10 1.9km)"],
+        "quận 11": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Quận 11 1.3km)"],
+        "quận 12": ["54 Lê Văn Việt, Phường Hiệp Phú, Quận 9, TP. HCM (cách Quận 12 5.6km)"],
+        "thủ đức": ["54 Lê Văn Việt, Phường Hiệp Phú, Quận 9, TP. HCM (cách Thủ Đức 3.4km)"],
+        "bình thạnh": ["18 Trần Não, Phường Bình An, Quận 2, TP. HCM (cách Bình Thạnh 2.8km)"],
+        "phú nhuận": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Phú Nhuận 3.7km)"],
+        "tân bình": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Tân Bình 4.2km)"],
+        "tân phú": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Tân Phú 3.9km)"],
+        "gò vấp": ["54 Lê Văn Việt, Phường Hiệp Phú, Quận 9, TP. HCM (cách Gò Vấp 7.3km)"],
+        "bình tân": ["273 An Dương Vương, Phường 3, Quận 5, TP. HCM (cách Bình Tân 5.1km)"],
+        "hà nội": ["85 Láng Hạ, Quận Đống Đa, Hà Nội"]
+      };
+      
+      // Tìm khu vực phù hợp
+      for (const [district, stores] of Object.entries(storesByDistrict)) {
+        if (locationLower.includes(district)) {
+          return `Cửa hàng gần khu vực ${district} nhất là: ${stores[0]}. Giờ mở cửa: 8h00 - 22h00 các ngày trong tuần.`;
+        }
+      }
+      
+      // Nếu không tìm thấy khu vực cụ thể
+      return `Chúng tôi chưa thể xác định chính xác cửa hàng gần khu vực "${location}". Hiện tại chúng tôi có các chi nhánh tại Quận 2, Quận 5, Quận 7, Quận 9 và Hà Nội. Bạn có thể truy cập trang web hoặc liên hệ hotline 1900 6789 để được hỗ trợ tìm cửa hàng gần nhất.`;
+    }
+  },
+  
+  storeCount: {
+    patterns: [
+      "bao nhiêu chi nhánh", "có mấy chi nhánh", "có mấy cửa hàng", "bao nhiêu cửa hàng",
+      "có bao nhiêu chi nhánh", "có bao nhiêu cửa hàng", "tổng số chi nhánh",
+      "tổng số cửa hàng", "bao nhiêu điểm bán", "có mấy điểm bán",
+      "số lượng cửa hàng", "số lượng chi nhánh", "số cửa hàng", "số chi nhánh",
+      "hệ thống bao nhiêu", "có mạng lưới", "số điểm bán"
+    ],
+    response: (location) => {
+      if (!location) {
+        return "Hiện nay, chúng tôi có tổng cộng 5 chi nhánh trên toàn quốc, trong đó có 4 chi nhánh tại TP.HCM (Quận 2, Quận 5, Quận 7, Quận 9) và 1 chi nhánh tại Hà Nội (Quận Đống Đa). Bạn có thể xem chi tiết địa chỉ các chi nhánh trên website của chúng tôi.";
+      }
+      
+      const locationLower = location.toLowerCase();
+      
+      if (locationLower.includes("hcm") || locationLower.includes("hồ chí minh") || locationLower.includes("tphcm") || locationLower.includes("tp.hcm") || locationLower.includes("sài gòn")) {
+        return "Tại TP.HCM, chúng tôi hiện có 4 chi nhánh, đặt tại Quận 2, Quận 5, Quận 7 và Quận 9. Mỗi chi nhánh đều có đầy đủ các mặt hàng và cung cấp dịch vụ giao hàng trong phạm vi 5km.";
+      }
+      
+      if (locationLower.includes("hà nội") || locationLower.includes("hanoi") || locationLower.includes("hn")) {
+        return "Tại Hà Nội, chúng tôi hiện có 1 chi nhánh đặt tại 85 Láng Hạ, Quận Đống Đa. Chi nhánh này cung cấp đầy đủ các mặt hàng và dịch vụ giao hàng trong phạm vi 7km.";
+      }
+      
+      return `Chúng tôi chưa có thông tin về số lượng chi nhánh tại ${location}. Hiện tại, chúng tôi có tổng cộng 5 chi nhánh, trong đó có 4 chi nhánh tại TP.HCM và 1 chi nhánh tại Hà Nội. Dự kiến sẽ mở rộng hệ thống sang các tỉnh thành khác trong thời gian tới.`;
+    }
+  },
+  
+  storeHours: {
+    patterns: [
+      "mở cửa mấy giờ", "đóng cửa mấy giờ", "giờ mở cửa", "giờ đóng cửa",
+      "giờ hoạt động", "thời gian mở cửa", "thời gian hoạt động", "mở đến mấy giờ",
+      "mở cửa đến khi nào", "mở cửa lúc nào", "đóng cửa lúc nào", "mở cửa từ mấy giờ",
+      "mấy giờ mở cửa", "mấy giờ đóng cửa", "hoạt động từ mấy giờ", "hoạt động đến mấy giờ",
+      "mở cửa sớm nhất", "đóng cửa muộn nhất", "mở đến đêm không", "mở đến tối không"
+    ],
+    response: (location) => {
+      if (!location) {
+        return "Giờ hoạt động chung của tất cả các chi nhánh là từ 8h00 đến 22h00, các ngày trong tuần kể cả Chủ nhật và ngày lễ. Tuy nhiên, trong các dịp lễ tết đặc biệt, thời gian có thể thay đổi, vui lòng theo dõi thông báo trên website hoặc fanpage của chúng tôi.";
+      }
+      
+      const locationLower = location.toLowerCase();
+      
+      if (locationLower.includes("quận 7")) {
+        return "Chi nhánh Quận 7 tại 1060 Nguyễn Văn Linh, Phường Tân Phong hoạt động từ 7h30 đến 22h30 các ngày trong tuần, kể cả Chủ nhật và ngày lễ.";
+      }
+      
+      // Trường hợp chung cho các địa điểm khác
+      return "Giờ hoạt động của chi nhánh tại khu vực này là từ 8h00 đến 22h00, các ngày trong tuần kể cả Chủ nhật và ngày lễ. Trong các dịp lễ tết đặc biệt, thời gian có thể thay đổi, vui lòng theo dõi thông báo trên website hoặc fanpage của chúng tôi.";
+    }
+  },
+  
+  openAllDay: {
+    patterns: [
+      "mở cửa 24/7", "mở cả ngày", "mở xuyên đêm", "mở 24 giờ", "hoạt động 24 giờ",
+      "hoạt động 24/7", "mở cửa xuyên suốt", "mở cửa suốt ngày đêm", "mở cửa 24h",
+      "hoạt động 24h", "24/7", "24h", "24 giờ", "24 tiếng", "xuyên đêm",
+      "suốt đêm", "cả đêm", "nửa đêm", "khuya", "quá khuya"
+    ],
+    response: () => {
+      return "Hiện tại, các chi nhánh của chúng tôi chưa hoạt động 24/7. Giờ mở cửa thông thường là từ 8h00 đến 22h00 các ngày trong tuần, kể cả Chủ nhật và ngày lễ. Nếu bạn cần mua sắm khẩn cấp ngoài giờ này, vui lòng sử dụng dịch vụ đặt hàng online trên website, đơn hàng sẽ được xử lý vào sáng hôm sau.";
+    }
+  },
+  
+  sundayOpen: {
+    patterns: [
+      "mở cửa chủ nhật", "hoạt động chủ nhật", "làm việc chủ nhật", "nghỉ chủ nhật",
+      "đóng cửa chủ nhật", "chủ nhật có mở", "chủ nhật có đóng", "cuối tuần có mở",
+      "cuối tuần có đóng", "mở cửa ngày nghỉ", "mở cửa cuối tuần", "đóng cửa cuối tuần",
+      "nghỉ cuối tuần", "thứ 7 chủ nhật", "cuối tuần", "ngày nghỉ"
+    ],
+    response: () => {
+      return "Vâng, tất cả các chi nhánh của chúng tôi đều mở cửa vào Chủ nhật và các ngày cuối tuần với giờ hoạt động bình thường từ 8h00 đến 22h00. Bạn có thể thoải mái mua sắm vào cuối tuần mà không cần lo lắng về lịch nghỉ.";
+    }
+  },
+  
+  howToOrder: {
+    patterns: [
+      "làm sao để đặt hàng", "cách đặt hàng", "hướng dẫn đặt hàng", "đặt hàng như thế nào",
+      "đặt hàng thế nào", "quy trình đặt hàng", "các bước đặt hàng", "cách thức đặt hàng",
+      "đặt hàng online", "mua hàng online", "đặt mua online", "mua online",
+      "đặt hàng trên web", "đặt hàng trên app", "mua trên web", "mua trên app",
+      "thủ tục đặt hàng", "thủ tục mua hàng", "đặt mua như thế nào", "cách order"
+    ],
+    response: () => {
+      return "Để đặt hàng, bạn có thể thực hiện theo các cách sau:\n\n1. Đặt hàng trên website:\n   - Truy cập website của chúng tôi\n   - Tìm và chọn sản phẩm bạn muốn mua\n   - Thêm vào giỏ hàng\n   - Nhấn 'Thanh toán' và làm theo hướng dẫn\n\n2. Đặt hàng qua ứng dụng di động:\n   - Tải app từ App Store hoặc Google Play\n   - Đăng nhập tài khoản (hoặc đăng ký nếu chưa có)\n   - Tìm và chọn sản phẩm\n   - Tiến hành thanh toán\n\n3. Đặt hàng qua điện thoại:\n   - Gọi đến hotline 1900 6789\n   - Cung cấp thông tin sản phẩm và địa chỉ giao hàng\n\nSau khi đặt hàng thành công, bạn sẽ nhận được email xác nhận và có thể theo dõi trạng thái đơn hàng trong tài khoản của mình.";
+    }
+  },
+  
+  deliveryTime: {
+    patterns: [
+      "bao lâu nhận được hàng", "thời gian giao hàng", "giao hàng mất bao lâu",
+      "khi nào nhận được hàng", "bao lâu để giao", "mấy ngày nhận được",
+      "mất mấy hôm", "mấy tiếng", "bao nhiêu tiếng", "bao nhiêu ngày",
+      "thời gian vận chuyển", "vận chuyển mất", "ship mất", "ship bao lâu",
+      "giao nhanh không", "giao trong ngày", "giao hỏa tốc", "giao nhanh",
+      "giao chậm", "giao standard", "giao tiêu chuẩn", "nhận nhanh không"
+    ],
+    response: (location) => {
+      if (!location) {
+        return "Thời gian nhận hàng phụ thuộc vào khu vực giao hàng và loại hình giao hàng bạn chọn:\n\n- Nội thành TP.HCM: 2-4 giờ (giao nhanh) hoặc trong ngày (giao tiêu chuẩn)\n- Ngoại thành TP.HCM: 1-2 ngày\n- Các tỉnh thành khác: 2-5 ngày tùy khu vực\n\nBạn có thể theo dõi tình trạng đơn hàng trong tài khoản hoặc qua SMS/email.";
+      }
+      
+      const locationLower = location.toLowerCase();
+      
+      if (locationLower.includes("hcm") || locationLower.includes("hồ chí minh") || locationLower.includes("sài gòn") || 
+          locationLower.includes("quận 1") || locationLower.includes("quận 2") || locationLower.includes("quận 3") || 
+          locationLower.includes("quận 4") || locationLower.includes("quận 5") || locationLower.includes("quận 6") || 
+          locationLower.includes("quận 7") || locationLower.includes("quận 8") || locationLower.includes("quận 9") || 
+          locationLower.includes("quận 10") || locationLower.includes("quận 11") || locationLower.includes("quận 12") || 
+          locationLower.includes("thủ đức") || locationLower.includes("bình thạnh") || locationLower.includes("phú nhuận") || 
+          locationLower.includes("tân bình") || locationLower.includes("tân phú") || locationLower.includes("gò vấp") || 
+          locationLower.includes("bình tân")) {
+        return "Đối với khu vực nội thành TP.HCM, thời gian nhận hàng như sau:\n\n- Giao hàng nhanh: 2-4 giờ sau khi đặt hàng (áp dụng từ 8h00-18h00)\n- Giao hàng tiêu chuẩn: Trong ngày nếu đặt trước 15h00, hoặc ngày hôm sau nếu đặt sau 15h00\n- Giao hàng hẹn giờ: Bạn có thể chọn khung giờ giao hàng cụ thể (có phụ phí)\n\nLưu ý: Thời gian giao hàng có thể bị ảnh hưởng bởi điều kiện giao thông, thời tiết hoặc trong các dịp cao điểm.";
+      }
+      
+      if (locationLower.includes("hà nội") || locationLower.includes("hanoi") || locationLower.includes("hn")) {
+        return "Đối với khu vực Hà Nội, thời gian nhận hàng như sau:\n\n- Giao hàng nhanh: 2-6 giờ sau khi đặt hàng (áp dụng từ 8h00-18h00 cho khu vực nội thành)\n- Giao hàng tiêu chuẩn: Trong ngày nếu đặt trước 14h00, hoặc ngày hôm sau nếu đặt sau 14h00\n- Khu vực ngoại thành: 1-2 ngày\n\nBạn có thể theo dõi tình trạng đơn hàng trong tài khoản hoặc qua SMS/email.";
+      }
+      
+      if (locationLower.includes("đà nẵng") || locationLower.includes("danang") || locationLower.includes("đn")) {
+        return "Đối với khu vực Đà Nẵng, thời gian giao hàng dự kiến là 3-5 ngày kể từ khi đặt hàng, tùy thuộc vào tình trạng hàng hóa và dịch vụ vận chuyển. Hiện tại chúng tôi đang sử dụng dịch vụ chuyển phát của các đối tác như GHN, GHTK, Viettel Post để phục vụ khu vực này.";
+      }
+      
+      // Các tỉnh thành khác
+      return `Đối với khu vực ${location}, thời gian giao hàng dự kiến là 3-7 ngày làm việc kể từ khi đặt hàng. Thời gian cụ thể phụ thuộc vào khoảng cách và dịch vụ vận chuyển có sẵn tại địa phương. Bạn sẽ nhận được thông báo khi đơn hàng được giao cho đơn vị vận chuyển và có thể theo dõi hành trình giao hàng qua SMS hoặc email.`;
+    }
+  },
+  
+  codPayment: {
+    patterns: [
+      "thanh toán khi nhận hàng", "cod", "ship cod", "giao hàng cod", "trả tiền khi nhận",
+      "trả tiền mặt khi nhận", "thanh toán tại nhà", "nhận hàng rồi trả tiền",
+      "thanh toán sau khi nhận", "thanh toán tiền mặt", "tiền mặt khi nhận",
+      "trả sau", "trả sau khi nhận", "có cod không", "có thanh toán khi nhận không",
+      "có giao cod không", "có ship cod không", "có cho thanh toán khi nhận không"
+    ],
+    response: () => {
+      return "Vâng, chúng tôi có hỗ trợ phương thức thanh toán khi nhận hàng (COD). Bạn chỉ cần chọn phương thức này khi tiến hành thanh toán và trả tiền cho nhân viên giao hàng khi nhận được sản phẩm. Lưu ý một số điều kiện áp dụng:\n\n- Áp dụng cho đơn hàng có giá trị dưới 5 triệu đồng\n- Khách hàng cần xuất trình CMND/CCCD khi nhận hàng giá trị cao\n- Một số khu vực vùng sâu vùng xa có thể không hỗ trợ COD\n\nBạn có thể kiểm tra sản phẩm trước khi thanh toán để đảm bảo chất lượng.";
+    }
+  },
+  shippingFee: {
+    patterns: [
+      "phí ship", "phí giao hàng", "phí vận chuyển", "cước vận chuyển", "cước phí",
+      "ship bao nhiêu", "giao hàng bao nhiêu", "vận chuyển bao nhiêu", "phí ship bao nhiêu",
+      "tốn bao nhiêu tiền ship", "tiền ship", "chi phí giao", "chi phí ship",
+      "free ship", "freeship", "miễn phí giao", "miễn phí ship", "miễn phí vận chuyển",
+      "giao miễn phí", "ship miễn phí", "không tốn phí", "mất phí không"
+    ],
+    response: (location) => {
+      if (!location) {
+        return "Phí giao hàng được tính dựa trên khoảng cách và giá trị đơn hàng:\n\n- Nội thành TP.HCM: 20.000đ - 30.000đ (miễn phí cho đơn hàng từ 300.000đ)\n- Các tỉnh thành khác: 30.000đ - 50.000đ (miễn phí cho đơn hàng từ 500.000đ)\n- Đơn hàng trên 1.000.000đ: Miễn phí giao hàng toàn quốc\n\nBạn cũng có thể xem chính xác phí giao hàng khi tiến hành thanh toán trên website hoặc ứng dụng.";
+      }
+      
+      const locationLower = location.toLowerCase();
+      
+      if (locationLower.includes("hcm") || locationLower.includes("hồ chí minh") || locationLower.includes("sài gòn") || 
+          locationLower.includes("quận 1") || locationLower.includes("quận 2") || locationLower.includes("quận 3") || 
+          locationLower.includes("quận 4") || locationLower.includes("quận 5") || locationLower.includes("quận 6") || 
+          locationLower.includes("quận 7") || locationLower.includes("quận 8") || locationLower.includes("quận 9") || 
+          locationLower.includes("quận 10") || locationLower.includes("quận 11") || locationLower.includes("quận 12") || 
+          locationLower.includes("thủ đức") || locationLower.includes("bình thạnh") || locationLower.includes("phú nhuận") || 
+          locationLower.includes("tân bình") || locationLower.includes("tân phú") || locationLower.includes("gò vấp") || 
+          locationLower.includes("bình tân")) {
+        return "Phí giao hàng tại TP.HCM:\n\n- Nội thành (các quận trung tâm): 20.000đ\n- Ngoại thành: 30.000đ\n- Miễn phí giao hàng cho đơn hàng từ 300.000đ\n- Giao nhanh trong 2 giờ: Phụ thu 15.000đ\n\nĐặc biệt, đơn hàng thực phẩm tươi sống trên 500.000đ luôn được miễn phí giao hàng trong khu vực nội thành.";
+      }
+      
+      if (locationLower.includes("hà nội") || locationLower.includes("hanoi") || locationLower.includes("hn")) {
+        return "Phí giao hàng tại Hà Nội:\n\n- Nội thành: 25.000đ\n- Ngoại thành: 35.000đ\n- Miễn phí giao hàng cho đơn hàng từ 350.000đ\n- Giao nhanh trong 2 giờ (chỉ áp dụng cho một số quận nội thành): Phụ thu 20.000đ\n\nBạn có thể xem phí giao hàng chính xác khi tiến hành thanh toán trên website hoặc ứng dụng.";
+      }
+      
+      if (locationLower.includes("bình dương") || locationLower.includes("binh duong") || locationLower.includes("bd")) {
+        return "Chúng tôi có giao hàng đến Bình Dương với phí giao hàng là 40.000đ. Đơn hàng từ 500.000đ sẽ được miễn phí giao hàng. Thời gian giao hàng dự kiến là 1-2 ngày làm việc kể từ khi đặt hàng.";
+      }
+      
+      // Các tỉnh thành khác
+      return `Phí giao hàng đến ${location} dao động từ 40.000đ đến 60.000đ tùy thuộc vào khu vực cụ thể và trọng lượng đơn hàng. Đơn hàng từ 500.000đ sẽ được miễn phí giao hàng. Thời gian giao hàng dự kiến là 3-5 ngày làm việc. Bạn có thể xem phí chính xác khi tiến hành thanh toán.`;
+    }
+  },
+  shippingDestination: {
+    patterns: [
+      "có giao hàng đến", "có ship đến", "có gửi đến", "có vận chuyển đến",
+      "ship đến được không", "giao đến được không", "có giao hàng tới",
+      "giao hàng đến đâu", "ship đến đâu", "khu vực giao hàng", "vùng giao hàng",
+      "giao hàng toàn quốc không", "ship ra nước ngoài", "giao ra nước ngoài",
+      "giao hàng quốc tế", "ship quốc tế", "giao đến tỉnh", "ship đến các tỉnh",
+      "giao đến huyện", "giao xa", "vùng sâu vùng xa", "phạm vi giao hàng"
+    ],
+    response: (location) => {
+      if (!location) {
+        return "Chúng tôi giao hàng đến tất cả các tỉnh thành trên toàn quốc. Tuy nhiên, một số khu vực vùng sâu vùng xa có thể mất thêm thời gian và phí giao hàng. Hiện tại chúng tôi chưa hỗ trợ giao hàng quốc tế. Bạn vui lòng cung cấp khu vực cụ thể để chúng tôi kiểm tra khả năng giao hàng.";
+      }
+      
+      const locationLower = location.toLowerCase();
+      
+      // Một số khu vực cụ thể
+      if (locationLower.includes("côn đảo") || locationLower.includes("con dao") || 
+          locationLower.includes("phú quốc") || locationLower.includes("phu quoc") || 
+          locationLower.includes("trường sa") || locationLower.includes("truong sa") || 
+          locationLower.includes("hoàng sa") || locationLower.includes("hoang sa")) {
+        return `Chúng tôi có thể giao hàng đến ${location}, tuy nhiên sẽ mất thêm thời gian (5-10 ngày làm việc) và phí giao hàng cao hơn. Đối với những khu vực đảo xa, việc giao hàng còn phụ thuộc vào lịch trình tàu/phà và điều kiện thời tiết. Vui lòng liên hệ hotline 1900 6789 để được tư vấn cụ thể.`;
+      }
+      
+      if (locationLower.includes("nước ngoài") || locationLower.includes("quốc tế") || 
+          locationLower.includes("international") || locationLower.includes("ngoài việt nam") || 
+          locationLower.includes("overseas")) {
+        return "Hiện tại chúng tôi chưa hỗ trợ giao hàng quốc tế. Dịch vụ giao hàng của chúng tôi chỉ áp dụng trong phạm vi lãnh thổ Việt Nam. Mong bạn thông cảm.";
+      }
+      
+      // Trường hợp chung cho các tỉnh thành khác
+      return `Vâng, chúng tôi có giao hàng đến ${location}. Thời gian giao hàng dự kiến là 3-7 ngày làm việc tùy thuộc vào khu vực cụ thể. Phí giao hàng sẽ được tính dựa trên khoảng cách và trọng lượng đơn hàng, thường dao động từ 30.000đ đến 60.000đ. Đơn hàng từ 500.000đ sẽ được miễn phí giao hàng.`;
+    }
+  },
+  paymentOptions: {
+    patterns: [
+      "thanh toán bằng gì", "phương thức thanh toán", "cách thanh toán", "hình thức thanh toán",
+      "trả tiền kiểu gì", "trả tiền bằng gì", "có những cách thanh toán nào",
+      "thanh toán như thế nào", "thanh toán qua đâu", "có thể thanh toán bằng",
+      "chấp nhận thanh toán", "hỗ trợ thanh toán", "payment methods", "payment",
+      "thanh toán online", "thanh toán trực tuyến", "trả qua thẻ", "trả qua app",
+      "ví điện tử", "e-wallet", "chuyển khoản", "banking", "ngân hàng"
+    ],
+    response: () => {
+      return "Chúng tôi chấp nhận các phương thức thanh toán sau:\n\n1. Thanh toán khi nhận hàng (COD)\n2. Thẻ tín dụng/ghi nợ (Visa, MasterCard, JCB)\n3. Chuyển khoản ngân hàng\n4. Ví điện tử (MoMo, ZaloPay, ShopeePay, VNPay)\n5. QR Code\n6. Thẻ thành viên (sử dụng điểm tích lũy)\n\nKhi thanh toán online, hệ thống sẽ chuyển bạn đến cổng thanh toán an toàn để hoàn tất giao dịch.";
+    }
+  },
+  installmentPayment: {
+    patterns: [
+      "trả góp", "góp", "installment", "thanh toán trả góp", "mua trả góp",
+      "hỗ trợ trả góp", "có trả góp không", "có hỗ trợ trả góp không",
+      "trả góp 0%", "trả góp không lãi suất", "góp hàng tháng", "góp mỗi tháng",
+      "trả dần", "trả từng đợt", "trả theo kỳ", "0% lãi suất", "lãi suất 0%",
+      "không lãi suất", "mua trước trả sau", "buy now pay later", "bnpl",
+      "trả sau", "mua ngay trả sau", "góp mỗi tháng bao nhiêu", "trả góp qua thẻ"
+    ],
+    response: () => {
+      return "Chúng tôi có hỗ trợ thanh toán trả góp cho các đơn hàng từ 3 triệu đồng trở lên, áp dụng cho một số sản phẩm nhất định như thiết bị điện tử, điện lạnh và đồ gia dụng lớn. Các hình thức trả góp hiện có:\n\n1. Trả góp qua thẻ tín dụng: kỳ hạn 3-12 tháng, lãi suất từ 0-2% tùy ngân hàng\n2. Trả góp qua công ty tài chính: Home Credit, FE Credit với kỳ hạn 6-12 tháng\n3. Trả góp 0% lãi suất cho đơn hàng từ 5 triệu đồng với một số đối tác ngân hàng\n\nLưu ý: Để đăng ký trả góp, bạn cần chuẩn bị CMND/CCCD, hộ khẩu/KT3, bằng lái xe và chứng minh thu nhập (tùy trường hợp). Vui lòng liên hệ nhân viên tư vấn để biết thêm chi tiết.";
+    }
+  },
+  momoPayment: {
+    patterns: [
+      "momo", "thanh toán momo", "trả tiền momo", "ví momo", "ví điện tử momo",
+      "quét mã momo", "quét momo", "quét qr momo", "liên kết momo",
+      "có chấp nhận momo không", "có nhận momo không", "có thanh toán bằng momo không",
+      "có trả bằng momo được không", "momo được không", "dùng momo được không",
+      "có cho thanh toán momo không", "có ship cod không"
+    ],
+    response: () => {
+      return "Vâng, chúng tôi có chấp nhận thanh toán qua ví MoMo. Bạn có thể thanh toán bằng MoMo thông qua các cách sau:\n\n1. Trên website: Chọn phương thức thanh toán MoMo khi thanh toán, sau đó quét QR hoặc xác nhận trên ứng dụng MoMo của bạn\n2. Tại cửa hàng: Quét mã QR tại quầy thanh toán hoặc cung cấp số điện thoại đăng ký MoMo\n\nViệc thanh toán qua MoMo rất nhanh chóng, an toàn và đôi khi còn có ưu đãi giảm giá từ MoMo.";
+    }
+  },
+  cardPayment: {
+    patterns: [
+      "thanh toán thẻ", "trả bằng thẻ", "dùng thẻ", "thẻ tín dụng", "thẻ ghi nợ",
+      "visa", "mastercard", "jcb", "credit card", "debit card", "atm card", "thẻ atm",
+      "có chấp nhận thẻ không", "có thanh toán bằng thẻ không", "có dùng thẻ được không",
+      "dùng visa được không", "dùng mastercard được không", "quẹt thẻ", "chạm thẻ",
+      "tapcard", "tap to pay", "thanh toán không tiếp xúc", "contactless payment"
+    ],
+    response: () => {
+      return "Vâng, chúng tôi chấp nhận thanh toán bằng tất cả các loại thẻ phổ biến bao gồm:\n\n- Thẻ tín dụng (Visa, MasterCard, JCB, American Express)\n- Thẻ ghi nợ quốc tế\n- Thẻ ATM nội địa có kích hoạt thanh toán online\n\nHỗ trợ cả thanh toán không tiếp xúc (Contactless payment) và thanh toán qua thiết bị di động (Apple Pay, Samsung Pay, Google Pay). Giao dịch qua thẻ được bảo mật theo tiêu chuẩn PCI DSS.";
+    }
+  },
+  contactDetails: {
+    patterns: [
+      "liên hệ", "liên lạc", "thông tin liên hệ", "số điện thoại", "email", "hotline",
+      "tổng đài", "gọi cho ai", "gọi số nào", "liên hệ với ai", "liên hệ như thế nào",
+      "liên hệ tại đâu", "liên lạc với ai", "liên lạc thế nào", "customer service",
+      "dịch vụ khách hàng", "đường dây nóng", "contact", "cần hỗ trợ", "cần giúp đỡ",
+      "cần tư vấn", "tư vấn viên", "nhân viên tư vấn", "nhân viên hỗ trợ"
+    ],
+    response: () => {
+      return "Thông tin liên hệ của chúng tôi:\n\n- Hotline: 1900 6789 (8h00 - 22h00 hàng ngày, phí cuộc gọi: 1.000đ/phút)\n- Email hỗ trợ: support@chuoikoicho.com\n- Địa chỉ: 273 An Dương Vương, Phường 3, Quận 5, TP. Hồ Chí Minh\n- Fanpage: Facebook.com/FoodChain\n- Zalo OA: ChuoiKoiCho\n\nBạn cũng có thể sử dụng tính năng chat trực tuyến trên website hoặc ứng dụng di động để được hỗ trợ nhanh chóng.";
+    }
+  },
+  exchangeReturn: {
+    patterns: [
+      "đổi trả", "hoàn trả", "trả lại", "đổi hàng", "trả hàng", "hoàn tiền",
+      "refund", "exchange", "return", "chính sách đổi trả", "quy định đổi trả",
+      "muốn đổi", "muốn trả", "làm sao để đổi", "làm sao để trả", "cách đổi",
+      "cách trả", "thủ tục đổi", "thủ tục trả", "điều kiện đổi", "điều kiện trả",
+      "thời hạn đổi", "thời hạn trả", "được đổi không", "được trả không"
+    ],
+    response: () => {
+      return "Chính sách đổi trả của chúng tôi như sau:\n\n- Thời hạn đổi trả: Trong vòng 7 ngày kể từ khi nhận hàng\n- Điều kiện đổi trả:\n  + Sản phẩm còn nguyên bao bì, tem nhãn, chưa qua sử dụng\n  + Có hóa đơn mua hàng\n  + Sản phẩm không thuộc danh mục không được đổi trả (thực phẩm tươi sống, hàng đã qua sử dụng...)\n\n- Các trường hợp được đổi trả:\n  + Sản phẩm bị lỗi do nhà sản xuất\n  + Sản phẩm không đúng như mô tả hoặc hình ảnh\n  + Giao nhầm sản phẩm hoặc thiếu sản phẩm\n\nĐể đổi trả, bạn có thể liên hệ hotline 1900 6789 hoặc mang sản phẩm đến trực tiếp cửa hàng cùng với hóa đơn mua hàng.";
+    }
+  },
+  chatWithStaff: {
+    patterns: [
+      "chat với nhân viên", "nói chuyện với nhân viên", "chat trực tiếp", "chat trực tuyến",
+      "live chat", "nhắn tin cho nhân viên", "nói chuyện trực tiếp", "tư vấn trực tiếp",
+      "tư vấn online", "hỗ trợ trực tuyến", "hỗ trợ online", "gặp nhân viên", "gặp tư vấn viên",
+      "tìm người hỗ trợ", "có nhân viên hỗ trợ không", "có nhân viên tư vấn không",
+      "chat với người thật", "chat với con người", "chat với bot", "đang chat với ai"
+    ],
+    response: () => {
+      return "Bạn có thể chat với nhân viên tư vấn của chúng tôi thông qua các kênh sau:\n\n1. Website: Nhấn vào biểu tượng chat ở góc phải màn hình\n2. Ứng dụng di động: Vào mục 'Hỗ trợ' và chọn 'Chat với nhân viên'\n3. Fanpage Facebook: Nhắn tin trực tiếp qua Facebook Messenger\n4. Zalo OA: Chat qua Zalo Official Account 'ChuoiKoiCho'\n\nGiờ làm việc của nhân viên tư vấn: 8h00 - 22h00 hàng ngày. Ngoài giờ làm việc, bạn vẫn có thể để lại tin nhắn và sẽ được phản hồi vào giờ làm việc tiếp theo.";
+    }
+  },
+  missingItems: {
+    patterns: [
+      "thiếu hàng", "thiếu sản phẩm", "thiếu đồ", "không đủ sản phẩm", "không đủ hàng",
+      "nhận thiếu", "giao thiếu", "không đúng số lượng", "sai số lượng", "thiếu mất",
+      "bị thiếu", "chưa đủ", "chưa đủ số lượng", "thiếu món", "thiếu mặt hàng",
+      "nhận được thiếu", "đơn hàng thiếu", "đơn thiếu", "đếm thiếu", "thiếu so với đơn"
+    ],
+    response: () => {
+      return "Rất tiếc về sự bất tiện này! Nếu bạn nhận được đơn hàng bị thiếu sản phẩm, vui lòng thực hiện theo các bước sau:\n\n1. Chụp ảnh đơn hàng và sản phẩm đã nhận\n2. Liên hệ ngay với chúng tôi qua hotline 1900 6789 hoặc email support@chuoikoicho.com\n3. Cung cấp mã đơn hàng và mô tả sản phẩm bị thiếu\n\nChúng tôi sẽ xác minh thông tin và giải quyết trong vòng 24 giờ làm việc bằng cách giao bổ sung sản phẩm thiếu hoặc hoàn tiền cho sản phẩm đó. Xin lỗi vì sự bất tiện này!";
+    }
+  },
+  
+  damagedProducts: {
+    patterns: [
+      "hàng hỏng", "sản phẩm hỏng", "hàng bị hỏng", "sản phẩm bị hỏng", "hàng lỗi", "sản phẩm lỗi",
+      "hàng bị lỗi", "sản phẩm bị lỗi", "hư hỏng", "bị hư", "bị vỡ", "bị bể", "bị nát",
+      "không nguyên vẹn", "bị rách", "bị vỡ gãy", "bị ẩm mốc", "bị hết hạn", "bị biến chất",
+      "bị hỏng dập", "bị méo mó", "bị móp", "bị trầy xước", "bị bẩn", "bị ố", "bị mốc"
+    ],
+    response: () => {
+      return "Chúng tôi rất tiếc về trải nghiệm không tốt của bạn. Đối với sản phẩm bị hỏng, lỗi hoặc không đạt chất lượng, vui lòng:\n\n1. Chụp ảnh tình trạng sản phẩm bị hỏng/lỗi\n2. Liên hệ chúng tôi trong vòng 24 giờ kể từ khi nhận hàng qua hotline 1900 6789\n3. Cung cấp mã đơn hàng và mô tả vấn đề bạn gặp phải\n\nChúng tôi sẽ tiến hành đổi mới sản phẩm hoặc hoàn tiền 100% tùy theo lựa chọn của bạn. Với thực phẩm tươi sống, vui lòng báo cáo ngay khi nhận hàng để được hỗ trợ tốt nhất.";
+    }
+  },
+  
+  qualityComplaints: {
+    patterns: [
+      "không hài lòng", "chất lượng kém", "chất lượng không tốt", "không đạt chất lượng",
+      "chưa đạt yêu cầu", "không như mong đợi", "thất vọng", "chất lượng thấp",
+      "không đúng cam kết", "không đúng mô tả", "sai mô tả", "khác mô tả",
+      "không như hình", "không giống hình", "sai so với hình", "không đúng với hình",
+      "không như quảng cáo", "không giống quảng cáo", "kém chất lượng", "chán"
+    ],
+    response: () => {
+      return "Chúng tôi rất tiếc khi bạn không hài lòng với chất lượng sản phẩm. Phản hồi của bạn rất quan trọng để chúng tôi cải thiện dịch vụ. Vui lòng:\n\n1. Liên hệ bộ phận Chăm sóc khách hàng qua số 1900 6789 hoặc email complaints@chuoikoicho.com\n2. Cung cấp mã đơn hàng, tên sản phẩm và mô tả chi tiết vấn đề chất lượng\n3. Gửi hình ảnh sản phẩm nếu có thể\n\nChúng tôi cam kết phản hồi trong vòng 24 giờ làm việc và đưa ra phương án giải quyết thỏa đáng như đổi sản phẩm, hoàn tiền hoặc tặng phiếu mua hàng bồi thường. Cảm ơn sự góp ý của bạn!";
+    }
+  },
+  
+  contactSupport: {
+    patterns: [
+      "khiếu nại", "phàn nàn", "góp ý", "than phiền", "tố cáo", "báo cáo vấn đề",
+      "report", "complain", "complaint", "feedback", "phản hồi", "ý kiến", "nhận xét",
+      "đánh giá", "review", "liên hệ ai", "báo cáo ai", "khiếu nại với ai", "góp ý với ai",
+      "gặp quản lý", "gặp người phụ trách", "gặp giám đốc", "gặp trưởng phòng",
+      "gặp bộ phận", "phản ánh vấn đề", "báo lỗi"
+    ],
+    response: () => {
+      return "Để gửi khiếu nại, góp ý hoặc phản hồi, bạn có thể liên hệ chúng tôi qua các kênh sau:\n\n1. Hotline Chăm sóc khách hàng: 1900 6789 (8h00 - 22h00 hàng ngày)\n2. Email: feedback@chuoikoicho.com (phản hồi trong vòng 24 giờ làm việc)\n3. Form góp ý trên website: www.chuoikoicho.com/feedback\n4. Trực tiếp tại cửa hàng: Gặp quản lý cửa hàng\n5. Văn phòng dịch vụ khách hàng: 273 An Dương Vương, Phường 3, Quận 5, TP. HCM\n\nMọi phản hồi của bạn đều được ghi nhận và xử lý nghiêm túc. Chúng tôi luôn nỗ lực cải thiện dịch vụ để mang đến trải nghiệm tốt nhất cho khách hàng.";
+    }
+  },
+  
+  diabeticFoods: {
+    patterns: [
+      "đồ ăn cho người tiểu đường", "thực phẩm cho người tiểu đường", "tiểu đường", "đái tháo đường",
+      "diabetes", "đường huyết cao", "đường trong máu cao", "thực phẩm ít đường",
+      "đồ ăn ít đường", "thực phẩm cho bệnh tiểu đường", "thực phẩm an toàn cho người tiểu đường",
+      "đồ ăn dành cho người tiểu đường", "diabetic food", "đồ cho người tiểu đường",
+      "sản phẩm cho người tiểu đường", "cho người bị tiểu đường", "kiểm soát đường huyết"
+    ],
+    response: () => {
+      return "Chúng tôi có nhiều sản phẩm phù hợp cho người tiểu đường bao gồm:\n\n1. Thực phẩm ít đường/không đường: sữa không đường, ngũ cốc ít đường, đồ uống không đường\n2. Thực phẩm có chỉ số đường huyết thấp (GI thấp): gạo lứt, yến mạch, các loại đậu\n3. Rau củ tươi và trái cây ít ngọt: bưởi, táo, dưa chuột, rau xanh\n4. Thực phẩm giàu protein: thịt nạc, cá, trứng, đậu phụ\n5. Thực phẩm chuyên biệt cho người tiểu đường: bánh ăn kiêng, các sản phẩm sử dụng chất tạo ngọt thay thế đường\n\nCác sản phẩm này được phân loại và gắn nhãn riêng trong cửa hàng hoặc website. Bạn có thể tham khảo ý kiến của bác sĩ hoặc chuyên gia dinh dưỡng để lựa chọn thực phẩm phù hợp với tình trạng sức khỏe của mình.";
+    }
+  },
+  
+  quickMeals: {
+    patterns: [
+      "đồ ăn nhanh", "thức ăn nhanh", "đồ ăn liền", "mì gói", "mì ăn liền", "cơm cháy",
+      "cháo ăn liền", "súp ăn liền", "thức ăn tiện lợi", "đồ ăn nấu nhanh", "đồ ăn chế biến nhanh",
+      "bữa ăn nhanh", "bữa ăn tiện lợi", "đồ ăn chỉ cần hâm nóng", "đồ ăn chỉ cần pha",
+      "đồ ăn chỉ cần trộn", "đồ ăn tiết kiệm thời gian", "món ăn nhanh", "nấu gì nhanh",
+      "nấu nhanh mà rẻ", "quick meal", "fast food", "instant food", "convenient food"
+    ],
+    response: () => {
+      return "Chúng tôi có nhiều lựa chọn thực phẩm nấu nhanh, vừa tiện lợi vừa đảm bảo dinh dưỡng:\n\n1. Thực phẩm ăn liền: mì gói cao cấp, cháo ăn liền, phở ăn liền, miến ăn liền\n2. Thực phẩm đông lạnh: cá viên, chả giò, há cảo, xíu mại chỉ cần hâm nóng\n3. Các loại hộp cơm/thực phẩm đóng gói: cơm cuộn, cơm hộp, salad đóng gói\n4. Đồ hộp: thịt/cá đóng hộp, súp đóng hộp, rau đóng hộp\n5. Thực phẩm bán chế biến: rau củ đã sơ chế, thịt đã ướp sẵn chỉ cần mang đi nấu\n\nĐặc biệt, nếu bạn quan tâm đến giá cả, chúng tôi có combo thực phẩm nấu nhanh tiết kiệm chỉ từ 30.000đ/bữa, đủ dinh dưỡng cho 1-2 người. Các sản phẩm đều có hướng dẫn chế biến đơn giản, chỉ mất 3-10 phút là có thể dùng được.";
+    }
+  },
+  
+  bestSellers: {
+    patterns: [
+      "sản phẩm bán chạy", "sản phẩm bán chạy nhất", "mua nhiều nhất", "sản phẩm hot",
+      "sản phẩm phổ biến", "sản phẩm nổi bật", "sản phẩm được ưa chuộng", "sản phẩm được yêu thích",
+      "sản phẩm bán tốt nhất", "sản phẩm hot nhất", "sản phẩm top", "top sản phẩm",
+      "best sellers", "best selling", "most popular", "trending products", "hot items",
+      "sản phẩm trending", "sản phẩm xu hướng", "đang hot", "được mua nhiều"
+    ],
+    response: async () => {
+      try {
+        // Thử lấy dữ liệu sản phẩm bán chạy từ database
+        const bestSellingProducts = await Product.find({}).sort({ productSold: -1 }).limit(5);
+        
+        if (bestSellingProducts && bestSellingProducts.length > 0) {
+          // Tạo response với sản phẩm thực từ database
+          let response = "Các sản phẩm bán chạy nhất hiện nay tại cửa hàng chúng tôi:\n\n";
+          
+          bestSellingProducts.forEach((product, index) => {
+            response += `${index + 1}. ${product.productName} - ${formatCurrency(product.productPrice)}${product.productDiscount > 0 ? ` (Giảm ${product.productDiscount}%)` : ''}\n`;
+          });
+          
+          response += "\nBạn có thể tìm hiểu thêm về các sản phẩm này hoặc đặt mua ngay trên website của chúng tôi.";
+          return response;
+        } else {
+          // Trả về dữ liệu mẫu nếu không tìm thấy trong database
+          return "Các sản phẩm bán chạy nhất hiện nay tại cửa hàng chúng tôi:\n\n1. Pepsi lon 330ml (thùng 24 lon) - Giảm 10%\n2. Mì Hảo Hảo tôm chua cay (thùng 30 gói) - Giảm 15%\n3. Sữa tươi Vinamilk không đường 1L - Mua 2 tặng 1\n4. Dầu ăn Tường An 1L - Giảm 8%\n5. Nước mắm Nam Ngư 900ml - Giảm 12%\n\nCác sản phẩm này được nhiều khách hàng tin dùng và thường xuyên nằm trong top sản phẩm bán chạy của chúng tôi.";
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy sản phẩm bán chạy:", error);
+        // Trả về dữ liệu mẫu trong trường hợp lỗi
+        return "Các sản phẩm bán chạy nhất hiện nay tại cửa hàng chúng tôi:\n\n1. Pepsi lon 330ml (thùng 24 lon) - Giảm 10%\n2. Mì Hảo Hảo tôm chua cay (thùng 30 gói) - Giảm 15%\n3. Sữa tươi Vinamilk không đường 1L - Mua 2 tặng 1\n4. Dầu ăn Tường An 1L - Giảm 8%\n5. Nước mắm Nam Ngư 900ml - Giảm 12%\n\nCác sản phẩm này được nhiều khách hàng tin dùng và thường xuyên nằm trong top sản phẩm bán chạy của chúng tôi.";
+      }
+    }
+  },
+  
+  healthyFoods: {
+    patterns: [
+      "thực phẩm lành mạnh", "đồ ăn lành mạnh", "ăn kiêng", "ăn sạch", "healthy food",
+      "clean eating", "diet food", "low calorie", "ít calo", "giảm cân", "ăn để giảm cân",
+      "đồ ăn healthy", "organic", "thực phẩm hữu cơ", "thực phẩm tốt cho sức khỏe",
+      "đồ ăn bổ dưỡng", "thực phẩm dinh dưỡng", "thực phẩm tốt", "đồ ăn tốt",
+      "ăn uống lành mạnh", "ăn uống khoa học", "ăn uống điều độ", "chế độ ăn khoa học"
+    ],
+    response: () => {
+      return "Chúng tôi có nhiều lựa chọn thực phẩm lành mạnh cho lối sống khỏe mạnh:\n\n1. Thực phẩm hữu cơ: rau củ, trái cây, trứng, thịt hữu cơ được chứng nhận\n2. Thực phẩm nguyên chất: gạo lứt, yến mạch, ngũ cốc nguyên hạt, hạt dinh dưỡng\n3. Superfoods: hạt chia, quả acai, bột maca, goji berry, hạt lanh\n4. Thực phẩm ít calo/low-carb: các loại rau nhiều chất xơ, protein nạc, thực phẩm thay thế đường\n5. Đồ uống lành mạnh: nước ép trái cây/rau củ tươi, trà xanh, trà thảo mộc, nước ion kiềm\n\nChúng tôi cũng có góc tư vấn dinh dưỡng miễn phí trên website và tại cửa hàng để giúp bạn lựa chọn thực phẩm phù hợp với mục tiêu sức khỏe và tình trạng cơ thể.";
+    }
+  },
+  
+  productUsage: {
+    patterns: [
+      "công dụng", "tác dụng", "lợi ích", "dùng để làm gì", "dùng để", "dùng làm gì",
+      "sử dụng để", "sử dụng làm gì", "lợi ích của", "ích lợi", "giúp gì", "có tác dụng gì",
+      "có công dụng gì", "dùng như thế nào", "dùng sao", "dùng như nào", "cách dùng",
+      "uống như thế nào", "ăn như thế nào", "dùng khi nào", "dùng lúc nào", 
+      "nó dùng để làm gì", "sản phẩm này dùng để làm gì", "dùng để làm gì vậy",
+      "để làm gì", "tại sao nên dùng", "tác dụng phụ", "tác dụng của"
+    ],
+    response: (product) => {
+      if (!product) {
+        return "Vui lòng cho biết bạn muốn biết công dụng của sản phẩm nào?";
+      }
+      
+      // Xây dựng phản hồi dựa trên thông tin sản phẩm từ DB
+      let productInfo = "";
+      
+      // Kiểm tra và sử dụng các trường thông tin khác nhau của sản phẩm
+      if (product.productDetails && product.productDetails.trim()) {
+        productInfo = product.productDetails;
+      } else if (product.productInfo && product.productInfo.trim()) {
+        productInfo = product.productInfo;
+      } else if (product.productDescription && product.productDescription.trim()) {
+        productInfo = product.productDescription;
+      }
+      
+      // Nếu không có thông tin cụ thể, sử dụng thông tin chung dựa trên loại sản phẩm
+      if (!productInfo) {
+        const productType = (product.productCategory || "").toLowerCase();
+        
+        if (productType.includes("sữa") || product.productName.toLowerCase().includes("sữa")) {
+          productInfo = "Sữa là nguồn cung cấp canxi và protein dồi dào, giúp xây dựng và duy trì xương chắc khỏe, phát triển cơ bắp. Sản phẩm có thể dùng trực tiếp hoặc kết hợp với các món ăn, đồ uống khác.";
+        } else if (productType.includes("đồ uống") || productType.includes("nước")) {
+          productInfo = "Đồ uống giúp giải khát, bổ sung nước và các dưỡng chất cần thiết cho cơ thể. Nên uống lạnh để có trải nghiệm tốt nhất.";
+        } else if (productType.includes("thực phẩm khô") || productType.includes("đồ ăn vặt")) {
+          productInfo = "Đây là thực phẩm tiện lợi, có thể sử dụng trực tiếp hoặc chế biến nhanh. Phù hợp làm bữa ăn nhẹ hoặc đồ ăn vặt.";
+        } else {
+          productInfo = "Sản phẩm dùng trong chế biến thực phẩm hoặc tiêu dùng hàng ngày. Vui lòng xem hướng dẫn sử dụng trên bao bì để có kết quả tốt nhất.";
+        }
+      }
+        
+        return {
+        type: "text",
+        text: `Công dụng của ${product.productName}:\n${productInfo}`
+      };
+    }
+  },
+  // Thêm intent mới cho giới thiệu sản phẩm
+  productIntroduction: {
+    patterns: [
+      "giới thiệu", "nói về", "kể về", "cho biết về", "mô tả về", 
+      "giới thiệu về sản phẩm", "nói về sản phẩm", "kể về sản phẩm", 
+      "sản phẩm này là gì", "sản phẩm này như thế nào", "cho mình biết về sản phẩm",
+      "sản phẩm này có gì đặc biệt", "đặc điểm của sản phẩm", "thông tin về sản phẩm",
+      "giới thiệu sản phẩm", "mô tả sản phẩm", "cho tôi biết về", "nói qua về"
+    ],
+    response: (product) => {
+      try {
+        if (!product) {
+          return "Vui lòng cho biết bạn muốn tôi giới thiệu về sản phẩm nào?";
+        }
+        
+        // Xây dựng phản hồi dựa trên thông tin sản phẩm
+        let introduction = "";
+        
+        // Tạo phần thông tin chính
+        introduction += `${product.productName} là sản phẩm ${product.productCategory || "chất lượng"} của chúng tôi.\n\n`;
+        
+        // Thêm thông tin chi tiết từ các trường có sẵn - Thêm kiểm tra null/undefined
+        if (product.productDetails && typeof product.productDetails === 'string' && product.productDetails.trim()) {
+          introduction += `Thông tin chi tiết: ${product.productDetails}\n\n`;
+        }
+        
+        if (product.productInfo && typeof product.productInfo === 'string' && product.productInfo.trim()) {
+          introduction += `${product.productInfo}\n\n`;
+        }
+        
+        if (product.productDescription && typeof product.productDescription === 'string' && product.productDescription.trim()) {
+          introduction += `${product.productDescription}\n\n`;
+        }
+        
+        // Thêm thông tin về giá và khuyến mãi
+        introduction += `Giá: ${formatCurrency(product.productPrice)}`;
+        
+        if (product.productDiscount && product.productDiscount > 0) {
+          const discountedPrice = Math.round(product.productPrice * (1 - product.productDiscount / 100));
+          introduction += ` (Đang giảm ${product.productDiscount}%, còn ${formatCurrency(discountedPrice)})`;
+        }
+        
+        // Nếu không có đủ thông tin chi tiết, tạo giới thiệu dựa trên loại sản phẩm
+        if (introduction.split('\n').length <= 3) {
+          const productType = (product.productCategory || "").toLowerCase();
+          
+          if (productType.includes("nước giặt") || product.productName.toLowerCase().includes("nước giặt")) {
+            introduction += `\n\nĐây là sản phẩm nước giặt chất lượng cao, giúp làm sạch hiệu quả, khử mùi hôi và làm thơm quần áo. Phù hợp với nhiều loại vải và an toàn cho da nhạy cảm.`;
+          } else if (productType.includes("sữa") || product.productName.toLowerCase().includes("sữa")) {
+            introduction += `\n\nĐây là sản phẩm sữa chất lượng, giàu dưỡng chất, vitamin và khoáng chất, giúp bổ sung dinh dưỡng hàng ngày cho cơ thể.`;
+          } else if (productType.includes("đồ uống") || productType.includes("nước")) {
+            introduction += `\n\nĐây là thức uống ngon, giúp giải khát và bổ sung năng lượng. Được nhiều khách hàng ưa chuộng và đánh giá cao về chất lượng.`;
+          } else if (productType.includes("thực phẩm") || productType.includes("đồ ăn")) {
+            introduction += `\n\nĐây là thực phẩm chất lượng cao, được sản xuất theo các tiêu chuẩn an toàn vệ sinh thực phẩm, mang lại hương vị tuyệt vời và trải nghiệm ẩm thực tốt nhất.`;
+          }
+        }
+        
+        // Thêm thông tin mua hàng
+        introduction += `\n\nBạn có thể mua sản phẩm này tại cửa hàng hoặc đặt mua online trên website của chúng tôi.`;
+        
+        return {
+          type: "text",
+          text: introduction
+        };
+      } catch (error) {
+        console.error("Lỗi khi giới thiệu sản phẩm:", error);
+        return {
+          type: "text",
+          text: `Xin lỗi, đã có lỗi xảy ra khi lấy thông tin giới thiệu về sản phẩm ${product?.productName || ""}. Bạn có thể yêu cầu hỗ trợ từ nhân viên tư vấn.`
+        };
+      }
+    }
+  }
 };
 
 // Cấu hình Rasa
@@ -752,52 +1626,120 @@ const priorityRules = [
   {
     patterns: ["tìm rau", "các loại rau", "hiển thị rau", "rau gì", "rau nào"],
     priorityIntent: "categorySearch"
+  },
+  // Nếu tin nhắn chứa các từ khóa tìm kiếm sản phẩm cụ thể, ưu tiên intent productSearch
+  {
+    patterns: ["tìm sản phẩm", "tìm cho tôi", "có bán", "muốn mua", "muốn xem", "tôi muốn", "có sản phẩm", "hiển thị"],
+    priorityIntent: "productSearch"
   }
 ];
 
-// Sửa hàm detectIntent để áp dụng quy tắc ưu tiên và trả về score thay vì similarity
+// Sửa hàm detectIntent để ưu tiên xử lý câu hỏi về nước uống
 function detectIntent(message) {
-  let bestMatch = { intent: null, score: 0, pattern: null };
-  const matches = [];
-
-  // Ghi lại tất cả các match tiềm năng
-  for (const intent in intents) {
-    if (intents[intent].patterns) {
-      for (const pattern of intents[intent].patterns) {
-        const similarity = calculateSimilarity(message, pattern);
-        if (similarity >= 0.5) {
-          console.log(`Potential match: ${intent} with pattern "${pattern}" - score: ${similarity.toFixed(2)}`);
-          matches.push({ intent, score: similarity, pattern });
-          if (similarity > bestMatch.score) {
-            bestMatch = { intent, score: similarity, pattern };
-          }
-        }
-      }
-    }
-  }
-
-  // Áp dụng quy tắc ưu tiên nếu có xung đột
-  if (matches.length > 1) {
-    for (const rule of priorityRules) {
-      const hasKeyword = rule.patterns.some(pattern => 
-        message.toLowerCase().includes(pattern.toLowerCase())
-      );
-      
-      if (hasKeyword) {
-        // Tìm match có intent cần ưu tiên
-        const priorityMatch = matches.find(match => match.intent === rule.priorityIntent);
-        
-        // Nếu tìm thấy match với intent ưu tiên và độ tương đồng trên 0.6
-        if (priorityMatch && priorityMatch.score >= 0.6) {
-          console.log(`Applying priority rule for "${rule.priorityIntent}" because message contains prioritized keywords`);
-          bestMatch = priorityMatch;
-          break;
-        }
-      }
-    }
+  // Nếu tin nhắn là null hoặc không phải chuỗi, trả về intent mặc định
+  if (!message || typeof message !== 'string') {
+    return { name: "general", score: 0 };
   }
   
-  return bestMatch;
+  // Chuẩn hóa tin nhắn
+  const lowerCaseMessage = message.toLowerCase().trim();
+  
+  // Phát hiện intent dựa trên từ khóa đặc biệt
+  
+  // Nếu yêu cầu tìm kiếm sản phẩm
+  if (lowerCaseMessage.includes("tìm") || 
+      lowerCaseMessage.includes("kiếm") || 
+      lowerCaseMessage.includes("mua") ||
+      lowerCaseMessage.includes("tôi muốn") ||
+      lowerCaseMessage.includes("tôi cần") ||
+      lowerCaseMessage.includes("có bán") || 
+      lowerCaseMessage.includes("bán không")) {
+    return { name: "productSearch", score: 0.8 };
+  }
+  
+  // Nếu hỏi về giới thiệu sản phẩm
+  if (lowerCaseMessage.includes("giới thiệu") || 
+      lowerCaseMessage.includes("nói về") || 
+      lowerCaseMessage.includes("cho biết về") ||
+      lowerCaseMessage.includes("mô tả") ||
+      lowerCaseMessage.includes("kể về") ||
+      lowerCaseMessage.includes("thông tin về") ||
+      lowerCaseMessage.includes("sản phẩm này là gì")) {
+    return { name: "productIntroduction", score: 0.8 };
+  }
+  
+  // Nếu hỏi về công dụng sản phẩm
+  if (lowerCaseMessage.includes("công dụng") || 
+      lowerCaseMessage.includes("tác dụng") || 
+      lowerCaseMessage.includes("lợi ích") ||
+      lowerCaseMessage.includes("dùng để làm gì") ||
+      lowerCaseMessage.includes("dùng làm gì") ||
+      lowerCaseMessage.includes("để làm gì") ||
+      lowerCaseMessage.includes("có tác dụng gì")) {
+    return { name: "productUsage", score: 0.8 };
+  }
+  
+  // Nếu hỏi về giá và khuyến mãi
+  if (lowerCaseMessage.includes("giá") || 
+      lowerCaseMessage.includes("bao nhiêu tiền") || 
+      lowerCaseMessage.includes("giá bao nhiêu") ||
+      lowerCaseMessage.includes("giá cả") ||
+      lowerCaseMessage.includes("khuyến mãi") ||
+      lowerCaseMessage.includes("giảm giá") ||
+      lowerCaseMessage.includes("sale")) {
+    return { name: "productPrice", score: 0.8 };
+  }
+  
+  // Nếu hỏi về thông tin cửa hàng
+  if (lowerCaseMessage.includes("cửa hàng") || 
+      lowerCaseMessage.includes("chi nhánh") || 
+      lowerCaseMessage.includes("địa chỉ") ||
+      lowerCaseMessage.includes("địa điểm") ||
+      lowerCaseMessage.includes("chỗ nào") ||
+      lowerCaseMessage.includes("ở đâu")) {
+    return { name: "storeInfo", score: 0.8 };
+  }
+  
+  // Nếu hỏi về vận chuyển
+  if (lowerCaseMessage.includes("giao hàng") || 
+      lowerCaseMessage.includes("vận chuyển") || 
+      lowerCaseMessage.includes("ship") ||
+      lowerCaseMessage.includes("phí ship") ||
+      lowerCaseMessage.includes("phí giao") ||
+      lowerCaseMessage.includes("thời gian giao")) {
+    return { name: "shipping", score: 0.8 };
+  }
+  
+  // Nếu hỏi về chất lượng và xuất xứ
+  if (lowerCaseMessage.includes("chất lượng") || 
+      lowerCaseMessage.includes("xuất xứ") || 
+      lowerCaseMessage.includes("nguồn gốc") ||
+      lowerCaseMessage.includes("sản xuất ở đâu") ||
+      lowerCaseMessage.includes("hạn sử dụng") ||
+      lowerCaseMessage.includes("date") ||
+      lowerCaseMessage.includes("hsd")) {
+    return { name: "productQuality", score: 0.8 };
+  }
+  
+  // Xử lý đặc biệt cho truy vấn về nước uống
+  if (lowerCaseMessage.includes("các loại nước") ||
+      lowerCaseMessage.includes("nước uống") ||
+      lowerCaseMessage.includes("đồ uống") ||
+      (lowerCaseMessage.includes("nước") && !lowerCaseMessage.includes("nước mắm"))) {
+    return { name: "productSearch", score: 0.8 };
+  }
+  
+  // Xử lý đặc biệt cho truy vấn về đồ nhậu
+  if (lowerCaseMessage.includes("đồ nhậu") ||
+      lowerCaseMessage.includes("mồi nhậu") ||
+      lowerCaseMessage.includes("mồi đề nhậu") ||
+      lowerCaseMessage.includes("mối nhậu") ||
+      lowerCaseMessage.includes("mối đề nhậu")) {
+    return { name: "productSearch", score: 0.8 };
+  }
+  
+  // Mặc định
+  return { name: "general", score: 0.5 };
 }
 
 // Hàm xử lý context của cuộc trò chuyện
@@ -894,16 +1836,70 @@ async function getAnswerFromRagChatbot(message) {
 // Hàm xử lý tin nhắn từ người dùng
 export const handleMessage = async (req, res) => {
   try {
-    const { message, user_id = "anonymous", productId } = req.body;
+    const { message, userId, productId } = req.body;
 
-    if (!message || message.trim() === '') {
+    if (!message) {
       return res.status(400).json({
         success: false,
-        message: "Tin nhắn không được để trống"
+        message: "Message is required"
       });
     }
-
-    console.log(`Nhận tin nhắn: "${message}" từ người dùng: ${user_id} | productId: ${productId ? productId : 'không có'}`);
+    
+    console.log(`Nhận tin nhắn từ user ${userId || 'anonymous'}: "${message}"`);
+    
+    // Phát hiện intent từ tin nhắn
+    const intent = detectIntent(message);
+    console.log("Intent được phát hiện:", intent);
+    
+    let responseMessage;
+    
+    // Xử lý riêng cho intent tìm kiếm sản phẩm
+    if (intent && intent.name === 'productSearch') {
+      try {
+        // Trích xuất tên sản phẩm từ tin nhắn
+        const productName = extractProductNameFromMessage(message);
+        console.log(`Tên sản phẩm trích xuất từ tin nhắn: "${productName}"`);
+        
+        if (!productName || productName === "") {
+          responseMessage = "Vui lòng cho tôi biết bạn muốn tìm sản phẩm gì?";
+        } else {
+          // Tìm kiếm sản phẩm theo tên
+          const searchResults = await searchProducts(productName);
+          
+          if (searchResults && searchResults.length > 0) {
+            console.log(`Tìm thấy ${searchResults.length} sản phẩm cho "${productName}"`);
+            responseMessage = {
+              type: 'productSearch',
+              text: `Tôi đã tìm thấy ${searchResults.length} sản phẩm "${productName}" cho bạn:`,
+              products: searchResults.map(product => ({
+                name: product.productName,
+                price: product.productPrice,
+                discount: product.productDiscount,
+                promotionalPrice: product.productDiscount ? Math.round(product.productPrice * (1 - product.productDiscount / 100)) : product.productPrice,
+                image: product.productImage,
+                slug: product._id
+              })),
+              nameCategory: `Kết quả tìm kiếm "${productName}"`
+            };
+          } else {
+            console.log(`Không tìm thấy sản phẩm nào cho "${productName}"`);
+            responseMessage = `Xin lỗi, tôi không tìm thấy sản phẩm nào với từ khóa "${productName}". Bạn có thể thử tìm kiếm với từ khóa khác hoặc xem các sản phẩm đang giảm giá.`;
+          }
+        }
+      } catch (error) {
+        console.error("Lỗi khi xử lý tìm kiếm sản phẩm:", error);
+        responseMessage = "Xin lỗi, đã xảy ra lỗi khi tìm kiếm. Vui lòng thử lại sau.";
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: typeof responseMessage === 'string' ? responseMessage : (responseMessage.text || ''),
+        data: typeof responseMessage !== 'string' ? responseMessage : null,
+        intent: intent.name
+      });
+    }
+    
+    // Xử lý các intent khác (giữ nguyên code xử lý)
 
     // Trực tiếp sử dụng chatbot pattern-based, bỏ qua RAG
     // Sử dụng context nếu có
@@ -913,48 +1909,79 @@ export const handleMessage = async (req, res) => {
     let product = null;
     if (productId) {
       try {
+        console.log(`Đang tìm kiếm sản phẩm với ID: ${productId}`);
         product = await Product.findById(productId);
         if (product) {
+          console.log(`Tìm thấy sản phẩm: ${product.productName}, danh mục: ${product.productCategory}`);
           context = { type: 'product', data: product };
+        } else {
+          console.log(`Không tìm thấy sản phẩm với ID: ${productId}`);
         }
       } catch (error) {
         console.error(`Lỗi khi lấy thông tin sản phẩm: ${error.message}`);
       }
     }
 
-    // Tìm intent phù hợp nhất với tin nhắn
-    const { intent, score } = detectIntent(message);
-
     // Lấy phản hồi dựa trên intent và context
-    let response = await handleContext(context, intent);
+    let response = await handleContext(context, intent.name);
+    console.log(`Phản hồi từ handleContext: ${response ? (typeof response === 'object' ? 'Object response' : response) : 'Không có phản hồi'}`);
 
     // Nếu không có phản hồi từ context, sử dụng response theo intent
     if (!response) {
-      if (intent && score > 0.5) {
-        const intentHandler = intents[intent].response;
-        
-        if (typeof intentHandler === 'function') {
+      if (intent.score > 0.5) {
+        if (intents[intent.name] && typeof intents[intent.name].response === 'function') {
+          console.log(`Gọi hàm xử lý cho intent: ${intent.name} ${product ? 'với product' : 'không có product'}`);
+          try {
           if (product) {
-            response = await intentHandler(product);
+              response = await intents[intent.name].response(product);
           } else {
-            response = await intentHandler();
+              response = await intents[intent.name].response();
+            }
+          } catch (error) {
+            console.error(`Lỗi khi gọi hàm xử lý cho intent ${intent.name}:`, error);
+            response = "Xin lỗi, đã xảy ra lỗi khi xử lý yêu cầu của bạn. Vui lòng thử lại sau.";
           }
+        } else if (intents[intent.name] && intents[intent.name].response) {
+          response = intents[intent.name].response;
         } else {
-          response = intentHandler;
+          response = "Xin lỗi, tôi không hiểu ý của bạn. Bạn có thể diễn đạt lại hoặc hỏi về sản phẩm, giá cả, hoặc dịch vụ giao hàng của chúng tôi.";
         }
+        console.log(`Phản hồi từ intentHandler: ${typeof response === 'object' ? 'Object response' : response}`);
       } else {
         // Nếu không tìm thấy intent nào phù hợp, trả về tin nhắn mặc định
+        console.log(`Intent không đủ độ chính xác (score: ${intent.score}), trả về tin nhắn mặc định`);
         response = "Xin lỗi, tôi không hiểu ý của bạn. Bạn có thể diễn đạt lại hoặc hỏi về sản phẩm, giá cả, hoặc dịch vụ giao hàng của chúng tôi.";
       }
     }
 
-    // Trả về phản hồi
-    res.status(200).json({
+    // Chuẩn bị phản hồi JSON
+    const responseJSON = {
       success: true,
-      message: response,
-      intent: intent,
-      score: score
-    });
+      intent: intent.name,
+      score: intent.score
+    };
+
+    // Nếu response là object (có thể chứa thông tin products, nameCategory, v.v.)
+    if (typeof response === 'object' && response !== null) {
+      console.log(`Phản hồi dạng object với type: ${response.type}`);
+      responseJSON.message = response.text || '';
+      responseJSON.data = response;
+      
+      // Thêm thông tin bổ sung
+      if (response.type) responseJSON.type = response.type;
+      if (response.nameCategory) responseJSON.nameCategory = response.nameCategory;
+      if (response.products) {
+        responseJSON.products = response.products;
+        console.log(`Phản hồi chứa ${response.products.length} sản phẩm`);
+      }
+    } else {
+      // Nếu response chỉ là chuỗi văn bản đơn giản
+      responseJSON.message = response;
+    }
+
+    // Trả về phản hồi
+    console.log(`Trả về phản hồi cho client với type: ${responseJSON.type || 'không có type'}`);
+    res.status(200).json(responseJSON);
   } catch (error) {
     console.error(`Lỗi xử lý tin nhắn: ${error.message}`);
     return res.status(500).json({
@@ -1076,7 +2103,7 @@ function createSlugFromName(name) {
   }
 }
 
-// Hàm trích xuất khoảng giá từ tin nhắn
+// Hàm trích xuất khoảng giá từ tin nhắn người dùng
 function extractPriceRanges(message) {
   // Kiểm tra message có tồn tại và là string hay không
   if (!message || typeof message !== 'string') {
@@ -1195,3 +2222,596 @@ function extractPriceRanges(message) {
   console.log(`Extracted price range: minPrice=${minPrice}, maxPrice=${maxPrice}`);
   return { minPrice, maxPrice };
 }
+
+// Hàm trích xuất tên sản phẩm từ tin nhắn người dùng
+function extractProductNameFromMessage(message) {
+  try {
+    // Đảm bảo message là string
+  if (!message || typeof message !== 'string') {
+      console.log("Message không phải string:", message);
+      return ""; // Trả về rỗng nếu không phải string
+    }
+    
+    // Chuẩn hóa message
+    message = message.toLowerCase().trim();
+    
+    // Kiểm tra và xử lý các trường hợp "đồ nhậu"
+    if (message.includes("mối đề nhậu") || 
+        message.includes("mồi đề nhậu") || 
+        message.includes("mồi nhậu") || 
+        message.includes("đồ nhậu")) {
+      return "đồ nhậu";
+    }
+    
+    // Các pattern cần loại bỏ
+  const patterns = [
+      "tìm", "kiếm", "mua", "bán", "tôi muốn", "giúp tôi", "cho tôi",
+      "sản phẩm", "hàng", "cần", "muốn", "hỏi về", "về", "cho mình", "bạn có",
+      "cái", "một cái", "một", "có bán", "không", "có", "những", "các",
+      "loại", "giống", "mấy", "giá", "bao nhiêu", "thông tin"
+    ];
+    
+    // Loại bỏ các từ không cần thiết
+    patterns.forEach(pattern => {
+      message = message.replace(new RegExp(`\\b${pattern}\\b`, 'gi'), ' ');
+    });
+    
+    // Loại bỏ ký tự đặc biệt và khoảng trắng thừa
+    message = message.replace(/[^\w\sàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/g, ' ');
+    message = message.replace(/\s+/g, ' ').trim();
+    
+    console.log("Extracted product name:", message);
+    return message;
+  } catch (error) {
+    console.error("Lỗi khi phân tích tên sản phẩm:", error);
+    return "";
+  }
+}
+
+// Cập nhật hàm productSearch.response để sử dụng hàm searchProducts
+intents.productSearch = {
+  patterns: [
+    "tìm sản phẩm", "tìm", "tìm kiếm", "tìm giúp", "tìm cho tôi", 
+    "tìm cho mình", "kiếm", "kiếm giúp", "kiếm cho tôi", "kiếm cho mình",
+    "tìm hiểu", "tìm hiểu về", "tìm hiểu sản phẩm", "tìm hiểu về sản phẩm",
+    "sản phẩm", "có sản phẩm", "có sản phẩm nào", "sản phẩm gì",
+    "tìm mối đề nhậu", "tìm đồ nhậu", "tìm đồ ăn", "tìm thức ăn", "tìm nước uống",
+    "tìm món ăn", "tìm món", "tìm đồ", "tìm thức", "tìm nước"
+  ],
+  response: async (message) => {
+    try {
+      const productName = extractProductNameFromMessage(message);
+      
+      if (!productName) {
+        return "Bạn muốn tìm sản phẩm gì? Vui lòng cung cấp tên hoặc mô tả sản phẩm cụ thể.";
+      }
+      
+      console.log(`Đang tìm kiếm sản phẩm: "${productName}"`);
+      
+      // Sử dụng hàm searchProducts để tìm sản phẩm
+      const products = await searchProducts(productName);
+      
+      if (products.length > 0) {
+        // Tạo phản hồi với sản phẩm tìm thấy
+        const productElements = products.map(p => {
+          const imageUrl = p.productImages && p.productImages.length > 0 
+            ? p.productImages[0] 
+            : "default-product.jpg";
+          
+          return {
+            type: "product",
+            id: p._id,
+            name: p.productName,
+            price: p.productPrice,
+            image: imageUrl,
+            slug: createSlug(p.productName),
+            category: p.productCategory || p.category || "Không xác định",
+            discount: p.productDiscount || 0,
+            promotionalPrice: p.productDiscount > 0 ? p.productPrice * (1 - p.productDiscount/100) : null
+          };
+        });
+        
+        return {
+          text: `Tôi đã tìm thấy ${products.length} sản phẩm phù hợp với "${productName}":`,
+          products: productElements,
+          type: "productSearch",
+          nameCategory: `Kết quả tìm kiếm: ${productName}`
+        };
+      }
+      
+      // Nếu không tìm thấy sản phẩm nào, đề xuất danh mục phổ biến
+      const popularCategories = await Product.aggregate([
+        { $group: { _id: "$productCategory", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 }
+      ]);
+      
+      if (popularCategories.length > 0) {
+        const categoryNames = popularCategories.map(cat => cat._id).filter(Boolean);
+        
+        return `Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với "${productName}". Bạn có thể xem các danh mục phổ biến: ${categoryNames.join(', ')} hoặc thử tìm kiếm với từ khóa khác.`;
+      }
+      
+      return `Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với "${productName}". Vui lòng thử tìm kiếm với từ khóa khác.`;
+    } catch (error) {
+      console.error("Lỗi khi tìm kiếm sản phẩm:", error);
+      return "Xin lỗi, đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau.";
+    }
+  }
+};
+
+// Cập nhật hàm searchProducts
+async function searchProducts(productName) {
+  try {
+    let results = [];
+    
+    // Xử lý trường hợp đặc biệt - đồ nhậu
+    if (productName === "đồ nhậu" || productName === "mồi nhậu" || productName === "mồi đề nhậu" || productName === "mối nhậu") {
+      console.log("Đang tìm kiếm đồ nhậu/mồi nhậu...");
+      // Tìm các đồ nhậu phổ biến
+      return await Product.find({
+        $or: [
+          // Danh mục ẩm thực
+          { productCategory: { $regex: 'nhậu', $options: 'i' } },
+          { productCategory: { $regex: 'bia', $options: 'i' } },
+          { productCategory: { $regex: 'rượu', $options: 'i' } },
+          { productCategory: { $regex: 'snack', $options: 'i' } },
+          
+          // Tên sản phẩm cụ thể liên quan đến đồ nhậu
+          { productName: { $regex: '\\bbia\\b', $options: 'i' } },
+          { productName: { $regex: '\\brượu\\b', $options: 'i' } },
+          { productName: { $regex: '\\bkhô\\b', $options: 'i' } },
+          { productName: { $regex: '\\bmực\\b', $options: 'i' } },
+          { productName: { $regex: '\\bcá khô\\b', $options: 'i' } },
+          { productName: { $regex: '\\bkhô gà\\b', $options: 'i' } },
+          { productName: { $regex: '\\bkhô bò\\b', $options: 'i' } },
+          { productName: { $regex: '\\bkhô mực\\b', $options: 'i' } },
+          { productName: { $regex: '\\bsnack\\b', $options: 'i' } },
+          { productName: { $regex: '\\bbim bim\\b', $options: 'i' } },
+          { productName: { $regex: '\\bhạt\\b', $options: 'i' } },
+          { productName: { $regex: '\\bnhân hạt\\b', $options: 'i' } },
+          { productName: { $regex: '\\bhạt dẻ\\b', $options: 'i' } },
+          { productName: { $regex: '\\bhạt điều\\b', $options: 'i' } },
+          { productName: { $regex: '\\bbim\\b', $options: 'i' } },
+          { productName: { $regex: '\\boishi\\b', $options: 'i' } },
+          { productName: { $regex: '\\bdừa\\b', $options: 'i' } },
+          { productName: { $regex: '\\bđậu phộng\\b', $options: 'i' } },
+          { productName: { $regex: '\\blạp xưởng\\b', $options: 'i' } },
+          { productName: { $regex: '\\bnem\\b', $options: 'i' } },
+          { productName: { $regex: '\\bchả\\b', $options: 'i' } },
+          
+          // Đồ uống nhậu
+          { productName: { $regex: '\\bpepsi\\b', $options: 'i' } },
+          { productName: { $regex: '\\bcoca\\b', $options: 'i' } },
+          { productName: { $regex: '\\bcoca.*cola\\b', $options: 'i' } },
+          { productName: { $regex: '\\bsprite\\b', $options: 'i' } },
+          { productName: { $regex: '\\bsting\\b', $options: 'i' } },
+          { productName: { $regex: '\\bheniken\\b', $options: 'i' } },
+          { productName: { $regex: '\\btiger\\b', $options: 'i' } },
+          { productName: { $regex: '\\bbudweiser\\b', $options: 'i' } },
+          { productName: { $regex: '\\bi bia\\b', $options: 'i' } },
+          { productName: { $regex: '\\bia\\b', $options: 'i' } }
+        ],
+        // Loại trừ các sản phẩm không phải đồ nhậu
+        productName: {
+          $not: {
+            $regex: 'giặt|tẩy|lau|rửa|vệ sinh|bột giặt|xà phòng|màn|rèm|đèn|gối|chăn|quần|áo',
+            $options: 'i'
+          }
+        }
+      }).limit(8);
+    }
+    
+    // Xử lý trường hợp đặc biệt - nước uống
+    if (productName === "nước uống" || productName === "nước" || productName === "đồ uống") {
+      console.log("Đang tìm kiếm nước uống...");
+      // Tìm các đồ uống phổ biến
+      return await Product.find({
+        $or: [
+          // Tên sản phẩm chứa từ khóa liên quan đến nước uống
+          { productName: { $regex: '\\bnước\\b', $options: 'i' } },
+          { productName: { $regex: '\\bchai\\b', $options: 'i' } },
+          { productName: { $regex: '\\blon\\b', $options: 'i' } },
+          { productName: { $regex: '\\blốc\\b', $options: 'i' } },
+          { productName: { $regex: '\\bpepsi\\b', $options: 'i' } },
+          { productName: { $regex: '\\bcoca\\b', $options: 'i' } },
+          { productName: { $regex: '\\bcola\\b', $options: 'i' } },
+          { productName: { $regex: '\\btrà\\b', $options: 'i' } },
+          { productName: { $regex: '\\btea\\b', $options: 'i' } },
+          { productName: { $regex: '\\baquafina\\b', $options: 'i' } },
+          { productName: { $regex: '\\blavie\\b', $options: 'i' } },
+          { productName: { $regex: '\\bsting\\b', $options: 'i' } },
+          { productName: { $regex: '\\btwister\\b', $options: 'i' } },
+          { productName: { $regex: '\\bsprite\\b', $options: 'i' } },
+          { productName: { $regex: '\\bmirinda\\b', $options: 'i' } },
+          { productName: { $regex: '\\bcà phê\\b', $options: 'i' } },
+          { productName: { $regex: '\\bcafe\\b', $options: 'i' } },
+          { productName: { $regex: '\\bcaffee\\b', $options: 'i' } },
+          { productName: { $regex: '\\bsữa\\b', $options: 'i' } },
+          { productName: { $regex: '\\bnestlé\\b', $options: 'i' } },
+          { productName: { $regex: '\\bvinamilk\\b', $options: 'i' } },
+          { productName: { $regex: '\\bolongg\\b', $options: 'i' } },
+          { productName: { $regex: '\\b7up\\b', $options: 'i' } },
+          { productName: { $regex: '\\bnuoc\\b', $options: 'i' } },
+          
+          // Danh mục liên quan đến nước uống
+          { productCategory: { $regex: 'đồ uống', $options: 'i' } },
+          { productCategory: { $regex: 'nước', $options: 'i' } },
+          { productCategory: { $regex: 'giải khát', $options: 'i' } },
+          { productCategory: { $regex: 'thức uống', $options: 'i' } }
+        ],
+        // Loại trừ các sản phẩm không phải đồ uống
+        productName: {
+          $not: {
+            $regex: 'giặt|tẩy|lau|rửa|vệ sinh|bột giặt|xà phòng|gội|dầu gội|sữa tắm|kem đánh răng',
+            $options: 'i'
+          }
+        }
+      }).limit(8);
+    }
+    
+    // Tìm trực tiếp bằng tên
+    const directResults = await Product.find({
+      productName: { $regex: productName, $options: 'i' }
+    }).limit(6);
+    
+    if (directResults.length > 0) {
+      return directResults;
+    }
+    
+    // Tìm bằng full-text search
+    const textResults = await Product.find({
+      $text: { $search: productName }
+    }).limit(6);
+    
+    if (textResults.length > 0) {
+      return textResults;
+    }
+    
+    // Tách từ khóa và tìm kiếm mở rộng
+    const keywords = productName.split(/\s+/).filter(word => word.length > 2);
+    
+    if (keywords.length > 0) {
+      const orConditions = keywords.map(keyword => ({
+        $or: [
+          { productName: { $regex: keyword, $options: 'i' } },
+          { productInfo: { $regex: keyword, $options: 'i' } },
+          { productCategory: { $regex: keyword, $options: 'i' } },
+          { productBrand: { $regex: keyword, $options: 'i' } },
+          { productDetails: { $regex: keyword, $options: 'i' } }
+        ]
+      }));
+      
+      const expandedResults = await Product.find({
+        $or: orConditions
+      }).limit(8);
+      
+      if (expandedResults.length > 0) {
+        return expandedResults;
+      }
+    }
+    
+    // Nếu không tìm thấy gì, trả về mảng rỗng
+    return [];
+  } catch (error) {
+    console.error("Lỗi khi tìm kiếm sản phẩm:", error);
+    return [];
+  }
+}
+
+// Cập nhật hàm handleCustomMessage để xử lý phản hồi từ intent productUsage
+const handleCustomMessage = async (message, userId, productId) => {
+  try {
+    // Tiền xử lý tin nhắn
+    if (!message) {
+      return { success: false, message: "Tin nhắn không hợp lệ" };
+    }
+
+    // Xác định intent từ tin nhắn
+    const intent = detectIntent(message);
+    console.log("Nhận diện intent:", intent);
+
+    // Trích xuất tên sản phẩm nếu là sản phẩm cụ thể
+    const productName = extractProductNameFromMessage(message);
+    console.log("Tên sản phẩm trích xuất:", productName);
+
+    // Nếu productId được cung cấp (đang xem trang chi tiết sản phẩm), ưu tiên sử dụng nó
+    let targetProductId = null;
+    let product = null;
+
+    if (productId) {
+      // Tìm sản phẩm từ ID được cung cấp (đang xem chi tiết sản phẩm)
+      product = await Product.findById(productId);
+      if (product) {
+        targetProductId = productId;
+        console.log("Đã tìm thấy sản phẩm từ productId:", product.productName);
+      }
+    } else if (productName) {
+      // Tìm sản phẩm theo tên được trích xuất từ tin nhắn
+      try {
+        const products = await searchProducts(productName);
+        if (products && products.length > 0) {
+          product = products[0];
+          targetProductId = product._id;
+          console.log("Đã tìm thấy sản phẩm từ tên:", product.productName);
+        }
+      } catch (error) {
+        console.error("Lỗi khi tìm kiếm sản phẩm theo tên:", error);
+      }
+    }
+
+    // Xử lý dựa trên intent đã nhận diện
+    if (intent === "productSearch") {
+      // Xử lý tìm kiếm sản phẩm
+      if (productName) {
+        const searchResults = await searchProducts(productName);
+        
+        if (searchResults && searchResults.length > 0) {
+          console.log(`Tìm thấy ${searchResults.length} sản phẩm cho "${productName}"`);
+          
+          // Gửi kết quả tìm kiếm
+          return {
+            success: true,
+            data: {
+              type: 'productSearch',
+              text: `Tôi đã tìm thấy ${searchResults.length} sản phẩm "${productName}" cho bạn:`,
+              products: searchResults.map(product => ({
+                name: product.productName,
+                price: product.productPrice,
+                discount: product.productDiscount,
+                promotionalPrice: product.productDiscount ? Math.round(product.productPrice * (1 - product.productDiscount / 100)) : product.productPrice,
+                image: product.productImage,
+                slug: product._id
+              })),
+              nameCategory: `Kết quả tìm kiếm "${productName}"`
+            },
+            intent: intent
+          };
+        } else {
+          return { 
+            success: true, 
+            message: `Xin lỗi, tôi không tìm thấy sản phẩm nào với từ khóa "${productName}". Bạn có thể thử tìm kiếm với từ khóa khác hoặc xem các sản phẩm đang giảm giá.`,
+            intent: intent
+          };
+        }
+      } else {
+        return { 
+          success: true, 
+          message: "Bạn muốn tìm sản phẩm gì? Vui lòng cung cấp từ khóa tìm kiếm.",
+          intent: intent
+        };
+      }
+    } 
+    else if (intent === "productUsage") {
+      // Xử lý yêu cầu thông tin về công dụng sản phẩm
+      if (product) {
+        // Lấy phản hồi từ intent handler
+        console.log("Phản hồi từ intentHandler: Công dụng của", product.productName);
+        const response = intents.productUsage.response(product);
+        
+        // Kiểm tra xem response có phải là object có trường type hay không
+        if (response && typeof response === 'object' && response.type) {
+          console.log("Trả về phản hồi cho client với type:", response.type);
+          return {
+            success: true,
+            message: response.text,
+            intent: intent
+          };
+        } else {
+          // Nếu không có type, xử lý như text thông thường
+          console.log("Trả về phản hồi cho client không có type");
+          return {
+            success: true,
+            message: typeof response === 'string' ? response : "Rất tiếc, tôi không có thông tin về công dụng của sản phẩm này.",
+            intent: intent
+          };
+        }
+      } else {
+        return {
+          success: true,
+          message: "Bạn muốn biết công dụng của sản phẩm nào? Vui lòng cung cấp tên sản phẩm.",
+          intent: intent
+        };
+      }
+    }
+    else if (intent === "productPrice") {
+      // Xử lý yêu cầu thông tin về giá sản phẩm
+      if (product) {
+        let priceMessage = `Giá của ${product.productName} là ${formatCurrency(product.productPrice)}`;
+        if (product.productDiscount > 0) {
+          const discountedPrice = Math.round(product.productPrice * (1 - product.productDiscount / 100));
+          priceMessage += ` (Đang giảm ${product.productDiscount}%, còn ${formatCurrency(discountedPrice)})`;
+        }
+        return { success: true, message: priceMessage, intent: intent };
+      } else {
+        return { 
+          success: true, 
+          message: "Bạn muốn biết giá của sản phẩm nào? Vui lòng cung cấp tên sản phẩm.",
+          intent: intent
+        };
+      }
+    } 
+    else if (intent === "greeting") {
+      return { 
+        success: true, 
+        message: "Xin chào! Tôi là trợ lý ảo của DNC FOOD. Tôi có thể giúp bạn tìm kiếm sản phẩm, kiểm tra giá cả, và trả lời các câu hỏi về cửa hàng.",
+        intent: intent
+      };
+    } 
+    else if (intent === "farewell") {
+      return { 
+        success: true, 
+        message: "Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi. Nếu có bất kỳ câu hỏi nào khác, hãy quay lại và tôi sẽ hỗ trợ bạn. Chúc bạn một ngày tốt lành!",
+        intent: intent
+      };
+    } 
+    else if (intent === "storeInfo") {
+      return { 
+        success: true, 
+        message: "Cửa hàng chúng tôi có nhiều chi nhánh trên toàn quốc. Chi nhánh chính đặt tại 273 An Dương Vương, Phường 3, Quận 5, TP.HCM. Giờ mở cửa: 8:00 - 22:00 các ngày trong tuần.",
+        intent: intent
+      };
+    } 
+    else if (intent === "shipping") {
+      return { 
+        success: true, 
+        message: "Chúng tôi cung cấp dịch vụ giao hàng tận nơi với phí từ 15,000đ đến 30,000đ tùy khu vực. Miễn phí giao hàng cho đơn hàng từ 300,000đ. Thời gian giao hàng từ 2-4 giờ trong nội thành và 1-3 ngày đối với các tỉnh thành khác.",
+        intent: intent
+      };
+    } 
+    else if (intent === "productQuality") {
+      if (product) {
+        return { 
+          success: true, 
+          message: `${product.productName} của chúng tôi được nhập khẩu từ các nhà cung cấp uy tín, đảm bảo chất lượng và an toàn. Sản phẩm được bảo quản trong điều kiện tốt nhất và luôn trong hạn sử dụng.`,
+          intent: intent
+        };
+      } else {
+        return { 
+          success: true, 
+          message: "Tất cả sản phẩm của chúng tôi đều được lựa chọn kỹ càng từ các nhà cung cấp uy tín, đảm bảo chất lượng và an toàn vệ sinh thực phẩm. Bạn có thể yên tâm về chất lượng sản phẩm tại cửa hàng chúng tôi.",
+          intent: intent
+        };
+      }
+    } 
+    else if (intent === "discountedProducts") {
+      // Lấy các sản phẩm đang giảm giá
+      try {
+        const discountedProducts = await Product.find({ productDiscount: { $gt: 0 } }).limit(8);
+        
+        if (discountedProducts && discountedProducts.length > 0) {
+          console.log(`Tìm thấy ${discountedProducts.length} sản phẩm đang giảm giá`);
+          
+          return {
+            success: true,
+            data: {
+              type: 'discountedProducts',
+              text: `Hiện tại chúng tôi có ${discountedProducts.length} sản phẩm đang được giảm giá:`,
+              products: discountedProducts.map(product => ({
+                name: product.productName,
+                price: product.productPrice,
+                discount: product.productDiscount,
+                promotionalPrice: Math.round(product.productPrice * (1 - product.productDiscount / 100)),
+                image: product.productImage,
+                slug: product._id
+              })),
+              nameCategory: "Sản phẩm đang giảm giá"
+            },
+            intent: "discountedProducts"
+          };
+        } else {
+          return { 
+            success: true, 
+            message: "Hiện tại chúng tôi không có sản phẩm nào đang giảm giá. Vui lòng quay lại sau nhé!",
+            intent: "discountedProducts"
+          };
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy sản phẩm giảm giá:", error);
+        return { 
+          success: true, 
+          message: "Xin lỗi, đã có lỗi xảy ra khi lấy thông tin sản phẩm giảm giá.",
+          intent: "discountedProducts"
+        };
+      }
+    } 
+    else if (intent === "priceRangeProducts") {
+      // Xử lý tìm kiếm sản phẩm theo khoảng giá
+      // Mặc định tìm dưới 100k nếu không xác định được giá
+      let maxPrice = 100000;
+      
+      // Thử xác định khoảng giá từ tin nhắn
+      if (message.toLowerCase().includes("dưới 50")) {
+        maxPrice = 50000;
+      } else if (message.toLowerCase().includes("dưới 200")) {
+        maxPrice = 200000;
+      } else if (message.toLowerCase().includes("dưới 500")) {
+        maxPrice = 500000;
+      }
+      
+      try {
+        const affordableProducts = await Product.find({ productPrice: { $lte: maxPrice } }).limit(8);
+        
+        if (affordableProducts && affordableProducts.length > 0) {
+          console.log(`Tìm thấy ${affordableProducts.length} sản phẩm dưới ${formatCurrency(maxPrice)}`);
+          
+          return {
+            success: true,
+            data: {
+              type: 'priceRangeProducts',
+              text: `Tôi đã tìm thấy ${affordableProducts.length} sản phẩm dưới ${formatCurrency(maxPrice)}`,
+              products: affordableProducts.map(product => ({
+                name: product.productName,
+                price: product.productPrice,
+                promotionalPrice: product.productDiscount > 0 ? product.productPrice * (1 - product.productDiscount/100) : null,
+                discount: product.productDiscount > 0 ? product.productDiscount : null,
+                image: product.productImages && product.productImages.length > 0 
+                  ? product.productImages[0] 
+                  : "default-product.jpg",
+                slug: createSlug(product.productName)
+              })),
+              nameCategory: `Sản phẩm dưới ${formatCurrency(maxPrice)}`
+            },
+            intent: "priceRangeProducts"
+          };
+        } else {
+          return { 
+            success: true, 
+            message: `Hiện tại chúng tôi không có sản phẩm nào dưới ${formatCurrency(maxPrice)}. Bạn có thể thử tìm với mức giá cao hơn.`,
+            intent: "priceRangeProducts"
+          };
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy sản phẩm theo khoảng giá:", error);
+        return { 
+          success: true, 
+          message: "Xin lỗi, đã có lỗi xảy ra khi tìm kiếm sản phẩm theo giá.",
+          intent: "priceRangeProducts"
+        };
+      }
+    }
+    else if (intent === "productIntroduction") {
+      // Xử lý yêu cầu thông tin giới thiệu sản phẩm
+      if (product) {
+        // Lấy phản hồi từ intent handler
+        console.log("Phản hồi từ intentHandler: Giới thiệu", product.productName);
+        const response = intents.productIntroduction.response(product);
+        
+        // Kiểm tra xem response có phải là object có trường type hay không
+        if (response && typeof response === 'object' && response.type) {
+          console.log("Trả về phản hồi cho client với type:", response.type);
+          return {
+            success: true,
+            message: response.text,
+            intent: intent
+          };
+        } else {
+          // Nếu không có type, xử lý như text thông thường
+          console.log("Trả về phản hồi cho client không có type");
+          return {
+            success: true,
+            message: typeof response === 'string' ? response : "Rất tiếc, tôi không có thông tin giới thiệu về sản phẩm này.",
+            intent: intent
+          };
+        }
+      } else {
+        return {
+          success: true,
+          message: "Bạn muốn tôi giới thiệu về sản phẩm nào? Vui lòng cung cấp tên sản phẩm.",
+          intent: intent
+        };
+      }
+    }
+    else {
+      // Default fallback response for undefined or general intent
+      return { 
+        success: true, 
+        message: "Xin lỗi, tôi không hiểu yêu cầu của bạn. Bạn có thể hỏi về sản phẩm, giá cả, chương trình khuyến mãi, hoặc thông tin cửa hàng.",
+        intent: "general"
+      };
+    }
+  } catch (error) {
+    console.error("Lỗi khi xử lý tin nhắn tùy chỉnh:", error);
+    return { success: false, message: "Đã xảy ra lỗi khi xử lý tin nhắn của bạn" };
+  }
+};

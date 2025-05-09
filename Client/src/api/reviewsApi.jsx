@@ -4,12 +4,55 @@ import { API_URLS } from "../config/apiConfig";
 // Hàm lấy đánh giá của một sản phẩm
 const getProductReviews = async (productId) => {
   try {
+    console.log("Fetching reviews for product:", productId);
     const response = await axios.get(`${API_URLS.REVIEWS}/product/${productId}`);
-    return response.data.data;
+    console.log("Reviews API response:", response.data);
+    
+    // Nếu dữ liệu trả về trực tiếp là mảng (không nằm trong .data)
+    if (Array.isArray(response.data)) {
+      return {
+        reviews: response.data,
+        averageRating: calculateAverageRating(response.data)
+      };
+    }
+    
+    // Nếu dữ liệu nằm trong response.data.data
+    if (response.data.data) {
+      // Kiểm tra xem data có phải là mảng không
+      if (Array.isArray(response.data.data)) {
+        return {
+          reviews: response.data.data,
+          averageRating: calculateAverageRating(response.data.data)
+        };
+      }
+      // Nếu data có cấu trúc reviews và averageRating
+      return response.data.data;
+    }
+    
+    // Fallback nếu không có cấu trúc nào phù hợp
+    return {
+      reviews: [],
+      averageRating: 0
+    };
   } catch (error) {
     console.error("Lỗi khi lấy đánh giá sản phẩm:", error);
-    throw error;
+    if (error.response) {
+      console.log("Error response data:", error.response.data);
+      console.log("Error status:", error.response.status);
+    }
+    // Trả về mảng rỗng nếu có lỗi
+    return {
+      reviews: [],
+      averageRating: 0
+    };
   }
+};
+
+// Hàm tính điểm đánh giá trung bình
+const calculateAverageRating = (reviews) => {
+  if (!reviews || reviews.length === 0) return 0;
+  const sum = reviews.reduce((total, review) => total + Number(review.rating || 0), 0);
+  return sum / reviews.length;
 };
 
 // Hàm thêm đánh giá mới
@@ -21,18 +64,46 @@ const addReview = async (reviewData) => {
       throw new Error("Bạn cần đăng nhập để đánh giá sản phẩm");
     }
 
+    // Đảm bảo dữ liệu đánh giá hợp lệ
+    if (!reviewData.productId) {
+      throw new Error("Thiếu thông tin sản phẩm");
+    }
+
+    if (!reviewData.rating || reviewData.rating < 0 || reviewData.rating > 5) {
+      throw new Error("Đánh giá phải có giá trị từ 0 đến 5");
+    }
+
+    if (!reviewData.comment || reviewData.comment.trim() === '') {
+      throw new Error("Vui lòng nhập nội dung đánh giá");
+    }
+
+    // Chuyển rating thành số
+    const formattedData = {
+      ...reviewData,
+      rating: Number(reviewData.rating)
+    };
+
+    console.log("Sending review data:", formattedData);
+    console.log("Token:", token);
+    console.log("URL:", `${API_URLS.REVIEWS}/product/${reviewData.productId}`);
+
     const response = await axios.post(
       `${API_URLS.REVIEWS}/product/${reviewData.productId}`,
-      reviewData,
+      formattedData,
       {
         headers: {
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
       }
     );
     return response.data;
   } catch (error) {
     console.error("Lỗi khi thêm đánh giá:", error);
+    if (error.response) {
+      console.error("Error response:", error.response.data);
+      console.error("Status code:", error.response.status);
+    }
     throw error;
   }
 };

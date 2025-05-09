@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { InputText } from "primereact/inputtext";
 import { Dialog } from "primereact/dialog";
-import { FaFacebook, FaGoogle, FaLock, FaUser } from "react-icons/fa";
+import { FaFacebook, FaLock, FaUser } from "react-icons/fa";
 import ForgotPassword from "./ForgotPassword";
 import authApi from "../../../api/authApi";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { FacebookLogin } from 'react-facebook-login-lite';
+import AuthService from "../../../utils/AuthService";
 
 const Login = () => {
   const [username, setUsername] = useState("");
@@ -422,10 +425,88 @@ const Login = () => {
     }
   };
 
+  // Xử lý đăng nhập với Facebook
+  const handleFacebookLogin = async (response) => {
+    if (!response || !response.accessToken) {
+      toast.error("Đăng nhập Facebook thất bại. Vui lòng thử lại");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      const result = await AuthService.loginWithFacebook(response);
+      
+      if (result && (result.token || result.accessToken)) {
+        // Kiểm tra nếu là tài khoản admin
+        const userRole = localStorage.getItem("userRole");
+        
+        toast.success("Đăng nhập Facebook thành công!");
+        
+        // Chuyển hướng dựa trên vai trò
+        setTimeout(() => {
+          if (userRole === "admin") {
+            navigate("/admin/dashboard");
+          } else {
+            navigate("/");
+          }
+        }, 1000);
+      } else {
+        throw new Error("Không nhận được token đăng nhập");
+      }
+    } catch (error) {
+      console.error("Lỗi đăng nhập Facebook:", error);
+      toast.error(
+        error.message || "Đăng nhập Facebook thất bại. Vui lòng thử lại"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Xử lý đăng nhập với Google
+  const handleGoogleLogin = async (response) => {
+    if (!response || !response.credential) {
+      toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      const result = await AuthService.loginWithGoogle(response);
+      
+      if (result && (result.token || result.accessToken)) {
+        // Kiểm tra nếu là tài khoản admin
+        const userRole = localStorage.getItem("userRole");
+        
+        toast.success("Đăng nhập Google thành công!");
+        
+        // Chuyển hướng dựa trên vai trò
+        setTimeout(() => {
+          if (userRole === "admin") {
+            navigate("/admin/dashboard");
+          } else {
+            navigate("/");
+          }
+        }, 1000);
+      } else {
+        throw new Error("Không nhận được token đăng nhập");
+      }
+    } catch (error) {
+      console.error("Lỗi đăng nhập Google:", error);
+      toast.error(
+        error.message || "Đăng nhập Google thất bại. Vui lòng thử lại"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8 background-login">
       <div className="w-full max-w-4xl bg-white shadow-2xl rounded-2xl overflow-hidden grid md:grid-cols-2">
-        <div className="p-10 flex flex-col justify-center">
+        <div className="p-8 flex flex-col justify-center">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">
               DNC <span className="text-[#51bb1a]">FOOD</span>
@@ -434,18 +515,49 @@ const Login = () => {
           </div>
 
           <div className="flex space-x-4 mb-6 gap-4">
-            <button
-              type="button"
-              className="flex-1 flex items-center justify-center bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
-            >
-              <FaFacebook className="mr-2" /> Facebook
-            </button>
-            <button
-              type="button"
-              className="flex-1 flex items-center justify-center bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition"
-            >
-              <FaGoogle className="mr-2" /> Google
-            </button>
+            {/* Facebook Login Button */}
+            <FacebookLogin
+              appId="991623106465060" // Đã cập nhật Facebook App ID từ .env
+              onResponse={handleFacebookLogin}
+              onError={(error) => {
+                console.error("Facebook login error:", error);
+                toast.error("Đăng nhập Facebook thất bại. Vui lòng thử lại");
+              }}
+              scope="email,public_profile"
+              render={({ onClick }) => (
+                <button
+                  type="button"
+                  onClick={onClick}
+                  disabled={isLoading}
+                  className="flex-1 flex items-center justify-center bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
+                >
+                  <FaFacebook className="mr-2" /> Facebook
+                </button>
+              )}
+            />
+            
+            {/* Google Login Button */}
+            <GoogleOAuthProvider clientId="1031185116653-6sd3ambs6rmokdino3fsl9snrj7td8ae.apps.googleusercontent.com"> {/* Thay bằng Google Client ID thật của bạn */}
+              <GoogleLogin
+                onSuccess={handleGoogleLogin}
+                onError={() => {
+                  toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
+                }}
+                useOneTap
+                theme="filled_blue"
+                shape="pill"
+                text="signin_with"
+                locale="vi"
+                width="200"
+                size="large"
+                logo_alignment="center"
+                container_style={{
+                  display: 'flex',
+                  flex: 1,
+                  justifyContent: 'center'
+                }}
+              />
+            </GoogleOAuthProvider>
           </div>
 
           <div className="flex items-center my-4">

@@ -73,6 +73,10 @@ export default function ProductDetails() {
           setProductImages(product.productImages);
           setSelectedImage(product.productImages[0] || null);
           
+          // Lưu productId vào sessionStorage để chatbot có thể sử dụng
+          sessionStorage.setItem('currentProductId', product._id);
+          console.log('Đã lưu productId vào sessionStorage:', product._id);
+          
           // Lấy đánh giá từ API
           fetchProductReviews(product._id);
         }
@@ -96,15 +100,23 @@ export default function ProductDetails() {
   // Hàm lấy đánh giá sản phẩm
   const fetchProductReviews = async (productId) => {
     try {
+      console.log("Fetching reviews for product ID:", productId);
       const reviewData = await reviewsApi.getProductReviews(productId);
-      setReviews(reviewData.reviews || []);
-      setRating(reviewData.averageRating || 0);
+      console.log("Reviews data received:", reviewData);
+      
+      // Đảm bảo reviews là mảng
+      const reviewsList = Array.isArray(reviewData?.reviews) ? reviewData.reviews : [];
+      const ratingAvg = reviewData?.averageRating || 0;
+      
+      console.log("Setting reviews:", reviewsList.length, "items");
+      setReviews(reviewsList);
+      setRating(ratingAvg);
       
       // Thiết lập auto-refresh cho đánh giá (cứ 10 giây refresh một lần)
       if (!reviewsInterval) {
         const intervalId = setInterval(() => {
           refreshReviews(productId);
-        }, 5000); // 5 giây refresh một lần
+        }, 10000); // 10 giây refresh một lần
         setReviewsInterval(intervalId);
       }
     } catch (error) {
@@ -118,20 +130,27 @@ export default function ProductDetails() {
   // Hàm refresh đánh giá
   const refreshReviews = async (productId) => {
     try {
+      console.log("Refreshing reviews for product ID:", productId);
       const reviewData = await reviewsApi.getProductReviews(productId);
+      console.log("Refreshed review data:", reviewData);
+      
+      // Đảm bảo reviews là mảng
+      const refreshedReviews = Array.isArray(reviewData?.reviews) ? reviewData.reviews : [];
+      const refreshedRating = reviewData?.averageRating || 0;
       
       // Kiểm tra nếu có thay đổi mới cập nhật state để tránh re-render không cần thiết
       const currentReviewCount = reviews.length;
-      const newReviewCount = reviewData.reviews?.length || 0;
+      const newReviewCount = refreshedReviews.length;
       
       // Nếu số lượng đánh giá thay đổi hoặc rating thay đổi
-      if (currentReviewCount !== newReviewCount || Math.abs(rating - (reviewData.averageRating || 0)) > 0.01) {
+      if (currentReviewCount !== newReviewCount || Math.abs(rating - refreshedRating) > 0.01) {
         console.log("Đã phát hiện thay đổi trong đánh giá, cập nhật giao diện");
-        setReviews(reviewData.reviews || []);
-        setRating(reviewData.averageRating || 0);
+        setReviews(refreshedReviews);
+        setRating(refreshedRating);
       }
     } catch (error) {
       console.error("Lỗi khi refresh đánh giá:", error);
+      // Không cập nhật state nếu có lỗi để giữ nguyên dữ liệu cũ
     }
   };
 
@@ -216,31 +235,61 @@ export default function ProductDetails() {
     
     try {
       const userId = localStorage.getItem('userId');
+      if (!userId) {
+        toast.error("Không tìm thấy thông tin người dùng, vui lòng đăng nhập lại");
+        return;
+      }
+      
       const displayName = userName || localStorage.getItem('fullName') || 'Người dùng';
       
       const reviewData = {
         productId: products._id,
         rating: userRating,
-        comment: userReview,
+        comment: userReview.trim(),
         userName: displayName,
         userId: userId
       };
       
-      await reviewsApi.addReview(reviewData);
+      console.log("Đang gửi đánh giá với dữ liệu:", reviewData);
       
-      // Cập nhật danh sách đánh giá
-      const updatedReviewData = await reviewsApi.getProductReviews(products._id);
-      setReviews(updatedReviewData.reviews || []);
-      setRating(updatedReviewData.averageRating || 0);
+      const response = await reviewsApi.addReview(reviewData);
+      console.log("Kết quả từ server:", response);
+      
+      // Thêm đánh giá mới vào state để hiển thị ngay
+      const newReview = {
+        _id: response._id || Date.now().toString(), // Dùng ID từ response nếu có, nếu không dùng timestamp
+        productId: products._id,
+        rating: userRating,
+        comment: userReview.trim(),
+        userName: displayName,
+        userId: userId,
+        createdAt: new Date().toISOString(),
+        replies: []
+      };
+      
+      // Tính lại rating trung bình
+      const allReviews = [...reviews, newReview];
+      const avgRating = allReviews.reduce((sum, r) => sum + Number(r.rating), 0) / allReviews.length;
+      
+      // Cập nhật state
+      setReviews(allReviews);
+      setRating(avgRating);
       
       // Reset form
       setUserReview("");
       setUserRating(5);
       
       toast.success("Cảm ơn bạn đã đánh giá sản phẩm!");
+      
+      // Cập nhật lại đánh giá từ server sau khi thêm thành công
+      setTimeout(() => {
+        fetchProductReviews(products._id);
+      }, 1000);
     } catch (error) {
       console.error("Lỗi khi gửi đánh giá:", error);
-      toast.error(error.response?.data?.message || "Không thể gửi đánh giá. Vui lòng thử lại sau.");
+      const errorMessage = error.response?.data?.message || 
+                          "Không thể gửi đánh giá. Vui lòng thử lại sau.";
+      toast.error(errorMessage);
     }
   };
   

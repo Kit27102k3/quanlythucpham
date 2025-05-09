@@ -304,7 +304,7 @@ export default function Order() {
           <div className="flex items-center gap-3 mb-4">
             <CreditCardIcon className="w-6 h-6 text-orange-500" />
             <h3 className="text-lg font-semibold text-gray-800">
-              Đơn hàng chờ thanh toán SePay
+              Đơn hàng chờ thanh toán
             </h3>
           </div>
           <div className="bg-white shadow-md rounded-lg overflow-hidden">

@@ -7,6 +7,19 @@ import { useNavigate } from "react-router-dom";
 import formatCurrency from "../Until/FotmatPrice";
 import PropTypes from "prop-types";
 
+// Hàm debounce để tránh gọi API quá nhiều lần
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
 // Định nghĩa URL API sử dụng đường dẫn tương đối để tránh bị chặn
 const getApiBaseUrl = () => {
   // Trong môi trường phát triển (localhost), sử dụng đường dẫn đầy đủ
@@ -20,6 +33,9 @@ const getApiBaseUrl = () => {
 
 // Định nghĩa API_BASE_URL
 const API_BASE_URL = getApiBaseUrl();
+
+// Hình ảnh mặc định cho sản phẩm
+const DEFAULT_IMAGE = 'https://bizweb.dktcdn.net/thumb/large/100/360/151/products/5-fc8bf88b-59ce-4bb7-8b57-1e9cc2c5bfdb.jpg?v=1625689306000';
 
 // Component để xử lý lỗi trong chatbot
 class ChatBotErrorBoundary extends React.Component {
@@ -56,16 +72,94 @@ class ChatBotErrorBoundary extends React.Component {
   }
 }
 
+// Tạo component riêng biệt để hiển thị mỗi sản phẩm, giúp tránh re-render không cần thiết
+const ProductItem = React.memo(({ product, handleProductClick, getProductImageUrl }) => {
+  return (
+    <div 
+      className="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => handleProductClick(product.slug || product._id)}
+    >
+      <div className="w-full h-16 overflow-hidden">
+        <img
+          src={getProductImageUrl(
+            // Kiểm tra đầy đủ các trường hợp có thể có của hình ảnh
+            (product.productImages && product.productImages[0]) || 
+            product.productImage || 
+            product.image || 
+            'default-product.jpg'
+          )}
+          alt={product.name || product.productName}
+          loading="lazy" // Thêm lazy loading để tối ưu hiệu suất
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = DEFAULT_IMAGE;
+          }}
+        />
+      </div>
+      <div className="p-2">
+        <div className="text-xs font-medium mb-1 line-clamp-2 hover:text-green-600 transition-colors">
+          {product.name || product.productName}
+        </div>
+        <div className="flex justify-between items-center mt-1">
+          <div>
+            {(product.discount > 0 || product.productDiscount > 0) ? (
+              <>
+                <div className="text-xs text-gray-400 line-through">
+                  {formatCurrency(product.price || product.productPrice)}
+                </div>
+                <div className="text-xs font-semibold text-red-500">
+                  {formatCurrency(product.promotionalPrice || 
+                    Math.round((product.price || product.productPrice) * 
+                    (1 - (product.discount || product.productDiscount) / 100)))}
+                </div>
+              </>
+            ) : (
+              <div className="text-xs font-semibold text-red-500">
+                {formatCurrency(product.price || product.productPrice)}
+              </div>
+            )}
+          </div>
+          <button 
+            className="text-xs text-white bg-green-500 p-1 rounded hover:bg-green-600 transition-colors"
+          >
+            <ExternalLink size={12} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+ProductItem.displayName = 'ProductItem';
+
+// Component cho danh sách sản phẩm để giảm số lần re-render
+const ProductList = React.memo(({ products, handleProductClick, getProductImageUrl }) => {
+  if (!products || products.length === 0) {
+    return <div className="text-sm italic">Không tìm thấy sản phẩm nào.</div>;
+  }
+  
+  return (
+    <div className="grid grid-cols-2 gap-2 mt-2">
+      {products.map((product, idx) => (
+        <ProductItem 
+          key={`product-${idx}`} 
+          product={product}
+          handleProductClick={handleProductClick} 
+          getProductImageUrl={getProductImageUrl}
+        />
+      ))}
+    </div>
+  );
+});
+ProductList.displayName = 'ProductList';
+
 const ChatBot = ({ isOpen, setIsOpen }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isFirstOpen, setIsFirstOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const [conversationContext, setConversationContext] = useState({
-    lastIntent: null,
-    messageHistory: []
-  });
+  const [lastIntent, setLastIntent] = useState(null);
   
   const userId = localStorage.getItem("userId");
   const messagesEndRef = useRef(null);
@@ -110,40 +204,65 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
 
   const getProductImageUrl = useCallback((url) => {
     // Sử dụng ảnh mặc định nếu không có URL
-    if (!url) return 'https://bizweb.dktcdn.net/thumb/large/100/360/151/products/5-fc8bf88b-59ce-4bb7-8b57-1e9cc2c5bfdb.jpg?v=1625689306000';
+    if (!url) return DEFAULT_IMAGE;
     
-    // URL đã là đầy đủ hoặc là URL tương đối
+    // Xử lý url là chuỗi rỗng
+    if (url === '') return DEFAULT_IMAGE;
+    
+    // URL đã là đầy đủ 
     if (url.startsWith('http')) {
       return url;
-    } else if (url === 'default-product.jpg') {
-      return 'https://bizweb.dktcdn.net/thumb/large/100/360/151/products/5-fc8bf88b-59ce-4bb7-8b57-1e9cc2c5bfdb.jpg?v=1625689306000';
-    } else if (url.startsWith('/')) {
-      // Sử dụng đường dẫn tương đối khi ở production
-      return import.meta.env.DEV ? `${API_BASE_URL}${url}` : url;
-    } else {
-      // Sử dụng đường dẫn tương đối khi ở production
-      return import.meta.env.DEV ? `${API_BASE_URL}/${url}` : `/${url}`;
+    } 
+    // URL là đường dẫn tương đối hoặc mẫu
+    else if (url === 'default-product.jpg') {
+      return DEFAULT_IMAGE;
+    } 
+    // URL bắt đầu bằng / (đường dẫn tuyệt đối trong server)
+    else if (url.startsWith('/')) {
+      // Sử dụng đường dẫn đầy đủ khi ở development, tương đối khi ở production
+      return `${API_BASE_URL}${url}`;
+    } 
+    // URL khác (không có đường dẫn)
+    else {
+      // Thêm / trước URL nếu cần
+      return `${API_BASE_URL}/${url}`;
     }
   }, []);
 
-  const handleProductClick = useCallback((slug) => {
-    if (!slug) return;
+  const handleProductClick = useCallback((productSlug) => {
+    if (!productSlug) return;
     
-    navigate(`/chi-tiet-san-pham/${slug}`);
-    setIsOpen(false); // Đóng chatbot khi chuyển trang
+    console.log("Đang chuyển hướng đến sản phẩm:", productSlug);
+    
+    // Chuyển hướng đến trang chi tiết sản phẩm
+    navigate(`/chi-tiet-san-pham/${productSlug}`);
+    
+    // Đóng chatbot sau khi chuyển hướng
+    setIsOpen(false);
   }, [navigate, setIsOpen]);
 
-  // Send message to API endpoint - Sửa phần gọi API
-  const handleCustomMessage = useCallback(async (message) => {
+  // Send message to API endpoint - Sửa phần gọi API thêm debounce
+  const handleCustomMessageRequest = useCallback(async (message) => {
     if (!message.trim()) return;
     
     setIsLoading(true);
     
     try {
+      // Lấy productId từ URL hiện tại nếu đang ở trang chi tiết sản phẩm
+      let currentProductId = null;
+      const currentPath = window.location.pathname;
+      if (currentPath.includes('/chi-tiet-san-pham/')) {
+        // Thử lấy productId từ sessionStorage nếu có lưu
+        currentProductId = sessionStorage.getItem('currentProductId');
+      }
+      
       const payload = {
         message,
-        userId
+        userId,
+        productId: currentProductId // Gửi productId nếu có
       };
+      
+      console.log("Sending request to chatbot with payload:", payload);
       
       // Sử dụng endpoint tuyệt đối cho API
       const endpoint = `${API_BASE_URL}/api/chatbot`;
@@ -159,82 +278,74 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
       const response = await axios.post(endpoint, payload, config);
       
       if (response.data.success) {
-        // Lọc và xử lý response.data.message tùy thuộc vào intent
-        let responseMessage = response.data.message;
+        // Log toàn bộ response để debug
+        console.log("Chatbot response:", response.data);
         
-        // Kiểm tra dữ liệu nhận được là object
-        if (typeof responseMessage === 'object' && responseMessage !== null) {
-          // Xử lý các loại message đặc biệt (danh sách sản phẩm)
-          if (responseMessage.type === 'relatedProducts' || 
-              responseMessage.type === 'discountedProducts' || 
-              responseMessage.type === 'priceRangeProducts') {
-            // Thêm message dạng products vào state messages
+        // Lấy dữ liệu từ response
+        const responseData = response.data;
+        
+        // Kiểm tra trường hợp response chứa data đặc biệt
+        if (responseData.data && typeof responseData.data === 'object') {
+          const { type, text, products, nameCategory } = responseData.data;
+          
+          if (type === 'relatedProducts' || 
+              type === 'discountedProducts' || 
+              type === 'priceRangeProducts' ||
+              type === 'productSearch') {
+            
             setMessages((prev) => [
               ...prev,
               {
-                type: responseMessage.type,
-                text: responseMessage.text,
-                products: responseMessage.products,
+                type,
+                text: text || 'Đây là một số sản phẩm bạn có thể quan tâm:',
+                products: products || [],
+                nameCategory: nameCategory || 'Kết quả tìm kiếm',
                 sender: "bot"
               }
             ]);
-            return; // Kết thúc hàm vì đã xử lý response đặc biệt
+            
+            // Cập nhật intent mới nhất
+            setLastIntent(responseData.intent || 'productSearch');
+            
+            setIsLoading(false);
+            return;
           }
         }
         
-        // Kiểm tra data đặc biệt từ server
-        if (response.data.data && typeof response.data.data === 'object') {
-          // Xử lý dạng data đặc biệt (relatedProducts, priceRange, v.v)
-          if (response.data.data.type && 
-             (response.data.data.type === 'relatedProducts' || 
-              response.data.data.type === 'discountedProducts' || 
-              response.data.data.type === 'priceRangeProducts')) {
-            
-            // Log để debug
-            console.log("Nhận được dữ liệu sản phẩm:", response.data.data);
-            
-            setMessages((prev) => [
-              ...prev,
-              {
-                type: response.data.data.type,
-                text: response.data.data.text,
-                products: response.data.data.products,
-                sender: "bot"
-              }
-            ]);
-            
-            // Cập nhật context
-            setConversationContext(prev => ({
-              ...prev,
-              lastIntent: response.data.intent
-            }));
-            
-            return; // Kết thúc hàm sau khi xử lý
-          }
+        // Kiểm tra tin nhắn thông thường có định dạng đặc biệt không
+        if (typeof responseData.message === 'object' && 
+            responseData.message !== null && 
+            (responseData.message.type === 'productSearch' || 
+             responseData.message.type === 'relatedProducts')) {
+          
+          const { type, text, products, nameCategory } = responseData.message;
+          
+          setMessages((prev) => [
+            ...prev,
+            {
+              type,
+              text: text || 'Đây là kết quả tìm kiếm:',
+              products: products || [],
+              nameCategory: nameCategory || 'Kết quả tìm kiếm',
+              sender: "bot"
+            }
+          ]);
+          
+          setIsLoading(false);
+          return;
         }
         
         // Xử lý text thông thường
-        if (typeof responseMessage === 'string') {
-          setMessages((prev) => [
-            ...prev,
-            { text: responseMessage, sender: "bot" }
-          ]);
-        } else {
-          // Fallback khi message không phải chuỗi
-          setMessages((prev) => [
-            ...prev,
-            { 
-              text: "Xin lỗi, tôi không thể xử lý yêu cầu của bạn lúc này.", 
-              sender: "bot" 
-            }
-          ]);
-        }
-
-        // Cập nhật context với intent mới nhất
-        setConversationContext(prev => ({
+        setMessages((prev) => [
           ...prev,
-          lastIntent: response.data.intent
-        }));
+          { 
+            text: responseData.message || "Xin lỗi, tôi không hiểu câu hỏi của bạn.",
+            sender: "bot" 
+          }
+        ]);
+
+        // Cập nhật intent mới nhất
+        setLastIntent(responseData.intent);
       } else {
         throw new Error(response.data.message || "Đã có lỗi xảy ra");
       }
@@ -243,22 +354,24 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
       setMessages((prev) => [
         ...prev,
         {
-          text: "Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.",
-          sender: "bot",
-        },
+          text: "Xin lỗi, đã có lỗi xảy ra khi xử lý tin nhắn của bạn. Vui lòng thử lại.",
+          sender: "bot" 
+        }
       ]);
     } finally {
       setIsLoading(false);
     }
-  }, [conversationContext, userId, API_BASE_URL]);
+  }, [userId, setIsLoading, setMessages, setLastIntent, API_BASE_URL]);
   
-  // Xử lý khi người dùng click vào câu gợi ý
-  const handleSuggestedQuestion = useCallback((question) => {
-    setMessages((prev) => [...prev, { text: question, sender: "user" }]);
-    handleCustomMessage(question);
-  }, [handleCustomMessage]);
-
-  // Hàm xử lý gửi tin nhắn thông thường khi người dùng nhập
+  // Áp dụng debounce cho handleCustomMessage để tránh gọi API quá nhiều lần
+  const handleCustomMessage = useCallback(
+    debounce((message) => {
+      handleCustomMessageRequest(message);
+    }, 300), 
+    [handleCustomMessageRequest]
+  );
+  
+  // Handle sending a message
   const handleSendMessage = useCallback(() => {
     if (!input.trim()) return;
  
@@ -268,144 +381,147 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
     handleCustomMessage(userMessage);
   }, [input, handleCustomMessage]);
 
-  // Các tùy chọn cho trang chủ
-  const generalOptions = useMemo(() => [
-    { 
-      icon: <Tag size={16} />,
+  // Handle predefined questions
+  const handlePredefinedQuestion = useCallback((question) => {
+    setMessages((prev) => [...prev, { text: question, sender: "user" }]);
+    handleCustomMessage(question);
+  }, [handleCustomMessage]);
+
+  // Thêm hàm để lấy các gợi ý câu hỏi phù hợp dựa trên lastIntent
+  const getDynamicSuggestions = useCallback(() => {
+    if (lastIntent === 'productSearch' || lastIntent === 'relatedProducts') {
+      return [
+        {
       text: "Các sản phẩm dưới 100k", 
-      query: "Tìm sản phẩm giá dưới 100k",
-      color: "bg-blue-100 hover:bg-blue-200 text-blue-700"
+          handler: () => handlePredefinedQuestion("Tìm sản phẩm dưới 100k")
     },
     { 
-      icon: <Tag size={16} />,
       text: "Sản phẩm đang giảm giá", 
-      query: "Sản phẩm nào đang khuyến mãi?",
-      color: "bg-red-100 hover:bg-red-200 text-red-700"
-    },
-    { 
-      icon: <ShoppingBag size={16} />,
-      text: "Cách đặt hàng", 
-      query: "Làm thế nào để đặt hàng trên website?",
-      color: "bg-green-100 hover:bg-green-200 text-green-700"
-    },
-    { 
-      icon: <MapPin size={16} />,
-      text: "Phí vận chuyển", 
-      query: "Có phí vận chuyển không?",
-      color: "bg-amber-100 hover:bg-amber-200 text-amber-700"
+          handler: () => handlePredefinedQuestion("Tìm sản phẩm đang giảm giá")
+        },
+        {
+          text: "Tìm đồ nhậu",
+          handler: () => handlePredefinedQuestion("Tìm đồ nhậu")
+        },
+        {
+          text: "Tìm nước uống",
+          handler: () => handlePredefinedQuestion("Tìm nước uống")
+        }
+      ];
+    } else if (lastIntent === 'shipping' || lastIntent === 'shippingFee') {
+      return [
+        {
+          text: "Thời gian giao hàng",
+          handler: () => handlePredefinedQuestion("Thời gian giao hàng")
+        },
+        {
+          text: "Phương thức thanh toán",
+          handler: () => handlePredefinedQuestion("Phương thức thanh toán")
+        }
+      ];
     }
-  ], []);
+    
+    // Trường hợp mặc định
+    return [
+      {
+        text: "Các sản phẩm dưới 100k",
+        handler: () => handlePredefinedQuestion("Tìm sản phẩm dưới 100k")
+      },
+      {
+        text: "Sản phẩm đang giảm giá",
+        handler: () => handlePredefinedQuestion("Tìm sản phẩm đang giảm giá")
+      },
+      {
+        text: "Cách đặt hàng",
+        handler: () => handlePredefinedQuestion("Hướng dẫn cách đặt hàng")
+      },
+      {
+        text: "Phí vận chuyển",
+        handler: () => handlePredefinedQuestion("Thông tin phí vận chuyển")
+      },
+      {
+        text: "Tìm đồ nhậu",
+        handler: () => handlePredefinedQuestion("Tìm đồ nhậu")
+      }
+    ];
+  }, [lastIntent, handlePredefinedQuestion]);
 
-  // Các câu gợi ý được tạo bằng useMemo để tránh tạo lại mỗi lần render
-  const suggestedQuestions = useMemo(() => [
-    { text: "Các sản phẩm dưới 100k", handler: () => handleSuggestedQuestion("Tìm sản phẩm giá dưới 100k") },
-    { text: "Sản phẩm đang giảm giá", handler: () => handleSuggestedQuestion("Sản phẩm nào đang khuyến mãi?") },
-    { text: "Cách đặt hàng?", handler: () => handleSuggestedQuestion("Làm thế nào để đặt hàng trên website?") },
-    { text: "Phí vận chuyển", handler: () => handleSuggestedQuestion("Có phí vận chuyển không?") }
-  ], [handleSuggestedQuestion]);
+  // Sử dụng getDynamicSuggestions thay cho suggestedQuestions
+  const suggestedQuestions = useMemo(() => {
+    return getDynamicSuggestions();
+  }, [getDynamicSuggestions]);
 
-  // Render message based on type
+  // Render message based on type - sử dụng React.memo để tránh re-render không cần thiết
   const renderMessage = useCallback((msg, index) => {
-    if (msg.showOptions) {
-      const options = generalOptions;
-      
+    // Render sản phẩm cho các tin nhắn đặc biệt
+    if (msg.type === 'productSearch' || msg.type === 'relatedProducts' || msg.type === 'discountedProducts' || msg.type === 'priceRangeProducts') {
       return (
-        <div key={index} className="flex justify-start w-full mb-4">
-          <div className="bg-gray-100 text-gray-800 px-4 py-3 rounded-2xl max-w-[90%]">
-            <p className="mb-3 font-medium">{msg.text}</p>
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              {options.map((option, i) => (
-                <button
-                  key={`option-${i}`}
-                  onClick={() => handleSuggestedQuestion(option.query)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg ${option.color} transition-colors text-left text-xs font-medium`}
-                >
-                  {option.icon}
-                  {option.text}
-                </button>
-              ))}
-            </div>
+        <div key={`msg-${index}`} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-3`}>
+          <div className={`${msg.sender === "user" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-800"} px-4 py-2 rounded-2xl max-w-[85%]`}>
+            <p className="mb-2">{msg.text}</p>
+            {msg.nameCategory && (
+              <div className="text-sm font-medium mb-2">
+                <Tag className="inline mr-1 w-4 h-4" /> {msg.nameCategory}
+              </div>
+            )}
+            {/* Sử dụng component ProductList đã được memo hóa */}
+            <ProductList 
+              products={msg.products} 
+              handleProductClick={handleProductClick} 
+              getProductImageUrl={getProductImageUrl} 
+            />
           </div>
         </div>
       );
     }
     
-    if (msg.type === 'relatedProducts' || msg.type === 'discountedProducts' || msg.type === 'priceRangeProducts') {
-      return (
-        <div key={index} className="flex justify-start w-full">
-          <div className="bg-gray-100 text-gray-800 px-4 py-3 rounded-2xl max-w-[90%]">
-            <p className="mb-2 font-medium">{typeof msg.text === 'string' ? msg.text : 'Sản phẩm liên quan:'}</p>
-            <div className="grid grid-cols-2 gap-2">
-              {Array.isArray(msg.products) && msg.products.map((product, i) => (
-                <div 
-                  key={`product-${i}-${product.slug || i}`} 
-                  className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer bg-white"
-                  onClick={() => handleProductClick(product.slug)}
-                >
-                  <div className="h-24 overflow-hidden relative">
-                    <img 
-                      src={getProductImageUrl(product.image)}
-                      alt={product.name || 'Sản phẩm'} 
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://bizweb.dktcdn.net/thumb/large/100/360/151/products/5-fc8bf88b-59ce-4bb7-8b57-1e9cc2c5bfdb.jpg?v=1625689306000';
-                      }}
-                    />
-                    {product.discount && (
-                      <div className="absolute top-0 left-0 bg-red-500 text-white text-xs p-1 rounded-br-md">
-                        -{product.discount}%
-                      </div>
-                    )}
-                    <div className="absolute bottom-0 right-0 p-1 bg-green-500 rounded-tl-md">
-                      <ExternalLink size={14} className="text-white" />
-                    </div>
-                  </div>
-                  <div className="p-2">
-                    <h4 className="text-xs font-medium line-clamp-2">{product.name || 'Sản phẩm không tên'}</h4>
-                    {product.promotionalPrice ? (
-                      <div className="flex flex-col">
-                        <p className="text-xs text-red-600 font-semibold">{formatCurrency(product.promotionalPrice)}</p>
-                        <p className="text-xs text-gray-500 line-through">{formatCurrency(product.price || 0)}</p>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-green-600 font-semibold">{formatCurrency(product.price || 0)}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    }
-    
-    // Default text message
+    // Render tin nhắn thông thường
     return (
-      <div
-        key={index}
-        className={`flex ${
-          msg.sender === "user" ? "justify-end" : "justify-start"
-        } mb-2`}
-      >
-        <div
-          className={`max-w-[80%] px-4 py-2 rounded-2xl ${
-            msg.sender === "user"
-              ? "bg-green-500 text-white"
-              : "bg-gray-100 text-gray-800"
-          }`}
-        >
-          {typeof msg.text === 'string' ? (
-            msg.text.split('\n').map((line, i) => (
-              <p key={`line-${i}`}>{line}</p>
-            ))
-          ) : (
-            <p>{msg.text || 'Không có nội dung'}</p>
+      <div key={`msg-${index}`} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-3`}>
+        <div className={`${msg.sender === "user" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-800"} px-4 py-2 rounded-2xl max-w-[85%]`}>
+          <p className="whitespace-pre-line">{msg.text}</p>
+          
+          {/* Hiển thị các tùy chọn nếu có */}
+          {msg.sender === "bot" && msg.showOptions && (
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              {msg.optionsType === "general" && (
+                <>
+                  <button
+                    onClick={() => handlePredefinedQuestion("Các sản phẩm dưới 100k")}
+                    className="text-xs bg-white text-gray-700 p-2 rounded border border-gray-200 hover:bg-green-50 hover:border-green-200 flex items-center"
+                  >
+                    <Tag className="mr-1 w-3 h-3" />
+                    <span>Các sản phẩm dưới 100k</span>
+                  </button>
+                  <button
+                    onClick={() => handlePredefinedQuestion("Sản phẩm đang giảm giá")}
+                    className="text-xs bg-white text-gray-700 p-2 rounded border border-gray-200 hover:bg-green-50 hover:border-green-200 flex items-center"
+                  >
+                    <ShoppingBag className="mr-1 w-3 h-3" />
+                    <span>Sản phẩm đang giảm giá</span>
+                  </button>
+                  <button
+                    onClick={() => handlePredefinedQuestion("Cách đặt hàng")}
+                    className="text-xs bg-white text-gray-700 p-2 rounded border border-gray-200 hover:bg-green-50 hover:border-green-200 flex items-center"
+                  >
+                    <MapPin className="mr-1 w-3 h-3" />
+                    <span>Cách đặt hàng</span>
+                  </button>
+                  <button
+                    onClick={() => handlePredefinedQuestion("Phí vận chuyển")}
+                    className="text-xs bg-white text-gray-700 p-2 rounded border border-gray-200 hover:bg-green-50 hover:border-green-200 flex items-center"
+                  >
+                    <MapPin className="mr-1 w-3 h-3" />
+                    <span>Phí vận chuyển</span>
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
     );
-  }, [getProductImageUrl, handleProductClick, handleSuggestedQuestion, generalOptions]);
+  }, [getProductImageUrl, handleProductClick, handlePredefinedQuestion]);
 
   return (
     <div className={`fixed z-50 ${isMobile ? 'bottom-2 right-2' : 'bottom-6 right-6'}`}>

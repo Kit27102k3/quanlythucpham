@@ -393,4 +393,41 @@ html {
   }
 }
 
+/* Carousel custom styles */
+.custom-carousel {
+  padding: 0 1rem;
+}
 
+.custom-carousel .p-carousel-item {
+  padding: 0 0.5rem;
+}
+
+.custom-carousel .p-carousel-prev,
+.custom-carousel .p-carousel-next {
+  width: 2.5rem;
+  height: 2.5rem;
+  background-color: white;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  color: #4CAF50;
+  border: none;
+}
+
+.custom-carousel .p-carousel-prev:hover,
+.custom-carousel .p-carousel-next:hover {
+  background-color: #f8f8f8;
+}
+
+.custom-carousel .p-carousel-indicators .p-carousel-indicator button {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #c1c1c1;
+  transition: all 0.3s ease;
+}
+
+.custom-carousel .p-carousel-indicators .p-carousel-indicator.p-highlight button {
+  background-color: #4CAF50;
+  width: 20px;
+  border-radius: 5px;
+}

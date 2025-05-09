@@ -14,6 +14,9 @@ const UserSchema = new mongoose.Schema(
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
     lastLogin: { type: Date, default: null },
+    facebookId: { type: String, default: null },
+    googleId: { type: String, default: null },
+    authProvider: { type: String, enum: ['local', 'facebook', 'google'], default: 'local' }
   },
   { timestamps: true }
 );

@@ -8,6 +8,8 @@ import { generateOTP } from "../Untils/otp.until.js";
 import { sendOTPEmail } from "../Services/email.service.js";
 import Admin from "../Model/adminModel.js";
 import dotenv from "dotenv";
+import { OAuth2Client } from 'google-auth-library';
+import axios from 'axios';
 
 // Load environment variables
 dotenv.config();
@@ -15,6 +17,9 @@ dotenv.config();
 // Fallback secret keys in case environment variables aren't set
 const JWT_SECRET_ACCESS = process.env.JWT_SECRET_ACCESS || "a5e2c2e7-bf3a-4aa1-b5e2-eab36d9db2ea";
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5d6f7e8c9d0a1b2";
+
+// Google OAuth client
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export const register = async (req, res) => {
   try {
@@ -539,6 +544,266 @@ export const blockUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi xử lý yêu cầu"
+    });
+  }
+};
+
+// Hàm đăng nhập bằng Facebook
+export const facebookLogin = async (req, res) => {
+  try {
+    const { accessToken, userID } = req.body;
+    
+    if (!accessToken || !userID) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin xác thực từ Facebook"
+      });
+    }
+
+    // Xác thực token Facebook bằng cách gọi API của Facebook
+    const fbResponse = await axios.get(`https://graph.facebook.com/v18.0/${userID}`, {
+      params: {
+        fields: 'id,email,first_name,last_name,picture',
+        access_token: accessToken
+      }
+    });
+
+    if (!fbResponse.data || !fbResponse.data.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Không thể xác thực với Facebook"
+      });
+    }
+
+    const { id, email, first_name, last_name, picture } = fbResponse.data;
+    
+    // Tìm user với FacebookID
+    let user = await User.findOne({ facebookId: id });
+    
+    // Nếu user không tồn tại nhưng email đã tồn tại, liên kết tài khoản đó
+    if (!user && email) {
+      user = await User.findOne({ email });
+      if (user) {
+        // Liên kết tài khoản đã tồn tại với Facebook
+        user.facebookId = id;
+        user.authProvider = 'facebook';
+        await user.save();
+      }
+    }
+    
+    // Nếu vẫn không tìm thấy user, tạo mới
+    if (!user) {
+      // Tạo username ngẫu nhiên nếu không có
+      const uniqueUsername = `fb_${id}_${Date.now().toString().slice(-4)}`;
+      
+      // Tạo mật khẩu ngẫu nhiên
+      const randomPassword = Math.random().toString(36).slice(-10);
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+      
+      user = new User({
+        email: email || `${id}@facebook.com`,
+        phone: '0000000000', // Placeholder phone number
+        firstName: first_name || 'Facebook',
+        lastName: last_name || 'User',
+        userName: uniqueUsername,
+        password: hashedPassword,
+        userImage: picture?.data?.url || '',
+        facebookId: id,
+        authProvider: 'facebook'
+      });
+      
+      await user.save();
+    }
+    
+    // Kiểm tra nếu tài khoản bị chặn
+    if (user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên."
+      });
+    }
+    
+    // Tạo tokens
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: "user",
+        permissions: ["Xem"]
+      },
+      process.env.JWT_SECRET_ACCESS,
+      { expiresIn: "1d" }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "7d" }
+    );
+    
+    // Lưu refresh token
+    await RefreshToken.create({
+      userId: user._id,
+      userModel: "User",
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    });
+    
+    // Cập nhật lastLogin
+    user.lastLogin = new Date();
+    await user.save();
+    
+    // Gửi response
+    res.status(200).json({
+      success: true,
+      token,
+      refreshToken,
+      user: {
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        role: "user",
+        permissions: ["Xem"]
+      },
+      message: "Đăng nhập bằng Facebook thành công!"
+    });
+    
+  } catch (error) {
+    console.error("Facebook login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đăng nhập bằng Facebook thất bại. Vui lòng thử lại."
+    });
+  }
+};
+
+// Hàm đăng nhập bằng Google
+export const googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin xác thực từ Google"
+      });
+    }
+    
+    console.log("Google login with clientID:", process.env.GOOGLE_CLIENT_ID);
+    
+    // Xác thực Google ID token
+    try {
+      const ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+      
+      const payload = ticket.getPayload();
+      console.log("Google payload verified successfully:", payload.sub);
+      
+      const { sub, email, given_name, family_name, picture } = payload;
+      
+      // Tìm user với GoogleID
+      let user = await User.findOne({ googleId: sub });
+      
+      // Nếu user không tồn tại nhưng email đã tồn tại, liên kết tài khoản đó
+      if (!user && email) {
+        user = await User.findOne({ email });
+        if (user) {
+          // Liên kết tài khoản đã tồn tại với Google
+          user.googleId = sub;
+          user.authProvider = 'google';
+          await user.save();
+        }
+      }
+      
+      // Nếu vẫn không tìm thấy user, tạo mới
+      if (!user) {
+        // Tạo username ngẫu nhiên nếu không có
+        const uniqueUsername = `google_${sub.slice(-8)}_${Date.now().toString().slice(-4)}`;
+        
+        // Tạo mật khẩu ngẫu nhiên
+        const randomPassword = Math.random().toString(36).slice(-10);
+        const hashedPassword = await bcrypt.hash(randomPassword, 10);
+        
+        user = new User({
+          email: email,
+          phone: '0000000000', // Placeholder phone number
+          firstName: given_name || 'Google',
+          lastName: family_name || 'User',
+          userName: uniqueUsername,
+          password: hashedPassword,
+          userImage: picture || '',
+          googleId: sub,
+          authProvider: 'google'
+        });
+        
+        await user.save();
+      }
+      
+      // Kiểm tra nếu tài khoản bị chặn
+      if (user.isBlocked) {
+        return res.status(403).json({
+          success: false,
+          message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên."
+        });
+      }
+      
+      // Tạo tokens
+      const token = jwt.sign(
+        {
+          id: user._id,
+          role: "user",
+          permissions: ["Xem"]
+        },
+        process.env.JWT_SECRET_ACCESS,
+        { expiresIn: "1d" }
+      );
+
+      const refreshToken = jwt.sign(
+        { id: user._id },
+        process.env.JWT_REFRESH_SECRET,
+        { expiresIn: "7d" }
+      );
+      
+      // Lưu refresh token
+      await RefreshToken.create({
+        userId: user._id,
+        userModel: "User",
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      });
+      
+      // Cập nhật lastLogin
+      user.lastLogin = new Date();
+      await user.save();
+      
+      // Gửi response
+      res.status(200).json({
+        success: true,
+        token,
+        refreshToken,
+        user: {
+          id: user._id,
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          role: "user",
+          permissions: ["Xem"]
+        },
+        message: "Đăng nhập bằng Google thành công!"
+      });
+      
+    } catch (error) {
+      console.error("Google login error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Đăng nhập bằng Google thất bại. Vui lòng thử lại."
+      });
+    }
+  } catch (error) {
+    console.error("Google login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đăng nhập bằng Google thất bại. Vui lòng thử lại."
     });
   }
 };
