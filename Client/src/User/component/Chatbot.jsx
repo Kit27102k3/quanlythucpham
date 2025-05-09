@@ -74,24 +74,74 @@ class ChatBotErrorBoundary extends React.Component {
 
 // Tạo component riêng biệt để hiển thị mỗi sản phẩm, giúp tránh re-render không cần thiết
 const ProductItem = React.memo(({ product, handleProductClick, getProductImageUrl }) => {
+  // For debugging
+  console.log("Rendering product:", product);
+  
+  // Determine the proper identifier to use for navigation
+  const handleClick = () => {
+    try {
+      // Get product name from various possible properties
+      const productName = product.productName || product.name || "";
+      
+      // Always prefer generating a slug from the product name, even if we have an ID
+      // This matches the URL format in the example: /chi-tiet-san-pham/hat-nem-4-trong-1-neptune-vi-heo-goi-170g
+      if (productName) {
+        // Format the slug correctly for Vietnamese product names
+        const productSlug = productName
+          .toLowerCase()
+          .trim()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")  // Remove Vietnamese diacritics
+          .replace(/đ/g, "d")               // Replace Vietnamese đ with d
+          .replace(/[^a-z0-9]+/g, "-")      // Replace non-alphanumeric with hyphens
+          .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
+        
+        console.log("Generated slug from product name:", productSlug);
+        
+        if (productSlug && productSlug.length > 0) {
+          handleProductClick(productSlug);
+          return;
+        }
+      }
+      
+      // Fallback to slug if already available
+      if (product.slug) {
+        console.log("Using existing product slug:", product.slug);
+        handleProductClick(product.slug);
+        return;
+      }
+      
+      // Last resort: use ID
+      const productId = product._id || product.id || "";
+      console.log("No valid slug available, using ID instead:", productId);
+      handleProductClick(productId);
+    } catch (error) {
+      console.error("Error handling product click:", error);
+      // Absolute last resort fallback
+      const fallbackId = product._id || product.id || "";
+      handleProductClick(fallbackId);
+    }
+  };
+  
   return (
     <div 
       className="border border-gray-200 rounded-lg bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-      onClick={() => handleProductClick(product.slug || product._id)}
+      onClick={handleClick}
     >
       <div className="w-full h-16 overflow-hidden">
         <img
           src={getProductImageUrl(
-            // Kiểm tra đầy đủ các trường hợp có thể có của hình ảnh
+            // Check for all possible image paths
             (product.productImages && product.productImages[0]) || 
             product.productImage || 
             product.image || 
-            'default-product.jpg'
+            DEFAULT_IMAGE
           )}
           alt={product.name || product.productName}
-          loading="lazy" // Thêm lazy loading để tối ưu hiệu suất
+          loading="lazy"
           className="w-full h-full object-cover"
           onError={(e) => {
+            console.log("Image load error:", e.target.src);
             e.target.onerror = null;
             e.target.src = DEFAULT_IMAGE;
           }}
@@ -122,6 +172,10 @@ const ProductItem = React.memo(({ product, handleProductClick, getProductImageUr
           </div>
           <button 
             className="text-xs text-white bg-green-500 p-1 rounded hover:bg-green-600 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering the parent div's onClick
+              handleClick();
+            }}
           >
             <ExternalLink size={12} />
           </button>
@@ -203,42 +257,75 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
   }, [isOpen, isFirstOpen]);
 
   const getProductImageUrl = useCallback((url) => {
+    // For debugging - log the incoming URL
+    console.log("Processing image URL:", url);
+    
     // Sử dụng ảnh mặc định nếu không có URL
-    if (!url) return DEFAULT_IMAGE;
+    if (!url) {
+      console.log("No URL provided, using default image");
+      return DEFAULT_IMAGE;
+    }
     
     // Xử lý url là chuỗi rỗng
-    if (url === '') return DEFAULT_IMAGE;
+    if (url === '') {
+      console.log("Empty URL string, using default image");
+      return DEFAULT_IMAGE;
+    }
     
     // URL đã là đầy đủ 
     if (url.startsWith('http')) {
+      console.log("Using full URL as is:", url);
       return url;
     } 
     // URL là đường dẫn tương đối hoặc mẫu
     else if (url === 'default-product.jpg') {
+      console.log("Using default product image");
       return DEFAULT_IMAGE;
     } 
     // URL bắt đầu bằng / (đường dẫn tuyệt đối trong server)
     else if (url.startsWith('/')) {
-      // Sử dụng đường dẫn đầy đủ khi ở development, tương đối khi ở production
-      return `${API_BASE_URL}${url}`;
+      const fullUrl = `${API_BASE_URL}${url}`;
+      console.log("Converted relative URL to:", fullUrl);
+      return fullUrl;
     } 
     // URL khác (không có đường dẫn)
     else {
       // Thêm / trước URL nếu cần
-      return `${API_BASE_URL}/${url}`;
+      const fullUrl = `${API_BASE_URL}/${url}`;
+      console.log("Added base URL to:", fullUrl);
+      return fullUrl;
     }
   }, []);
 
   const handleProductClick = useCallback((productSlug) => {
-    if (!productSlug) return;
+    if (!productSlug) {
+      console.error("Không có slug sản phẩm để chuyển hướng");
+      return;
+    }
     
-    console.log("Đang chuyển hướng đến sản phẩm:", productSlug);
-    
-    // Chuyển hướng đến trang chi tiết sản phẩm
-    navigate(`/chi-tiet-san-pham/${productSlug}`);
-    
-    // Đóng chatbot sau khi chuyển hướng
-    setIsOpen(false);
+    try {
+      // Don't use MongoDB IDs for navigation - they won't work properly
+      // If it looks like a MongoDB ID (24 character hex), log error and don't navigate
+      if (productSlug.match(/^[0-9a-fA-F]{24}$/)) {
+        console.error("Không thể chuyển hướng bằng MongoDB ID:", productSlug);
+        return;
+      }
+      
+      // Format URL for navigation - use consistent format with the example
+      const productDetailUrl = `/chi-tiet-san-pham/${productSlug}`;
+      console.log("Đang chuyển hướng đến:", productDetailUrl);
+      
+      // Navigate to the product detail page
+      navigate(productDetailUrl);
+      
+      // Lưu slug sản phẩm vào sessionStorage để có thể truy cập trong các trang khác
+      sessionStorage.setItem('currentProductId', productSlug);
+      
+      // Đóng chatbot sau khi chuyển hướng
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Lỗi khi chuyển hướng đến sản phẩm:", error);
+    }
   }, [navigate, setIsOpen]);
 
   // Send message to API endpoint - Sửa phần gọi API thêm debounce
@@ -285,27 +372,48 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         const responseData = response.data;
         
         // Kiểm tra trường hợp response chứa data đặc biệt
-        if (responseData.data && typeof responseData.data === 'object') {
-          const { type, text, products, nameCategory } = responseData.data;
+        if (responseData.data && Array.isArray(responseData.data)) {
+          // Data là mảng các sản phẩm
+          console.log("Data is an array of products:", responseData.data);
+          
+          setMessages((prev) => [
+            ...prev,
+            {
+              type: responseData.type || 'productSearch',
+              text: responseData.text || responseData.message || 'Đây là kết quả tìm kiếm:',
+              products: responseData.data,
+              nameCategory: responseData.nameCategory || 'Kết quả tìm kiếm',
+              sender: "bot"
+            }
+          ]);
+          
+          // Cập nhật intent mới nhất
+          setLastIntent(responseData.intent || 'productSearch');
+          setIsLoading(false);
+          return;
+        }
+        else if (responseData.data && typeof responseData.data === 'object') {
+          const { type, text, products } = responseData.data;
           
           if (type === 'relatedProducts' || 
               type === 'discountedProducts' || 
               type === 'priceRangeProducts' ||
-              type === 'productSearch') {
+              type === 'productSearch' ||
+              type === 'categoryQuery') {
             
             setMessages((prev) => [
               ...prev,
               {
                 type,
-                text: text || 'Đây là một số sản phẩm bạn có thể quan tâm:',
+                text: text || responseData.message || 'Đây là một số sản phẩm bạn có thể quan tâm:',
                 products: products || [],
-                nameCategory: nameCategory || 'Kết quả tìm kiếm',
+                nameCategory: responseData.data.nameCategory || 'Kết quả tìm kiếm',
                 sender: "bot"
               }
             ]);
             
             // Cập nhật intent mới nhất
-            setLastIntent(responseData.intent || 'productSearch');
+            setLastIntent(responseData.intent || type);
             
             setIsLoading(false);
             return;
@@ -316,7 +424,8 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         if (typeof responseData.message === 'object' && 
             responseData.message !== null && 
             (responseData.message.type === 'productSearch' || 
-             responseData.message.type === 'relatedProducts')) {
+             responseData.message.type === 'relatedProducts' ||
+             responseData.message.type === 'categoryQuery')) {
           
           const { type, text, products, nameCategory } = responseData.message;
           
@@ -453,8 +562,28 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
 
   // Render message based on type - sử dụng React.memo để tránh re-render không cần thiết
   const renderMessage = useCallback((msg, index) => {
+    console.log(`Rendering message type: ${msg.type || 'text'}`);
+    
     // Render sản phẩm cho các tin nhắn đặc biệt
-    if (msg.type === 'productSearch' || msg.type === 'relatedProducts' || msg.type === 'discountedProducts' || msg.type === 'priceRangeProducts') {
+    if (msg.type === 'productSearch' || msg.type === 'relatedProducts' || 
+        msg.type === 'discountedProducts' || msg.type === 'priceRangeProducts' ||
+        msg.type === 'categoryQuery') {
+      
+      // Log detailed information about products in this message
+      if (msg.products && msg.products.length > 0) {
+        console.log(`Message contains ${msg.products.length} products`);
+        console.log("Sample product data:", msg.products[0]);
+        
+        // Check for necessary product properties
+        msg.products.forEach((p, idx) => {
+          if (!p.productName && !p.name) {
+            console.warn(`Product at index ${idx} missing name property`);
+          }
+        });
+      } else {
+        console.warn("Product message has no products or empty products array");
+      }
+      
       return (
         <div key={`msg-${index}`} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-3`}>
           <div className={`${msg.sender === "user" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-800"} px-4 py-2 rounded-2xl max-w-[85%]`}>

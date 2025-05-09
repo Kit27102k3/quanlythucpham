@@ -652,13 +652,7 @@ const intents = {
       "tìm hiểu", "tìm hiểu về", "tìm hiểu sản phẩm", "tìm hiểu về sản phẩm",
       "sản phẩm", "có sản phẩm", "có sản phẩm nào", "sản phẩm gì",
       "tìm mối đề nhậu", "tìm đồ nhậu", "tìm đồ ăn", "tìm thức ăn", "tìm nước uống",
-      "tìm món ăn", "tìm món", "tìm đồ", "tìm thức", "tìm nước",
-      // Thêm các mẫu câu hỏi mới
-      "cửa hàng có", "có bán", "mua được", "bán không", "có không", 
-      "bán gì", "có gì", "tôi muốn mua", "muốn mua", "bán ở đâu",
-      "cung cấp", "cho mình hỏi", "cho tôi hỏi", "ngon không", "loại nào ngon",
-      "loại nào tốt", "loại nào", "hãng nào", "hàng nào", "chất lượng",
-      "giới thiệu", "mua ở đâu", "đặt hàng", "order", "mua online"
+      "tìm món ăn", "tìm món", "tìm đồ", "tìm thức", "tìm nước"
     ],
     response: async (message) => {
       try {
@@ -686,20 +680,35 @@ const intents = {
               name: p.productName,
               price: p.productPrice,
               image: imageUrl,
-              discount: p.productDiscount,
-              promotionalPrice: p.productDiscount ? Math.round(p.productPrice * (1 - p.productDiscount / 100)) : p.productPrice,
-              description: p.productInfo || p.productDetails || p.productDescription || ""
+              slug: createSlug(p.productName),
+              category: p.productCategory || p.category || "Không xác định",
+              discount: p.productDiscount || 0,
+              promotionalPrice: p.productDiscount > 0 ? p.productPrice * (1 - p.productDiscount/100) : null
             };
           });
           
           return {
-            text: `Tôi đã tìm thấy ${products.length} sản phẩm "${productName}" cho bạn:`,
+            text: `Tôi đã tìm thấy ${products.length} sản phẩm phù hợp với "${productName}":`,
             products: productElements,
-            type: "productSearch"
+            type: "productSearch",
+            nameCategory: `Kết quả tìm kiếm: ${productName}`
           };
-        } else {
-          return `Xin lỗi, tôi không tìm thấy sản phẩm nào với từ khóa "${productName}". Bạn có thể thử tìm kiếm với từ khóa khác.`;
         }
+        
+        // Nếu không tìm thấy sản phẩm nào, đề xuất danh mục phổ biến
+        const popularCategories = await Product.aggregate([
+          { $group: { _id: "$productCategory", count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: 5 }
+        ]);
+        
+        if (popularCategories.length > 0) {
+          const categoryNames = popularCategories.map(cat => cat._id).filter(Boolean);
+          
+          return `Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với "${productName}". Bạn có thể xem các danh mục phổ biến: ${categoryNames.join(', ')} hoặc thử tìm kiếm với từ khóa khác.`;
+        }
+        
+        return `Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với "${productName}". Vui lòng thử tìm kiếm với từ khóa khác.`;
       } catch (error) {
         console.error("Lỗi khi tìm kiếm sản phẩm:", error);
         return "Xin lỗi, đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau.";
@@ -1488,124 +1497,6 @@ const intents = {
         };
       }
     }
-  },
-  // Thêm responses cho các loại sản phẩm cụ thể
-  categoryQuery: {
-    patterns: [
-      "có muối nào", "có muối gì", "muối ngon", "muối nào ngon", 
-      "muối loại nào", "muối hiệu nào", "muối thơm", "muối tôm",
-      "muối ớt", "muối tiêu", "muối chanh", "nước mắm", "nước tương"
-    ],
-    response: async (message) => {
-      try {
-        // Trích xuất tên danh mục từ tin nhắn
-        let category = "";
-        
-        if (message.toLowerCase().includes("muối")) {
-          category = "muối";
-        } else if (message.toLowerCase().includes("nước mắm")) {
-          category = "nước mắm";
-        } else if (message.toLowerCase().includes("nước tương")) {
-          category = "nước tương";
-        } else {
-          // Trích xuất từ categories
-          const categories = [
-            "muối", "nước", "bánh", "kẹo", "mì", "gạo", "đường", "sữa", "gia vị", 
-            "nước mắm", "nước tương", "bột ngọt", "dầu ăn", "snack", "bánh kẹo"
-          ];
-          
-          for (const cat of categories) {
-            if (message.toLowerCase().includes(cat)) {
-              category = cat;
-              break;
-            }
-          }
-        }
-        
-        if (!category) {
-          return "Bạn đang quan tâm đến sản phẩm thuộc danh mục nào? Cửa hàng có nhiều loại hàng hóa như bánh kẹo, nước uống, đồ ăn vặt, thực phẩm,...";
-        }
-        
-        console.log(`Đang tìm kiếm sản phẩm trong danh mục: "${category}"`);
-        
-        // Tìm kiếm sản phẩm theo danh mục
-        const products = await Product.find({
-          $or: [
-            { productCategory: { $regex: category, $options: 'i' } },
-            { productName: { $regex: category, $options: 'i' } }
-          ]
-        })
-        .sort({ soldCount: -1, productDiscount: -1 })
-        .limit(8);
-        
-        if (products.length > 0) {
-          // Format sản phẩm để hiển thị
-          const formattedProducts = products.map(p => ({
-            id: p._id,
-            name: p.productName,
-            price: p.productPrice,
-            discount: p.productDiscount,
-            promotionalPrice: p.productDiscount ? Math.round(p.productPrice * (1 - p.productDiscount / 100)) : p.productPrice,
-            image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : "default-product.jpg",
-            description: p.productDetails || p.productInfo || "",
-            category: p.productCategory
-          }));
-          
-          // Xử lý trường hợp đặc biệt - muối
-          if (category === "muối") {
-            // Lấy thông tin sản phẩm muối Fadely nếu có
-            const fadelyMuoi = products.find(p => 
-              p.productName.toLowerCase().includes("fadely") && 
-              p.productName.toLowerCase().includes("muối")
-            );
-            
-            if (fadelyMuoi) {
-              const priceText = fadelyMuoi.productDiscount ? 
-                `${formatCurrency(fadelyMuoi.productPrice)} (đang giảm ${fadelyMuoi.productDiscount}% còn ${formatCurrency(fadelyMuoi.productPrice * (1 - fadelyMuoi.productDiscount/100))})` :
-                formatCurrency(fadelyMuoi.productPrice);
-                
-              let additionalInfo = "";
-              if (fadelyMuoi.productDetails) {
-                additionalInfo = ` ${fadelyMuoi.productDetails}`;
-              }
-              
-              return {
-                success: true,
-                message: `Cửa hàng có sản phẩm ${fadelyMuoi.productName} giá ${priceText}.${additionalInfo} Ngoài ra còn có ${products.length-1} sản phẩm muối khác:`,
-                data: formattedProducts,
-                type: 'categoryQuery',
-                text: `Cửa hàng có sản phẩm ${fadelyMuoi.productName} giá ${priceText}.${additionalInfo} Ngoài ra còn có ${products.length-1} sản phẩm muối khác:`,
-                intent: "categoryQuery"
-              };
-            } else {
-              return {
-                success: true,
-                message: `Cửa hàng có ${products.length} sản phẩm ${category} như sau:`,
-                data: formattedProducts,
-                type: 'categoryQuery',
-                text: `Cửa hàng có ${products.length} sản phẩm ${category} như sau:`,
-                intent: "categoryQuery"
-              };
-            }
-          } else {
-            // Trường hợp thông thường cho các danh mục khác
-            return {
-              success: true,
-              message: `Cửa hàng có ${products.length} sản phẩm ${category} như sau:`,
-              data: formattedProducts,
-              type: 'categoryQuery',
-              text: `Cửa hàng có ${products.length} sản phẩm ${category} như sau:`,
-              intent: "categoryQuery"
-            };
-          }
-        } else {
-          return `Rất tiếc, hiện tại cửa hàng không có sản phẩm ${category} nào. Bạn có thể tham khảo các sản phẩm khác hoặc cho biết bạn đang tìm gì?`;
-        }
-      } catch (error) {
-        console.error("Lỗi khi xử lý tìm kiếm sản phẩm theo danh mục:", error);
-        return "Xin lỗi, đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau.";
-      }
-    }
   }
 };
 
@@ -1773,49 +1664,6 @@ function detectIntent(message) {
     return { name: "priceRangeProducts", score: 0.9 };
   }
   
-  // Kiểm tra intent truy vấn danh mục sản phẩm
-  const categoryPatterns = [
-    "có muối nào", "có muối gì", "muối ngon", "muối nào ngon", 
-    "muối loại nào", "muối hiệu nào", "muối thơm", "muối tôm",
-    "cửa hàng có muối", "shop có muối", "bán muối", "muối gì", 
-    "muối tôm không", "muối ớt không", "có muối không"
-  ];
-  
-  for (const pattern of categoryPatterns) {
-    if (lowerCaseMessage.includes(pattern)) {
-      return { name: "categoryQuery", score: 0.9 };
-    }
-  }
-  
-  // Kiểm tra intent tìm kiếm sản phẩm
-  const productSearchKeywords = ["tìm", "có bán", "mua", "cửa hàng có", "muốn mua", "sản phẩm", 
-                               "có không", "bán không", "bán gì", "có gì", "loại nào", "hãng nào"];
-  
-  for (const keyword of productSearchKeywords) {
-    if (lowerCaseMessage.includes(keyword)) {
-      return { name: "productSearch", score: 0.8 };
-    }
-  }
-  
-  // Kiểm tra câu hỏi về danh mục
-  const categories = ["muối", "nước", "bánh", "kẹo", "mì", "gạo", "đường", "sữa", "gia vị", 
-                     "nước mắm", "nước tương", "bột ngọt", "dầu ăn", "snack", "bánh kẹo", 
-                     "đồ uống", "nước ngọt", "đồ nhậu", "bia", "rượu", "thịt", "rau", "trái cây",
-                     "thực phẩm"];
-                     
-  for (const category of categories) {
-    if (lowerCaseMessage.includes(category)) {
-      // Kiểm tra các mẫu câu cụ thể về danh mục
-      if (lowerCaseMessage.includes(`có ${category}`) || 
-          lowerCaseMessage.includes(`${category} nào`) || 
-          lowerCaseMessage.includes(`${category} không`) || 
-          lowerCaseMessage.includes(`${category} gì`)) {
-        return { name: "categoryQuery", score: 0.85 };
-      }
-      return { name: "productSearch", score: 0.85 };
-    }
-  }
-  
   // Nếu hỏi về giá và khuyến mãi
   if (lowerCaseMessage.includes("giá") || 
       lowerCaseMessage.includes("bao nhiêu tiền") || 
@@ -1950,176 +1798,42 @@ export const handleMessage = async (req, res) => {
         console.log(`Tên sản phẩm trích xuất từ tin nhắn: "${productName}"`);
         
         if (!productName || productName === "") {
-          return res.status(200).json({
-            success: true,
-            message: "Vui lòng cho tôi biết bạn muốn tìm sản phẩm gì?",
-            intent: "productSearch"
-          });
+          responseMessage = "Vui lòng cho tôi biết bạn muốn tìm sản phẩm gì?";
         } else {
           // Tìm kiếm sản phẩm theo tên
           const searchResults = await searchProducts(productName);
           
           if (searchResults && searchResults.length > 0) {
             console.log(`Tìm thấy ${searchResults.length} sản phẩm cho "${productName}"`);
-            
-            // Format products for display
-            const formattedProducts = searchResults.map(product => ({
-              id: product._id,
-              name: product.productName,
-              price: product.productPrice,
-              discount: product.productDiscount,
-              promotionalPrice: product.productDiscount ? Math.round(product.productPrice * (1 - product.productDiscount / 100)) : product.productPrice,
-              image: product.productImages && product.productImages.length > 0 ? product.productImages[0] : "default-product.jpg",
-              description: product.productInfo || product.productDetails || product.productDescription || ""
-            }));
-            
-            return res.status(200).json({
-              success: true,
-              message: `Tôi đã tìm thấy ${searchResults.length} sản phẩm "${productName}" cho bạn:`,
-              data: formattedProducts,
+            responseMessage = {
               type: 'productSearch',
               text: `Tôi đã tìm thấy ${searchResults.length} sản phẩm "${productName}" cho bạn:`,
-              intent: "productSearch"
-            });
+              products: searchResults.map(product => ({
+                name: product.productName,
+                price: product.productPrice,
+                discount: product.productDiscount,
+                promotionalPrice: product.productDiscount ? Math.round(product.productPrice * (1 - product.productDiscount / 100)) : product.productPrice,
+                image: product.productImage,
+                slug: product._id
+              })),
+              nameCategory: `Kết quả tìm kiếm "${productName}"`
+            };
           } else {
             console.log(`Không tìm thấy sản phẩm nào cho "${productName}"`);
-            return res.status(200).json({
-              success: true,
-              message: `Xin lỗi, tôi không tìm thấy sản phẩm nào với từ khóa "${productName}". Bạn có thể thử tìm kiếm với từ khóa khác.`,
-              intent: "productSearch"
-            });
+            responseMessage = `Xin lỗi, tôi không tìm thấy sản phẩm nào với từ khóa "${productName}". Bạn có thể thử tìm kiếm với từ khóa khác hoặc xem các sản phẩm đang giảm giá.`;
           }
         }
       } catch (error) {
         console.error("Lỗi khi xử lý tìm kiếm sản phẩm:", error);
-        return res.status(200).json({
-          success: true,
-          message: "Xin lỗi, đã xảy ra lỗi khi tìm kiếm. Vui lòng thử lại sau.",
-          intent: "productSearch"
-        });
-      }
-    }
-    
-    // Xử lý riêng cho intent tìm kiếm theo danh mục sản phẩm cụ thể
-    if (intent && intent.name === 'categoryQuery') {
-      try {
-        // Trích xuất tên danh mục từ tin nhắn
-        let category = "";
-        
-        if (message.toLowerCase().includes("muối")) {
-          category = "muối";
-        } else if (message.toLowerCase().includes("nước mắm")) {
-          category = "nước mắm";
-        } else if (message.toLowerCase().includes("nước tương")) {
-          category = "nước tương";
-        } else {
-          // Trích xuất từ categories
-          const categories = [
-            "muối", "nước", "bánh", "kẹo", "mì", "gạo", "đường", "sữa", "gia vị", 
-            "bột ngọt", "dầu ăn", "snack", "bánh kẹo"
-          ];
-          
-          for (const cat of categories) {
-            if (message.toLowerCase().includes(cat)) {
-              category = cat;
-              break;
-            }
-          }
-        }
-        
-        if (!category) {
-          responseMessage = "Bạn đang quan tâm đến sản phẩm thuộc danh mục nào? Cửa hàng có nhiều loại hàng hóa như bánh kẹo, nước uống, đồ ăn vặt, thực phẩm,...";
-        } else {
-          console.log(`Đang tìm kiếm sản phẩm trong danh mục: "${category}"`);
-          
-          // Tìm kiếm sản phẩm theo danh mục
-          const products = await Product.find({
-            $or: [
-              { productCategory: { $regex: category, $options: 'i' } },
-              { productName: { $regex: category, $options: 'i' } }
-            ]
-          })
-          .sort({ soldCount: -1, productDiscount: -1 })
-          .limit(8);
-          
-          if (products.length > 0) {
-            // Format sản phẩm để hiển thị
-            const formattedProducts = products.map(p => ({
-              id: p._id,
-              name: p.productName,
-              price: p.productPrice,
-              discount: p.productDiscount,
-              promotionalPrice: p.productDiscount ? Math.round(p.productPrice * (1 - p.productDiscount / 100)) : p.productPrice,
-              image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : "default-product.jpg",
-              description: p.productDetails || p.productInfo || "",
-              category: p.productCategory
-            }));
-            
-            // Xử lý trường hợp đặc biệt - muối
-            if (category === "muối") {
-              // Lấy thông tin sản phẩm muối Fadely nếu có
-              const fadelyMuoi = products.find(p => 
-                p.productName.toLowerCase().includes("fadely") && 
-                p.productName.toLowerCase().includes("muối")
-              );
-              
-              if (fadelyMuoi) {
-                const priceText = fadelyMuoi.productDiscount ? 
-                  `${formatCurrency(fadelyMuoi.productPrice)} (đang giảm ${fadelyMuoi.productDiscount}% còn ${formatCurrency(fadelyMuoi.productPrice * (1 - fadelyMuoi.productDiscount/100))})` :
-                  formatCurrency(fadelyMuoi.productPrice);
-                  
-                let additionalInfo = "";
-                if (fadelyMuoi.productDetails) {
-                  additionalInfo = ` ${fadelyMuoi.productDetails}`;
-                }
-                
-                responseMessage = {
-                  success: true,
-                  message: `Cửa hàng có sản phẩm ${fadelyMuoi.productName} giá ${priceText}.${additionalInfo} Ngoài ra còn có ${products.length-1} sản phẩm muối khác:`,
-                  data: formattedProducts,
-                  type: 'categoryQuery',
-                  text: `Cửa hàng có sản phẩm ${fadelyMuoi.productName} giá ${priceText}.${additionalInfo} Ngoài ra còn có ${products.length-1} sản phẩm muối khác:`,
-                  intent: "categoryQuery"
-                };
-              } else {
-                responseMessage = {
-                  success: true,
-                  message: `Cửa hàng có ${products.length} sản phẩm ${category} như sau:`,
-                  data: formattedProducts,
-                  type: 'categoryQuery',
-                  text: `Cửa hàng có ${products.length} sản phẩm ${category} như sau:`,
-                  intent: "categoryQuery"
-                };
-              }
-            } else {
-              // Trường hợp thông thường cho các danh mục khác
-              responseMessage = {
-                success: true,
-                message: `Cửa hàng có ${products.length} sản phẩm ${category} như sau:`,
-                data: formattedProducts,
-                type: 'categoryQuery',
-                text: `Cửa hàng có ${products.length} sản phẩm ${category} như sau:`,
-                intent: "categoryQuery"
-              };
-            }
-          } else {
-            responseMessage = `Rất tiếc, hiện tại cửa hàng không có sản phẩm ${category} nào. Bạn có thể tham khảo các sản phẩm khác hoặc cho biết bạn đang tìm gì?`;
-          }
-        }
-      } catch (error) {
-        console.error("Lỗi khi xử lý tìm kiếm sản phẩm theo danh mục:", error);
         responseMessage = "Xin lỗi, đã xảy ra lỗi khi tìm kiếm. Vui lòng thử lại sau.";
       }
       
-      return res.status(200).json(
-        typeof responseMessage === 'string' 
-          ? {
-              success: true,
-              message: responseMessage,
-              intent: "categoryQuery"
-            }
-          : responseMessage
-      );
+      return res.status(200).json({
+        success: true,
+        message: typeof responseMessage === 'string' ? responseMessage : (responseMessage.text || ''),
+        data: typeof responseMessage !== 'string' ? responseMessage : null,
+        intent: intent.name
+      });
     }
     
     // Xử lý riêng cho intent tìm kiếm theo khoảng giá
@@ -2149,7 +1863,7 @@ export const handleMessage = async (req, res) => {
         console.log("Query MongoDB:", JSON.stringify(query));
 
         const products = await Product.find(query)
-          .select('productName productPrice productDiscount productImages productDetails productInfo')
+          .select('productName productPrice productDiscount productImages')
           .limit(8);
 
         console.log(`Tìm thấy ${products.length} sản phẩm theo khoảng giá`);
@@ -2161,46 +1875,38 @@ export const handleMessage = async (req, res) => {
               ? `dưới ${formatCurrency(priceRange.maxPrice)}`
               : "dưới 100.000đ";
 
-          // Format products for display
-          const formattedProducts = products.map(product => ({
-            id: product._id,
-            name: product.productName,
-            price: product.productPrice,
-            discount: product.productDiscount,
-            promotionalPrice: product.productDiscount ? Math.round(product.productPrice * (1 - product.productDiscount / 100)) : product.productPrice,
-            image: product.productImages && product.productImages.length > 0 ? product.productImages[0] : "default-product.jpg",
-            description: product.productDetails || product.productInfo || ""
-          }));
-
-          return res.status(200).json({
-            success: true,
-            message: `Tôi đã tìm thấy ${products.length} sản phẩm ${priceRangeText}:`,
-            data: formattedProducts,
+          responseMessage = {
             type: 'priceRangeProducts',
             text: `Tôi đã tìm thấy ${products.length} sản phẩm ${priceRangeText}:`,
-            intent: "priceRangeProducts"
-          });
+            products: products.map(product => ({
+              name: product.productName,
+              price: product.productPrice,
+              discount: product.productDiscount,
+              promotionalPrice: product.productDiscount ? Math.round(product.productPrice * (1 - product.productDiscount / 100)) : product.productPrice,
+              image: product.productImages && product.productImages.length > 0 ? product.productImages[0] : "default-product.jpg",
+              slug: product._id
+            }))
+          };
         } else {
           const priceRangeText = priceRange.minPrice !== null && priceRange.maxPrice !== null 
             ? `trong khoảng từ ${formatCurrency(priceRange.minPrice)} đến ${formatCurrency(priceRange.maxPrice)}`
             : priceRange.maxPrice !== null 
               ? `dưới ${formatCurrency(priceRange.maxPrice)}`
               : "dưới 100.000đ";
-          
-          return res.status(200).json({
-            success: true,
-            message: `Xin lỗi, tôi không tìm thấy sản phẩm nào ${priceRangeText}. Bạn có thể thử tìm với mức giá khác.`,
-            intent: "priceRangeProducts"
-          });
+              
+          responseMessage = `Xin lỗi, tôi không tìm thấy sản phẩm nào ${priceRangeText}. Bạn có thể thử tìm với mức giá khác.`;
         }
       } catch (error) {
         console.error("Lỗi khi xử lý tìm kiếm sản phẩm theo giá:", error);
-        return res.status(200).json({
-          success: true,
-          message: "Xin lỗi, đã xảy ra lỗi khi tìm kiếm. Vui lòng thử lại sau.",
-          intent: "priceRangeProducts"
-        });
+        responseMessage = "Xin lỗi, đã xảy ra lỗi khi tìm kiếm. Vui lòng thử lại sau.";
       }
+      
+      return res.status(200).json({
+        success: true,
+        message: typeof responseMessage === 'string' ? responseMessage : (responseMessage.text || ''),
+        data: typeof responseMessage !== 'string' ? responseMessage : null,
+        intent: intent.name
+      });
     }
     
     // Xử lý các intent khác (giữ nguyên code xử lý)
@@ -2531,14 +2237,13 @@ function extractPriceRanges(message) {
 function extractProductNameFromMessage(message) {
   try {
     // Đảm bảo message là string
-    if (!message || typeof message !== 'string') {
+  if (!message || typeof message !== 'string') {
       console.log("Message không phải string:", message);
       return ""; // Trả về rỗng nếu không phải string
     }
     
     // Chuẩn hóa message
     message = message.toLowerCase().trim();
-    console.log("Đang phân tích nội dung tin nhắn:", message);
     
     // Kiểm tra và xử lý các trường hợp "đồ nhậu"
     if (message.includes("mối đề nhậu") || 
@@ -2548,47 +2253,12 @@ function extractProductNameFromMessage(message) {
       return "đồ nhậu";
     }
     
-    // Xử lý các câu hỏi về danh mục sản phẩm cụ thể
-    // Danh sách danh mục phổ biến
-    const categories = [
-      "muối", "nước", "bánh", "kẹo", "mì", "gạo", "đường", "sữa", "gia vị", 
-      "nước mắm", "nước tương", "bột ngọt", "dầu ăn", "snack", "bánh kẹo", 
-      "đồ uống", "nước ngọt", "đồ nhậu", "bia", "rượu", "thịt", "rau", "trái cây"
-    ];
-    
-    // Kiểm tra xem tin nhắn có chứa tên danh mục nào không
-    for (const category of categories) {
-      if (message.includes(category)) {
-        console.log(`Tìm thấy danh mục trong tin nhắn: "${category}"`);
-        
-        // Xử lý các trường hợp đặc biệt
-        if (category === "nước") {
-          // Kiểm tra nếu có kèm theo "nước mắm" hoặc "nước tương"
-          if (message.includes("nước mắm")) return "nước mắm";
-          if (message.includes("nước tương")) return "nước tương";
-          if (message.includes("giải khát") || message.includes("uống")) return "nước giải khát";
-        }
-        
-        // Trả về danh mục
-        return category;
-      }
-    }
-    
-    // Xử lý các trường hợp phổ biến
-    if (message.includes("nước giải khát") || 
-        message.includes("giải khát") || 
-        message.includes("đồ uống") || 
-        message.includes("thức uống")) {
-      return "nước giải khát";
-    }
-    
     // Các pattern cần loại bỏ
-    const patterns = [
+  const patterns = [
       "tìm", "kiếm", "mua", "bán", "tôi muốn", "giúp tôi", "cho tôi",
       "sản phẩm", "hàng", "cần", "muốn", "hỏi về", "về", "cho mình", "bạn có",
       "cái", "một cái", "một", "có bán", "không", "có", "những", "các",
-      "loại", "giống", "mấy", "giá", "bao nhiêu", "thông tin", 
-      "cửa hàng", "shop", "ngon", "tốt", "chất lượng", "hãng", "hiệu"
+      "loại", "giống", "mấy", "giá", "bao nhiêu", "thông tin"
     ];
     
     // Loại bỏ các từ không cần thiết
@@ -2600,7 +2270,7 @@ function extractProductNameFromMessage(message) {
     message = message.replace(/[^\w\sàáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/g, ' ');
     message = message.replace(/\s+/g, ' ').trim();
     
-    console.log("Sau khi xử lý, từ khóa tìm kiếm:", message);
+    console.log("Extracted product name:", message);
     return message;
   } catch (error) {
     console.error("Lỗi khi phân tích tên sản phẩm:", error);
@@ -2616,13 +2286,7 @@ intents.productSearch = {
     "tìm hiểu", "tìm hiểu về", "tìm hiểu sản phẩm", "tìm hiểu về sản phẩm",
     "sản phẩm", "có sản phẩm", "có sản phẩm nào", "sản phẩm gì",
     "tìm mối đề nhậu", "tìm đồ nhậu", "tìm đồ ăn", "tìm thức ăn", "tìm nước uống",
-    "tìm món ăn", "tìm món", "tìm đồ", "tìm thức", "tìm nước",
-    // Thêm các mẫu câu hỏi mới
-    "cửa hàng có", "có bán", "mua được", "bán không", "có không", 
-    "bán gì", "có gì", "tôi muốn mua", "muốn mua", "bán ở đâu",
-    "cung cấp", "cho mình hỏi", "cho tôi hỏi", "ngon không", "loại nào ngon",
-    "loại nào tốt", "loại nào", "hãng nào", "hàng nào", "chất lượng",
-    "giới thiệu", "mua ở đâu", "đặt hàng", "order", "mua online"
+    "tìm món ăn", "tìm món", "tìm đồ", "tìm thức", "tìm nước"
   ],
   response: async (message) => {
     try {
@@ -2650,20 +2314,35 @@ intents.productSearch = {
             name: p.productName,
             price: p.productPrice,
             image: imageUrl,
-            discount: p.productDiscount,
-            promotionalPrice: p.productDiscount ? Math.round(p.productPrice * (1 - p.productDiscount / 100)) : p.productPrice,
-            description: p.productInfo || p.productDetails || p.productDescription || ""
+            slug: createSlug(p.productName),
+            category: p.productCategory || p.category || "Không xác định",
+            discount: p.productDiscount || 0,
+            promotionalPrice: p.productDiscount > 0 ? p.productPrice * (1 - p.productDiscount/100) : null
           };
         });
         
         return {
-          text: `Tôi đã tìm thấy ${products.length} sản phẩm "${productName}" cho bạn:`,
+          text: `Tôi đã tìm thấy ${products.length} sản phẩm phù hợp với "${productName}":`,
           products: productElements,
-          type: "productSearch"
+          type: "productSearch",
+          nameCategory: `Kết quả tìm kiếm: ${productName}`
         };
-      } else {
-        return `Xin lỗi, tôi không tìm thấy sản phẩm nào với từ khóa "${productName}". Bạn có thể thử tìm kiếm với từ khóa khác.`;
       }
+      
+      // Nếu không tìm thấy sản phẩm nào, đề xuất danh mục phổ biến
+      const popularCategories = await Product.aggregate([
+        { $group: { _id: "$productCategory", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 }
+      ]);
+      
+      if (popularCategories.length > 0) {
+        const categoryNames = popularCategories.map(cat => cat._id).filter(Boolean);
+        
+        return `Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với "${productName}". Bạn có thể xem các danh mục phổ biến: ${categoryNames.join(', ')} hoặc thử tìm kiếm với từ khóa khác.`;
+      }
+      
+      return `Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với "${productName}". Vui lòng thử tìm kiếm với từ khóa khác.`;
     } catch (error) {
       console.error("Lỗi khi tìm kiếm sản phẩm:", error);
       return "Xin lỗi, đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau.";
@@ -2675,59 +2354,6 @@ intents.productSearch = {
 async function searchProducts(productName) {
   try {
     let results = [];
-    
-    console.log(`Tìm kiếm sản phẩm với từ khóa: "${productName}"`);
-    
-    // Xử lý tìm kiếm theo danh mục sản phẩm cụ thể
-    // Các danh mục phổ biến
-    const commonCategories = {
-      "muối": ["muối", "muối ăn", "muối tinh", "muối biển", "muối tôm", "muối ớt", "muối chanh", "muối hạt"],
-      "nước giải khát": ["nước", "nước uống", "nước ngọt", "đồ uống", "thức uống", "giải khát", "nước khoáng", "coca", "pepsi", "7up", "sprite", "fanta"],
-      "gia vị": ["gia vị", "bột nêm", "bột canh", "hạt nêm", "dầu ăn", "nước mắm", "nước tương", "tương ớt", "tương cà", "mắm", "nước chấm"]
-    };
-    
-    // Xử lý trường hợp đặc biệt - tìm danh mục
-    for (const [category, keywords] of Object.entries(commonCategories)) {
-      if (keywords.includes(productName) || productName.includes(category)) {
-        console.log(`Đang tìm kiếm sản phẩm theo danh mục: ${category}`);
-        
-        // Tìm sản phẩm theo danh mục
-        const categoryResults = await Product.find({
-          $or: [
-            { productCategory: { $regex: category, $options: 'i' } },
-            { productName: { $regex: category, $options: 'i' } }
-          ]
-        })
-        .sort({ soldCount: -1, averageRating: -1 }) // Ưu tiên sản phẩm bán chạy, đánh giá cao
-        .limit(8);
-        
-        if (categoryResults.length > 0) {
-          console.log(`Tìm thấy ${categoryResults.length} sản phẩm thuộc danh mục '${category}'`);
-          return categoryResults;
-        }
-      }
-    }
-    
-    // Xử lý trường hợp đặc biệt - muối
-    if (productName === "muối" || productName.includes("muối")) {
-      console.log("Đang tìm kiếm sản phẩm muối...");
-      
-      const muoiResults = await Product.find({
-        $or: [
-          { productCategory: { $regex: 'muối', $options: 'i' } },
-          { productName: { $regex: 'muối', $options: 'i' } },
-          { productInfo: { $regex: 'muối', $options: 'i' } },
-          { productDetails: { $regex: 'muối', $options: 'i' } }
-        ]
-      })
-      .sort({ productPrice: 1 }) // Sắp xếp theo giá tăng dần
-      .limit(8);
-      
-      if (muoiResults.length > 0) {
-        console.log(`Tìm thấy ${muoiResults.length} sản phẩm muối`);
-        return muoiResults;
-      }
-    }
     
     // Xử lý trường hợp đặc biệt - đồ nhậu
     if (productName === "đồ nhậu" || productName === "mồi nhậu" || productName === "mồi đề nhậu" || productName === "mối nhậu") {
@@ -2787,7 +2413,7 @@ async function searchProducts(productName) {
     }
     
     // Xử lý trường hợp đặc biệt - nước uống
-    if (productName === "nước uống" || productName === "nước" || productName === "đồ uống" || productName === "nước giải khát") {
+    if (productName === "nước uống" || productName === "nước" || productName === "đồ uống") {
       console.log("Đang tìm kiếm nước uống...");
       // Tìm các đồ uống phổ biến
       return await Product.find({
@@ -2840,7 +2466,6 @@ async function searchProducts(productName) {
     }).limit(6);
     
     if (directResults.length > 0) {
-      console.log(`Tìm thấy ${directResults.length} sản phẩm trực tiếp theo tên`);
       return directResults;
     }
     
@@ -2850,7 +2475,6 @@ async function searchProducts(productName) {
     }).limit(6);
     
     if (textResults.length > 0) {
-      console.log(`Tìm thấy ${textResults.length} sản phẩm bằng full-text search`);
       return textResults;
     }
     
@@ -2873,23 +2497,11 @@ async function searchProducts(productName) {
       }).limit(8);
       
       if (expandedResults.length > 0) {
-        console.log(`Tìm thấy ${expandedResults.length} sản phẩm bằng tìm kiếm mở rộng`);
         return expandedResults;
       }
     }
     
-    // Thử tìm theo thương hiệu
-    const brandResults = await Product.find({
-      productBrand: { $regex: productName, $options: 'i' }
-    }).limit(8);
-    
-    if (brandResults.length > 0) {
-      console.log(`Tìm thấy ${brandResults.length} sản phẩm theo thương hiệu`);
-      return brandResults;
-    }
-    
     // Nếu không tìm thấy gì, trả về mảng rỗng
-    console.log("Không tìm thấy sản phẩm phù hợp");
     return [];
   } catch (error) {
     console.error("Lỗi khi tìm kiếm sản phẩm:", error);
@@ -3107,4 +2719,5 @@ function extractPriceRange(message) {
 
   console.log(`Kết quả phân tích cuối cùng: minPrice=${minPrice}, maxPrice=${maxPrice}`);
   return { minPrice, maxPrice };
+}
 }
