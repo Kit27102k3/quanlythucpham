@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import { useEffect, useState, useCallback } from "react";
-import { ClipboardListIcon, PackageIcon, CreditCardIcon, XCircleIcon } from "lucide-react";
+import { ClipboardListIcon, PackageIcon, CreditCardIcon, XCircleIcon, TruckIcon, BoxIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import orderApi from "../../../api/orderApi"; // Giả sử bạn có file API này
 import formatCurrency from "../../Until/FotmatPrice"; // Hàm định dạng tiền tệ
@@ -24,10 +24,23 @@ const isOrderPaid = (order) => {
   );
 };
 
+// Tab definitions
+const ORDER_TABS = [
+  { id: 'all', label: 'Tất cả', icon: <ClipboardListIcon className="w-4 h-4" /> },
+  { id: 'awaiting_payment', label: 'Chờ thanh toán', icon: <CreditCardIcon className="w-4 h-4" /> },
+  { id: 'preparing', label: 'Đang chuẩn bị hàng', icon: <PackageIcon className="w-4 h-4" /> },
+  { id: 'packaging', label: 'Đóng gói hoàn tất', icon: <BoxIcon className="w-4 h-4" /> },
+  { id: 'shipping', label: 'Đang vận chuyển', icon: <TruckIcon className="w-4 h-4" /> },
+  { id: 'delivering', label: 'Đang giao đến bạn', icon: <TruckIcon className="w-4 h-4" /> },
+  { id: 'completed', label: 'Đã giao thành công', icon: <ClipboardListIcon className="w-4 h-4" /> },
+  { id: 'cancelled', label: 'Đã hủy', icon: <XCircleIcon className="w-4 h-4" /> },
+];
+
 export default function Order() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('all');
   const navigate = useNavigate();
 
   // Tạo hàm fetchOrders với useCallback để có thể sử dụng trong useEffect và các event handlers
@@ -94,23 +107,6 @@ export default function Order() {
     };
   }, [fetchOrders]);
 
-  // Filter out awaiting_payment orders (SePay payments not yet completed)
-  const filteredOrders = orders.filter(order => 
-    !(order.status === "awaiting_payment" && order.paymentMethod === "sepay")
-  );
-  
-  // Get pending SePay payments separately
-  const pendingSePayOrders = orders.filter(order => 
-    order.status === "awaiting_payment" && order.paymentMethod === "sepay"
-  );
-
-  const statusCounts = {
-    pending: orders.filter((o) => o.status === "pending").length,
-    paid: orders.filter((o) => o.status === "paid").length,
-    completed: orders.filter((o) => o.status === "completed").length,
-    awaiting_payment: orders.filter((o) => o.status === "awaiting_payment").length
-  };
-
   const handleCancelOrder = async (orderId, event) => {
     event.stopPropagation(); // Ngăn không cho event click truyền lên row
     
@@ -162,6 +158,44 @@ export default function Order() {
     navigate(`/tai-khoan/don-hang/${orderId}`);
   };
 
+  // Lọc đơn hàng theo tab đang chọn
+  const getFilteredOrders = () => {
+    if (activeTab === 'all') {
+      return orders.filter(order => 
+        !(order.status === "awaiting_payment" && order.paymentMethod === "sepay")
+      );
+    }
+    
+    if (activeTab === 'awaiting_payment') {
+      return orders.filter(order => 
+        order.status === "awaiting_payment"
+      );
+    }
+    
+    return orders.filter(order => order.status === activeTab);
+  };
+
+  // Get pending SePay payments separately
+  const pendingSePayOrders = orders.filter(order => 
+    order.status === "awaiting_payment" && order.paymentMethod === "sepay"
+  );
+
+  const statusCounts = {
+    all: orders.filter(order => 
+      !(order.status === "awaiting_payment" && order.paymentMethod === "sepay")
+    ).length,
+    pending: orders.filter((o) => o.status === "pending").length,
+    preparing: orders.filter((o) => o.status === "preparing").length,
+    packaging: orders.filter((o) => o.status === "packaging").length,
+    shipping: orders.filter((o) => o.status === "shipping").length,
+    delivering: orders.filter((o) => o.status === "delivering").length,
+    completed: orders.filter((o) => o.status === "completed").length,
+    awaiting_payment: orders.filter((o) => o.status === "awaiting_payment").length,
+    cancelled: orders.filter((o) => o.status === "cancelled").length,
+  };
+
+  const filteredOrders = getFilteredOrders();
+
   if (loading) return <div className="text-center py-8">Đang tải...</div>;
 
   return (
@@ -171,6 +205,31 @@ export default function Order() {
         <h2 className="text-xl font-semibold text-gray-800 lg:text-2xl">
           ĐƠN HÀNG CỦA BẠN
         </h2>
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-6 overflow-x-auto">
+        <div className="flex space-x-2 min-w-max border-b border-gray-200">
+          {ORDER_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center space-x-1 px-4 py-2 text-sm font-medium rounded-t-lg ${
+                activeTab === tab.id
+                  ? "text-[#51bb1a] border-b-2 border-[#51bb1a]"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+              {statusCounts[tab.id] > 0 && (
+                <span className="ml-1 bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs">
+                  {statusCounts[tab.id]}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -206,7 +265,7 @@ export default function Order() {
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <PackageIcon className="w-12 h-12 text-gray-400" />
                       <p className="text-sm text-gray-600">
-                        Không có đơn hàng nào.
+                        Không có đơn hàng nào {activeTab !== 'all' ? `trong mục "${ORDER_TABS.find(tab => tab.id === activeTab)?.label}"` : ''}.
                       </p>
                       <button
                         onClick={() => navigate("/san-pham")}
@@ -270,6 +329,12 @@ export default function Order() {
                             ? "bg-red-100 text-red-800"
                             : order.status === "delivering"
                             ? "bg-indigo-100 text-indigo-800"
+                            : order.status === "preparing"
+                            ? "bg-blue-100 text-blue-800"
+                            : order.status === "packaging"
+                            ? "bg-green-100 text-green-800"
+                            : order.status === "shipping"
+                            ? "bg-yellow-100 text-yellow-800"
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
@@ -277,7 +342,8 @@ export default function Order() {
                       </span>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      {(order.status === "pending" || order.status === "awaiting_payment") && (
+                      {(order.status === "pending" || order.status === "awaiting_payment" || 
+                        order.status === "preparing" || order.status === "packaging") && (
                         <button
                           onClick={(e) => handleCancelOrder(order._id, e)}
                           className="text-red-500 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1 text-sm transition-colors"
@@ -288,7 +354,20 @@ export default function Order() {
                         </button>
                       )}
                       {order.status === "delivering" && (
-                        <span className="text-gray-500 text-sm">Đơn hàng đang giao</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Add confirmation for received order
+                            if (window.confirm("Xác nhận đã nhận được đơn hàng?")) {
+                              // Todo: implement confirm delivery API
+                              toast.success("Đã xác nhận giao hàng thành công");
+                            }
+                          }}
+                          className="text-green-500 hover:bg-green-50 px-2 py-1 rounded flex items-center gap-1 text-sm transition-colors"
+                        >
+                          <ClipboardListIcon className="w-4 h-4" />
+                          Đã nhận
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -299,12 +378,12 @@ export default function Order() {
         </div>
       </div>
 
-      {pendingSePayOrders.length > 0 && (
+      {activeTab === 'awaiting_payment' && pendingSePayOrders.length > 0 && (
         <div className="mt-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <CreditCardIcon className="w-6 h-6 text-orange-500" />
             <h3 className="text-lg font-semibold text-gray-800">
-              Đơn hàng chờ thanh toán
+              Đơn hàng chờ thanh toán SePay
             </h3>
           </div>
           <div className="bg-white shadow-md rounded-lg overflow-hidden">
@@ -368,29 +447,6 @@ export default function Order() {
           </div>
         </div>
       )}
-
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
-        <OrderStatusCard
-          icon={<PackageIcon className="w-6 h-6 text-blue-600" />}
-          title="Đang xử lý"
-          count={statusCounts.pending}
-        />
-        <OrderStatusCard
-          icon={<CreditCardIcon className="w-6 h-6 text-orange-500" />}
-          title="Chờ thanh toán"
-          count={statusCounts.awaiting_payment}
-        />
-        <OrderStatusCard
-          icon={<CreditCardIcon className="w-6 h-6 text-[#51bb1a]" />}
-          title="Đã thanh toán"
-          count={statusCounts.paid}
-        />
-        <OrderStatusCard
-          icon={<ClipboardListIcon className="w-6 h-6 text-purple-600" />}
-          title="Hoàn thành"
-          count={statusCounts.completed}
-        />
-      </div>
     </div>
   );
 }

@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import useFetchUserProfile from "../../Until/useFetchUserProfile";
 import authApi from "../../../api/authApi";
 import { toast } from "sonner";
-import axios from "axios";
 
 function Account() {
   const users = useFetchUserProfile();
@@ -86,23 +85,32 @@ function Account() {
       // If we have a new avatar file, we need to upload it to Cloudinary first
       if (avatarFile) {
         try {
+          console.log("Uploading file to Cloudinary:", avatarFile.name);
+          
           // Create a FormData object for the file upload
           const cloudinaryData = new FormData();
           cloudinaryData.append("file", avatarFile);
           cloudinaryData.append("upload_preset", "quanlythucpham"); // Upload preset của bạn
-          cloudinaryData.append("cloud_name", "drlxpdaub"); // Cloud name của bạn
           
-          // Upload to Cloudinary
-          const cloudinaryResponse = await axios.post(
+          // Upload to Cloudinary using fetch instead of axios
+          const uploadResponse = await fetch(
             "https://api.cloudinary.com/v1_1/drlxpdaub/image/upload", 
-            cloudinaryData
+            {
+              method: "POST",
+              body: cloudinaryData
+            }
           );
           
-          console.log("Cloudinary response:", cloudinaryResponse.data);
+          if (!uploadResponse.ok) {
+            throw new Error(`HTTP error! status: ${uploadResponse.status}`);
+          }
+          
+          const cloudinaryResult = await uploadResponse.json();
+          console.log("Cloudinary response:", cloudinaryResult);
           
           // Add the image URL to the user data
-          if (cloudinaryResponse.data && cloudinaryResponse.data.secure_url) {
-            userData.userImage = cloudinaryResponse.data.secure_url;
+          if (cloudinaryResult && cloudinaryResult.secure_url) {
+            userData.userImage = cloudinaryResult.secure_url;
             console.log("Added avatar URL to user data:", userData.userImage);
           } else {
             throw new Error("Không nhận được URL ảnh từ Cloudinary");
