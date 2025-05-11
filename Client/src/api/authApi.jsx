@@ -345,12 +345,17 @@ const authApi = {
       
       console.log("Using token for updateProfile:", token);
       
-      return await axios.put(`${API_URLS.AUTH}/update/${userId}`, data, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // Kiểm tra nếu data là FormData hoặc đã có userImage thì gửi dưới dạng application/json
+      const headers = {
+        'Authorization': `Bearer ${token}`
+      };
+      
+      if (data.userImage) {
+        headers['Content-Type'] = 'application/json';
+        console.log("Sending profile update with userImage as JSON");
+      }
+      
+      return await axios.put(`${API_URLS.AUTH}/update/${userId}`, data, { headers });
     } catch (error) {
       console.error("Error updating profile:", error);
       throw error;

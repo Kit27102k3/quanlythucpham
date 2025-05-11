@@ -113,103 +113,106 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { userName, password } = req.body;
-
-    // 1. Kiểm tra thông tin đăng nhập
-    if (!userName || !password) {
+    const { username, userName, user_name, password } = req.body;
+    
+    // Normalize username variants (database might have either username or userName)
+    const usernameToUse = username || userName || user_name;
+    
+    if (!usernameToUse || !password) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng cung cấp tên đăng nhập và mật khẩu",
+        message: "Vui lòng cung cấp tên người dùng và mật khẩu",
       });
     }
-
-    // 2. Tìm kiếm user trong cả User và Admin collections
-    let user = await User.findOne({ userName });
-    if (!user) {
-      return res.status(401).json({
+    
+    const foundUser = await User.findOne({ 
+      $or: [
+        { userName: usernameToUse },
+        { username: usernameToUse },
+        { email: usernameToUse }
+      ] 
+    });
+    
+    if (!foundUser) {
+      return res.status(404).json({
         success: false,
-        message: "Tài khoản không tồn tại",
+        message: "Người dùng không tồn tại",
       });
     }
-
-    // 3. Kiểm tra trạng thái tài khoản
-    if (user.isActive === false) {
+    
+    if (foundUser.isBlocked) {
       return res.status(403).json({
         success: false,
-        message: "Tài khoản đã bị vô hiệu hóa",
+        message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.",
       });
     }
-
-    // Kiểm tra nếu tài khoản bị chặn
-    if (user.isBlocked) {
-      return res.status(403).json({
-        success: false,
-        message: "Account is blocked",
-      });
-    }
-
-    // 4. Xác thực mật khẩu
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    const isPasswordValid = await bcrypt.compare(password, foundUser.password);
+    
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: "Mật khẩu không chính xác",
+        message: "Mật khẩu không đúng",
       });
     }
-
-    // 5. Tạo tokens
+    
     const accessToken = jwt.sign(
       {
-        id: user._id,
+        id: foundUser._id,
         role: "user",
         permissions: ["Xem"]
       },
       process.env.JWT_SECRET_ACCESS,
       { expiresIn: "1d" }
     );
-
+    
+    // Generate refresh token with extended expiry
     const refreshToken = jwt.sign(
-      { id: user._id },
+      { id: foundUser._id },
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: "7d" }
     );
-
-    // 6. Quản lý refresh token
-    // Xóa tất cả refresh token cũ của user
-    await RefreshToken.deleteMany({
-      userId: user._id,
-      userModel: "User"
-    });
-
-    // Lưu refresh token mới
-    await RefreshToken.create({
-      userId: user._id,
-      userModel: "User",
-      token: refreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-    });
-
-    // 7. Cập nhật last login
-    user.lastLogin = new Date();
-    await user.save();
-
-    // 8. Trả về response
-    res.status(200).json({
+    
+    // Xóa refresh tokens cũ của user này trước khi tạo mới
+    try {
+      await RefreshToken.deleteMany({ userId: foundUser._id, userModel: "User" });
+      
+      // Sau khi xóa tokens cũ, tạo token mới
+      await RefreshToken.create({
+        userId: foundUser._id,
+        userModel: "User",
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      });
+    } catch (tokenError) {
+      console.error("Error managing refresh tokens:", tokenError);
+      // Continue even if token storage fails
+    }
+    
+    // Update last login time
+    foundUser.lastLogin = new Date();
+    await foundUser.save();
+    
+    // Format response
+    return res.status(200).json({
       success: true,
-      accessToken,
+      message: "Đăng nhập thành công",
+      token: accessToken,
       refreshToken,
-      userId: user._id,
-      role: "user",
-      isBlocked: user.isBlocked || false,
-      permissions: ["Xem"],
-      fullName: `${user.firstName} ${user.lastName}`,
-      email: user.email,
-      message: "Đăng nhập thành công"
+      user: {
+        id: foundUser._id,
+        userName: foundUser.userName,
+        email: foundUser.email,
+        firstName: foundUser.firstName,
+        lastName: foundUser.lastName,
+        role: "user"
+      },
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Login error:", error);
+    return res.status(500).json({
       success: false,
-      message: "Lỗi hệ thống. Vui lòng thử lại sau"
+      message: "Lỗi đăng nhập: " + error.message,
     });
   }
 };
@@ -309,7 +312,7 @@ export const getAllUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { currentPassword, newPassword, firstName, lastName, phone, address } = req.body;
+    const { currentPassword, newPassword, firstName, lastName, phone, address, userImage } = req.body;
 
     console.log("Updating user profile:", userId);
     console.log("Request body:", req.body);
@@ -376,6 +379,12 @@ export const updateUser = async (req, res) => {
       console.log("Updating address to:", address);
       user.address = address;
     }
+    
+    // Xử lý cập nhật avatar nếu có
+    if (userImage !== undefined) {
+      console.log("Updating user image to:", userImage);
+      user.userImage = userImage;
+    }
 
     await user.save();
     console.log("User updated successfully:", user);
@@ -391,6 +400,7 @@ export const updateUser = async (req, res) => {
         email: user.email,
         phone: user.phone,
         address: user.address,
+        userImage: user.userImage
       },
     });
   } catch (err) {
@@ -600,6 +610,9 @@ export const facebookLogin = async (req, res) => {
       const randomPassword = Math.random().toString(36).slice(-10);
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
       
+      // Use default avatar instead of Facebook profile pic
+      const profileImageUrl = ''; // Don't store Facebook profile URL
+      
       user = new User({
         email: email || `${id}@facebook.com`,
         phone: '0000000000', // Placeholder phone number
@@ -607,7 +620,7 @@ export const facebookLogin = async (req, res) => {
         lastName: last_name || 'User',
         userName: uniqueUsername,
         password: hashedPassword,
-        userImage: picture?.data?.url || '',
+        userImage: profileImageUrl,
         facebookId: id,
         authProvider: 'facebook'
       });
@@ -805,5 +818,371 @@ export const googleLogin = async (req, res) => {
       success: false,
       message: "Đăng nhập bằng Google thất bại. Vui lòng thử lại."
     });
+  }
+};
+
+// Hàm xử lý callback từ Facebook OAuth
+export const facebookCallback = async (req, res) => {
+  try {
+    // Code from authentication callback
+    const { code } = req.query;
+    
+    if (!code) {
+      return res.redirect('/dang-nhap?error=no_code');
+    }
+    
+    // Exchange code for access token
+    const tokenResponse = await axios.get('https://graph.facebook.com/oauth/access_token', {
+      params: {
+        client_id: process.env.FACEBOOK_APP_ID,
+        client_secret: process.env.FACEBOOK_APP_SECRET,
+        redirect_uri: process.env.FACEBOOK_CALLBACK_URL,
+        code
+      }
+    });
+    
+    if (!tokenResponse.data.access_token) {
+      return res.redirect('/dang-nhap?error=token_exchange_failed');
+    }
+    
+    const accessToken = tokenResponse.data.access_token;
+    
+    // Get user data with access token
+    const userDataResponse = await axios.get('https://graph.facebook.com/me', {
+      params: {
+        fields: 'id,first_name,last_name,email,picture',
+        access_token: accessToken
+      }
+    });
+    
+    if (!userDataResponse.data.id) {
+      return res.redirect('/dang-nhap?error=user_data_failed');
+    }
+    
+    const { id, first_name, last_name, email } = userDataResponse.data;
+    
+    // Look for user with Facebook ID
+    let user = await User.findOne({ facebookId: id });
+    
+    // If user not found but we have an email, look for user with that email
+    if (!user && email) {
+      user = await User.findOne({ email });
+      
+      // If found by email, update the Facebook ID
+      if (user) {
+        user.facebookId = id;
+        await user.save();
+      }
+    }
+    
+    // If still no user, create a new one
+    if (!user) {
+      const uniqueUsername = `fb_${id}_${Date.now().toString().slice(-4)}`;
+      const randomPassword = Math.random().toString(36).slice(-10);
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+      
+      // Use default avatar instead of Facebook image
+      const profileImageUrl = '';
+      
+      user = new User({
+        email: `${uniqueUsername}@facebook.com`,
+        phone: '0000000000', // Placeholder phone number
+        firstName: first_name || 'Facebook',
+        lastName: last_name || 'User',
+        userName: uniqueUsername,
+        password: hashedPassword,
+        userImage: profileImageUrl,
+        facebookId: id,
+        authProvider: 'facebook'
+      });
+      
+      await user.save();
+    }
+    
+    // Check if account is blocked
+    if (user.isBlocked) {
+      return res.redirect('/dang-nhap?error=account_blocked');
+    }
+    
+    // Create tokens
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: "user",
+        permissions: ["Xem"]
+      },
+      process.env.JWT_SECRET_ACCESS,
+      { expiresIn: "1d" }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "7d" }
+    );
+    
+    // Xóa refresh tokens cũ của user này trước khi tạo mới
+    try {
+      await RefreshToken.deleteMany({ userId: user._id, userModel: "User" });
+      
+      // Sau khi xóa tokens cũ, tạo token mới
+      await RefreshToken.create({
+        userId: user._id,
+        userModel: "User",
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      });
+    } catch (tokenError) {
+      console.error("Error managing refresh tokens:", tokenError);
+      // Continue even if token storage fails
+    }
+    
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+    
+    // Redirect with tokens as URL parameters
+    res.redirect(`/dang-nhap/success?token=${token}&refreshToken=${refreshToken}&userId=${user._id}&name=${encodeURIComponent(`${user.firstName} ${user.lastName}`)}&role=user`);
+    
+  } catch (error) {
+    console.error("Facebook callback error:", error);
+    res.redirect('/dang-nhap?error=server_error');
+  }
+};
+
+// Hàm đăng nhập bằng Facebook token
+export const facebookTokenLogin = async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu access token"
+      });
+    }
+
+    // Lấy thông tin từ Facebook bằng access token
+    const fbResponse = await axios.get(`https://graph.facebook.com/v18.0/me`, {
+      params: {
+        fields: 'id,first_name,last_name,email,picture{url,width,height,is_silhouette}',
+        access_token: accessToken
+      }
+    });
+
+    if (!fbResponse.data || !fbResponse.data.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Không thể xác thực với Facebook"
+      });
+    }
+
+    const { id, first_name, last_name, email, picture } = fbResponse.data;
+    
+    // Log thông tin nhận được từ Facebook
+    console.log("Facebook data received:", { 
+      id, 
+      first_name, 
+      last_name, 
+      email: email || "No email provided by Facebook",
+      hasPicture: !!picture 
+    });
+    
+    // Lấy ảnh chất lượng cao hơn từ Facebook nếu có
+    let profileImageUrl = '';
+    if (picture && picture.data && !picture.data.is_silhouette) {
+      try {
+        // Thử lấy ảnh lớn hơn từ Facebook Graph API
+        const pictureResponse = await axios.get(`https://graph.facebook.com/v18.0/${id}/picture`, {
+          params: {
+            type: 'large',
+            redirect: 'false',
+            access_token: accessToken
+          }
+        });
+        
+        if (pictureResponse.data && pictureResponse.data.data && pictureResponse.data.data.url) {
+          profileImageUrl = pictureResponse.data.data.url;
+          console.log("Retrieved larger Facebook profile image:", profileImageUrl);
+        }
+      } catch (pictureError) {
+        console.error("Error fetching larger picture:", pictureError);
+        // Fallback to original picture if available
+        if (picture && picture.data && picture.data.url) {
+          profileImageUrl = picture.data.url;
+        }
+      }
+    }
+    
+    // Fallback to default avatar if no Facebook image
+    if (!profileImageUrl) {
+      profileImageUrl = 'https://www.gravatar.com/avatar/?d=mp&s=256';
+    }
+    
+    // Tìm user với FacebookID
+    let user = await User.findOne({ facebookId: id });
+    
+    // Nếu không tìm thấy theo facebookId và có email, thử tìm theo email
+    if (!user && email) {
+      user = await User.findOne({ email });
+      // Nếu tìm thấy theo email, cập nhật facebookId
+      if (user) {
+        user.facebookId = id;
+        await user.save();
+      }
+    }
+    
+    // Nếu vẫn không tìm thấy user, tạo mới
+    if (!user) {
+      // Tạo username ngẫu nhiên nếu không có
+      const uniqueUsername = `fb_${id}_${Date.now().toString().slice(-4)}`;
+      
+      // Tạo mật khẩu ngẫu nhiên
+      const randomPassword = Math.random().toString(36).slice(-10);
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+      
+      // Tạo email giả nếu không có email từ Facebook
+      const userEmail = email || `${uniqueUsername}@facebook.user`;
+      
+      user = new User({
+        email: userEmail,
+        phone: '0000000000', // Placeholder phone number
+        firstName: first_name || 'Facebook',
+        lastName: last_name || 'User',
+        userName: uniqueUsername,
+        password: hashedPassword,
+        userImage: profileImageUrl,
+        facebookId: id,
+        authProvider: 'facebook'
+      });
+      
+      await user.save();
+    } else {
+      // Cập nhật avatar nếu người dùng đã tồn tại
+      if (profileImageUrl && profileImageUrl !== 'https://www.gravatar.com/avatar/?d=mp&s=256') {
+        user.userImage = profileImageUrl;
+        await user.save();
+      }
+    }
+    
+    // Kiểm tra nếu tài khoản bị chặn
+    if (user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên."
+      });
+    }
+    
+    // Tạo tokens
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: "user",
+        permissions: ["Xem"]
+      },
+      process.env.JWT_SECRET_ACCESS,
+      { expiresIn: "1d" }
+    );
+
+    const refreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "7d" }
+    );
+    
+    // Xóa refresh tokens cũ của user này trước khi tạo mới
+    try {
+      await RefreshToken.deleteMany({ userId: user._id, userModel: "User" });
+      
+      // Sau khi xóa tokens cũ, tạo token mới
+      await RefreshToken.create({
+        userId: user._id,
+        userModel: "User",
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      });
+    } catch (tokenError) {
+      console.error("Error managing refresh tokens:", tokenError);
+      // Continue even if token storage fails
+    }
+    
+    // Cập nhật lastLogin
+    user.lastLogin = new Date();
+    await user.save();
+    
+    // Gửi response
+    res.status(200).json({
+      success: true,
+      token,
+      refreshToken,
+      user: {
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        userImage: user.userImage,
+        role: "user",
+        permissions: ["Xem"]
+      },
+      message: "Đăng nhập bằng Facebook thành công!"
+    });
+    
+  } catch (error) {
+    console.error("Facebook token login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đăng nhập bằng Facebook thất bại. Vui lòng thử lại."
+    });
+  }
+};
+
+// Endpoint to get user avatar
+export const getUserAvatar = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    console.log("Fetching avatar for user ID:", userId);
+    
+    const user = await User.findById(userId).select("userImage firstName lastName email authProvider facebookId");
+
+    if (!user) {
+      console.log("User not found for ID:", userId);
+      return res.json({ userImage: 'https://www.gravatar.com/avatar/?d=mp&s=256' });
+    }
+
+    console.log("User found:", user.email, "- Image:", user.userImage);
+
+    // Nếu người dùng đang sử dụng Facebook và không có ảnh đại diện
+    if (user.authProvider === 'facebook' && (!user.userImage || user.userImage.includes('platform-lookaside.fbsbx.com'))) {
+      if (user.facebookId) {
+        try {
+          // Tạo một avatar tốt hơn cho người dùng Facebook
+          const fbAvatarUrl = `https://graph.facebook.com/${user.facebookId}/picture?type=large`;
+          return res.json({ userImage: fbAvatarUrl });
+        } catch (fbError) {
+          console.error("Error creating Facebook avatar URL:", fbError);
+        }
+      }
+      // Fallback nếu không lấy được ảnh Facebook
+      return res.json({ userImage: 'https://www.gravatar.com/avatar/?d=mp&s=256' });
+    }
+
+    // If user has a userImage that is a URL, return the URL directly
+    if (user.userImage && (user.userImage.startsWith('http://') || user.userImage.startsWith('https://'))) {
+      console.log("Returning external avatar URL:", user.userImage);
+      return res.json({ userImage: user.userImage });
+    }
+
+    // If user has a local image (e.g. uploaded file path), serve that
+    if (user.userImage) {
+      console.log("Serving local avatar");
+      // You might need to adjust this depending on how your images are stored
+      return res.sendFile(user.userImage, { root: process.cwd() });
+    }
+
+    // If no image is found, return a default avatar
+    console.log("No avatar found, using default");
+    return res.json({ userImage: 'https://www.gravatar.com/avatar/?d=mp&s=256' });
+  } catch (error) {
+    console.error("Error fetching user avatar:", error);
+    return res.json({ userImage: 'https://www.gravatar.com/avatar/?d=mp&s=256' });
   }
 };

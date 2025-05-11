@@ -515,29 +515,31 @@ const Login = () => {
           </div>
 
           <div className="flex space-x-4 mb-6 gap-4">
-            {/* Facebook Login Button */}
-            <FacebookLogin
-              appId="991623106465060" // Đã cập nhật Facebook App ID từ .env
-              onResponse={handleFacebookLogin}
-              onError={(error) => {
-                console.error("Facebook login error:", error);
-                toast.error("Đăng nhập Facebook thất bại. Vui lòng thử lại");
+            {/* Facebook Login Button - Direct approach */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsLoading(true);
+                try {
+                  // Use a direct URL approach to avoid SDK issues
+                  const appId = "991623106465060";
+                  const redirectUri = encodeURIComponent(`${window.location.origin}/dang-nhap/success`);
+                  const fbLoginUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=public_profile&response_type=token`;
+                  window.location.href = fbLoginUrl;
+                } catch (error) {
+                  console.error("Facebook login error:", error);
+                  toast.error("Đăng nhập Facebook thất bại. Vui lòng thử lại");
+                  setIsLoading(false);
+                }
               }}
-              scope="email,public_profile"
-              render={({ onClick }) => (
-                <button
-                  type="button"
-                  onClick={onClick}
-                  disabled={isLoading}
-                  className="flex-1 flex items-center justify-center bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
-                >
-                  <FaFacebook className="mr-2" /> Facebook
-                </button>
-              )}
-            />
+              disabled={isLoading}
+              className="flex-1 flex items-center justify-center bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
+            >
+              <FaFacebook className="mr-2" /> Facebook
+            </button>
             
             {/* Google Login Button */}
-            <GoogleOAuthProvider clientId="1031185116653-6sd3ambs6rmokdino3fsl9snrj7td8ae.apps.googleusercontent.com"> {/* Thay bằng Google Client ID thật của bạn */}
+            <GoogleOAuthProvider clientId="1031185116653-6sd3ambs6rmokdino3fsl9snrj7td8ae.apps.googleusercontent.com">
               <GoogleLogin
                 onSuccess={handleGoogleLogin}
                 onError={() => {
@@ -556,6 +558,7 @@ const Login = () => {
                   flex: 1,
                   justifyContent: 'center'
                 }}
+                ux_mode="popup"
               />
             </GoogleOAuthProvider>
           </div>

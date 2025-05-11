@@ -174,114 +174,114 @@ const OrderAutoTransition = {
 const OrderStats = memo(({ stats }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-5 mb-8">
-      <Card className="shadow-lg bg-white p-5 border border-gray-100 rounded-lg hover:shadow-xl transition-all"
+      <Card className="shadow-lg bg-gradient-to-br from-white to-blue-50 p-6 border border-gray-100 rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-1"
         pt={{ 
           root: { className: 'overflow-hidden' },
           content: { className: 'p-0' }
         }}>
         <div className="flex items-center">
-          <div className="p-3.5 bg-blue-100 rounded-xl">
-            <PackageIcon size={28} className="text-blue-600" />
+          <div className="p-4 bg-blue-100 rounded-full">
+            <PackageIcon size={30} className="text-blue-600" />
           </div>
           <div className="ml-4">
             <h3 className="text-md font-semibold text-gray-700">Tất cả</h3>
-            <p className="text-xl font-bold text-blue-600">{stats.total}</p>
+            <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
           </div>
         </div>
       </Card>
       
-      <Card className="shadow-lg bg-white p-5 border border-gray-100 rounded-lg hover:shadow-xl transition-all"
+      <Card className="shadow-lg bg-gradient-to-br from-white to-yellow-50 p-6 border border-gray-100 rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-1"
         pt={{ 
           root: { className: 'overflow-hidden' },
           content: { className: 'p-0' }
         }}>
         <div className="flex items-center">
-          <div className="p-3.5 bg-yellow-100 rounded-xl">
-            <ClockIcon size={28} className="text-yellow-600" />
+          <div className="p-4 bg-yellow-100 rounded-full">
+            <ClockIcon size={30} className="text-yellow-600" />
           </div>
           <div className="ml-4">
             <h3 className="text-md font-semibold text-gray-700">Chờ xử lý</h3>
-            <p className="text-xl font-bold text-yellow-600">{stats.pending}</p>
+            <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
           </div>
         </div>
       </Card>
       
-      <Card className="shadow-lg bg-white p-5 border border-gray-100 rounded-lg hover:shadow-xl transition-all"
+      <Card className="shadow-lg bg-gradient-to-br from-white to-indigo-50 p-6 border border-gray-100 rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-1"
         pt={{ 
           root: { className: 'overflow-hidden' },
           content: { className: 'p-0' }
         }}>
         <div className="flex items-center">
-          <div className="p-3.5 bg-indigo-100 rounded-xl">
+          <div className="p-4 bg-indigo-100 rounded-full">
             <i className="pi pi-box text-indigo-600" style={{ fontSize: '1.5rem' }}></i>
           </div>
           <div className="ml-4">
             <h3 className="text-md font-semibold text-gray-700">Chuẩn bị</h3>
-            <p className="text-xl font-bold text-indigo-600">{stats.preparing}</p>
+            <p className="text-2xl font-bold text-indigo-600">{stats.preparing}</p>
           </div>
         </div>
       </Card>
       
-      <Card className="shadow-lg bg-white p-5 border border-gray-100 rounded-lg hover:shadow-xl transition-all"
+      <Card className="shadow-lg bg-gradient-to-br from-white to-purple-50 p-6 border border-gray-100 rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-1"
         pt={{ 
           root: { className: 'overflow-hidden' },
           content: { className: 'p-0' }
         }}>
         <div className="flex items-center">
-          <div className="p-3.5 bg-purple-100 rounded-xl">
+          <div className="p-4 bg-purple-100 rounded-full">
             <i className="pi pi-gift text-purple-600" style={{ fontSize: '1.5rem' }}></i>
           </div>
           <div className="ml-4">
             <h3 className="text-md font-semibold text-gray-700">Đóng gói</h3>
-            <p className="text-xl font-bold text-purple-600">{stats.packaging}</p>
+            <p className="text-2xl font-bold text-purple-600">{stats.packaging}</p>
           </div>
         </div>
       </Card>
       
-      <Card className="shadow-lg bg-white p-5 border border-gray-100 rounded-lg hover:shadow-xl transition-all"
+      <Card className="shadow-lg bg-gradient-to-br from-white to-cyan-50 p-6 border border-gray-100 rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-1"
         pt={{ 
           root: { className: 'overflow-hidden' },
           content: { className: 'p-0' }
         }}>
         <div className="flex items-center">
-          <div className="p-3.5 bg-cyan-100 rounded-xl">
+          <div className="p-4 bg-cyan-100 rounded-full">
             <i className="pi pi-truck text-cyan-600" style={{ fontSize: '1.5rem' }}></i>
           </div>
           <div className="ml-4">
             <h3 className="text-md font-semibold text-gray-700">Đang giao</h3>
-            <p className="text-xl font-bold text-cyan-600">{stats.delivering}</p>
+            <p className="text-2xl font-bold text-cyan-600">{stats.delivering}</p>
           </div>
         </div>
       </Card>
       
-      <Card className="shadow-lg bg-white p-5 border border-gray-100 rounded-lg hover:shadow-xl transition-all"
+      <Card className="shadow-lg bg-gradient-to-br from-white to-green-50 p-6 border border-gray-100 rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-1"
         pt={{ 
           root: { className: 'overflow-hidden' },
           content: { className: 'p-0' }
         }}>
         <div className="flex items-center">
-          <div className="p-3.5 bg-green-100 rounded-xl">
-            <CheckIcon size={28} className="text-green-600" />
+          <div className="p-4 bg-green-100 rounded-full">
+            <CheckIcon size={30} className="text-green-600" />
           </div>
           <div className="ml-4">
             <h3 className="text-md font-semibold text-gray-700">Hoàn thành</h3>
-            <p className="text-xl font-bold text-green-600">{stats.completed}</p>
+            <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
           </div>
         </div>
       </Card>
       
-      <Card className="shadow-lg bg-white p-5 border border-gray-100 rounded-lg hover:shadow-xl transition-all"
+      <Card className="shadow-lg bg-gradient-to-br from-white to-red-50 p-6 border border-gray-100 rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-1"
         pt={{ 
           root: { className: 'overflow-hidden' },
           content: { className: 'p-0' }
         }}>
         <div className="flex items-center">
-          <div className="p-3.5 bg-red-100 rounded-xl">
-            <XIcon size={28} className="text-red-600" />
+          <div className="p-4 bg-red-100 rounded-full">
+            <XIcon size={30} className="text-red-600" />
           </div>
           <div className="ml-4">
             <h3 className="text-md font-semibold text-gray-700">Đã hủy</h3>
-            <p className="text-xl font-bold text-red-600">{stats.cancelled}</p>
+            <p className="text-2xl font-bold text-red-600">{stats.cancelled}</p>
           </div>
         </div>
       </Card>
@@ -433,7 +433,7 @@ const OrderItem = memo(({
 
 OrderItem.displayName = 'OrderItem';
 
-// Status Transition Info component để hiển thị chi tiết về điều kiện chuyển đổi
+// Status Transition Info component với thiết kế mới
 const StatusTransitionInfo = memo(({ currentStatus, nextStatus }) => {
   const getTransitionDetails = () => {
     // Tìm transition tương ứng trong định nghĩa
@@ -452,7 +452,7 @@ const StatusTransitionInfo = memo(({ currentStatus, nextStatus }) => {
     }
     
     if (!transition) {
-      return { type: 'manual', message: 'Chuyển đổi thủ công' };
+      return { type: 'manual', message: 'Chuyển đổi thủ công', isAuto: false };
     }
     
     // Dựa vào loại điều kiện để hiển thị thông tin phù hợp
@@ -461,41 +461,73 @@ const StatusTransitionInfo = memo(({ currentStatus, nextStatus }) => {
         return {
           type: 'auto',
           message: 'Tự động sau khi xử lý',
-          icon: <ClockIcon size={14} className="mr-1" />
+          icon: <ClockIcon size={14} className="mr-1" />,
+          isAuto: true
         };
       case 'trigger':
         return {
           type: 'trigger',
           message: `Khi có sự kiện "${transition.event}"`,
-          icon: <ArrowRightIcon size={14} className="mr-1" />
+          icon: <ArrowRightIcon size={14} className="mr-1" />,
+          isAuto: false
         };
       case 'manual_approval':
         return {
           type: 'manual',
           message: 'Cần xác nhận thủ công',
-          icon: <InfoIcon size={14} className="mr-1" />
+          icon: <InfoIcon size={14} className="mr-1" />,
+          isAuto: false
         };
       default:
         return {
           type: 'unknown',
           message: 'Không xác định',
-          icon: <InfoIcon size={14} className="mr-1" />
+          icon: <InfoIcon size={14} className="mr-1" />,
+          isAuto: false
         };
     }
   };
   
   const transitionDetails = getTransitionDetails();
   
+  // Xác định style dựa vào loại transition
+  const getBgStyle = () => {
+    switch (transitionDetails.type) {
+      case 'auto':
+        return 'bg-gradient-to-r from-green-50 to-green-100 border-green-200';
+      case 'trigger':
+        return 'bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200';
+      case 'manual':
+        return 'bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200';
+      default:
+        return 'bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200';
+    }
+  };
+  
+  const getTextStyle = () => {
+    switch (transitionDetails.type) {
+      case 'auto':
+        return 'text-green-700';
+      case 'trigger':
+        return 'text-blue-700';
+      case 'manual':
+        return 'text-orange-700';
+      default:
+        return 'text-gray-700';
+    }
+  };
+  
   return (
     <div className={`
-      text-xs flex items-center px-2 py-1 rounded-full mt-1
-      ${transitionDetails.type === 'auto' ? 'bg-green-50 text-green-700' : ''}
-      ${transitionDetails.type === 'trigger' ? 'bg-blue-50 text-blue-700' : ''}
-      ${transitionDetails.type === 'manual' ? 'bg-orange-50 text-orange-700' : ''}
-      ${transitionDetails.type === 'unknown' ? 'bg-gray-50 text-gray-700' : ''}
+      text-xs flex items-center px-2.5 py-1.5 rounded-full mt-1
+      ${getBgStyle()} ${getTextStyle()}
+      border shadow-sm transition-all duration-200 hover:shadow
     `}>
       {transitionDetails.icon}
       {transitionDetails.message}
+      {transitionDetails.isAuto && (
+        <span className="ml-1 inline-flex h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse"></span>
+      )}
     </div>
   );
 });
@@ -1221,32 +1253,144 @@ const OrderAdmin = () => {
       }
     }, []);
 
-    // Loading indicator
+    // Update the loading indicator
     if (loading && orders.length === 0) {
       return (
         <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <div className="text-xl font-medium text-gray-700">Đang tải đơn hàng...</div>
+          <div className="text-center bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
+            <div className="relative mx-auto w-24 h-24 mb-6">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full animate-pulse opacity-20"></div>
+              <div className="absolute inset-2 bg-white rounded-full"></div>
+              <div className="absolute inset-4 border-4 border-t-blue-500 border-r-transparent border-b-indigo-500 border-l-transparent rounded-full animate-spin"></div>
+              <i className="pi pi-shopping-cart absolute inset-0 flex items-center justify-center text-blue-600" style={{ fontSize: '1.5rem' }}></i>
+            </div>
+            <div className="text-xl font-bold text-gray-800 mb-2">Đang tải dữ liệu...</div>
+            <p className="text-gray-500">Hệ thống đang tải đơn hàng, vui lòng đợi trong giây lát</p>
+            
+            <div className="mt-6 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 animate-loading-bar"></div>
+            </div>
           </div>
         </div>
       );
     }
 
+    // Styling for the dropdown menu that shows order status options
+    const statusDropdownPanelStyle = {
+      className: 'rounded-lg shadow-lg border border-gray-200 overflow-hidden p-0 mt-1 animate-dropdown transform transition-all duration-200',
+      style: { 
+        transformOrigin: 'top center',
+        minWidth: '16rem'
+      }
+    };
+
+    const statusDropdownItemStyle = {
+      className: 'cursor-pointer px-4 py-3 hover:bg-blue-50 flex items-center border-b border-gray-100 last:border-b-0 transition-colors',
+    };
+
+    const statusDropdownHeaderStyle = {
+      className: 'py-2 px-4 bg-gradient-to-r from-gray-50 to-white font-medium text-gray-800 border-b border-gray-200'
+    };
+
     return (
-      <div className="p-4 md:p-5 bg-gray-50 min-h-screen">
-        <Toaster />
+      <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
+        <style>
+          {`
+            @keyframes dropdown {
+              from {
+                opacity: 0;
+                transform: scale(0.98) translateY(-10px);
+              }
+              to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+              }
+            }
+
+            .animate-dropdown {
+              animation: dropdown 0.2s ease-out forwards;
+            }
+
+            @keyframes checkbox-pop {
+              0% {
+                transform: scale(0.8);
+                opacity: 0.5;
+              }
+              50% {
+                transform: scale(1.1);
+              }
+              100% {
+                transform: scale(1);
+                opacity: 1;
+              }
+            }
+
+            /* DIRECT CHECKBOX OVERRIDE STYLES - Replacing all previous checkbox styles */
+            .p-checkbox {
+              width: 24px !important;
+              height: 24px !important;
+              position: relative !important;
+              display: inline-flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+            }
+
+            .p-checkbox .p-checkbox-box {
+              width: 22px !important;
+              height: 22px !important;
+              border: 2px solid #94a3b8 !important;
+              border-radius: 4px !important;
+              background-color: white !important;
+              position: relative !important;
+              transition: all 0.2s ease !important;
+            }
+
+            .p-checkbox:hover .p-checkbox-box {
+              border-color: #3b82f6 !important;
+              box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+            }
+
+            .p-checkbox .p-checkbox-box.p-highlight {
+              background-color: #3b82f6 !important;
+              border-color: #3b82f6 !important;
+            }
+
+            /* Most important part - the visible checkmark */
+            .p-checkbox .p-checkbox-box.p-highlight:after {
+              content: '✓';
+              color: white;
+              font-size: 16px;
+              font-weight: bold;
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              z-index: 20;
+              line-height: 1;
+            }
+
+            /* Handle any hidden icon elements from Prime */
+            .p-checkbox .p-checkbox-box .p-checkbox-icon {
+              display: none !important;
+            }
+          `}
+        </style>
+        <Toaster position="top-right" richColors closeButton />
         <ConfirmDialog />
         
-        <h1 className="text-2xl font-bold text-gray-800 mb-8">Quản lý Đơn hàng</h1>
-        
-        {/* Thêm nút refresh thủ công */}
-        <div className="flex justify-end mb-6">
+        <div className="flex flex-col mb-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">Quản lý Đơn hàng</h1>
+              <p className="text-gray-500 mt-2">Quản lý tất cả đơn hàng, cập nhật trạng thái và theo dõi tiến trình giao hàng</p>
+            </div>
+            
+            <div className="flex items-center gap-3">
           <Button
             icon={<SettingsIcon size={18} className="mr-2" />}
-            label="Cài đặt chuyển đổi tự động"
+                label="Cài đặt tự động"
             onClick={() => setAutoTransitionConfigVisible(true)}
-            className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-lg shadow-sm hover:shadow transition-all flex items-center mr-3"
+                className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-lg shadow-sm hover:shadow transition-all flex items-center"
             tooltip="Cấu hình tự động chuyển đổi trạng thái đơn hàng"
             tooltipOptions={{ position: 'left' }}
           />
@@ -1254,31 +1398,57 @@ const OrderAdmin = () => {
             icon={<RefreshCcwIcon size={18} className="mr-2" />}
             label="Làm mới dữ liệu"
             onClick={() => fetchOrders(false, true)}
-            className="px-5 py-2.5 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-lg shadow-sm hover:shadow transition-all flex items-center"
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition-all flex items-center"
             tooltip="Cập nhật dữ liệu đơn hàng"
             tooltipOptions={{ position: 'left' }}
             loading={loading}
             loadingIcon="pi pi-spin pi-spinner"
           />
+            </div>
+          </div>
+
+          {/* Info panel for any helpful instructions */}
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-xl p-4 mt-4 flex items-start">
+            <div className="bg-white p-2 rounded-full mr-4 shadow-sm">
+              <i className="pi pi-info-circle text-blue-500" style={{ fontSize: '1.2rem' }}></i>
+            </div>
+            <div>
+              <h3 className="font-medium text-blue-800 mb-1">Mẹo quản lý đơn hàng</h3>
+              <p className="text-blue-700 text-sm">
+                Quản lý đơn hàng hiệu quả bằng cách sử dụng tính năng cập nhật hàng loạt. Chọn nhiều đơn hàng cùng lúc bằng cách nhấn vào ô checkbox và áp dụng trạng thái mới cho tất cả đơn hàng đã chọn.
+              </p>
+              <div className="flex mt-3 gap-2">
+                <button className="text-xs bg-white px-3 py-1.5 rounded-lg text-blue-600 hover:bg-blue-600 hover:text-white transition-colors shadow-sm border border-blue-200 hover:border-blue-600 flex items-center">
+                  <i className="pi pi-external-link mr-1"></i> Xem hướng dẫn
+                </button>
+                <button className="text-xs bg-white px-3 py-1.5 rounded-lg text-blue-600 hover:bg-blue-600 hover:text-white transition-colors shadow-sm border border-blue-200 hover:border-blue-600 flex items-center">
+                  <i className="pi pi-cog mr-1"></i> Tùy chỉnh giao diện
+                </button>
+              </div>
+            </div>
+            <button className="ml-auto bg-white w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors shadow-sm">
+              <i className="pi pi-times" style={{ fontSize: '0.8rem' }}></i>
+            </button>
+          </div>
         </div>
         
         {/* Thống kê đơn hàng */}
         <OrderStats stats={orderStats} />
 
         <Card 
-          className="shadow-md mb-8 p-0 border border-gray-200 rounded-lg overflow-hidden"
+          className="shadow-lg mb-8 border border-gray-200 rounded-xl overflow-hidden bg-white"
           pt={{ 
             root: { className: 'overflow-hidden' },
             content: { className: 'p-0' }
           }}>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 p-5 border-b border-gray-100 bg-white">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 p-5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
             <div className="relative w-full md:w-64 flex items-center">
               <input
                 type="text"
                 placeholder="Tìm kiếm theo mã đơn hoặc tên khách..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-11 pr-4 py-3 border border-gray-200 rounded-lg w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:border-gray-300 transition-all bg-gray-50 hover:bg-white"
+                className="pl-11 pr-4 py-3 border border-gray-200 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:border-gray-300 transition-all bg-gray-50 hover:bg-white"
               />
               <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             </div>
@@ -1290,19 +1460,23 @@ const OrderAdmin = () => {
               placeholder="Chọn trạng thái"
               className="w-full md:w-64"
               pt={{
-                root: { className: 'w-full border border-gray-200 rounded-lg shadow-sm hover:border-gray-300 transition-all bg-gray-50 hover:bg-white' },
+                root: { className: 'w-full border border-gray-200 rounded-xl shadow-sm hover:border-gray-300 transition-all bg-gray-50 hover:bg-white' },
                 input: { className: 'p-3 flex items-center' },
-                trigger: { className: 'p-3' },
-                panel: { className: 'border border-gray-200 shadow-md rounded-lg mt-1' },
-                item: { className: 'p-3 hover:bg-gray-50' },
+                trigger: { 
+                  className: 'p-3 flex items-center justify-between hover:text-blue-600 transition-colors', 
+                  children: <ChevronDown className="opacity-60" size={16} />
+                },
+                panel: statusDropdownPanelStyle,
+                item: statusDropdownItemStyle,
+                header: statusDropdownHeaderStyle,
                 itemgroup: { className: 'p-3 font-medium text-gray-700 bg-gray-50 border-b border-gray-200' }
               }}
             />
           </div>
 
           {loading && orders.length > 0 && (
-            <div className="absolute top-0 left-0 w-full h-1">
-              <div className="h-full bg-blue-500 animate-pulse"></div>
+            <div className="relative w-full h-1">
+              <div className="absolute top-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 animate-gradient-x w-full"></div>
             </div>
           )}
 
@@ -1310,7 +1484,7 @@ const OrderAdmin = () => {
           {selectedOrders.length > 0 && (
             <div className="flex flex-col sm:flex-row justify-between items-center p-5 bg-blue-50 border-y border-blue-100">
               <div className="flex items-center">
-                <span className="text-sm font-medium text-blue-700">
+                <span className="text-sm font-medium text-blue-700 bg-blue-100 px-3 py-1.5 rounded-full">
                   Đã chọn {selectedOrders.length} đơn hàng
                 </span>
               </div>
@@ -1320,15 +1494,23 @@ const OrderAdmin = () => {
                   options={bulkActionOptions}
                   onChange={(e) => setBulkStatus(e.value)}
                   placeholder="Chọn trạng thái mới"
-                  className="w-48 h-10"
+                  className="w-52 h-10"
                   disabled={selectedOrders.length === 0}
                   pt={{
-                    root: { className: 'border border-gray-300 rounded-md' },
-                    panel: { className: 'border border-gray-200 shadow-md rounded-md mt-1' }
+                    root: { className: 'border border-gray-300 rounded-lg bg-white shadow-sm hover:border-blue-300 transition-all' },
+                    input: { className: 'p-2.5 flex items-center' },
+                    trigger: {
+                      className: 'p-2.5 flex items-center justify-between hover:text-blue-600 transition-colors', 
+                      children: <ChevronDown className="opacity-60" size={16} />
+                    },
+                    panel: statusDropdownPanelStyle,
+                    item: statusDropdownItemStyle,
+                    header: statusDropdownHeaderStyle,
+                    emptyMessage: { className: 'p-4 text-gray-500 text-center' }
                   }}
                 />
                 <Button
-                  label="Cập nhật"
+                  label="Cập nhật hàng loạt"
                   icon="pi pi-check"
                   disabled={!bulkStatus || selectedOrders.length === 0}
                   onClick={confirmBulkAction}
@@ -1345,7 +1527,7 @@ const OrderAdmin = () => {
             </div>
           )}
 
-          <div className="overflow-x-auto p-4 bg-gray-50">
+          <div className="p-4 bg-gray-50">
             <DataTable
               value={filteredOrders.slice(0, 50)}
               selection={selectedOrders}
@@ -1355,20 +1537,50 @@ const OrderAdmin = () => {
               rows={10}
               rowsPerPageOptions={[10, 25, 50]}
               tableStyle={{ minWidth: '960px', borderCollapse: 'separate', borderSpacing: '0 0.8rem' }}
-              emptyMessage="Không có đơn hàng nào phù hợp"
+              emptyMessage={
+                <div className="text-center py-12 px-4">
+                  <div className="bg-gray-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                    <i className="pi pi-inbox text-gray-400" style={{ fontSize: '2.5rem' }}></i>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Không tìm thấy đơn hàng</h3>
+                  <p className="text-gray-500 max-w-md mx-auto mb-6">
+                    {searchTerm || filterStatus !== "Tất cả" ? 
+                      "Không tìm thấy đơn hàng phù hợp với bộ lọc hiện tại. Vui lòng thử tiêu chí tìm kiếm khác." : 
+                      "Hiện tại chưa có đơn hàng nào trong hệ thống. Đơn hàng mới sẽ xuất hiện tại đây."}
+                  </p>
+                  {(searchTerm || filterStatus !== "Tất cả") && (
+                    <Button
+                      label="Xóa bộ lọc"
+                      icon="pi pi-filter-slash"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setFilterStatus("Tất cả");
+                      }}
+                      className="px-4 py-2 bg-white text-blue-600 border border-blue-300 hover:bg-blue-50 rounded-lg shadow-sm transition-colors"
+                    />
+                  )}
+                </div>
+              }
               loading={loading && orders.length === 0}
               selectionMode="checkbox"
               resizableColumns
               columnResizeMode="fit"
-              rowClassName="bg-white rounded-lg shadow hover:shadow-md transition-all"
+              rowClassName="shadow-sm hover:shadow-md transition-all"
               pt={{
                 wrapper: { className: 'border-none' },
                 table: { className: '' },
                 thead: { className: 'bg-gray-100 rounded-lg' },
                 headerRow: { className: 'text-gray-700 text-sm font-semibold' },
-                headerCell: { className: 'p-5 first:rounded-l-lg last:rounded-r-lg bg-white border-b border-gray-200' },
-                bodyRow: { className: 'bg-white rounded-lg mb-3 h-20' },
-                bodyCell: { className: 'p-5 border-0' }
+                headerCell: { className: 'p-5 first:rounded-l-xl last:rounded-r-xl bg-white border-b border-gray-200' },
+                bodyRow: { className: 'bg-white mb-2 rounded-xl' },
+                bodyCellWrapper: { className: 'p-4 text-gray-700 text-sm' },
+                checkboxWrapper: { className: 'flex items-center justify-center' },
+                checkbox: { 
+                  root: { className: 'flex items-center justify-center scale-125' },
+                  box: { className: 'w-5 h-5 border-2 flex items-center justify-center relative' },
+                  input: { className: 'cursor-pointer' },
+                  icon: { className: 'text-white z-10 visible opacity-100' }
+                }
               }}
               rowHover
             >
@@ -1376,17 +1588,23 @@ const OrderAdmin = () => {
                 selectionMode="multiple" 
                 frozen 
                 pt={{
-                  headerCheckbox: { className: 'border border-gray-300 rounded-md' },
-                  bodyCheckbox: { className: 'border border-gray-300 rounded-md' }
+                  headerCheckbox: { 
+                    className: 'w-6 h-6 border-2 border-gray-400 rounded-md cursor-pointer hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 checked:bg-blue-500 checked:border-blue-500 transition-colors scale-125 relative' 
+                  },
+                  bodyCheckbox: { 
+                    className: 'w-6 h-6 border-2 border-gray-400 rounded-md cursor-pointer hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 checked:bg-blue-500 checked:border-blue-500 transition-colors scale-125 relative' 
+                  }
                 }}
                 headerStyle={{ 
-                  width: '3rem', 
-                  paddingLeft: '1.5rem' 
+                  width: '5rem', 
+                  paddingLeft: '1.5rem',
+                  backgroundColor: '#f8fafc'
                 }}
                 bodyStyle={{ 
                   borderTopLeftRadius: '0.5rem', 
                   borderBottomLeftRadius: '0.5rem',
-                  paddingLeft: '1.5rem'
+                  paddingLeft: '1.5rem',
+                  backgroundColor: '#f8fafc'
                 }}
               />
               <Column 
@@ -1552,7 +1770,7 @@ const OrderAdmin = () => {
             </DataTable>
           </div>
 
-          <div className="p-5 bg-white rounded-b-lg border-t border-gray-100 mt-4">
+          <div className="p-5 bg-gradient-to-r from-gray-50 to-white rounded-b-xl border-t border-gray-100 mt-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
               <div className="text-sm text-gray-600 mb-2 sm:mb-0">
                 Hiển thị <span className="font-medium text-blue-600">{Math.min(filteredOrders.length, 50)}</span> trong tổng số <span className="font-medium text-blue-600">{filteredOrders.length}</span> đơn hàng
@@ -1560,7 +1778,7 @@ const OrderAdmin = () => {
                   <span className="ml-2 text-gray-500">(Hiển thị tối đa 50 đơn hàng để tối ưu hiệu suất)</span>
                 )}
               </div>
-              <div className="flex items-center text-xs text-gray-500">
+              <div className="flex items-center text-xs text-gray-500 bg-gray-100 px-3 py-1.5 rounded-full">
                 <i className="pi pi-clock mr-1 text-gray-400"></i>
                 Cập nhật lần cuối: {new Date(lastRefreshTime).toLocaleTimeString()}
               </div>
@@ -1570,15 +1788,22 @@ const OrderAdmin = () => {
         
         {/* Dialog xem chi tiết đơn hàng */}
         <Dialog 
-          header="Chi tiết đơn hàng" 
+          header={
+            viewOrder && (
+              <div className="flex items-center">
+                <i className="pi pi-shopping-bag text-blue-500 mr-3" style={{ fontSize: '1.5rem' }}></i>
+                <span>Chi tiết đơn hàng #{viewOrder?._id?.slice(-6).toUpperCase()}</span>
+              </div>
+            )
+          }
           visible={viewOrder !== null} 
           onHide={() => setViewOrder(null)}
-          style={{ width: '70vw' }}
-          breakpoints={{ '960px': '80vw', '640px': '90vw' }}
+          style={{ width: '75vw', maxWidth: '1200px' }}
+          breakpoints={{ '960px': '90vw', '640px': '95vw' }}
           contentClassName="p-0"
           pt={{
-            root: { className: 'rounded-xl border border-gray-200 shadow-xl' },
-            header: { className: 'p-6 border-b border-gray-100 bg-gray-50 rounded-t-xl' },
+            root: { className: 'rounded-xl border border-gray-200 shadow-2xl' },
+            header: { className: 'p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white rounded-t-xl' },
             headerTitle: { className: 'text-xl font-bold text-gray-800' },
             closeButton: { className: 'p-2.5 hover:bg-gray-100 rounded-full transition-colors' },
             content: { className: 'p-0' }
@@ -1593,21 +1818,35 @@ const OrderAdmin = () => {
                     Thông tin khách hàng
                   </h3>
                   <Card 
-                    className="shadow-md p-5 border border-gray-100 rounded-xl bg-white hover:shadow-lg transition-shadow"
+                    className="shadow-md p-6 border border-gray-100 rounded-xl bg-white hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-blue-50"
                     pt={{ 
                       root: { className: 'overflow-hidden' },
                       content: { className: 'p-0' }
                     }}>
-                    <p className="mb-4"><span className="font-medium text-gray-700">Tên khách hàng:</span> <span className="text-gray-900">{getCustomerName(viewOrder)}</span></p>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-start">
+                        <div className="w-1/3 text-gray-500 text-sm">Tên khách hàng:</div>
+                        <div className="w-2/3 font-medium text-gray-800">{getCustomerName(viewOrder)}</div>
+                      </div>
                     {viewOrder.userId?.email && (
-                      <p className="mb-4"><span className="font-medium text-gray-700">Email:</span> <span className="text-gray-900">{viewOrder.userId.email}</span></p>
+                        <div className="flex items-start">
+                          <div className="w-1/3 text-gray-500 text-sm">Email:</div>
+                          <div className="w-2/3 font-medium text-gray-800">{viewOrder.userId.email}</div>
+                        </div>
                     )}
                     {viewOrder.shippingInfo?.phone && (
-                      <p className="mb-4"><span className="font-medium text-gray-700">Số điện thoại:</span> <span className="text-gray-900">{viewOrder.shippingInfo.phone}</span></p>
+                        <div className="flex items-start">
+                          <div className="w-1/3 text-gray-500 text-sm">Số điện thoại:</div>
+                          <div className="w-2/3 font-medium text-gray-800">{viewOrder.shippingInfo.phone}</div>
+                        </div>
                     )}
                     {viewOrder.shippingInfo?.address && (
-                      <p className="mb-0"><span className="font-medium text-gray-700">Địa chỉ:</span> <span className="text-gray-900">{viewOrder.shippingInfo.address}</span></p>
+                        <div className="flex items-start">
+                          <div className="w-1/3 text-gray-500 text-sm">Địa chỉ:</div>
+                          <div className="w-2/3 font-medium text-gray-800">{viewOrder.shippingInfo.address}</div>
+                        </div>
                     )}
+                    </div>
                   </Card>
                 </div>
                 
@@ -1617,26 +1856,36 @@ const OrderAdmin = () => {
                     Thông tin đơn hàng
                   </h3>
                   <Card 
-                    className="shadow-md p-5 border border-gray-100 rounded-xl bg-white hover:shadow-lg transition-shadow"
+                    className="shadow-md p-6 border border-gray-100 rounded-xl bg-white hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-blue-50"
                     pt={{ 
                       root: { className: 'overflow-hidden' },
                       content: { className: 'p-0' }
                     }}>
-                    <p className="mb-4"><span className="font-medium text-gray-700">Mã đơn hàng:</span> <span className="text-blue-600 font-semibold">#{viewOrder._id.slice(-6).toUpperCase()}</span></p>
-                    <p className="mb-4"><span className="font-medium text-gray-700">Ngày đặt:</span> <span className="text-gray-900">{formatDate(viewOrder.createdAt)}</span></p>
-                    <p className="mb-4">
-                      <span className="font-medium text-gray-700">Trạng thái:</span> 
-                      <span className={`inline-flex items-center ml-2 px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(viewOrder.status)}`}>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-start">
+                        <div className="w-1/3 text-gray-500 text-sm">Mã đơn hàng:</div>
+                        <div className="w-2/3 font-medium text-blue-600">#{viewOrder._id.slice(-6).toUpperCase()}</div>
+                      </div>
+                      <div className="flex items-start">
+                        <div className="w-1/3 text-gray-500 text-sm">Ngày đặt:</div>
+                        <div className="w-2/3 font-medium text-gray-800">{formatDate(viewOrder.createdAt)}</div>
+                      </div>
+                      <div className="flex items-start">
+                        <div className="w-1/3 text-gray-500 text-sm">Trạng thái:</div>
+                        <div className="w-2/3">
+                          <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(viewOrder.status)}`}>
                         {getStatusIcon(viewOrder.status)}
                         {getStatusText(viewOrder.status)}
                       </span>
-                    </p>
+                        </div>
+                      </div>
                     
                     {/* Hiển thị các trạng thái tiếp theo có thể chuyển đến */}
                     {viewOrder.status !== ORDER_STATUSES.COMPLETED && 
                      viewOrder.status !== ORDER_STATUSES.CANCELLED && (
-                      <div className="mb-4">
-                        <p className="font-medium text-gray-700 mb-2">Trạng thái tiếp theo:</p>
+                        <div className="flex items-start">
+                          <div className="w-1/3 text-gray-500 text-sm">Trạng thái tiếp theo:</div>
+                          <div className="w-2/3">
                         <div className="space-y-2">
                           {getNextStatuses(viewOrder.status, viewOrder.isPaid).map((status) => (
                             <div key={status.value} className="flex items-start p-2 bg-gray-50 rounded-lg border border-gray-100">
@@ -1652,26 +1901,36 @@ const OrderAdmin = () => {
                               </div>
                             </div>
                           ))}
+                            </div>
                         </div>
                       </div>
                     )}
                     
-                    <p className="mb-4">
-                      <span className="font-medium text-gray-700">Thanh toán:</span> 
+                      <div className="flex items-start">
+                        <div className="w-1/3 text-gray-500 text-sm">Thanh toán:</div>
+                        <div className="w-2/3">
                       {viewOrder.isPaid ? (
-                        <span className="inline-flex items-center ml-2 px-3 py-1.5 rounded-full text-xs font-medium border text-green-600 bg-green-100 border-green-200">
+                            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border text-green-600 bg-green-100 border-green-200">
                           <CheckIcon size={16} className="mr-1" />
                           Đã thanh toán
                         </span>
                       ) : (
-                        <span className="inline-flex items-center ml-2 px-3 py-1.5 rounded-full text-xs font-medium border text-orange-600 bg-orange-100 border-orange-200">
+                            <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border text-orange-600 bg-orange-100 border-orange-200">
                           <i className="pi pi-clock mr-1" style={{ fontSize: '0.9rem' }}></i>
                           Chưa thanh toán
                         </span>
                       )}
-                    </p>
-                    <p className="mb-4"><span className="font-medium text-gray-700">Phương thức thanh toán:</span> <span className="text-gray-900">{getPaymentMethodText(viewOrder.paymentMethod)}</span></p>
-                    <p className="mb-0"><span className="font-medium text-gray-700">Ghi chú:</span> <span className="text-gray-900">{viewOrder.note || "Không có"}</span></p>
+                        </div>
+                      </div>
+                      <div className="flex items-start">
+                        <div className="w-1/3 text-gray-500 text-sm">Phương thức thanh toán:</div>
+                        <div className="w-2/3 font-medium text-gray-800">{getPaymentMethodText(viewOrder.paymentMethod)}</div>
+                      </div>
+                      <div className="flex items-start">
+                        <div className="w-1/3 text-gray-500 text-sm">Ghi chú:</div>
+                        <div className="w-2/3 font-medium text-gray-800">{viewOrder.note || "Không có"}</div>
+                      </div>
+                    </div>
                   </Card>
                 </div>
               </div>
@@ -1681,7 +1940,7 @@ const OrderAdmin = () => {
                 Sản phẩm đã đặt
               </h3>
               <Card 
-                className="shadow-md mb-8 p-0 border border-gray-100 rounded-xl overflow-hidden"
+                className="shadow-md mb-8 p-0 border border-gray-100 rounded-xl overflow-hidden bg-gradient-to-br from-white to-gray-50"
                 pt={{ 
                   root: { className: 'overflow-hidden' },
                   content: { className: 'p-0' }
@@ -1698,14 +1957,14 @@ const OrderAdmin = () => {
                     </thead>
                     <tbody>
                       {viewOrder.products && viewOrder.products.map((item, index) => (
-                        <tr key={index} className="border-b hover:bg-gray-50 transition-colors">
+                        <tr key={index} className="border-b hover:bg-blue-50 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center">
                               {item.productId?.productImages && item.productId.productImages[0] && (
                                 <img 
                                   src={item.productId.productImages[0]} 
                                   alt={item.productId.productName} 
-                                  className="w-16 h-16 object-cover rounded-lg mr-4 border border-gray-200"
+                                  className="w-16 h-16 object-cover rounded-lg mr-4 border border-gray-200 shadow-sm"
                                   loading="lazy"
                                 />
                               )}
@@ -1742,7 +2001,7 @@ const OrderAdmin = () => {
                       setViewOrder(null);
                       setTimeout(() => openUpdateStatusDialog(viewOrder), 100);
                     }} 
-                    className="px-5 py-2.5 bg-yellow-600 text-white hover:bg-yellow-700 font-medium rounded-lg transition-colors flex items-center gap-2"
+                    className="px-5 py-2.5 bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-medium rounded-lg transition-all shadow-md flex items-center gap-2"
                   />
                 )}
                 <Button 
@@ -1758,7 +2017,12 @@ const OrderAdmin = () => {
         
         {/* Dialog xác nhận xóa */}
         <Dialog
-          header="Xác nhận xóa"
+          header={
+            <div className="flex items-center text-red-600">
+              <i className="pi pi-trash mr-2" style={{ fontSize: '1.5rem' }}></i>
+              <span>Xác nhận xóa</span>
+            </div>
+          }
           visible={deleteDialog}
           style={{ width: '450px' }}
           modal
@@ -1768,83 +2032,93 @@ const OrderAdmin = () => {
                 label="Không" 
                 icon="pi pi-times" 
                 onClick={() => setDeleteDialog(false)} 
-                className="px-4 py-2.5  bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg transition-colors" 
+                className="px-4 py-2.5 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg transition-colors" 
               />
               <Button 
-                label="Có" 
+                label="Có, xóa đơn hàng" 
                 icon="pi pi-trash" 
                 onClick={handleDeleteOrder} 
                 autoFocus 
-                className="px-6 py-2.5 bg-red-600 text-white hover:bg-red-700 font-medium rounded-lg transition-colors flex items-center gap-2" 
+                className="px-6 py-2.5 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 shadow-md" 
               />
             </div>
           }
           onHide={() => setDeleteDialog(false)}
           contentClassName="p-5"
           pt={{
-            root: { className: 'rounded-lg border border-gray-200 shadow-lg' },
-            header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg text-lg font-semibold' },
-            closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full transition-colors' },
+            root: { className: 'rounded-xl border border-gray-200 shadow-xl' },
+            header: { className: 'p-4 border-b border-gray-100 bg-gradient-to-r from-red-50 to-white rounded-t-xl' },
+            closeButton: { className: 'p-2 hover:bg-red-50 rounded-full transition-colors' },
             content: { className: 'p-5' }
           }}
         >
-          <div className="flex flex-col items-center justify-center p-3">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <i className="pi pi-exclamation-triangle text-red-500" style={{ fontSize: '1.75rem' }} />
+          <div className="flex flex-col items-center justify-center p-5">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <i className="pi pi-exclamation-triangle text-red-500" style={{ fontSize: '2rem' }} />
             </div>
-            <h3 className="text-xl font-medium text-gray-800 mb-2">Xóa đơn hàng</h3>
+            <h3 className="text-xl font-medium text-gray-800 mb-3">Xóa đơn hàng</h3>
             <p className="text-gray-600 text-center">Bạn có chắc chắn muốn xóa đơn hàng này? Hành động này không thể hoàn tác.</p>
           </div>
         </Dialog>
         
         {/* Dialog cập nhật trạng thái đơn hàng */}
         <Dialog
-          header="Cập nhật trạng thái đơn hàng"
+          header={
+            <div className="flex items-center">
+              <i className="pi pi-sync text-blue-500 mr-2" style={{ fontSize: '1.5rem' }}></i>
+              <span>Cập nhật trạng thái đơn hàng</span>
+            </div>
+          }
           visible={statusDialog}
-          style={{ width: '500px' }}
+          style={{ width: '550px' }}
           modal
           onHide={() => {
             setStatusDialog(false);
             setSelectedOrderForStatus(null);
           }}
-          contentClassName="p-5"
+          contentClassName="p-0"
           pt={{
-            root: { className: 'rounded-lg border border-gray-200 shadow-lg' },
-            header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg text-lg font-semibold' },
-            closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full transition-colors' },
-            content: { className: 'p-5' }
+            root: { className: 'rounded-xl border border-gray-200 shadow-xl' },
+            header: { className: 'p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white rounded-t-xl' },
+            closeButton: { className: 'p-2 hover:bg-blue-50 rounded-full transition-colors' },
+            content: { className: 'p-0' }
           }}
         >
           {selectedOrderForStatus && (
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col items-center justify-center p-3 bg-gray-50 rounded-lg">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-3">
-                  <i className="pi pi-sync text-blue-500" style={{ fontSize: '1.5rem' }} />
+            <div className="flex flex-col">
+              <div className="flex flex-col items-center justify-center p-5 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                  <i className="pi pi-sync text-blue-500" style={{ fontSize: '2rem' }} />
                 </div>
-                <h3 className="text-lg font-medium text-gray-800 mb-1">Đơn hàng #{selectedOrderForStatus._id.slice(-6).toUpperCase()}</h3>
-                <p className="text-gray-600 mb-2">Trạng thái hiện tại:</p>
+                <h3 className="text-xl font-medium text-gray-800 mb-2">Đơn hàng #{selectedOrderForStatus._id.slice(-6).toUpperCase()}</h3>
+                <p className="text-gray-600 mb-3">Trạng thái hiện tại:</p>
                 <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium border ${getStatusColor(selectedOrderForStatus.status)}`}>
                   {getStatusIcon(selectedOrderForStatus.status)}
                   {getStatusText(selectedOrderForStatus.status)}
                 </span>
               </div>
               
-              <div>
-                <p className="font-medium text-gray-700 mb-3">Chọn trạng thái mới:</p>
+              <div className="p-5">
+                <p className="font-medium text-gray-700 mb-4">Chọn trạng thái mới:</p>
                 <div className="grid grid-cols-1 gap-3">
                   {getNextStatuses(selectedOrderForStatus.status, selectedOrderForStatus.isPaid).map((statusOption) => (
                     <button
                       key={statusOption.value}
-                      className={`flex flex-col items-start justify-between p-4 rounded-lg border transition-all ${
+                      className={`flex flex-col items-start justify-between p-4 rounded-xl border transition-all transform hover:-translate-y-1 hover:shadow-md ${
+                        selectedStatus === statusOption.value ? 'ring-2 ring-blue-400 ring-offset-2 ' : ''
+                      }${
                         statusOption.value === ORDER_STATUSES.CANCELLED
                           ? 'bg-red-50 hover:bg-red-100 border-red-200'
-                          : 'bg-white hover:bg-gray-50 border-gray-200'
+                          : 'bg-white hover:bg-blue-50 border-gray-200'
                       }`}
-                      onClick={() => updateOrderStatus(selectedOrderForStatus._id, statusOption.value)}
+                      onClick={() => {
+                        setSelectedStatus(statusOption.value);
+                        updateOrderStatus(selectedOrderForStatus._id, statusOption.value);
+                      }}
                     >
                       <div className="flex items-center justify-between w-full">
                         <div className="flex items-center">
-                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full mr-3 ${
+                          <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full mr-3 ${
                             statusOption.value === ORDER_STATUSES.CANCELLED
                               ? 'bg-red-100 text-red-600'
                               : 'bg-blue-100 text-blue-600'
@@ -1855,7 +2129,7 @@ const OrderAdmin = () => {
                         </div>
                         <i className="pi pi-arrow-right text-gray-400"></i>
                       </div>
-                      <div className="mt-2 ml-11">
+                      <div className="mt-2 ml-13">
                         <StatusTransitionInfo 
                           currentStatus={selectedOrderForStatus.status} 
                           nextStatus={statusOption.value} 
@@ -1866,7 +2140,7 @@ const OrderAdmin = () => {
                 </div>
               </div>
               
-              <div className="flex justify-end mt-3">
+              <div className="flex justify-end gap-3 p-5 bg-gradient-to-r from-gray-50 to-white border-t border-gray-100">
                 <Button 
                   label="Đóng" 
                   icon="pi pi-times" 
@@ -1883,9 +2157,14 @@ const OrderAdmin = () => {
         
         {/* Dialog xác nhận đánh dấu đã thanh toán */}
         <Dialog
-          header="Xác nhận thanh toán"
+          header={
+            <div className="flex items-center">
+              <i className="pi pi-check-circle text-green-500 mr-2" style={{ fontSize: '1.5rem' }}></i>
+              <span>Xác nhận thanh toán</span>
+            </div>
+          }
           visible={paymentDialog}
-          style={{ width: '450px' }}
+          style={{ width: '500px' }}
           modal
           footer={
             <div className="pt-3 flex justify-end gap-3 p-4">
@@ -1896,39 +2175,44 @@ const OrderAdmin = () => {
                 className="px-4 py-2.5 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg transition-colors" 
               />
               <Button 
-                label="Xác nhận" 
+                label="Xác nhận đã thanh toán" 
                 icon="pi pi-check" 
                 onClick={handleMarkAsPaid} 
                 autoFocus 
-                className="px-6 py-2.5 bg-green-600 text-white hover:bg-green-700 font-medium rounded-lg transition-colors flex items-center gap-2" 
+                className="px-6 py-2.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 shadow-md" 
               />
             </div>
           }
           onHide={() => setPaymentDialog(false)}
           contentClassName="p-5"
           pt={{
-            root: { className: 'rounded-lg border border-gray-200 shadow-lg' },
-            header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg text-lg font-semibold' },
-            closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full transition-colors' },
+            root: { className: 'rounded-xl border border-gray-200 shadow-xl' },
+            header: { className: 'p-4 border-b border-gray-100 bg-gradient-to-r from-green-50 to-white rounded-t-xl' },
+            closeButton: { className: 'p-2 hover:bg-green-50 rounded-full transition-colors' },
             content: { className: 'p-5' }
           }}
         >
-          <div className="flex flex-col items-center justify-center p-3">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <i className="pi pi-check-circle text-green-500" style={{ fontSize: '1.75rem' }} />
+          <div className="flex flex-col items-center justify-center p-5">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <i className="pi pi-check-circle text-green-500" style={{ fontSize: '2rem' }} />
             </div>
-            <h3 className="text-xl font-medium text-gray-800 mb-2">Xác nhận đã thanh toán và giao hàng</h3>
+            <h3 className="text-xl font-medium text-gray-800 mb-3">Xác nhận đã thanh toán và giao hàng</h3>
             <p className="text-gray-600 text-center">
-              Khi xác nhận, đơn hàng sẽ được đánh dấu là đã thanh toán và chuyển trạng thái thành &ldquo;Giao hàng thành công&rdquo;. Bạn có chắc chắn không?
+              Khi xác nhận, đơn hàng sẽ được đánh dấu là <span className="font-semibold text-green-600">đã thanh toán</span> và chuyển trạng thái thành <span className="font-semibold text-green-600">Giao hàng thành công</span>. Bạn có chắc chắn không?
             </p>
           </div>
         </Dialog>
         
         {/* Dialog xác nhận cập nhật hàng loạt */}
         <Dialog
-          header="Xác nhận cập nhật hàng loạt"
+          header={
+            <div className="flex items-center">
+              <i className="pi pi-cog text-blue-500 mr-2" style={{ fontSize: '1.5rem' }}></i>
+              <span>Cập nhật hàng loạt</span>
+            </div>
+          }
           visible={bulkConfirmVisible}
-          style={{ width: '500px' }}
+          style={{ width: '550px' }}
           modal
           onHide={() => setBulkConfirmVisible(false)}
           footer={
@@ -1940,33 +2224,38 @@ const OrderAdmin = () => {
                 className="px-4 py-2.5 bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 font-medium rounded-lg transition-colors" 
               />
               <Button 
-                label="Xác nhận" 
+                label="Xác nhận cập nhật" 
                 icon="pi pi-check" 
                 onClick={executeBulkUpdate} 
                 autoFocus 
-                className="px-6 py-2.5 bg-blue-600 text-white hover:bg-blue-700 font-medium rounded-lg transition-colors flex items-center gap-2" 
+                className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 shadow-md" 
               />
             </div>
           }
-          contentClassName="p-5"
+          contentClassName="p-0"
           pt={{
-            root: { className: 'rounded-lg border border-gray-200 shadow-lg' },
-            header: { className: 'p-4 border-b border-gray-100 bg-gray-50 rounded-t-lg text-lg font-semibold' },
-            closeButton: { className: 'p-2 hover:bg-gray-100 rounded-full transition-colors' },
-            content: { className: 'p-5' }
+            root: { className: 'rounded-xl border border-gray-200 shadow-xl' },
+            header: { className: 'p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white rounded-t-xl' },
+            closeButton: { className: 'p-2 hover:bg-blue-50 rounded-full transition-colors' },
+            content: { className: 'p-0' }
           }}
         >
-          <div className="flex flex-col items-center justify-center p-3">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-              <i className="pi pi-exclamation-circle text-blue-500" style={{ fontSize: '1.75rem' }} />
+          <div className="flex flex-col">
+            <div className="p-5 bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex flex-col items-center justify-center">
+                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                  <i className="pi pi-cog text-blue-500" style={{ fontSize: '2rem' }} />
             </div>
             <h3 className="text-xl font-medium text-gray-800 mb-3">Xác nhận cập nhật hàng loạt</h3>
             <p className="text-gray-600 text-center mb-4">
               Bạn có chắc chắn muốn cập nhật <span className="font-semibold text-blue-600">{selectedOrders.length}</span> đơn hàng sang trạng thái 
-              &quot;<span className="font-semibold text-blue-600">{bulkActionOptions.find(op => op.value === bulkStatus)?.label || bulkStatus}</span>&quot;?
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border mx-2 bg-blue-100 text-blue-700 border-blue-200">
+                    {bulkActionOptions.find(op => op.value === bulkStatus)?.label || bulkStatus}
+                  </span>?
             </p>
+              </div>
             
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 w-full mb-3">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 w-full mb-5">
               <div className="flex items-start">
                 <i className="pi pi-info-circle text-yellow-500 mr-3 mt-0.5" style={{ fontSize: '1.2rem' }} />
                 <div>
@@ -1974,26 +2263,30 @@ const OrderAdmin = () => {
                   <p className="text-sm text-yellow-600">
                     Hành động này sẽ thay đổi trạng thái của nhiều đơn hàng cùng lúc và có thể ảnh hưởng đến thông báo cho khách hàng.
                   </p>
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div className="w-full border border-gray-200 rounded-lg overflow-hidden">
-              <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-                <p className="font-medium text-gray-700 text-sm">Các đơn hàng được chọn ({selectedOrders.length})</p>
+            <div className="border-t border-gray-100">
+              <div className="bg-gray-50 px-5 py-3 border-b border-gray-200">
+                <p className="font-medium text-gray-700">Các đơn hàng được chọn ({selectedOrders.length})</p>
               </div>
-              <div className="max-h-36 overflow-y-auto p-3">
-                <ul className="text-sm">
+              <div className="max-h-48 overflow-y-auto p-5 bg-white">
+                <ul className="text-sm space-y-2">
                   {selectedOrders.slice(0, 5).map((order, index) => (
-                    <li key={index} className="py-1 flex items-center">
+                    <li key={index} className="py-2 px-3 flex items-center bg-gray-50 rounded-lg">
                       <i className="pi pi-circle-fill text-blue-500 mr-2" style={{ fontSize: '0.5rem' }} />
-                      <span className="font-medium">#{order._id.slice(-6).toUpperCase()}</span>
+                      <span className="font-medium text-blue-600">#{order._id.slice(-6).toUpperCase()}</span>
                       <span className="mx-2 text-gray-400">-</span>
                       <span className="text-gray-600 truncate">{getCustomerName(order)}</span>
+                      <span className={`ml-auto inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(order.status)}`}>
+                        {getStatusText(order.status)}
+                      </span>
                     </li>
                   ))}
                   {selectedOrders.length > 5 && (
-                    <li className="py-1 text-gray-500 italic">
+                    <li className="py-2 px-3 text-gray-500 italic bg-gray-50 rounded-lg text-center">
                       ...và {selectedOrders.length - 5} đơn hàng khác
                     </li>
                   )}
@@ -2009,14 +2302,18 @@ const OrderAdmin = () => {
     // Trả về UI lỗi đơn giản khi có vấn đề với hooks
     return (
       <div className="p-6 bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-center p-6 bg-white rounded-lg shadow-md">
+        <div className="text-center p-8 bg-white rounded-xl shadow-xl">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <i className="pi pi-exclamation-triangle text-red-500" style={{ fontSize: '2rem' }} />
+          </div>
           <h2 className="text-2xl font-bold text-red-600 mb-4">Lỗi: Không thể tải trang quản lý đơn hàng</h2>
-          <p className="mb-4">Đã xảy ra lỗi khi tải component quản lý đơn hàng.</p>
-          <p className="text-sm text-gray-600">Chi tiết lỗi: {error.message}</p>
+          <p className="mb-4 text-gray-600">Đã xảy ra lỗi khi tải component quản lý đơn hàng.</p>
+          <p className="text-sm text-gray-500 mb-6 bg-gray-50 p-3 rounded-lg">{error.message}</p>
           <button 
             onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors shadow-md"
           >
+            <i className="pi pi-refresh mr-2"></i>
             Thử lại
           </button>
         </div>

@@ -23,6 +23,7 @@ import "../../index.css";
 import Products from "../Pages/Cart/Products";
 import productsApi from "../../api/productsApi";
 import cartApi from "../../api/cartApi";
+import { jwtDecode } from "jwt-decode";
 
 const placeholders = [
   "Đồ uống các loại",
@@ -55,6 +56,7 @@ const Header = () => {
   const [showPromotion, setShowPromotion] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(0);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("https://www.gravatar.com/avatar/?d=mp");
   const inputRef = useRef(null);
   const timeoutRef = useRef(null);
   const mobileInputRef = useRef(null);
@@ -69,6 +71,43 @@ const Header = () => {
       setShowPromotion(false);
     }
   };
+
+  // Helper function to handle Facebook URLs
+  const cleanFacebookImageUrl = (url) => {
+    if (!url) return "https://www.gravatar.com/avatar/?d=mp";
+    
+    // For debugging
+    console.log("Processing image URL:", url);
+    
+    // If it's a Facebook URL, try to clean it up
+    if (url.includes('platform-lookaside.fbsbx.com')) {
+      // Add a cache-busting parameter to force a fresh request
+      const cacheBuster = new Date().getTime();
+      return `${url}${url.includes('?') ? '&' : '?'}v=${cacheBuster}`;
+    }
+    
+    // Return original url for non-Facebook images
+    return url;
+  };
+
+  useEffect(() => {
+    if (userId) {
+      authApi.getProfile()
+        .then(response => {
+          if (response.data && response.data.userImage) {
+            console.log("User profile image found:", response.data.userImage);
+            setAvatarUrl(response.data.userImage);
+          } else {
+            console.log("No user image, using default");
+            setAvatarUrl("https://www.gravatar.com/avatar/?d=mp");
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching user profile:", error);
+          setAvatarUrl("https://www.gravatar.com/avatar/?d=mp");
+        });
+    }
+  }, [userId]);
 
   const fetchCart = async () => {
     try {
@@ -243,13 +282,37 @@ const Header = () => {
           {isLoggedIn ? (
             <a
               href="/tai-khoan"
-              className="grid items-center mr-2 cursor-pointer "
+              className="grid items-center mr-2 cursor-pointer"
             >
-              <img
-                src="https://www.gravatar.com/avatar/?d=mp"
-                alt="Avatar"
-                className="w-8 h-8 rounded-full hide-on-mobile"
-              />
+              {avatarUrl.includes('platform-lookaside.fbsbx.com') || avatarUrl.includes('graph.facebook.com') ? (
+                // For Facebook profile pictures, use specialized handling
+                <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                  <img
+                    src={avatarUrl}
+                    alt="Facebook Avatar" 
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
+                    loading="eager"
+                    importance="high"
+                    onError={(e) => {
+                      console.log("Facebook avatar load error, using default");
+                      e.target.src = "https://www.gravatar.com/avatar/?d=mp&s=200";
+                    }}
+                  />
+                </div>
+              ) : (
+                // For regular avatars
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="w-8 h-8 rounded-full hide-on-mobile object-cover"
+                  onError={(e) => {
+                    console.log("Avatar load error, using default");
+                    e.target.src = "https://www.gravatar.com/avatar/?d=mp&s=200";
+                  }}
+                />
+              )}
             </a>
           ) : (
             <div className="flex items-center ">

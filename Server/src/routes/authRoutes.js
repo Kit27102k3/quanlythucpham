@@ -11,7 +11,10 @@ import {
   resetPassword,
   blockUser,
   facebookLogin,
-  googleLogin
+  googleLogin,
+  facebookCallback,
+  facebookTokenLogin,
+  getUserAvatar
 } from "../Controller/authController.js";
 import { verifyToken } from "../Middleware/authMiddleware.js";
 
@@ -28,8 +31,13 @@ router.post("/request-password-reset", requestPasswordReset);
 router.post("/reset-password", resetPassword);
 router.put("/profile/block/:userId", blockUser);
 
+// User avatar route
+router.get("/users/avatar/:id", getUserAvatar);
+
 // Thêm các route cho OAuth
 router.post("/facebook-login", facebookLogin);
+router.post("/facebook-token", facebookTokenLogin);
 router.post("/google-login", googleLogin);
+router.get("/facebook/callback", facebookCallback);
 
 export default router;

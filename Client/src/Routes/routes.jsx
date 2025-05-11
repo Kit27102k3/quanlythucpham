@@ -34,6 +34,7 @@ import Checkout from "../User/Pages/Cart/Checkout";
 import Messages from "../Admin/Pages/Messages";
 import ChatPage from "../User/Pages/Chat/ChatPage";
 import Reviews from "../Admin/Pages/Reviews";
+import LoginSuccess from "../User/Pages/Account/LoginSuccess";
 
 const publicRoutes = [
   {
@@ -121,6 +122,11 @@ const publicRoutes = [
   {
     path: "/dang-nhap",
     page: Login,
+    layout: null,
+  },
+  {
+    path: "/dang-nhap/success",
+    page: LoginSuccess,
     layout: null,
   },
   {

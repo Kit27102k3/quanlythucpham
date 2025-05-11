@@ -26,15 +26,14 @@ const Employees = () => {
     email: "",
     role: null,
     password: "",
-    isActive: true,
-    permissions: ["Xem"]
+    isActive: true
   };
   const [employeeForm, setEmployeeForm] = useState(initialFormState);
 
   const roles = [
     { label: "Quản trị viên", value: "admin" },
     { label: "Quản lý", value: "manager" },
-    { label: "Nhân viên", value: "staff" },
+    { label: "Nhân viên", value: "user" },
   ];
 
   useEffect(() => {
@@ -100,11 +99,35 @@ const Employees = () => {
   // CRUD operations
   const handleSaveEmployee = async () => {
     try {
+      // Validate required fields
+      const requiredFields = ["userName", "fullName", "phone", "email", "role"];
+      // Add password to required fields only when creating a new employee
+      if (!isEditMode) {
+        requiredFields.push("password");
+      }
+      
+      const missingFields = requiredFields.filter(field => !employeeForm[field]);
+      
+      if (missingFields.length > 0) {
+        const fieldLabels = {
+          userName: "Tên đăng nhập",
+          password: "Mật khẩu",
+          fullName: "Họ tên",
+          phone: "Số điện thoại",
+          email: "Email",
+          role: "Vai trò"
+        };
+        
+        const missingFieldNames = missingFields.map(field => fieldLabels[field]).join(", ");
+        showToast("error", "Lỗi", `Vui lòng điền đầy đủ thông tin: ${missingFieldNames}`);
+        return;
+      }
+      
       setLoading(true);
       
       const formData = {
         ...employeeForm,
-        userName: employeeForm.userName || employeeForm.userName || "",
+        userName: employeeForm.userName.trim(),
       };
 
       if (isEditMode) {
@@ -404,8 +427,10 @@ const Employees = () => {
                 options={roles}
                 onChange={(e) => setEmployeeForm({ ...employeeForm, role: e.value })}
                 optionLabel="label"
+                optionValue="value"
                 className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
                 placeholder="Chọn vai trò"
+                required
               />
             </div>
           </div>
