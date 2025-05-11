@@ -3,7 +3,7 @@ import { ExitIcon } from "@radix-ui/react-icons";
 import { Avatar } from "primereact/avatar";
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCar, faMoneyCheckDollar } from "@fortawesome/free-solid-svg-icons";
+import { faCar, faMoneyCheckDollar, faTicket, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { useNavigate, useParams } from "react-router-dom";
 import paymentApi from "../../../api/paymentApi";
 import { toast, ToastContainer } from "react-toastify";
@@ -11,6 +11,7 @@ import "react-toastify/dist/ReactToastify.css";
 import formatCurrency from "../../Until/FotmatPrice";
 import orderApi from "../../../api/orderApi";
 import authApi from "../../../api/authApi";
+import couponApi from "../../../api/couponApi";
 import axios from "axios";
 import { API_URLS } from "../../../config/apiConfig";
 
@@ -23,9 +24,14 @@ export default function Payment() {
   });
   const [note, setNote] = useState("");
   const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [couponSuccess, setCouponSuccess] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [selectedMethod, setSelectedMethod] = useState("delivery");
   const [selectedDelivery, setSelectedDelivery] = useState("standard");
   const [selectedPayment, setSelectedPayment] = useState("cod");
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
   const navigate = useNavigate();
   const { paymentId } = useParams();
   const [loading, setLoading] = useState(false);
@@ -34,10 +40,14 @@ export default function Payment() {
     return selectedPayment === "sepay" ? 0 : 40000;
   };
 
+  const calculateSubtotal = () => {
+    return orderDetails.totalAmount;
+  };
+
   const calculateFinalTotal = () => {
-    const subtotal = orderDetails.totalAmount;
+    const subtotal = calculateSubtotal();
     const shippingFee = calculateShippingFee();
-    return subtotal + shippingFee;
+    return subtotal + shippingFee - couponDiscount;
   };
 
   useEffect(() => {
@@ -81,8 +91,54 @@ export default function Payment() {
     }
   };
 
-  const handleApplyCoupon = () => {
-    // Coupon application logic can be added here
+  const handleApplyCoupon = async () => {
+    // Xóa thông báo lỗi cũ
+    setCouponError("");
+    setCouponSuccess("");
+    
+    // Kiểm tra đã nhập mã giảm giá chưa
+    if (!couponCode.trim()) {
+      setCouponError("Vui lòng nhập mã giảm giá");
+      return;
+    }
+    
+    setValidatingCoupon(true);
+    
+    try {
+      // Gọi API để kiểm tra mã giảm giá
+      const result = await couponApi.validateCoupon(couponCode, calculateSubtotal());
+      
+      if (result.success) {
+        // Lưu thông tin mã giảm giá đã áp dụng
+        setAppliedCoupon(result.data.coupon);
+        setCouponDiscount(result.data.discountAmount);
+        setCouponSuccess(result.data.message);
+        
+        // Hiển thị thông báo thành công
+        toast.success(result.data.message);
+      } else {
+        // Hiển thị lỗi
+        setCouponError(result.message);
+        setCouponDiscount(0);
+        setAppliedCoupon(null);
+      }
+    } catch (error) {
+      console.error("Error applying coupon:", error);
+      setCouponError(error.message || "Không thể áp dụng mã giảm giá");
+      setCouponDiscount(0);
+      setAppliedCoupon(null);
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode("");
+    setCouponDiscount(0);
+    setCouponSuccess("");
+    setCouponError("");
+    setAppliedCoupon(null);
+    toast.info("Đã hủy mã giảm giá");
   };
 
   const handlePaymentMethodChange = (method) => {
@@ -123,6 +179,7 @@ export default function Payment() {
           price: product.productId.productPrice,
         })),
         totalAmount: totalAmount,
+        subtotal: calculateSubtotal(),
         deliveryMethod: selectedMethod,
         deliveryFee: currentShippingFee,
         address: users.address,
@@ -130,6 +187,14 @@ export default function Payment() {
         paymentMethod: selectedPayment,
         status: "awaiting_payment",
       };
+      
+      // Thêm thông tin mã giảm giá nếu có
+      if (appliedCoupon) {
+        orderData.coupon = {
+          code: appliedCoupon.code,
+          discount: couponDiscount
+        };
+      }
 
       if (selectedPayment === "sepay") {
         try {
@@ -142,6 +207,8 @@ export default function Payment() {
               price: product.productId.productPrice,
             })),
             paymentMethod: selectedPayment,
+            couponDiscount: couponDiscount,
+            couponCode: appliedCoupon?.code
           };
 
           const paymentResponse = await paymentApi.createPayment(paymentData);
@@ -171,6 +238,15 @@ export default function Payment() {
                   },
                 }
               );
+            }
+            
+            // Cập nhật số lần sử dụng mã giảm giá nếu có
+            if (appliedCoupon) {
+              try {
+                await couponApi.updateCouponUsage(appliedCoupon.code);
+              } catch (couponError) {
+                console.error("Error updating coupon usage:", couponError);
+              }
             }
 
             if (sepayResponse.method === "bank_transfer") {
@@ -224,6 +300,15 @@ export default function Payment() {
         orderData.status = "pending";
         const orderResponse = await orderApi.createOrder(orderData);
         const orderIdCreated = orderResponse._id;
+        
+        // Cập nhật số lần sử dụng mã giảm giá nếu có
+        if (appliedCoupon) {
+          try {
+            await couponApi.updateCouponUsage(appliedCoupon.code);
+          } catch (couponError) {
+            console.error("Error updating coupon usage:", couponError);
+          }
+        }
 
         toast.success("Đặt hàng thành công!");
         navigate(
@@ -456,35 +541,71 @@ export default function Payment() {
             ))}
           </div>
 
+          {/* Mã giảm giá */}
+          <div className="pt-3 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+              <FontAwesomeIcon icon={faTicket} className="text-[#51bb1a] mr-2" />
+              Mã giảm giá
+            </label>
+            <div className="flex">
+              <input
+                type="text"
+                placeholder="Nhập mã giảm giá"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                className="flex-grow p-2 border border-gray-300 border-r-0 rounded-l-md outline-none"
+                disabled={!!appliedCoupon}
+              />
+              {appliedCoupon ? (
+                <button
+                  onClick={handleRemoveCoupon}
+                  className="bg-red-500 text-white px-3 rounded-r-md hover:bg-red-600 transition flex items-center"
+                >
+                  <FontAwesomeIcon icon={faTrash} />
+                </button>
+              ) : (
+                <button
+                  onClick={handleApplyCoupon}
+                  className={`bg-[#51bb1a] text-white px-4 border border-[#51bb1a] rounded-r-md hover:bg-[#48a718] transition ${
+                    validatingCoupon ? 'opacity-70 cursor-not-allowed' : ''
+                  }`}
+                  disabled={validatingCoupon}
+                >
+                  {validatingCoupon ? 'Đang áp dụng...' : 'Áp dụng'}
+                </button>
+              )}
+            </div>
+            
+            {/* Hiển thị thông báo lỗi hoặc thành công */}
+            {couponError && (
+              <p className="text-red-500 mt-1 text-sm">{couponError}</p>
+            )}
+            {couponSuccess && (
+              <p className="text-green-600 mt-1 text-sm">{couponSuccess}</p>
+            )}
+          </div>
+
           <div className="space-y-2 border-t pt-3 flex flex-col gap-2">
             <div className="flex justify-between text-gray-700">
               <span>Tạm tính</span>
-              <span>{formatCurrency(orderDetails.totalAmount)}</span>
+              <span>{formatCurrency(calculateSubtotal())}đ</span>
             </div>
             <div className="flex justify-between text-gray-700">
               <span>Phí vận chuyển</span>
-              <span>{formatCurrency(calculateShippingFee())}</span>
+              <span>{formatCurrency(calculateShippingFee())}đ</span>
             </div>
+            
+            {couponDiscount > 0 && (
+              <div className="flex justify-between text-green-600">
+                <span>Giảm giá</span>
+                <span>-{formatCurrency(couponDiscount)}đ</span>
+              </div>
+            )}
+            
             <div className="flex justify-between font-bold text-xl text-[#51bb1a] border-t pt-3">
               <span>Tổng cộng</span>
-              <span>{formatCurrency(calculateFinalTotal())}</span>
+              <span>{formatCurrency(calculateFinalTotal())}đ</span>
             </div>
-          </div>
-
-          <div className="flex mt-2">
-            <input
-              type="text"
-              placeholder="Nhập mã giảm giá"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value)}
-              className="flex-grow p-2 border border-[#51bb1a] border-r-0 rounded-l-md outline-none"
-            />
-            <button
-              onClick={handleApplyCoupon}
-              className="bg-[#51bb1a] text-white px-4 border border-[#51bb1a] rounded-r-md hover:bg-[#51bb1a] transition"
-            >
-              Áp dụng
-            </button>
           </div>
         </div>
       </div>

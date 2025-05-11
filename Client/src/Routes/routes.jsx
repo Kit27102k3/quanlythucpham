@@ -35,7 +35,7 @@ import Messages from "../Admin/Pages/Messages";
 import ChatPage from "../User/Pages/Chat/ChatPage";
 import Reviews from "../Admin/Pages/Reviews";
 import LoginSuccess from "../User/Pages/Account/LoginSuccess";
-
+import CouponList from "../Admin/Pages/CouponList";
 const publicRoutes = [
   {
     path: "/",
@@ -210,6 +210,10 @@ const privateRoutes = [
   {
     path: "/admin/contacts",
     page: ContactList,
+  },
+  {
+    path: "/admin/coupons",
+    page: CouponList,
   },
 ];
 

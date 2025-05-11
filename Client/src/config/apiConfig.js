@@ -25,5 +25,8 @@ export const API_URLS = {
   CHATBOT: `${API_BASE_URL}/api/chatbot`,
   SCRAPER: `${API_BASE_URL}/api/scrape`,
   MESSAGES: `${API_BASE_URL}/api/messages`,
-  REVIEWS: `${API_BASE_URL}/api/reviews`
+  REVIEWS: `${API_BASE_URL}/api/reviews`,
+  TIPS: `${API_BASE_URL}/api`,
+  CONTACT: `${API_BASE_URL}/api/contact`,
+  COUPONS: `${API_BASE_URL}/api/coupons`
 }; 

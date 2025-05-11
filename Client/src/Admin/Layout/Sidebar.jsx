@@ -15,7 +15,8 @@ import {
   InfoCircledIcon,
   EnvelopeClosedIcon,
   ChatBubbleIcon,
-  StarFilledIcon
+  StarFilledIcon,
+  IdCardIcon
 } from "@radix-ui/react-icons";
 import messagesApi from "../../api/messagesApi";
 
@@ -120,6 +121,12 @@ const AdminSidebar = () => {
       text: "Đơn hàng",
       path: "/admin/orders",
       key: "orders",
+    },
+    {
+      icon: <IdCardIcon className="size-5 md:size-6" />,
+      text: "Mã giảm giá",
+      path: "/admin/coupons",
+      key: "coupons",
     },
     {
       icon: <StarFilledIcon className="size-5 md:size-6" />,

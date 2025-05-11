@@ -17,6 +17,7 @@ import Cart from "../User/Pages/Cart";
 import Checkout from "../User/Pages/Checkout";
 import OrderHistory from "../User/Pages/OrderHistory";
 import Profile from "../User/Pages/Profile";
+import CouponList from "../Admin/Pages/CouponList";
 
 const AppRoutes = () => {
   return (
@@ -91,6 +92,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <AdminLayout>
               <CategoryList />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/coupons"
+        element={
+          <ProtectedRoute>
+            <AdminLayout>
+              <CouponList />
             </AdminLayout>
           </ProtectedRoute>
         }
