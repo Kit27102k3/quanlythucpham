@@ -2,6 +2,7 @@ import * as React from "react";
 import * as ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import "./index.css";
+import "react-facebook-login-lite/dist/public/styles.css";
 import { BrowserRouter as Router } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { PrimeReactProvider } from "primereact/api";

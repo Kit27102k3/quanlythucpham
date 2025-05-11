@@ -183,6 +183,12 @@ function UpdateAddress({ onUpdate }) {
             </div>
             
             <div className="p-5 max-h-[calc(100vh-150px)] overflow-y-auto">
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-md">
+                <p className="text-blue-700 text-sm">
+                  Vui lòng nhập đúng thông tin của bạn để được giao hàng và tư vấn một cách tốt nhất
+                </p>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
                   <p className={labelStyles}>Họ tên</p>

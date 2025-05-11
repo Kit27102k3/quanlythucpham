@@ -155,7 +155,7 @@ function Account() {
         {!isEditing && (
           <button
             onClick={() => setIsEditing(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-200"
+            className="px-4 py-2 bg-[#51bb1a] text-white rounded-md hover:opacity-80 cursor-pointer transition duration-200"
           >
             Chỉnh sửa
           </button>
@@ -206,7 +206,7 @@ function Account() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col items-center mb-6">
+          <div className="flex flex-col items-center gap-4 mb-6">
             <div 
               className="w-32 h-32 rounded-full overflow-hidden mb-2 border-2 border-green-500 cursor-pointer"
               onClick={handleAvatarClick}
@@ -230,7 +230,13 @@ function Account() {
             <p className="text-sm text-gray-500 mt-1">Nhấp vào ảnh để thay đổi</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4 rounded-md">
+            <p className="text-blue-700 text-sm">
+              Vui lòng nhập đúng thông tin của bạn để được giao hàng và tư vấn một cách tốt nhất
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Họ</label>
               <input
@@ -253,7 +259,7 @@ function Account() {
             </div>
           </div>
           
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <div className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500">
               {formData.email ? (
@@ -269,7 +275,7 @@ function Account() {
             </p>
           </div>
           
-          <div>
+          <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
             <input
               type="text"
@@ -291,17 +297,17 @@ function Account() {
             />
           </div>
           
-          <div className="flex justify-end space-x-4 pt-4">
+          <div className="flex justify-end space-x-4 pt-4 gap-4">
             <button
               type="button"
               onClick={() => setIsEditing(false)}
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition duration-200"
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 cursor-pointer transition duration-200"
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-200"
+              className="px-4 py-2 bg-[#51bb1a] text-white rounded-md hover:opacity-80 cursor-pointer transition duration-200"
             >
               Lưu thay đổi
             </button>

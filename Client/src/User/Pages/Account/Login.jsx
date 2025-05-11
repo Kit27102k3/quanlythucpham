@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { InputText } from "primereact/inputtext";
 import { Dialog } from "primereact/dialog";
-import { FaFacebook, FaLock, FaUser } from "react-icons/fa";
+import { FaFacebook, FaLock, FaUser, FaGoogle } from "react-icons/fa";
 import ForgotPassword from "./ForgotPassword";
 import authApi from "../../../api/authApi";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
-import { FacebookLogin } from 'react-facebook-login-lite';
 import AuthService from "../../../utils/AuthService";
 
 const Login = () => {
@@ -426,46 +425,39 @@ const Login = () => {
   };
 
   // Xử lý đăng nhập với Facebook
-  const handleFacebookLogin = async (response) => {
-    if (!response || !response.accessToken) {
-      toast.error("Đăng nhập Facebook thất bại. Vui lòng thử lại");
-      return;
-    }
-
+  const handleFacebookLogin = () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      
-      const result = await AuthService.loginWithFacebook(response);
-      
-      if (result && (result.token || result.accessToken)) {
-        // Kiểm tra nếu là tài khoản admin
-        const userRole = localStorage.getItem("userRole");
-        
-        toast.success("Đăng nhập Facebook thành công!");
-        
-        // Chuyển hướng dựa trên vai trò
-        setTimeout(() => {
-          if (userRole === "admin") {
-            navigate("/admin/dashboard");
-          } else {
-            navigate("/");
-          }
-        }, 1000);
-      } else {
-        throw new Error("Không nhận được token đăng nhập");
-      }
+      // Use a direct URL approach
+      const appId = "991623106465060";
+      const redirectUri = encodeURIComponent(`${window.location.origin}/dang-nhap/success`);
+      const fbLoginUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=public_profile&response_type=token`;
+      window.location.href = fbLoginUrl;
     } catch (error) {
-      console.error("Lỗi đăng nhập Facebook:", error);
-      toast.error(
-        error.message || "Đăng nhập Facebook thất bại. Vui lòng thử lại"
-      );
-    } finally {
+      console.error("Facebook login error:", error);
+      toast.error("Đăng nhập Facebook thất bại. Vui lòng thử lại");
       setIsLoading(false);
     }
   };
 
   // Xử lý đăng nhập với Google
-  const handleGoogleLogin = async (response) => {
+  const initiateGoogleLogin = () => {
+    try {
+      // Tìm và kích hoạt nút đăng nhập Google thực tế
+      const googleBtn = document.querySelector('.google-login-button');
+      if (googleBtn) {
+        googleBtn.click();
+      } else {
+        toast.error("Không thể kết nối với Google. Vui lòng thử lại.");
+      }
+    } catch (error) {
+      console.error("Google login error:", error);
+      toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
+    }
+  };
+
+  // Hàm xử lý phản hồi từ Google
+  const processGoogleLogin = async (response) => {
     if (!response || !response.credential) {
       toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
       return;
@@ -514,51 +506,37 @@ const Login = () => {
             <p className="text-gray-600">Chào mừng quay trở lại!</p>
           </div>
 
-          <div className="flex space-x-4 mb-6 gap-4">
-            {/* Facebook Login Button - Direct approach */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            {/* Facebook Login Button */}
             <button
               type="button"
-              onClick={() => {
-                setIsLoading(true);
-                try {
-                  // Use a direct URL approach to avoid SDK issues
-                  const appId = "991623106465060";
-                  const redirectUri = encodeURIComponent(`${window.location.origin}/dang-nhap/success`);
-                  const fbLoginUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=public_profile&response_type=token`;
-                  window.location.href = fbLoginUrl;
-                } catch (error) {
-                  console.error("Facebook login error:", error);
-                  toast.error("Đăng nhập Facebook thất bại. Vui lòng thử lại");
-                  setIsLoading(false);
-                }
-              }}
+              onClick={handleFacebookLogin}
               disabled={isLoading}
-              className="flex-1 flex items-center justify-center bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
+              className="flex items-center justify-center bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition font-medium"
             >
-              <FaFacebook className="mr-2" /> Facebook
+              <FaFacebook className="mr-2 text-xl" /> Facebook
             </button>
             
             {/* Google Login Button */}
+            <button
+              type="button"
+              onClick={initiateGoogleLogin}
+              disabled={isLoading}
+              className="flex items-center justify-center bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition font-medium"
+            >
+              <FaGoogle className="mr-2 text-xl" /> Google
+            </button>
+          </div>
+
+          {/* Ẩn Google Login component thực tế */}
+          <div className="hidden">
             <GoogleOAuthProvider clientId="1031185116653-6sd3ambs6rmokdino3fsl9snrj7td8ae.apps.googleusercontent.com">
               <GoogleLogin
-                onSuccess={handleGoogleLogin}
+                onSuccess={processGoogleLogin}
                 onError={() => {
                   toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
                 }}
-                useOneTap
-                theme="filled_blue"
-                shape="pill"
-                text="signin_with"
-                locale="vi"
-                width="200"
-                size="large"
-                logo_alignment="center"
-                container_style={{
-                  display: 'flex',
-                  flex: 1,
-                  justifyContent: 'center'
-                }}
-                ux_mode="popup"
+                className="google-login-button"
               />
             </GoogleOAuthProvider>
           </div>
