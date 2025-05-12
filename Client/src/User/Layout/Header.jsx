@@ -114,11 +114,7 @@ const Header = () => {
     try {
       if (userId) {
         const res = await cartApi.getCart(userId);
-        const totalItems = res.cart.items.reduce(
-          (sum, item) => sum + item.quantity,
-          0
-        );
-        setCartItemCount(totalItems);
+        setCartItemCount(res.cart.items.length);
       } 
     } catch (error) {
       // console.log("Lỗi khi lấy giỏ hàng:", error);

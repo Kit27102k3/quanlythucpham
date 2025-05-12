@@ -144,12 +144,8 @@ const Cart = () => {
 
     const calculateTotalQuantity = () => {
       if (!cart || !cart.items) return 0;
-      return cart.items.reduce((total, item) => {
-        if (selectedItems.includes(item.productId._id)) {
-          return total + item.quantity;
-        }
-        return total;
-      }, 0);
+      // Count the number of unique products (not the sum of quantities)
+      return selectedItems.length;
     };
 
     const handleCheckout = async () => {

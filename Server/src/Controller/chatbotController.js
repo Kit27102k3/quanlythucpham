@@ -11,6 +11,7 @@ import path from 'path';
 import fs from 'fs';
 // Import xử lý câu hỏi về sản phẩm
 import { handleProductPageQuestion } from './chatbotProductHandler.js';
+import { handleFAQQuestion } from './chatbotFAQHandler.js';
 
 // Load environment variables
 dotenv.config();
@@ -185,7 +186,7 @@ export const handleMessage = async (req, res) => {
           type: 'text',
           message: "Để biết giá cụ thể của sản phẩm, vui lòng cho tôi biết bạn quan tâm đến sản phẩm nào?"
         };
-              break;
+        break;
         
       case 'product':
         // Tìm kiếm sản phẩm
@@ -224,6 +225,29 @@ export const handleMessage = async (req, res) => {
             type: 'text',
             message: "Đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau."
           };
+        }
+        break;
+      
+      // Xử lý các câu hỏi thường gặp (FAQ)
+      case 'faq_how_to_buy':
+      case 'faq_how_to_order':
+      case 'faq_payment_methods':
+      case 'faq_store_location':
+      case 'faq_product_quality':
+      case 'faq_shipping_time':
+      case 'faq_return_policy':
+      case 'faq_promotions':
+      case 'faq_trending_products':
+      case 'faq_shipping_fee':
+      case 'faq_customer_support':
+        try {
+          // Gọi hàm xử lý FAQ
+          const faqResponse = handleFAQQuestion(intent);
+          if (faqResponse) {
+            return res.status(200).json(faqResponse);
+          }
+        } catch (error) {
+          console.error("Lỗi khi xử lý câu hỏi FAQ:", error);
         }
         break;
         
@@ -613,6 +637,12 @@ const detectIntent = (message) => {
   // Đơn giản hóa, bạn có thể thêm logic phức tạp hơn sau
   const lowerMessage = message.toLowerCase();
   
+  // Kiểm tra xem có phải là câu hỏi FAQ không
+  const faqIntent = detectFAQIntent(lowerMessage);
+  if (faqIntent) {
+    return faqIntent;
+  }
+  
   // Mẫu xử lý intent đơn giản
   if (lowerMessage.includes('chào') || lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
     return 'greeting';
@@ -628,6 +658,119 @@ const detectIntent = (message) => {
   
   // Trả về intent mặc định nếu không nhận diện được
   return 'unknown';
+};
+
+/**
+ * Phát hiện intent liên quan đến FAQ
+ * @param {string} message - Tin nhắn từ người dùng đã lowercase
+ * @returns {string|null} - Intent FAQ hoặc null nếu không phát hiện
+ */
+const detectFAQIntent = (message) => {
+  // Mua hàng
+  if (message.includes('làm sao để mua') || 
+      message.includes('mua hàng như thế nào') || 
+      message.includes('cách mua') || 
+      message.includes('mua hàng') ||
+      message.includes('mua như thế nào') ||
+      message.includes('cách thức mua')) {
+    return 'faq_how_to_buy';
+  }
+  
+  // Đặt hàng
+  if (message.includes('đặt hàng') || 
+      message.includes('cách đặt') || 
+      message.includes('đặt mua') ||
+      message.includes('đặt như thế nào')) {
+    return 'faq_how_to_order';
+  }
+  
+  // Thanh toán
+  if (message.includes('thanh toán') || 
+      message.includes('phương thức thanh toán') || 
+      message.includes('cách thanh toán') ||
+      message.includes('hình thức thanh toán') ||
+      message.includes('trả tiền') ||
+      message.includes('bao nhiêu hình thức thanh toán')) {
+    return 'faq_payment_methods';
+  }
+  
+  // Địa chỉ cửa hàng
+  if (message.includes('địa chỉ') || 
+      message.includes('cửa hàng ở đâu') || 
+      message.includes('shop ở đâu') ||
+      message.includes('vị trí') ||
+      message.includes('địa điểm')) {
+    return 'faq_store_location';
+  }
+  
+  // Chất lượng sản phẩm
+  if (message.includes('chất lượng') || 
+      message.includes('sản phẩm có tốt') || 
+      message.includes('có đảm bảo') ||
+      message.includes('hàng có tốt') ||
+      message.includes('sản phẩm tốt không')) {
+    return 'faq_product_quality';
+  }
+  
+  // Thời gian giao hàng
+  if (message.includes('giao hàng') || 
+      message.includes('ship') || 
+      message.includes('vận chuyển') ||
+      message.includes('thời gian giao') ||
+      message.includes('giao trong bao lâu') ||
+      message.includes('mất bao lâu để nhận')) {
+    return 'faq_shipping_time';
+  }
+  
+  // Chính sách đổi trả
+  if (message.includes('đổi trả') || 
+      message.includes('hoàn tiền') || 
+      message.includes('trả lại') ||
+      message.includes('đổi hàng') ||
+      message.includes('bị lỗi') ||
+      message.includes('không hài lòng')) {
+    return 'faq_return_policy';
+  }
+  
+  // Khuyến mãi hiện có
+  if (message.includes('khuyến mãi') || 
+      message.includes('giảm giá') || 
+      message.includes('ưu đãi') ||
+      message.includes('có mã giảm') ||
+      message.includes('đang giảm giá')) {
+    return 'faq_promotions';
+  }
+  
+  // Sản phẩm mới/bán chạy
+  if (message.includes('sản phẩm mới') || 
+      message.includes('mới ra mắt') || 
+      message.includes('bán chạy nhất') ||
+      message.includes('phổ biến nhất') ||
+      message.includes('hot nhất') ||
+      message.includes('xu hướng')) {
+    return 'faq_trending_products';
+  }
+  
+  // Phí vận chuyển
+  if (message.includes('phí vận chuyển') || 
+      message.includes('phí ship') || 
+      message.includes('phí giao hàng') ||
+      message.includes('ship bao nhiêu tiền') ||
+      message.includes('tốn bao nhiêu tiền giao hàng')) {
+    return 'faq_shipping_fee';
+  }
+  
+  // Hỗ trợ khách hàng
+  if (message.includes('hỗ trợ') || 
+      message.includes('liên hệ') || 
+      message.includes('tư vấn') ||
+      message.includes('hotline') ||
+      message.includes('số điện thoại') ||
+      message.includes('email')) {
+    return 'faq_customer_support';
+  }
+  
+  return null;
 };
 
 /**

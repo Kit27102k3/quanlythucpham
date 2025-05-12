@@ -68,6 +68,45 @@ export const detectProductPageIntent = (message) => {
     return 'relatedProducts';
   }
   
+  // Xuất xứ sản phẩm
+  if (lowerMessage.includes('xuất xứ') || 
+      lowerMessage.includes('nguồn gốc') || 
+      lowerMessage.includes('sản xuất ở đâu') ||
+      lowerMessage.includes('nước nào') ||
+      lowerMessage.includes('hãng nào')) {
+    return 'productOrigin';
+  }
+  
+  // Thành phần sản phẩm
+  if (lowerMessage.includes('thành phần') || 
+      lowerMessage.includes('nguyên liệu') || 
+      lowerMessage.includes('có chứa') ||
+      lowerMessage.includes('làm từ') ||
+      lowerMessage.includes('được làm từ') ||
+      lowerMessage.includes('chất liệu')) {
+    return 'productIngredients';
+  }
+  
+  // Hạn sử dụng sản phẩm
+  if (lowerMessage.includes('hạn sử dụng') || 
+      lowerMessage.includes('date') || 
+      lowerMessage.includes('hết hạn') ||
+      lowerMessage.includes('dùng được bao lâu') ||
+      lowerMessage.includes('bảo quản')) {
+    return 'productExpiry';
+  }
+  
+  // Đánh giá sản phẩm
+  if (lowerMessage.includes('đánh giá') || 
+      lowerMessage.includes('review') || 
+      lowerMessage.includes('feedback') ||
+      lowerMessage.includes('nhận xét') ||
+      lowerMessage.includes('tốt không') ||
+      lowerMessage.includes('có ngon không') ||
+      lowerMessage.includes('có tốt không')) {
+    return 'productReviews';
+  }
+  
   return null;
 };
 
@@ -187,6 +226,118 @@ export const handleRelatedProductsQuestion = async (product) => {
 };
 
 /**
+ * Xử lý câu hỏi về xuất xứ sản phẩm
+ * @param {object} product - Thông tin sản phẩm
+ * @returns {object} - Phản hồi
+ */
+export const handleProductOriginQuestion = (product) => {
+  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  
+  let originInfo = '';
+  
+  if (product.productOrigin || product.origin) {
+    originInfo = `<strong>Xuất xứ ${product.productName}:</strong><br>${product.productOrigin || product.origin}`;
+    
+    if (product.productBrand) {
+      originInfo += `<br>Thương hiệu: ${product.productBrand}`;
+    }
+    
+    if (product.productManufacturer) {
+      originInfo += `<br>Nhà sản xuất: ${product.productManufacturer}`;
+    }
+  } else {
+    originInfo = `<strong>Xuất xứ ${product.productName}:</strong><br>Thông tin về xuất xứ sản phẩm được ghi rõ trên bao bì.`;
+  }
+  
+  return {
+    success: true,
+    message: originInfo,
+    intent: 'productOrigin'
+  };
+};
+
+/**
+ * Xử lý câu hỏi về thành phần sản phẩm
+ * @param {object} product - Thông tin sản phẩm
+ * @returns {object} - Phản hồi
+ */
+export const handleProductIngredientsQuestion = (product) => {
+  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  
+  let ingredientsInfo = '';
+  
+  if (product.productIngredients || product.ingredients) {
+    ingredientsInfo = `<strong>Thành phần của ${product.productName}:</strong><br>${product.productIngredients || product.ingredients}`;
+  } else {
+    ingredientsInfo = `<strong>Thành phần của ${product.productName}:</strong><br>Thông tin chi tiết về thành phần sản phẩm được ghi rõ trên bao bì.`;
+  }
+  
+  return {
+    success: true,
+    message: ingredientsInfo,
+    intent: 'productIngredients'
+  };
+};
+
+/**
+ * Xử lý câu hỏi về hạn sử dụng sản phẩm
+ * @param {object} product - Thông tin sản phẩm
+ * @returns {object} - Phản hồi
+ */
+export const handleProductExpiryQuestion = (product) => {
+  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  
+  let expiryInfo = '';
+  
+  if (product.expiryDate || product.productExpiry) {
+    expiryInfo = `<strong>Hạn sử dụng ${product.productName}:</strong><br>${product.expiryDate || product.productExpiry}`;
+  } else {
+    expiryInfo = `<strong>Hạn sử dụng ${product.productName}:</strong><br>Thông tin về hạn sử dụng được in trên bao bì sản phẩm. 
+    Vui lòng kiểm tra khi nhận hàng.`;
+  }
+  
+  if (product.storageInfo || product.productStorage) {
+    expiryInfo += `<br><br><strong>Hướng dẫn bảo quản:</strong><br>${product.storageInfo || product.productStorage}`;
+  }
+  
+  return {
+    success: true,
+    message: expiryInfo,
+    intent: 'productExpiry'
+  };
+};
+
+/**
+ * Xử lý câu hỏi về đánh giá sản phẩm
+ * @param {object} product - Thông tin sản phẩm
+ * @returns {object} - Phản hồi
+ */
+export const handleProductReviewsQuestion = (product) => {
+  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  
+  let reviewInfo = '';
+  
+  if (product.averageRating) {
+    reviewInfo = `<strong>Đánh giá ${product.productName}:</strong><br>
+    Điểm đánh giá trung bình: ${product.averageRating}/5 sao`;
+    
+    if (product.numOfReviews) {
+      reviewInfo += ` (${product.numOfReviews} lượt đánh giá)`;
+    }
+  } else {
+    reviewInfo = `<strong>Đánh giá ${product.productName}:</strong><br>
+    Sản phẩm này chưa có đánh giá. ${product.productName} là sản phẩm chất lượng cao, 
+    được nhiều khách hàng tin dùng trong thời gian qua.`;
+  }
+  
+  return {
+    success: true,
+    message: reviewInfo,
+    intent: 'productReviews'
+  };
+};
+
+/**
  * Xử lý câu hỏi về sản phẩm cụ thể
  * @param {string} message - Câu hỏi của người dùng
  * @param {object} product - Thông tin sản phẩm
@@ -202,6 +353,33 @@ export const handleProductPageQuestion = async (message, product) => {
     }
     
     console.log(`Đang xử lý câu hỏi: "${message}" về sản phẩm ${product.productName}`);
+    
+    // Phát hiện intent từ message
+    const productIntent = detectProductPageIntent(message);
+    console.log("Sản phẩm intent được phát hiện:", productIntent);
+    
+    // Xử lý theo intent
+    if (productIntent) {
+      switch (productIntent) {
+        case 'productUsage':
+          return handleProductUsageQuestion(product);
+        case 'productIntro':
+          return handleProductIntroQuestion(product);
+        case 'productPrice':
+          return handleProductPriceQuestion(product);
+        case 'relatedProducts':
+          return await handleRelatedProductsQuestion(product);
+        case 'productOrigin':
+          return handleProductOriginQuestion(product);
+        case 'productIngredients':
+          return handleProductIngredientsQuestion(product);
+        case 'productExpiry':
+          return handleProductExpiryQuestion(product);
+        case 'productReviews':
+          return handleProductReviewsQuestion(product);
+      }
+    }
+    
     const lowerMessage = message.toLowerCase();
     
     // Xử lý các loại câu hỏi khác nhau
