@@ -9,6 +9,8 @@ import bodyParser from "body-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { deleteExpiredVouchers } from "./Controller/savedVoucherController.js";
+import { handleSepayCallback, handleBankWebhook } from "./Controller/paymentController.js";
 
 // ES modules compatibility
 const __filename = fileURLToPath(import.meta.url);
@@ -31,7 +33,6 @@ import messageRoutes from "./routes/messageRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
 import savedVoucherRoutes from "./routes/savedVoucherRoutes.js";
-import { handleSepayCallback, handleBankWebhook } from "./Controller/paymentController.js";
 
 dotenv.config({ path: ".env" });
 const app = express();
@@ -206,6 +207,43 @@ app.post("/webhook", (req, res) => {
     message: "Webhook received successfully"
   });
 });
+
+// Thiết lập scheduled task để xóa voucher hết hạn tự động
+const scheduleExpiredVoucherCleanup = () => {
+  // Xóa voucher hết hạn khi khởi động server
+  deleteExpiredVouchers().then(result => {
+    console.log("Initial expired voucher cleanup completed");
+  }).catch(err => {
+    console.error("Error in initial expired voucher cleanup:", err);
+  });
+  
+  // Lên lịch xóa voucher hết hạn vào 00:00 mỗi ngày
+  setInterval(() => {
+    const now = new Date();
+    const midnight = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+      0, 0, 0
+    );
+    const timeUntilMidnight = midnight.getTime() - now.getTime();
+    
+    setTimeout(() => {
+      // Thực hiện xóa voucher hết hạn
+      deleteExpiredVouchers().then(result => {
+        console.log("Scheduled expired voucher cleanup completed");
+      }).catch(err => {
+        console.error("Error in scheduled expired voucher cleanup:", err);
+      });
+      
+      // Thiết lập lại lịch cho ngày tiếp theo
+      scheduleExpiredVoucherCleanup();
+    }, timeUntilMidnight);
+  }, 24 * 60 * 60 * 1000); // Kiểm tra mỗi 24 giờ
+};
+
+// Bắt đầu lịch xóa voucher hết hạn
+scheduleExpiredVoucherCleanup();
 
 // Khởi động server với cơ chế xử lý lỗi cổng
 const startServer = (port) => {

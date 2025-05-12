@@ -96,15 +96,17 @@ export default function Payment() {
     try {
       const response = await savedVoucherApi.getUserSavedVouchers(token);
       if (response.success && response.data) {
-        // Lọc các voucher còn hiệu lực và chưa hết hạn
+        // Lọc các voucher còn hiệu lực và chưa hết hạn và chưa sử dụng (isPaid = false)
+        // (API đã lọc isPaid = false, nhưng chúng ta vẫn kiểm tra lại)
         const validVouchers = response.data.filter(voucher => {
           const coupon = voucher.couponId;
           const now = new Date();
           const isExpired = coupon.expiresAt && new Date(coupon.expiresAt) < now;
           const isActive = coupon.isActive;
           const isOutOfStock = coupon.usageLimit && coupon.used >= coupon.usageLimit;
+          const isUsed = voucher.isPaid === true;
           
-          return isActive && !isExpired && !isOutOfStock;
+          return isActive && !isExpired && !isOutOfStock && !isUsed;
         });
         
         setUserSavedVouchers(validVouchers);
@@ -130,6 +132,23 @@ export default function Payment() {
     
     if (!isVoucherValid(coupon)) {
       toast.error("Voucher này đã hết hạn hoặc hết lượt sử dụng");
+      return;
+    }
+    
+    // Kiểm tra nếu người dùng đã sử dụng voucher này trước đó
+    const currentUserId = users?._id;
+    const currentCouponId = coupon._id;
+
+    // Check local storage for used vouchers
+    const usedVouchersStr = localStorage.getItem('usedVouchers');
+    const usedVouchers = usedVouchersStr ? JSON.parse(usedVouchersStr) : [];
+    
+    const hasUsedVoucher = usedVouchers.some(
+      used => used.userId === currentUserId && used.couponId === currentCouponId
+    );
+    
+    if (hasUsedVoucher) {
+      toast.error("Bạn đã sử dụng voucher này rồi, vui lòng chọn voucher khác");
       return;
     }
     
@@ -207,8 +226,30 @@ export default function Payment() {
       const result = await couponApi.validateCoupon(couponCode, calculateSubtotal());
       
       if (result.success) {
+        const coupon = result.data.coupon;
+        
+        // Kiểm tra xem người dùng đã sử dụng voucher này trước đó chưa
+        const currentUserId = users?._id;
+        const currentCouponId = coupon._id;
+        
+        // Check local storage for used vouchers
+        const usedVouchersStr = localStorage.getItem('usedVouchers');
+        const usedVouchers = usedVouchersStr ? JSON.parse(usedVouchersStr) : [];
+        
+        const hasUsedVoucher = usedVouchers.some(
+          used => used.userId === currentUserId && used.couponId === currentCouponId
+        );
+        
+        if (hasUsedVoucher) {
+          setCouponError("Bạn đã sử dụng voucher này rồi, vui lòng chọn voucher khác");
+          setCouponDiscount(0);
+          setAppliedCoupon(null);
+          toast.error("Bạn đã sử dụng voucher này rồi, vui lòng chọn voucher khác");
+          return;
+        }
+        
         // Lưu thông tin mã giảm giá đã áp dụng
-        setAppliedCoupon(result.data.coupon);
+        setAppliedCoupon(coupon);
         setCouponDiscount(result.data.discountAmount);
         setCouponSuccess(result.data.message);
         
@@ -247,23 +288,28 @@ export default function Payment() {
     setSelectedDelivery(method);
   };
 
-  // Xử lý xóa voucher đã lưu sau khi đặt hàng thành công với COD
-  const deleteSavedVoucherAfterOrder = async () => {
-    if (appliedSavedVoucher && selectedPayment === "cod") {
+  // Cập nhật trạng thái isPaid của voucher đã lưu sau khi đặt hàng thành công
+  const updateSavedVoucherStatusAfterOrder = async () => {
+    if (appliedSavedVoucher) {
       try {
         const token = localStorage.getItem('accessToken');
         if (!token) return;
         
         // Bọc trong try-catch và không await để tránh block luồng chính nếu xảy ra lỗi
         try {
-          await savedVoucherApi.deleteSavedVoucher(appliedSavedVoucher.couponId._id, token);
-          console.log("Đã xóa voucher đã lưu sau khi đặt hàng COD");
+          // Cập nhật trạng thái isPaid thành true thay vì xóa
+          await savedVoucherApi.updateSavedVoucherStatus(
+            appliedSavedVoucher._id, 
+            true,
+            token
+          );
+          console.log("Đã cập nhật trạng thái voucher đã lưu sau khi đặt hàng");
         } catch (voucherError) {
-          console.error("Lỗi khi xóa voucher đã lưu:", voucherError);
+          console.error("Lỗi khi cập nhật trạng thái voucher đã lưu:", voucherError);
           // Không throw error để không ảnh hưởng đến luồng đặt hàng
         }
       } catch (error) {
-        console.error("Lỗi khi xóa voucher đã lưu:", error);
+        console.error("Lỗi khi cập nhật trạng thái voucher đã lưu:", error);
       }
     }
   };
@@ -374,10 +420,34 @@ export default function Payment() {
             if (appliedCoupon) {
               try {
                 await couponApi.updateCouponUsage(appliedCoupon.code);
+                
+                // Lưu thông tin voucher đã sử dụng vào localStorage
+                if (users && users._id && appliedCoupon._id) {
+                  const usedVouchersStr = localStorage.getItem('usedVouchers');
+                  const usedVouchers = usedVouchersStr ? JSON.parse(usedVouchersStr) : [];
+                  
+                  // Thêm voucher mới vào danh sách đã sử dụng
+                  usedVouchers.push({
+                    userId: users._id,
+                    couponId: appliedCoupon._id,
+                    usedAt: new Date().toISOString()
+                  });
+                  
+                  // Lưu lại vào localStorage
+                  localStorage.setItem('usedVouchers', JSON.stringify(usedVouchers));
+                }
               } catch (couponError) {
                 console.error("Error updating coupon usage:", couponError);
+                // Không throw error để không ảnh hưởng đến luồng đặt hàng
               }
             }
+
+            // Cập nhật trạng thái voucher đã lưu nếu có
+            setTimeout(() => {
+              updateSavedVoucherStatusAfterOrder().catch(err => {
+                console.error("Lỗi khi cập nhật trạng thái voucher đã lưu:", err);
+              });
+            }, 100);
 
             // Kiểm tra nếu có QR code ngân hàng, ưu tiên chuyển hướng tới trang QR
             if (sepayResponse.qrCode || sepayResponse.method === "bank_transfer") {
@@ -456,16 +526,32 @@ export default function Payment() {
           if (appliedCoupon) {
             try {
               await couponApi.updateCouponUsage(appliedCoupon.code);
+              
+              // Lưu thông tin voucher đã sử dụng vào localStorage
+              if (users && users._id && appliedCoupon._id) {
+                const usedVouchersStr = localStorage.getItem('usedVouchers');
+                const usedVouchers = usedVouchersStr ? JSON.parse(usedVouchersStr) : [];
+                
+                // Thêm voucher mới vào danh sách đã sử dụng
+                usedVouchers.push({
+                  userId: users._id,
+                  couponId: appliedCoupon._id,
+                  usedAt: new Date().toISOString()
+                });
+                
+                // Lưu lại vào localStorage
+                localStorage.setItem('usedVouchers', JSON.stringify(usedVouchers));
+              }
             } catch (couponError) {
               console.error("Error updating coupon usage:", couponError);
               // Không throw error để không ảnh hưởng đến luồng đặt hàng
             }
           }
           
-          // Xóa voucher đã lưu ở bước riêng biệt, không ảnh hưởng đến luồng chính
+          // Cập nhật trạng thái voucher đã lưu nếu có
           setTimeout(() => {
-            deleteSavedVoucherAfterOrder().catch(err => {
-              console.error("Lỗi khi xóa voucher đã lưu:", err);
+            updateSavedVoucherStatusAfterOrder().catch(err => {
+              console.error("Lỗi khi cập nhật trạng thái voucher đã lưu:", err);
             });
           }, 100);
 

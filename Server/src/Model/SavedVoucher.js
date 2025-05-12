@@ -18,6 +18,10 @@ const savedVoucherSchema = new mongoose.Schema({
   savedAt: {
     type: Date,
     default: Date.now
+  },
+  isPaid: {
+    type: Boolean,
+    default: false
   }
 });
 

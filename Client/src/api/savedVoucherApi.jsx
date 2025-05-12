@@ -79,6 +79,34 @@ const savedVoucherApi = {
         message: error.response?.data?.message || "Không thể xóa voucher đã lưu"
       };
     }
+  },
+  
+  // Cập nhật trạng thái isPaid của voucher đã lưu
+  updateSavedVoucherStatus: async (savedVoucherId, isPaid, accessToken) => {
+    try {
+      const response = await axios.patch(
+        `${API_URLS.SAVED_VOUCHERS}/status/${savedVoucherId}`,
+        { isPaid },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+
+      return {
+        success: true,
+        data: response.data.data,
+        message: response.data.message
+      };
+    } catch (error) {
+      console.error("Error updating saved voucher status:", error);
+      return {
+        success: false,
+        message: error.response?.data?.message || "Không thể cập nhật trạng thái voucher đã lưu"
+      };
+    }
   }
 };
 

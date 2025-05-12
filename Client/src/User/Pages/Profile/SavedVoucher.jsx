@@ -1,21 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
-import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
-import { ProgressBar } from 'primereact/progressbar';
-import { Dialog } from 'primereact/dialog';
-import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
-import { useNavigate } from 'react-router-dom';
-import { Toaster, toast } from 'sonner';
-import savedVoucherApi from '../../../api/savedVoucherApi';
+import { useState, useEffect } from "react";
+import { Button } from "primereact/button";
+import { ProgressBar } from "primereact/progressbar";
+import { Dialog } from "primereact/dialog";
+import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { useNavigate } from "react-router-dom";
+import { Toaster, toast } from "sonner";
+import savedVoucherApi from "../../../api/savedVoucherApi";
 
 const SavedVoucher = () => {
   const [savedVouchers, setSavedVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
-  const toastRef = useRef(null);
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     fetchSavedVouchers();
   }, []);
@@ -23,7 +21,7 @@ const SavedVoucher = () => {
   const fetchSavedVouchers = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem("accessToken");
       if (!token) {
         setSavedVouchers([]);
         return;
@@ -36,8 +34,8 @@ const SavedVoucher = () => {
         setSavedVouchers([]);
       }
     } catch (error) {
-      console.error('Error fetching saved vouchers:', error);
-      toast.error('Không thể tải thông tin voucher đã lưu');
+      console.error("Error fetching saved vouchers:", error);
+      toast.error("Không thể tải thông tin voucher đã lưu");
       setSavedVouchers([]);
     } finally {
       setLoading(false);
@@ -46,51 +44,54 @@ const SavedVoucher = () => {
 
   const handleRemoveVoucher = (voucher) => {
     confirmDialog({
-      message: 'Bạn có chắc chắn muốn xóa voucher này?',
-      header: 'Xác nhận xóa',
-      icon: 'pi pi-exclamation-triangle',
-      acceptClassName: 'p-button-danger',
+      message: "Bạn có chắc chắn muốn xóa voucher này?",
+      header: "Xác nhận xóa",
+      icon: "pi pi-exclamation-triangle",
+      acceptClassName: "p-button-danger",
       accept: async () => {
         try {
           setLoading(true);
-          const token = localStorage.getItem('accessToken');
+          const token = localStorage.getItem("accessToken");
           if (!token) {
-            toast.error('Bạn chưa đăng nhập');
+            toast.error("Bạn chưa đăng nhập");
             return;
           }
 
-          const response = await savedVoucherApi.deleteSavedVoucher(voucher.couponId._id, token);
+          const response = await savedVoucherApi.deleteSavedVoucher(
+            voucher.couponId._id,
+            token
+          );
           if (response.success) {
-            toast.success('Đã xóa voucher thành công');
+            toast.success("Đã xóa voucher thành công");
             fetchSavedVouchers(); // Cập nhật lại danh sách voucher
           } else {
             toast.error(response.message);
           }
         } catch (error) {
-          console.error('Error removing voucher:', error);
-          toast.error('Đã xảy ra lỗi khi xóa voucher');
+          console.error("Error removing voucher:", error);
+          toast.error("Đã xảy ra lỗi khi xóa voucher");
         } finally {
           setLoading(false);
         }
-      }
+      },
     });
   };
 
   const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '';
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      maximumFractionDigits: 0
+    if (value === null || value === undefined) return "";
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
     }).format(value);
   };
 
   const formatDate = (value) => {
-    if (!value) return 'Không giới hạn';
-    return new Intl.DateTimeFormat('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+    if (!value) return "Không giới hạn";
+    return new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     }).format(new Date(value));
   };
 
@@ -106,11 +107,11 @@ const SavedVoucher = () => {
   };
 
   const handleShopNow = () => {
-    navigate('/san-pham');
+    navigate("/san-pham");
   };
 
   const handleFindMoreVouchers = () => {
-    navigate('/voucher');
+    navigate("/voucher");
   };
 
   const openVoucherDetail = (voucher) => {
@@ -126,8 +127,8 @@ const SavedVoucher = () => {
     return !coupon.isActive;
   };
 
-  const isVoucherValid = (coupon) => {
-    return !isExpired(coupon) && !isInactive(coupon);
+  const isVoucherValid = (coupon, isPaid) => {
+    return !isExpired(coupon) && !isInactive(coupon) && !isPaid;
   };
 
   if (loading) {
@@ -141,8 +142,15 @@ const SavedVoucher = () => {
     );
   }
 
-  const renderStatus = (coupon) => {
-    if (isExpired(coupon)) {
+  const renderStatus = (coupon, isPaid) => {
+    if (isPaid) {
+      return (
+        <div className="voucher-status used">
+          <i className="pi pi-check"></i>
+          <span>Đã sử dụng</span>
+        </div>
+      );
+    } else if (isExpired(coupon)) {
       return (
         <div className="voucher-status expired">
           <i className="pi pi-clock"></i>
@@ -166,50 +174,39 @@ const SavedVoucher = () => {
     }
   };
 
-  const voucherDialogFooter = (
-    <div className="flex justify-end pt-2">
-      <Button 
-        label="Đóng" 
-        icon="pi pi-times" 
-        onClick={() => setShowDetailDialog(false)} 
-        className="p-button-text"
-      />
-    </div>
-  );
-
   // Thiết lập style cho Dialog
   const dialogStyle = {
-    width: '90%', 
-    maxWidth: '450px',
-    padding: '0',
-    borderRadius: '8px'
+    width: "90%",
+    maxWidth: "450px",
+    padding: "0",
+    borderRadius: "8px",
   };
 
   const dialogHeaderStyle = {
-    padding: '12px 16px',
-    fontSize: '1rem'
+    padding: "12px 16px",
+    fontSize: "1rem",
   };
 
   const dialogFooterStyle = {
-    padding: '8px 16px',
-    borderTop: '1px solid #f0f0f0'
+    padding: "8px 16px",
+    borderTop: "1px solid #f0f0f0",
   };
 
   const dialogContentStyle = {
-    padding: '12px 16px'
+    padding: "12px 16px",
   };
 
   return (
     <div className="saved-voucher-page px-4 py-8">
       <Toaster position="top-right" richColors />
       <ConfirmDialog />
-      
+
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-xl font-semibold">Voucher của bạn</h2>
-        <Button 
-          label="Tìm thêm voucher" 
+        <Button
+          label="Tìm thêm voucher"
           icon="pi pi-search"
-          className="p-button-outlined"
+          className="p-button-outlined gap-4 text-white bg-[#51bb1a] p-2 rounded"
           onClick={handleFindMoreVouchers}
         />
       </div>
@@ -220,7 +217,7 @@ const SavedVoucher = () => {
             <i className="pi pi-ticket"></i>
             <h3>Bạn chưa lưu voucher nào</h3>
             <p>Hãy khám phá các voucher có sẵn và lưu để sử dụng sau</p>
-            <Button 
+            <Button
               label="Tìm voucher ngay"
               icon="pi pi-search"
               className="p-button p-button-success"
@@ -231,28 +228,31 @@ const SavedVoucher = () => {
       ) : (
         <div className="vouchers-list">
           {savedVouchers.map((savedVoucher) => (
-            <div 
-              key={savedVoucher._id} 
+            <div
+              key={savedVoucher._id}
               className={`saved-voucher-card ${
-                isExpired(savedVoucher.couponId) || isInactive(savedVoucher.couponId) ? 'inactive-voucher' : ''
+                isExpired(savedVoucher.couponId) ||
+                isInactive(savedVoucher.couponId)
+                  ? "inactive-voucher"
+                  : ""
               }`}
             >
               <div className="saved-voucher-header">
                 <div className="saved-voucher-value">
-                  {savedVoucher.couponId.type === 'percentage' 
-                    ? `${savedVoucher.couponId.value}%` 
+                  {savedVoucher.couponId.type === "percentage"
+                    ? `${savedVoucher.couponId.value}%`
                     : formatCurrency(savedVoucher.couponId.value)}
                 </div>
-                {renderStatus(savedVoucher.couponId)}
+                {renderStatus(savedVoucher.couponId, savedVoucher.isPaid)}
               </div>
 
               <div className="saved-voucher-content">
                 <h3 className="voucher-title">
-                  {savedVoucher.couponId.type === 'percentage' 
-                    ? `Giảm ${savedVoucher.couponId.value}% đơn hàng` 
+                  {savedVoucher.couponId.type === "percentage"
+                    ? `Giảm ${savedVoucher.couponId.value}% đơn hàng`
                     : `Giảm ${formatCurrency(savedVoucher.couponId.value)}`}
                 </h3>
-                
+
                 <div className="voucher-code-section">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm text-gray-600">Mã giảm giá:</span>
@@ -265,30 +265,50 @@ const SavedVoucher = () => {
                 <div className="voucher-info-section">
                   <div className="info-item">
                     <span className="info-label">Đơn hàng tối thiểu:</span>
-                    <span className="info-value">{formatCurrency(savedVoucher.couponId.minOrder)}</span>
+                    <span className="info-value">
+                      {formatCurrency(savedVoucher.couponId.minOrder)}
+                    </span>
                   </div>
                   {savedVoucher.couponId.maxDiscount && (
                     <div className="info-item">
                       <span className="info-label">Giảm tối đa:</span>
-                      <span className="info-value">{formatCurrency(savedVoucher.couponId.maxDiscount)}</span>
+                      <span className="info-value">
+                        {formatCurrency(savedVoucher.couponId.maxDiscount)}
+                      </span>
                     </div>
                   )}
                   <div className="info-item">
                     <span className="info-label">Hạn sử dụng:</span>
-                    <span className="info-value">{formatDate(savedVoucher.couponId.expiresAt)}</span>
+                    <span className="info-value">
+                      {formatDate(savedVoucher.couponId.expiresAt)}
+                    </span>
                   </div>
                 </div>
 
                 {savedVoucher.couponId.usageLimit && (
                   <div className="voucher-usage-limit-section">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Còn lại: {getRemainingVouchers(savedVoucher.couponId)}/{savedVoucher.couponId.usageLimit}</span>
-                      <span>{Math.round(getUsageProgress(savedVoucher.couponId.used || 0, savedVoucher.couponId.usageLimit))}%</span>
+                      <span>
+                        Còn lại: {getRemainingVouchers(savedVoucher.couponId)}/
+                        {savedVoucher.couponId.usageLimit}
+                      </span>
+                      <span>
+                        {Math.round(
+                          getUsageProgress(
+                            savedVoucher.couponId.used || 0,
+                            savedVoucher.couponId.usageLimit
+                          )
+                        )}
+                        %
+                      </span>
                     </div>
-                    <ProgressBar 
-                      value={getUsageProgress(savedVoucher.couponId.used || 0, savedVoucher.couponId.usageLimit)} 
+                    <ProgressBar
+                      value={getUsageProgress(
+                        savedVoucher.couponId.used || 0,
+                        savedVoucher.couponId.usageLimit
+                      )}
                       showValue={false}
-                      style={{ height: '6px' }}
+                      style={{ height: "6px" }}
                     />
                   </div>
                 )}
@@ -299,29 +319,33 @@ const SavedVoucher = () => {
               </div>
 
               <div className="saved-voucher-actions">
-                <Button 
-                  label="Xem chi tiết" 
-                  icon="pi pi-info-circle" 
-                  onClick={() => openVoucherDetail(savedVoucher)} 
-                  className="p-button-text"
+                <Button
+                  label="Xem chi tiết"
+                  icon="pi pi-info-circle"
+                  onClick={() => openVoucherDetail(savedVoucher)}
+                  className="p-button-text gap-2"
                 />
-                <Button 
-                  label="Bỏ lưu" 
-                  icon="pi pi-trash" 
-                  onClick={() => handleRemoveVoucher(savedVoucher)} 
-                  className="p-button-danger p-button-text"
+                <Button
+                  label="Bỏ lưu"
+                  icon="pi pi-trash"
+                  onClick={() => handleRemoveVoucher(savedVoucher)}
+                  className="p-button-danger p-button-text gap-2"
                 />
               </div>
-              
+
               <div className="flex justify-center mt-4">
                 <Button
                   label="Mua sắm ngay"
                   icon="pi pi-shopping-cart"
                   onClick={handleShopNow}
-                  disabled={!isVoucherValid(savedVoucher.couponId)}
-                  className={!isVoucherValid(savedVoucher.couponId) 
-                    ? 'p-button-secondary' 
-                    : 'p-button-success'}
+                  disabled={
+                    !isVoucherValid(savedVoucher.couponId, savedVoucher.isPaid)
+                  }
+                  className={`${
+                    !isVoucherValid(savedVoucher.couponId, savedVoucher.isPaid)
+                      ? "p-button-secondary"
+                      : "p-button-success"
+                  } gap-2 text-white bg-[#51bb1a] rounded`}
                 />
               </div>
             </div>
@@ -329,72 +353,83 @@ const SavedVoucher = () => {
         </div>
       )}
 
-      <Dialog 
-        visible={showDetailDialog} 
+      <Dialog
+        visible={showDetailDialog}
         onHide={() => setShowDetailDialog(false)}
-        header="Chi tiết voucher" 
-        footer={voucherDialogFooter}
+        header="Chi tiết voucher"
         style={dialogStyle}
         contentStyle={dialogContentStyle}
         headerStyle={dialogHeaderStyle}
-        footerStyle={dialogFooterStyle}
-        breakpoints={{ '960px': '75vw', '641px': '90vw' }}
+        breakpoints={{ "960px": "75vw", "641px": "90vw" }}
       >
         {selectedVoucher && (
           <div className="voucher-detail-dialog">
             <div className="voucher-detail-header">
               <h3 className="text-xl font-bold mb-2">
-                {selectedVoucher.couponId.type === 'percentage' 
-                  ? `Giảm ${selectedVoucher.couponId.value}% đơn hàng` 
+                {selectedVoucher.couponId.type === "percentage"
+                  ? `Giảm ${selectedVoucher.couponId.value}% đơn hàng`
                   : `Giảm ${formatCurrency(selectedVoucher.couponId.value)}`}
               </h3>
-              {renderStatus(selectedVoucher.couponId)}
+              {renderStatus(selectedVoucher.couponId, selectedVoucher.isPaid)}
             </div>
 
             <div className="voucher-detail-info mt-4">
               <div className="info-row">
                 <div className="info-label">Mã giảm giá:</div>
-                <div className="info-value code">{selectedVoucher.couponId.code}</div>
+                <div className="info-value code">
+                  {selectedVoucher.couponId.code}
+                </div>
               </div>
               <div className="info-row">
                 <div className="info-label">Loại giảm giá:</div>
                 <div className="info-value">
-                  {selectedVoucher.couponId.type === 'percentage' ? 'Phần trăm (%)' : 'Số tiền cố định'}
+                  {selectedVoucher.couponId.type === "percentage"
+                    ? "Phần trăm (%)"
+                    : "Số tiền cố định"}
                 </div>
               </div>
               <div className="info-row">
                 <div className="info-label">Giá trị:</div>
                 <div className="info-value">
-                  {selectedVoucher.couponId.type === 'percentage' 
-                    ? `${selectedVoucher.couponId.value}%` 
+                  {selectedVoucher.couponId.type === "percentage"
+                    ? `${selectedVoucher.couponId.value}%`
                     : formatCurrency(selectedVoucher.couponId.value)}
                 </div>
               </div>
               <div className="info-row">
                 <div className="info-label">Đơn hàng tối thiểu:</div>
-                <div className="info-value">{formatCurrency(selectedVoucher.couponId.minOrder)}</div>
+                <div className="info-value">
+                  {formatCurrency(selectedVoucher.couponId.minOrder)}
+                </div>
               </div>
               {selectedVoucher.couponId.maxDiscount && (
                 <div className="info-row">
                   <div className="info-label">Giảm tối đa:</div>
-                  <div className="info-value">{formatCurrency(selectedVoucher.couponId.maxDiscount)}</div>
+                  <div className="info-value">
+                    {formatCurrency(selectedVoucher.couponId.maxDiscount)}
+                  </div>
                 </div>
               )}
               <div className="info-row">
                 <div className="info-label">Hạn sử dụng:</div>
-                <div className="info-value">{formatDate(selectedVoucher.couponId.expiresAt)}</div>
+                <div className="info-value">
+                  {formatDate(selectedVoucher.couponId.expiresAt)}
+                </div>
               </div>
               {selectedVoucher.couponId.usageLimit && (
                 <div className="info-row">
                   <div className="info-label">Còn lại:</div>
                   <div className="info-value">
-                    {getRemainingVouchers(selectedVoucher.couponId)}/{selectedVoucher.couponId.usageLimit} voucher
+                    {getRemainingVouchers(selectedVoucher.couponId)}/
+                    {selectedVoucher.couponId.usageLimit} voucher
                   </div>
                 </div>
               )}
               <div className="info-row">
                 <div className="info-label">Ngày lưu:</div>
-                <div className="info-value">{formatDate(selectedVoucher.savedAt)}</div>
+                <div className="info-value">
+                  {formatDate(selectedVoucher.savedAt)}
+                </div>
               </div>
             </div>
 
@@ -403,10 +438,20 @@ const SavedVoucher = () => {
                 label="Mua sắm ngay"
                 icon="pi pi-shopping-cart"
                 onClick={handleShopNow}
-                disabled={!isVoucherValid(selectedVoucher.couponId)}
-                className={!isVoucherValid(selectedVoucher.couponId) 
-                  ? 'p-button-secondary w-full' 
-                  : 'p-button-success w-full'}
+                disabled={
+                  !isVoucherValid(
+                    selectedVoucher.couponId,
+                    selectedVoucher.isPaid
+                  )
+                }
+                className={`${
+                  !isVoucherValid(
+                    selectedVoucher.couponId,
+                    selectedVoucher.isPaid
+                  )
+                    ? "p-button-secondary w-full"
+                    : "p-button-success w-full"
+                } flex justify-center text-center text-white bg-[#51bb1a] rounded`}
               />
             </div>
           </div>
@@ -748,4 +793,4 @@ const SavedVoucher = () => {
   );
 };
 
-export default SavedVoucher; 
+export default SavedVoucher;

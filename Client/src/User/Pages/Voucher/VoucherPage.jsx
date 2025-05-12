@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Button } from 'primereact/button';
-import { Divider } from 'primereact/divider';
-import { ProgressBar } from 'primereact/progressbar';
-import { useNavigate } from 'react-router-dom';
-import couponApi from '../../../api/couponApi';
-import savedVoucherApi from '../../../api/savedVoucherApi';
-import { Helmet } from 'react-helmet-async';
-import { Dialog } from 'primereact/dialog';
-import { Toaster, toast } from 'sonner';
+import { useState, useEffect } from "react";
+import { Button } from "primereact/button";
+import { Divider } from "primereact/divider";
+import { ProgressBar } from "primereact/progressbar";
+import { useNavigate } from "react-router-dom";
+import couponApi from "../../../api/couponApi";
+import savedVoucherApi from "../../../api/savedVoucherApi";
+import { Helmet } from "react-helmet-async";
+import { Dialog } from "primereact/dialog";
+import { Toaster, toast } from "sonner";
 
 const VoucherPage = () => {
   const [vouchers, setVouchers] = useState([]);
@@ -16,12 +16,12 @@ const VoucherPage = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [savingVoucher, setSavingVoucher] = useState(false);
-  
+
   const navigate = useNavigate();
 
   // Kiểm tra xem người dùng đã đăng nhập chưa
   useEffect(() => {
-    const token = localStorage.getItem('accessToken');
+    const token = localStorage.getItem("accessToken");
     if (token) {
       setIsLoggedIn(true);
       fetchUserSavedVoucher(token);
@@ -40,11 +40,11 @@ const VoucherPage = () => {
       if (response.success) {
         setVouchers(response.data);
       } else {
-        showToast('error', 'Không thể tải danh sách voucher');
+        showToast("error", "Không thể tải danh sách voucher");
       }
     } catch (error) {
-      console.error('Error fetching vouchers:', error);
-      showToast('error', 'Đã xảy ra lỗi khi tải danh sách voucher');
+      console.error("Error fetching vouchers:", error);
+      showToast("error", "Đã xảy ra lỗi khi tải danh sách voucher");
     } finally {
       setLoading(false);
     }
@@ -60,16 +60,16 @@ const VoucherPage = () => {
         setUserSavedVoucher([]);
       }
     } catch (error) {
-      console.error('Error fetching user saved vouchers:', error);
+      console.error("Error fetching user saved vouchers:", error);
       setUserSavedVoucher([]);
     }
   };
 
   // Hiển thị thông báo
   const showToast = (type, message) => {
-    if (type === 'success') {
+    if (type === "success") {
       toast.success(message);
-    } else if (type === 'error') {
+    } else if (type === "error") {
       toast.error(message);
     } else {
       toast(message);
@@ -77,20 +77,20 @@ const VoucherPage = () => {
   };
 
   const formatCurrency = (value) => {
-    if (value === null || value === undefined) return '';
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-      maximumFractionDigits: 0
+    if (value === null || value === undefined) return "";
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0,
     }).format(value);
   };
 
   const formatDate = (value) => {
-    if (!value) return 'Không giới hạn';
-    return new Intl.DateTimeFormat('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+    if (!value) return "Không giới hạn";
+    return new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     }).format(new Date(value));
   };
 
@@ -123,16 +123,19 @@ const VoucherPage = () => {
   // Kiểm tra xem voucher có phải là voucher đã lưu của người dùng không
   const isVoucherSaved = (voucherId) => {
     if (!userSavedVoucher || !userSavedVoucher.length) return false;
-    return userSavedVoucher.some(saved => saved.couponId._id === voucherId);
+    return userSavedVoucher.some((saved) => 
+      // Chỉ tính là đã lưu nếu voucher chưa được sử dụng (isPaid = false)
+      saved.couponId._id === voucherId && saved.isPaid === false
+    );
   };
 
   const handleShopNow = () => {
-    navigate('/san-pham');
+    navigate("/san-pham");
   };
 
   const handleLoginRedirect = () => {
     setShowLoginDialog(false);
-    navigate('/dang-nhap');
+    navigate("/dang-nhap");
   };
 
   // Xử lý lưu voucher
@@ -144,16 +147,16 @@ const VoucherPage = () => {
 
     try {
       setSavingVoucher(true);
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem("accessToken");
       if (!token) {
-        toast.error('Bạn chưa đăng nhập');
+        toast.error("Bạn chưa đăng nhập");
         return;
       }
 
       // Tìm voucher trong danh sách
-      const voucher = vouchers.find(v => v._id === voucherId);
+      const voucher = vouchers.find((v) => v._id === voucherId);
       if (!voucher) {
-        toast.error('Không tìm thấy voucher');
+        toast.error("Không tìm thấy voucher");
         return;
       }
 
@@ -163,24 +166,26 @@ const VoucherPage = () => {
         code: voucher.code,
         usageLimit: voucher.usageLimit,
         used: voucher.used,
-        remaining: voucher.usageLimit ? voucher.usageLimit - (voucher.used || 0) : "unlimited"
+        remaining: voucher.usageLimit
+          ? voucher.usageLimit - (voucher.used || 0)
+          : "unlimited",
       });
 
       // Kiểm tra xem voucher đã lưu chưa
       if (isVoucherSaved(voucherId)) {
-        toast.error('Bạn đã lưu voucher này rồi');
+        toast.error("Bạn đã lưu voucher này rồi");
         return;
       }
 
       // Kiểm tra xem voucher còn số lượng không
       if (isOutOfStock(voucher)) {
-        toast.error('Voucher đã hết số lượng');
+        toast.error("Voucher đã hết số lượng");
         return;
       }
 
       const response = await savedVoucherApi.saveVoucher(voucherId, token);
       console.log("Save voucher response:", response);
-      
+
       if (response.success) {
         toast.success(response.message);
         // Cập nhật lại danh sách voucher đã lưu
@@ -188,12 +193,12 @@ const VoucherPage = () => {
         // Cập nhật lại danh sách voucher để cập nhật số lượng còn lại
         await fetchVouchers();
       } else {
-        console.error('Error from API:', response);
-        toast.error(response.message || 'Không thể lưu voucher');
+        console.error("Error from API:", response);
+        toast.error(response.message || "Không thể lưu voucher");
       }
     } catch (error) {
-      console.error('Error saving voucher:', error);
-      toast.error('Đã xảy ra lỗi khi lưu voucher');
+      console.error("Error saving voucher:", error);
+      toast.error("Đã xảy ra lỗi khi lưu voucher");
     } finally {
       setSavingVoucher(false);
     }
@@ -208,13 +213,16 @@ const VoucherPage = () => {
 
     try {
       setSavingVoucher(true);
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem("accessToken");
       if (!token) {
-        toast.error('Bạn chưa đăng nhập');
+        toast.error("Bạn chưa đăng nhập");
         return;
       }
 
-      const response = await savedVoucherApi.deleteSavedVoucher(couponId, token);
+      const response = await savedVoucherApi.deleteSavedVoucher(
+        couponId,
+        token
+      );
       if (response.success) {
         toast.success(response.message);
         fetchUserSavedVoucher(token);
@@ -222,8 +230,8 @@ const VoucherPage = () => {
         toast.error(response.message);
       }
     } catch (error) {
-      console.error('Error removing saved voucher:', error);
-      toast.error('Đã xảy ra lỗi khi xóa voucher đã lưu');
+      console.error("Error removing saved voucher:", error);
+      toast.error("Đã xảy ra lỗi khi xóa voucher đã lưu");
     } finally {
       setSavingVoucher(false);
     }
@@ -231,17 +239,17 @@ const VoucherPage = () => {
 
   const footerContent = (
     <div className="flex justify-end gap-3">
-      <Button 
-        label="Hủy" 
-        icon="pi pi-times" 
-        onClick={() => setShowLoginDialog(false)} 
-        className="p-button-text" 
+      <Button
+        label="Hủy"
+        icon="pi pi-times"
+        onClick={() => setShowLoginDialog(false)}
+        className="p-button-text"
       />
-      <Button 
-        label="Đăng nhập" 
-        icon="pi pi-sign-in" 
-        onClick={handleLoginRedirect} 
-        autoFocus 
+      <Button
+        label="Đăng nhập"
+        icon="pi pi-sign-in"
+        onClick={handleLoginRedirect}
+        autoFocus
         className="p-button-success"
       />
     </div>
@@ -251,15 +259,18 @@ const VoucherPage = () => {
     <div className="voucher-page">
       <Helmet>
         <title>Voucher & Mã Giảm Giá | DNC FOOD</title>
-        <meta name="description" content="Danh sách voucher và mã giảm giá từ DNC FOOD" />
+        <meta
+          name="description"
+          content="Danh sách voucher và mã giảm giá từ DNC FOOD"
+        />
       </Helmet>
-      
+
       <Toaster position="top-right" richColors />
-      
-      <Dialog 
-        visible={showLoginDialog} 
-        onHide={() => setShowLoginDialog(false)} 
-        header="Yêu cầu đăng nhập" 
+
+      <Dialog
+        visible={showLoginDialog}
+        onHide={() => setShowLoginDialog(false)}
+        header="Yêu cầu đăng nhập"
         footer={footerContent}
         className="login-prompt-dialog"
       >
@@ -267,7 +278,8 @@ const VoucherPage = () => {
           <i className="pi pi-lock text-5xl text-yellow-500 mb-3"></i>
           <h3>Bạn cần đăng nhập để lưu voucher</h3>
           <p className="text-center">
-            Để có thể lưu và sử dụng voucher, vui lòng đăng nhập vào tài khoản của bạn.
+            Để có thể lưu và sử dụng voucher, vui lòng đăng nhập vào tài khoản
+            của bạn.
           </p>
         </div>
       </Dialog>
@@ -276,13 +288,15 @@ const VoucherPage = () => {
         <div className="voucher-header">
           <h1>Voucher & Mã Giảm Giá</h1>
           <p>
-            Sử dụng các mã giảm giá dưới đây để được hưởng ưu đãi khi mua sắm tại DNC FOOD. 
-            Hãy sao chép mã và áp dụng khi thanh toán.
+            Sử dụng các mã giảm giá dưới đây để được hưởng ưu đãi khi mua sắm
+            tại DNC FOOD. Hãy sao chép mã và áp dụng khi thanh toán.
           </p>
           {isLoggedIn && userSavedVoucher.length > 0 && (
             <div className="saved-voucher-notice">
               <i className="pi pi-info-circle"></i>
-              <span>Bạn đã lưu {userSavedVoucher.length} voucher. Để lưu voucher khác, hãy xóa voucher cũ trước.</span>
+              <span>
+                Bạn đã lưu {userSavedVoucher.length} voucher. Hãy lưu thêm nhiều voucher để giúp tiết kiệm chi phí nhé.
+              </span>
             </div>
           )}
         </div>
@@ -296,9 +310,9 @@ const VoucherPage = () => {
             <i className="pi pi-ticket"></i>
             <h3>Chưa có voucher nào</h3>
             <p>Hiện tại chưa có voucher khả dụng. Vui lòng quay lại sau.</p>
-            <Button 
-              label="Mua sắm ngay" 
-              icon="pi pi-shopping-cart" 
+            <Button
+              label="Mua sắm ngay"
+              icon="pi pi-shopping-cart"
               className="p-button-success"
               onClick={handleShopNow}
             />
@@ -306,9 +320,11 @@ const VoucherPage = () => {
         ) : (
           <div className="voucher-grid">
             {vouchers.map((voucher) => (
-              <div 
-                key={voucher._id} 
-                className={`voucher-card ${isExpired(voucher) ? 'expired' : ''} ${isVoucherSaved(voucher._id) ? 'saved' : ''}`}
+              <div
+                key={voucher._id}
+                className={`voucher-card ${
+                  isExpired(voucher) ? "expired" : ""
+                } ${isVoucherSaved(voucher._id) ? "saved" : ""}`}
               >
                 <div className="voucher-card-inner">
                   {isVoucherSaved(voucher._id) && (
@@ -317,17 +333,21 @@ const VoucherPage = () => {
                       <span>Đã lưu</span>
                     </div>
                   )}
-                  
+
                   <div className="voucher-ribbon">
                     <div className="ribbon-content">
-                      <span>{voucher.type === 'percentage' ? `${voucher.value}%` : formatCurrency(voucher.value)}</span>
+                      <span>
+                        {voucher.type === "percentage"
+                          ? `${voucher.value}%`
+                          : formatCurrency(voucher.value)}
+                      </span>
                     </div>
                   </div>
-                  
+
                   <div className="voucher-body">
                     <div className="voucher-tags">
                       <span className="voucher-type-tag">
-                        {voucher.type === 'percentage' ? 'Giảm %' : 'Giảm tiền'}
+                        {voucher.type === "percentage" ? "Giảm %" : "Giảm tiền"}
                       </span>
                       {isExpired(voucher) && (
                         <span className="voucher-expired-tag">Đã hết hạn</span>
@@ -336,19 +356,24 @@ const VoucherPage = () => {
                         <span className="voucher-expired-tag">Đã hết</span>
                       )}
                     </div>
-                    
+
                     <h3 className="voucher-title">
-                      {voucher.type === 'percentage' 
-                        ? `Giảm ${voucher.value}% đơn hàng` 
-                        : `Giảm ${formatCurrency(voucher.value)}`
-                      }
+                      {voucher.type === "percentage"
+                        ? `Giảm ${voucher.value}% đơn hàng`
+                        : `Giảm ${formatCurrency(voucher.value)}`}
                     </h3>
 
                     <div className="voucher-details">
                       {voucher.maxDiscount && (
-                        <p>Giảm tối đa: <span>{formatCurrency(voucher.maxDiscount)}</span></p>
+                        <p>
+                          Giảm tối đa:{" "}
+                          <span>{formatCurrency(voucher.maxDiscount)}</span>
+                        </p>
                       )}
-                      <p>Đơn hàng tối thiểu: <span>{formatCurrency(voucher.minOrder)}</span></p>
+                      <p>
+                        Đơn hàng tối thiểu:{" "}
+                        <span>{formatCurrency(voucher.minOrder)}</span>
+                      </p>
                     </div>
 
                     <div className="voucher-code-container">
@@ -363,11 +388,25 @@ const VoucherPage = () => {
                     {voucher.usageLimit && (
                       <div className="voucher-usage">
                         <div className="voucher-usage-text">
-                          <span>Còn lại: {getRemainingVouchers(voucher)}/{voucher.usageLimit}</span>
-                          <span>{Math.round(getUsageProgress(voucher.used || 0, voucher.usageLimit))}%</span>
+                          <span>
+                            Còn lại: {getRemainingVouchers(voucher)}/
+                            {voucher.usageLimit}
+                          </span>
+                          <span>
+                            {Math.round(
+                              getUsageProgress(
+                                voucher.used || 0,
+                                voucher.usageLimit
+                              )
+                            )}
+                            %
+                          </span>
                         </div>
-                        <ProgressBar 
-                          value={getUsageProgress(voucher.used || 0, voucher.usageLimit)} 
+                        <ProgressBar
+                          value={getUsageProgress(
+                            voucher.used || 0,
+                            voucher.usageLimit
+                          )}
                           showValue={false}
                         />
                       </div>
@@ -385,9 +424,10 @@ const VoucherPage = () => {
                           <Button
                             icon="pi pi-trash"
                             text
-                            tooltip="Hủy lưu voucher"
-                            tooltipOptions={{ position: 'top' }}
-                            onClick={() => handleRemoveSavedVoucher(voucher._id)}
+                            tooltipOptions={{ position: "top" }}
+                            onClick={() =>
+                              handleRemoveSavedVoucher(voucher._id)
+                            }
                             disabled={savingVoucher}
                             className="p-button-danger p-button-text"
                           />
@@ -395,11 +435,12 @@ const VoucherPage = () => {
                           <Button
                             icon="pi pi-bookmark"
                             text
-                            tooltip={isOutOfStock(voucher) ? "Voucher đã hết" : "Lưu voucher"}
-                            tooltipOptions={{ position: 'top' }}
+                            tooltipOptions={{ position: "top" }}
                             onClick={() => handleSaveVoucher(voucher._id)}
-                            disabled={savingVoucher || !isVoucherAvailable(voucher)}
-                            className="p-button-success p-button-text"
+                            disabled={
+                              savingVoucher || !isVoucherAvailable(voucher)
+                            }
+                            className="p-button-success p-button-text p-1 rounded text-white bg-[#51bb1a]"
                           />
                         )}
                         <Button
@@ -407,7 +448,11 @@ const VoucherPage = () => {
                           icon="pi pi-shopping-cart"
                           onClick={handleShopNow}
                           disabled={!isVoucherAvailable(voucher)}
-                          className={!isVoucherAvailable(voucher) ? 'p-button-secondary' : 'p-button-success'}
+                          className={`${
+                            !isVoucherAvailable(voucher)
+                              ? "p-button-secondary"
+                              : "p-button-success"
+                          } p-1 gap-2 rounded text-white bg-[#51bb1a]`}
                         />
                       </div>
                     </div>
@@ -797,4 +842,4 @@ const VoucherPage = () => {
   );
 };
 
-export default VoucherPage; 
+export default VoucherPage;

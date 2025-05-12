@@ -7,7 +7,11 @@ export const getUserSavedVouchers = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const savedVouchers = await SavedVoucher.find({ userId }).populate({
+    // Lấy chỉ những voucher chưa sử dụng (isPaid = false)
+    const savedVouchers = await SavedVoucher.find({ 
+      userId,
+      isPaid: false 
+    }).populate({
       path: 'couponId',
       select: '-__v'
     }).sort({ savedAt: -1 });
@@ -242,5 +246,78 @@ export const deleteSavedVoucher = async (req, res) => {
       success: false,
       message: "Đã xảy ra lỗi khi xóa voucher đã lưu"
     });
+  }
+};
+
+// Cập nhật trạng thái isPaid của voucher đã lưu
+export const updateSavedVoucherStatus = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { savedVoucherId } = req.params;
+    const { isPaid } = req.body;
+
+    if (isPaid === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin trạng thái isPaid"
+      });
+    }
+
+    // Tìm voucher đã lưu
+    const savedVoucher = await SavedVoucher.findOne({ 
+      _id: savedVoucherId,
+      userId: userId
+    });
+
+    if (!savedVoucher) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy voucher đã lưu"
+      });
+    }
+
+    // Cập nhật trạng thái isPaid
+    savedVoucher.isPaid = isPaid;
+    await savedVoucher.save();
+
+    return res.status(200).json({
+      success: true,
+      data: savedVoucher,
+      message: "Đã cập nhật trạng thái voucher thành công"
+    });
+  } catch (error) {
+    console.error("Error updating saved voucher status:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi cập nhật trạng thái voucher"
+    });
+  }
+};
+
+// Hàm xóa voucher đã hết hạn
+export const deleteExpiredVouchers = async () => {
+  try {
+    const now = new Date();
+    
+    // Tìm tất cả saved vouchers
+    const savedVouchers = await SavedVoucher.find().populate('couponId');
+    
+    // Lọc các voucher đã hết hạn
+    const expiredVouchers = savedVouchers.filter(savedVoucher => {
+      const coupon = savedVoucher.couponId;
+      return coupon && coupon.expiresAt && new Date(coupon.expiresAt) < now;
+    });
+    
+    // Xóa các voucher đã hết hạn
+    if (expiredVouchers.length > 0) {
+      const expiredIds = expiredVouchers.map(voucher => voucher._id);
+      const result = await SavedVoucher.deleteMany({ _id: { $in: expiredIds } });
+      console.log(`Đã xóa ${result.deletedCount} voucher đã hết hạn.`);
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error deleting expired vouchers:", error);
+    return false;
   }
 }; 

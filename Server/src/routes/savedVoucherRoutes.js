@@ -3,7 +3,8 @@ import { verifyToken } from "../Middleware/authMiddleware.js";
 import {
   getUserSavedVouchers,
   saveVoucher,
-  deleteSavedVoucher
+  deleteSavedVoucher,
+  updateSavedVoucherStatus
 } from "../Controller/savedVoucherController.js";
 
 const router = express.Router();
@@ -16,5 +17,8 @@ router.post("/", verifyToken, saveVoucher);
 
 // Xóa voucher đã lưu
 router.delete("/:couponId", verifyToken, deleteSavedVoucher);
+
+// Cập nhật trạng thái isPaid của voucher đã lưu
+router.patch("/status/:savedVoucherId", verifyToken, updateSavedVoucherStatus);
 
 export default router; 
