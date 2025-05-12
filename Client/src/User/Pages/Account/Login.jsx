@@ -14,6 +14,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDirectGoogleLogin, setShowDirectGoogleLogin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -440,33 +441,22 @@ const Login = () => {
     }
   };
 
-  // Xử lý đăng nhập với Google
-  const initiateGoogleLogin = () => {
-    try {
-      // Tìm và kích hoạt nút đăng nhập Google thực tế
-      const googleBtn = document.querySelector('.google-login-button');
-      if (googleBtn) {
-        googleBtn.click();
-      } else {
-        toast.error("Không thể kết nối với Google. Vui lòng thử lại.");
-      }
-    } catch (error) {
-      console.error("Google login error:", error);
-      toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
-    }
-  };
-
   // Hàm xử lý phản hồi từ Google
   const processGoogleLogin = async (response) => {
+    console.log("Google login response received:", response);
+    
     if (!response || !response.credential) {
+      console.error("Invalid Google response:", response);
       toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
       return;
     }
 
     try {
       setIsLoading(true);
+      console.log("Processing Google login with credential");
       
       const result = await AuthService.loginWithGoogle(response);
+      console.log("Google login API result:", result);
       
       if (result && (result.token || result.accessToken)) {
         // Kiểm tra nếu là tài khoản admin
@@ -486,7 +476,7 @@ const Login = () => {
         throw new Error("Không nhận được token đăng nhập");
       }
     } catch (error) {
-      console.error("Lỗi đăng nhập Google:", error);
+      console.error("Lỗi xử lý đăng nhập Google:", error);
       toast.error(
         error.message || "Đăng nhập Google thất bại. Vui lòng thử lại"
       );
@@ -517,10 +507,10 @@ const Login = () => {
               <FaFacebook className="mr-2 text-xl" /> Facebook
             </button>
             
-            {/* Google Login Button */}
+            {/* Google Login Button that shows Google's official button on click */}
             <button
               type="button"
-              onClick={initiateGoogleLogin}
+              onClick={() => setShowDirectGoogleLogin(true)}
               disabled={isLoading}
               className="flex items-center justify-center bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition font-medium"
             >
@@ -528,14 +518,40 @@ const Login = () => {
             </button>
           </div>
 
-          {/* Ẩn Google Login component thực tế */}
+          {/* Google Login component shown when button is clicked */}
+          {showDirectGoogleLogin && (
+            <div className="my-4">
+              <p className="text-sm text-center text-gray-500 mb-2">
+                Nhấn nút dưới đây để đăng nhập với Google
+              </p>
+              <div className="flex justify-center">
+                <GoogleOAuthProvider clientId="1031185116653-6sd3ambs6rmokdino3fsl9snrj7td8ae.apps.googleusercontent.com">
+                  <GoogleLogin
+                    onSuccess={processGoogleLogin}
+                    onError={(error) => {
+                      console.error("Direct Google login error:", error);
+                      toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
+                    }}
+                    useOneTap
+                    theme="filled_blue"
+                    text="signin_with"
+                  />
+                </GoogleOAuthProvider>
+              </div>
+            </div>
+          )}
+
+          {/* Hidden legacy Google auth mechanism (fallback) */}
           <div className="hidden">
             <GoogleOAuthProvider clientId="1031185116653-6sd3ambs6rmokdino3fsl9snrj7td8ae.apps.googleusercontent.com">
               <GoogleLogin
                 onSuccess={processGoogleLogin}
-                onError={() => {
+                onError={(error) => {
+                  console.error("Google login error:", error);
                   toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
                 }}
+                useOneTap
+                id="google-login-button"
                 className="google-login-button"
               />
             </GoogleOAuthProvider>
