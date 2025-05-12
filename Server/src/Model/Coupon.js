@@ -12,7 +12,7 @@ const couponSchema = new mongoose.Schema(
     type: { 
       type: String, 
       enum: ['percentage', 'fixed'], 
-      default: 'percentage'
+      required: true
     },
     value: { 
       type: Number, 
@@ -21,27 +21,32 @@ const couponSchema = new mongoose.Schema(
     },
     minOrder: { 
       type: Number, 
-      default: 0
+      required: true,
+      min: 0
     },
     maxDiscount: { 
       type: Number,
-      default: null
+      min: 0
     },
     expiresAt: { 
-      type: Date,
-      default: null
+      type: Date
     },
     usageLimit: { 
       type: Number, 
-      default: null
+      min: 0
     },
     used: { 
       type: Number, 
-      default: 0
+      default: 0,
+      min: 0
     },
     isActive: { 
       type: Boolean, 
       default: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
     },
     description: {
       type: String,

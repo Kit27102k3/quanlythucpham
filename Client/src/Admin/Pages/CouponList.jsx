@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect, useRef } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -11,9 +12,10 @@ import { Toast } from 'primereact/toast';
 import { FilterMatchMode } from 'primereact/api';
 import { ToggleButton } from 'primereact/togglebutton';
 import { Tag } from 'primereact/tag';
-import { ConfirmDialog } from 'primereact/confirmdialog';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import PageHeader from '../components/PageHeader';
 import couponApi from '../../api/couponApi';
+import { Checkbox } from 'primereact/checkbox';
 
 const CouponList = () => {
   // Refs
@@ -329,26 +331,35 @@ const CouponList = () => {
       : <Tag value="Vô hiệu" severity="danger" icon="pi pi-times" className="px-3 py-1" />;
   };
 
-  const actionsTemplate = (rowData) => {
+  const actionBodyTemplate = (rowData) => {
     return (
       <div className="flex gap-2 justify-center">
-        <Button 
-          icon="pi pi-pencil" 
-          rounded 
+        <Button
+          icon="pi pi-pencil"
+          rounded
           outlined
-          severity="info"
+          className="p-button-success mr-2"
           onClick={() => openEditDialog(rowData)}
-          tooltip="Chỉnh sửa"
-          className="border-blue-500 text-blue-500 hover:bg-blue-50"
+          tooltip="Sửa"
+          tooltipOptions={{ position: 'top' }}
         />
         <Button
           icon={rowData.isActive ? "pi pi-ban" : "pi pi-check"}
           rounded
           outlined
-          severity={rowData.isActive ? "warning" : "success"}
+          className={rowData.isActive ? "p-button-warning" : "p-button-success"}
           onClick={() => toggleCouponStatus(rowData)}
           tooltip={rowData.isActive ? "Vô hiệu hóa" : "Kích hoạt"}
-          className={rowData.isActive ? "border-orange-500 text-orange-500 hover:bg-orange-50" : "border-green-500 text-green-500 hover:bg-green-50"}
+          tooltipOptions={{ position: 'top' }}
+        />
+        <Button
+          icon="pi pi-refresh"
+          rounded
+          outlined
+          className="p-button-help"
+          onClick={() => resetCouponUsage(rowData)}
+          tooltip="Đặt lại lượt dùng"
+          tooltipOptions={{ position: 'top' }}
         />
       </div>
     );
@@ -389,6 +400,41 @@ const CouponList = () => {
   };
 
   const header = renderHeader();
+
+  // Thêm hàm reset usage
+  const resetCouponUsage = (coupon) => {
+    confirmDialog({
+      message: `Bạn có chắc chắn muốn đặt lại số lượng sử dụng của mã "${coupon.code}" về 0?`,
+      header: 'Xác nhận đặt lại',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Có',
+      rejectLabel: 'Không',
+      acceptClassName: 'p-button-primary',
+      accept: async () => {
+        try {
+          setLoading(true);
+          const token = sessionStorage.getItem('adminToken');
+          if (!token) {
+            toast.current.show({ severity: 'error', summary: 'Lỗi', detail: 'Bạn cần đăng nhập lại' });
+            return;
+          }
+
+          const response = await couponApi.resetCouponUsage(coupon._id, 0, token);
+          if (response.success) {
+            toast.current.show({ severity: 'success', summary: 'Thành công', detail: response.message });
+            fetchCoupons();
+          } else {
+            toast.current.show({ severity: 'error', summary: 'Lỗi', detail: response.message });
+          }
+        } catch (error) {
+          console.error('Error resetting coupon usage:', error);
+          toast.current.show({ severity: 'error', summary: 'Lỗi', detail: 'Đã xảy ra lỗi khi đặt lại số lượng sử dụng' });
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -479,7 +525,7 @@ const CouponList = () => {
           <Column field="expiresAt" header="Ngày hết hạn" body={expiresAtTemplate} sortable={false} headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '10rem' }} />
           <Column field="usageLimit" header="Lượt sử dụng" body={usageLimitTemplate} sortable={false} headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '8rem' }} />
           <Column field="isActive" header="Trạng thái" body={statusTemplate} sortable={false} headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '8rem' }} />
-          <Column body={actionsTemplate} exportable={false} header="Thao tác" headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '8rem', textAlign: 'center' }} />
+          <Column body={actionBodyTemplate} exportable={false} header="Thao tác" headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '8rem', textAlign: 'center' }} />
         </DataTable>
       </div>
 

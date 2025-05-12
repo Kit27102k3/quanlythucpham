@@ -110,6 +110,16 @@ function DefaultProfile() {
                   Địa chỉ
                 </Link>
               </li>
+              <li>
+                <Link
+                  to="voucher"
+                  className={`font-normal text-sm text-[#333] block py-2 hover:text-[#51aa1b] ${
+                    location.pathname.includes("voucher") ? "text-[#51aa1b] font-semibold" : ""
+                  }`}
+                >
+                  Voucher của bạn
+                </Link>
+              </li>
             </ul>
           </div>
           <div>

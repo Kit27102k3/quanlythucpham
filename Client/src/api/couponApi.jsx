@@ -139,6 +139,22 @@ const couponApi = {
     }
   },
 
+  // Lấy tất cả mã giảm giá công khai (cho trang Voucher)
+  getPublicCoupons: async () => {
+    try {
+      const response = await axios.get(`${API_URLS.COUPONS}/public`);
+      return {
+        success: true,
+        data: response.data.data
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || "Không thể lấy danh sách mã giảm giá"
+      };
+    }
+  },
+
   // Lấy tất cả mã giảm giá (chỉ dành cho admin)
   getAllCoupons: async (accessToken) => {
     try {
@@ -159,6 +175,35 @@ const couponApi = {
       return {
         success: false,
         message: error.response?.data?.message || "Không thể lấy danh sách mã giảm giá"
+      };
+    }
+  },
+
+  // [Admin] Reset số lượng sử dụng của voucher
+  resetCouponUsage: async (couponId, value, accessToken) => {
+    try {
+      const response = await axios.patch(
+        `${API_URLS.COUPONS}/reset-usage/${couponId}`,
+        { value },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+      
+      return {
+        success: true,
+        data: response.data.data,
+        message: response.data.message
+      };
+    } catch (error) {
+      console.error("Error resetting coupon usage:", error);
+      return {
+        success: false,
+        message: error.response?.data?.message || "Không thể đặt lại số lượng sử dụng voucher",
+        error: error.response?.data
       };
     }
   }

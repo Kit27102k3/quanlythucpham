@@ -11,7 +11,11 @@ const orderSchema = new mongoose.Schema(
       },
     ],
     totalAmount: Number,
-    coupon: String,
+    coupon: {
+      type: Object,
+      default: null,
+      required: false
+    },
     status: { type: String, default: "pending" },
     shippingInfo: {
       address: String,

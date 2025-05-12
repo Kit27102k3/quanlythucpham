@@ -3,7 +3,7 @@ import Coupon from "../Model/Coupon.js";
 // Tạo mã giảm giá mới
 export const createCoupon = async (req, res) => {
   try {
-    const { code, type, value, minOrder, maxDiscount, expiresAt, usageLimit, isActive } = req.body;
+    const { code, type, value, minOrder, maxDiscount, expiresAt, usageLimit, description, isActive } = req.body;
 
     // Kiểm tra xem mã giảm giá đã tồn tại chưa
     const existingCoupon = await Coupon.findOne({ code: code.toUpperCase() });
@@ -14,8 +14,8 @@ export const createCoupon = async (req, res) => {
       });
     }
 
-    // Tạo mã giảm giá mới
-    const coupon = new Coupon({
+    // Tạo mới coupon với used = 0 rõ ràng
+    const newCoupon = new Coupon({
       code: code.toUpperCase(),
       type,
       value,
@@ -23,22 +23,23 @@ export const createCoupon = async (req, res) => {
       maxDiscount,
       expiresAt,
       usageLimit,
-      isActive: isActive !== undefined ? isActive : true
+      used: 0,
+      isActive: isActive !== undefined ? isActive : true,
+      description
     });
 
-    await coupon.save();
+    await newCoupon.save();
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "Tạo mã giảm giá thành công",
-      data: coupon
+      data: newCoupon,
+      message: "Đã tạo mã giảm giá thành công"
     });
   } catch (error) {
     console.error("Error creating coupon:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Đã xảy ra lỗi khi tạo mã giảm giá",
-      error: error.message
+      message: `Đã xảy ra lỗi khi tạo mã giảm giá: ${error.message}`
     });
   }
 };
@@ -305,6 +306,41 @@ export const deleteCoupon = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi xóa mã giảm giá",
+      error: error.message
+    });
+  }
+};
+
+// Đặt lại số lượng đã sử dụng của coupon
+export const resetCouponUsage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const coupon = await Coupon.findById(id);
+    if (!coupon) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy mã giảm giá"
+      });
+    }
+    
+    // Đặt lại giá trị used về 0 hoặc số chỉ định
+    const { value } = req.body;
+    const resetValue = value !== undefined ? Number(value) : 0;
+    
+    coupon.used = resetValue;
+    await coupon.save();
+    
+    return res.status(200).json({
+      success: true,
+      message: `Đã đặt lại số lượng sử dụng thành ${resetValue}`,
+      data: coupon
+    });
+  } catch (error) {
+    console.error("Error resetting coupon usage:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi đặt lại số lượng sử dụng",
       error: error.message
     });
   }

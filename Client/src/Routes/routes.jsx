@@ -36,6 +36,8 @@ import ChatPage from "../User/Pages/Chat/ChatPage";
 import Reviews from "../Admin/Pages/Reviews";
 import LoginSuccess from "../User/Pages/Account/LoginSuccess";
 import CouponList from "../Admin/Pages/CouponList";
+import VoucherPage from "../User/Pages/Voucher/VoucherPage";
+import SavedVoucher from "../User/Pages/Profile/SavedVoucher";
 const publicRoutes = [
   {
     path: "/",
@@ -68,6 +70,10 @@ const publicRoutes = [
       {
         path: "tin-nhan",
         page: ChatPage,
+      },
+      {
+        path: "voucher",
+        page: SavedVoucher,
       },
     ],
   },
@@ -150,6 +156,10 @@ const publicRoutes = [
     path: "/dang-ky",
     page: Register,
     layout: null,
+  },
+  {
+    path: "/voucher",
+    page: VoucherPage,
   },
 ];
 

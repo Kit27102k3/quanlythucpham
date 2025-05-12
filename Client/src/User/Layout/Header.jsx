@@ -38,6 +38,7 @@ const menuItems = [
   { name: "Giới Thiệu", path: "/gioi-thieu" },
   { name: "Sản Phẩm", path: "/san-pham" },
   { name: "Khuyến Mãi", path: "/khuyen-mai" },
+  { name: "Voucher", path: "/voucher" },
   { name: "Liên Hệ", path: "/lien-he" },
   { name: "Cửa Hàng", path: "/cua-hang" },
 ];

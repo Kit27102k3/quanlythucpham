@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 import moment from "moment";
 import { SEPAY } from "../config/paymentConfig.js";
+import SavedVoucher from "../Model/SavedVoucher.js";
 
 dotenv.config();
 const SEPAY_API_URL = process.env.SEPAY_API_URL;
@@ -161,6 +162,16 @@ export const handleSepayCallback = async (req, res) => {
         payment.status = 'completed';
         order.paymentStatus = 'completed';
         order.status = 'processing';
+        
+        // Xóa voucher đã lưu sau khi thanh toán thành công (nếu có)
+        if (payment.savedVoucherId) {
+          try {
+            await SavedVoucher.findByIdAndDelete(payment.savedVoucherId);
+            console.log(`Đã xóa voucher đã lưu ${payment.savedVoucherId} sau khi thanh toán thành công`);
+          } catch (voucherError) {
+            console.error('Error deleting saved voucher:', voucherError);
+          }
+        }
       } else {
         payment.status = 'failed';
         order.paymentStatus = 'pending';
@@ -195,57 +206,45 @@ export const handleSepayCallback = async (req, res) => {
 // Tạo thanh toán mới
 export const createPayment = async (req, res) => {
   try {
-    const { amount, products, paymentMethod, userId } = req.body;
+    const { userId, amount, totalAmount, products, paymentMethod, savedVoucherId, couponDiscount, couponCode } = req.body;
 
-    // Validate required fields
+    // Validate đầu vào
     if (!amount || !products || !paymentMethod || !userId) {
       return res.status(400).json({
         success: false,
-        message:
-          "Missing required fields: amount, products, paymentMethod, userId",
+        message: "Thiếu thông tin cần thiết: amount, products, paymentMethod, userId"
       });
     }
 
-    // Validate products array
-    if (!Array.isArray(products) || products.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Products must be a non-empty array",
-      });
-    }
-
-    // Validate payment method
-    if (!["cod", "sepay"].includes(paymentMethod)) {
-      return res.status(400).json({
-        success: false,
-        message: "Payment method must be either 'cod' or 'sepay'",
-      });
-    }
-
-    // Create new payment
+    // Tạo payment
     const payment = new Payment({
       userId,
-      totalAmount: amount,
-      products: products.map((product) => ({
-        productId: product.productId,
-        quantity: product.quantity,
-        price: product.price,
-      })),
+      amount,
+      totalAmount: totalAmount || amount,
+      products,
       paymentMethod,
-      status: "pending",
+      savedVoucherId, // Lưu savedVoucherId để xóa voucher sau khi thanh toán
+      status: "pending"
     });
 
-    await payment.save();
+    // Nếu có thông tin coupon, lưu vào response message
+    if (couponCode || couponDiscount) {
+      payment.responseMessage = `Áp dụng mã giảm giá: ${couponCode}, giảm: ${couponDiscount}`;
+    }
+
+    // Lưu payment
+    const savedPayment = await payment.save();
 
     return res.status(201).json({
       success: true,
-      data: payment,
+      data: savedPayment,
+      message: "Đã tạo thông tin thanh toán"
     });
   } catch (error) {
     return res.status(500).json({
       success: false,
-      message: "Error creating payment",
-      error: error.message,
+      message: "Không thể tạo thông tin thanh toán",
+      error: error.message
     });
   }
 };
@@ -771,6 +770,17 @@ async function processWebhook(webhookData, headers) {
                 payment.transactionId = transactionId || `webhook_${Date.now()}`;
                 payment.amount = paymentAmount || payment.amount;
                 payment.paidAt = new Date();
+                
+                // Xóa voucher đã lưu sau khi thanh toán thành công (nếu có)
+                if (payment.savedVoucherId) {
+                  try {
+                    await SavedVoucher.findByIdAndDelete(payment.savedVoucherId);
+                    console.log(`Đã xóa voucher đã lưu ${payment.savedVoucherId} sau khi thanh toán thành công (webhook)`);
+                  } catch (voucherError) {
+                    console.error('Error deleting saved voucher from webhook:', voucherError);
+                  }
+                }
+                
                 await payment.save();
                 console.log(`Updated payment ${payment._id} status to 'completed'`);
               } else {

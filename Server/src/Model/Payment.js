@@ -7,6 +7,17 @@ const paymentSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    orderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Order",
+    },
+    amount: {
+      type: Number,
+      required: true,
+    },
+    totalAmount: {
+      type: Number,
+    },
     products: [
       {
         productId: {
@@ -17,38 +28,42 @@ const paymentSchema = new mongoose.Schema(
         quantity: {
           type: Number,
           required: true,
-          min: 1,
         },
         price: {
           type: Number,
           required: true,
-          min: 0,
         },
       },
     ],
-    totalAmount: {
-      type: Number,
+    paymentMethod: {
+      type: String,
       required: true,
     },
     status: {
       type: String,
-      enum: ["pending", "completed", "failed"],
-      default: "pending"
+      enum: ["pending", "processing", "completed", "failed", "refunded"],
+      default: "pending",
     },
-    paymentMethod: {
-      type: String,
-      enum: ["cod", "sepay", "bank_transfer"],
-      default: "cod"
+    paidAt: {
+      type: Date,
     },
     transactionId: {
-      type: String
+      type: String,
     },
-    createdAt: {
-      type: Date,
-      default: Date.now,
+    responseCode: {
+      type: String,
+    },
+    responseMessage: {
+      type: String,
+    },
+    savedVoucherId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "SavedVoucher",
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
 const Payment = mongoose.model("Payment", paymentSchema);

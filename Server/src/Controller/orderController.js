@@ -1,5 +1,6 @@
 import Order from "../Model/Order.js";
 import Product from "../Model/Products.js";
+import SavedVoucher from "../Model/SavedVoucher.js";
 import axios from "axios";
 import dotenv from "dotenv";
 import { sendOrderConfirmationEmail, sendOrderShippingEmail } from "../utils/emailService.js";
@@ -58,7 +59,7 @@ async function updateProductStock(products, increase = false, updateSoldCount = 
 export const orderCreate = async (req, res) => {
   try {
     // Validate required fields
-    const { userId, products, totalAmount, paymentMethod } = req.body;
+    const { userId, products, totalAmount, paymentMethod, coupon } = req.body;
     if (!userId || !products || !Array.isArray(products) || products.length === 0 || !totalAmount) {
       return res.status(400).json({ 
         success: false,
@@ -113,24 +114,23 @@ export const orderCreate = async (req, res) => {
     const populatedOrder = await Order.findById(order._id)
       .populate('userId')
       .populate('products.productId');
-    
-    // Gửi email xác nhận đơn hàng
-    if (populatedOrder.shippingInfo && populatedOrder.shippingInfo.email) {
+      
+    // Gửi email xác nhận nếu đơn hàng đã được tạo thành công
+    if (populatedOrder && populatedOrder.userId && populatedOrder.userId.email) {
       try {
         await sendOrderConfirmationEmail(populatedOrder);
-        console.log(`Đã gửi email xác nhận đơn hàng ${populatedOrder.orderCode} đến ${populatedOrder.shippingInfo.email}`);
       } catch (emailError) {
-        console.error('Lỗi khi gửi email xác nhận đơn hàng:', emailError);
-        // Không trả về lỗi cho người dùng nếu chỉ gửi email thất bại
+        console.error("Error sending confirmation email:", emailError);
+        // Không throw error nếu gửi email thất bại để không ảnh hưởng đến luồng đặt hàng
       }
     }
-
-    // Return success response with order data
-    res.status(201).json(order);
+    
+    return res.status(201).json(order);
   } catch (err) {
-    res.status(500).json({ 
+    console.error("Error creating order:", err);
+    return res.status(500).json({ 
       success: false,
-      error: err.message 
+      error: err.message || "Lỗi khi tạo đơn hàng"
     });
   }
 };

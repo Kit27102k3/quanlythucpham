@@ -28,5 +28,6 @@ export const API_URLS = {
   REVIEWS: `${API_BASE_URL}/api/reviews`,
   TIPS: `${API_BASE_URL}/api`,
   CONTACT: `${API_BASE_URL}/api/contact`,
-  COUPONS: `${API_BASE_URL}/api/coupons`
+  COUPONS: `${API_BASE_URL}/api/coupons`,
+  SAVED_VOUCHERS: `${API_BASE_URL}/api/saved-vouchers`
 }; 
