@@ -379,6 +379,23 @@ export default function Payment() {
               }
             }
 
+            // Kiểm tra nếu có QR code ngân hàng, ưu tiên chuyển hướng tới trang QR
+            if (sepayResponse.qrCode || sepayResponse.method === "bank_transfer") {
+              toast.info("Sử dụng phương thức thanh toán QR chuyển khoản");
+              navigate(
+                `/payment-qr?orderId=${orderIdCreated}&qrCode=${encodeURIComponent(
+                  sepayResponse.qrCode
+                )}&bankName=${encodeURIComponent(
+                  sepayResponse.bankInfo?.name || "MBBank"
+                )}&accountNumber=${
+                  sepayResponse.bankInfo?.accountNumber || "0326743391"
+                }&accountName=${encodeURIComponent(
+                  sepayResponse.bankInfo?.accountName || "NGUYEN TRONG KHIEM"
+                )}&amount=${totalAmount}`
+              );
+              return;
+            }
+
             if (sepayResponse.method === "bank_transfer") {
               toast.info("Sử dụng phương thức thanh toán QR chuyển khoản");
               navigate(

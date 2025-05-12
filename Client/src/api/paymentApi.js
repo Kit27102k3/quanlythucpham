@@ -115,9 +115,22 @@ const paymentApi = {
         console.log("Phản hồi từ API tạo URL thanh toán:", response.data);
         
         // Kiểm tra response
-        if (response.data && response.data.paymentUrl) {
+        if (response.data && response.data.qrCode) {
+          // Nếu có QR code, ưu tiên sử dụng ngay mà không redirect qua SePay
           return {
-            success: false, // Chuyển thành false ban đầu, chỉ true khi webhook xác nhận đã thanh toán
+            success: false,
+            method: "bank_transfer",
+            qrCode: response.data.qrCode,
+            bankInfo: {
+              name: "MBBank - Ngân hàng Thương mại Cổ phần Quân đội",
+              accountName: "NGUYEN TRONG KHIEM",
+              accountNumber: "0326743391",
+              bankCode: "MB"
+            }
+          };
+        } else if (response.data && response.data.paymentUrl) {
+          return {
+            success: false,
             data: response.data.paymentUrl,
             qrCode: response.data.qrCode,
             method: "sepay"
@@ -140,7 +153,14 @@ const paymentApi = {
       return {
         success: false,
         error: error.response?.data?.message || error.message || "Không thể tạo URL thanh toán",
-        fallbackQR: createDirectBankQRUrl(orderId, amount)
+        fallbackQR: createDirectBankQRUrl(orderId, amount),
+        method: "bank_transfer",
+        bankInfo: {
+          name: "MBBank - Ngân hàng Thương mại Cổ phần Quân đội",
+          accountName: "NGUYEN TRONG KHIEM",
+          accountNumber: "0326743391",
+          bankCode: "MB"
+        }
       };
     }
   },
@@ -281,4 +301,4 @@ function isSuccessful(response) {
   return successIndicators.some(indicator => indicator === true);
 }
 
-export default paymentApi; 
+export default paymentApi;

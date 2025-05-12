@@ -42,6 +42,27 @@ export const createSepayPaymentUrl = async (req, res) => {
     
     console.log("Yêu cầu tạo URL thanh toán SePay:", { orderId, amount: numericAmount, redirectUrl });
     
+    // Tạo nội dung chuyển khoản chuẩn hóa (TT = Thanh toán, DH = đơn hàng)
+    const transferContent = `TT DH ${orderId}`;
+    
+    // Tạo QR code chuyển khoản ngân hàng
+    const bankQRUrl = await PaymentService.generateBankQRCode("0326743391", "MB", numericAmount, transferContent);
+    
+    // Ưu tiên trả về QR code trực tiếp để tránh redirect
+    return res.json({
+      success: true,
+      qrCode: bankQRUrl,
+      bankInfo: {
+        name: "MBBank - Ngân hàng Thương mại Cổ phần Quân đội",
+        accountName: "NGUYEN TRONG KHIEM",
+        accountNumber: "0326743391",
+        bankCode: "MB"
+      },
+      paymentUrl: redirectUrl || `${process.env.CLIENT_URL || 'http://localhost:3000'}/payment-result?orderId=${orderId}`,
+      fallbackMode: true
+    });
+    
+    // Đoạn code dưới đây được giữ lại nhưng không thực thi
     try {
     // Gọi service để tạo thanh toán SePay
     const paymentResult = await PaymentService.createSePayPayment(
