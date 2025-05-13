@@ -49,10 +49,14 @@ function Contact() {
 
     try {
       setIsSubmitting(true);
-      const apiUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8081";
-      const response = await axios.post(`${apiUrl}/api/contact`, formData);
+      const response = await axios.post(`${API_URLS.CONTACT}`, formData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 10000 // 10 giây timeout
+      });
       
-      if (response.status === 201) {
+      if (response.status === 201 || response.status === 200) {
         const token = localStorage.getItem("token");
         if (token) {
           try {
@@ -65,8 +69,10 @@ function Contact() {
               },
               {
                 headers: {
-                  Authorization: `Bearer ${token}`,
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
                 },
+                timeout: 10000
               }
             );
           } catch (error) {
@@ -86,7 +92,13 @@ function Contact() {
       }
     } catch (error) {
       console.error("Lỗi khi gửi liên hệ:", error);
-      toast.error("Đã có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.");
+      if (error.code === "ERR_NETWORK") {
+        toast.error("Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet của bạn và thử lại.");
+      } else if (error.code === "ECONNABORTED") {
+        toast.error("Yêu cầu quá thời gian chờ. Vui lòng thử lại sau.");
+      } else {
+        toast.error("Đã có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.");
+      }
     } finally {
       setIsSubmitting(false);
     }
