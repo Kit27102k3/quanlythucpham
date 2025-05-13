@@ -3,6 +3,7 @@ import "../../../index.css";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import axios from "axios";
+import { API_URLS } from "../../../config/apiConfig";
 
 const information = [
   {
@@ -52,22 +53,26 @@ function Contact() {
       const response = await axios.post(`${apiUrl}/api/contact`, formData);
       
       if (response.status === 201) {
-        try {
-          await axios.post(
-            `${API_URLS.MESSAGES}/send`,
-            {
-              text: formData.message,
-              sender: "user",
-              receiverId: "admin"
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
+        const token = localStorage.getItem("token");
+        if (token) {
+          try {
+            await axios.post(
+              `${API_URLS.MESSAGES}/send`,
+              {
+                text: formData.message,
+                sender: "user",
+                receiverId: "admin"
               },
-            }
-          );
-        } catch (error) {
-          console.error("Error sending message:", error);
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            );
+          } catch (error) {
+            console.error("Error sending message:", error);
+            // Continue with success flow even if the message part fails
+          }
         }
         
         toast.success("Tin nhắn của bạn đã được gửi thành công. Chúng tôi sẽ liên hệ lại sớm!");
