@@ -38,6 +38,7 @@ import LoginSuccess from "../User/Pages/Account/LoginSuccess";
 import CouponList from "../Admin/Pages/CouponList";
 import VoucherPage from "../User/Pages/Voucher/VoucherPage";
 import SavedVoucher from "../User/Pages/Profile/SavedVoucher";
+import Reports from "../Admin/Pages/Reports/Reports";
 const publicRoutes = [
   {
     path: "/",
@@ -224,6 +225,10 @@ const privateRoutes = [
   {
     path: "/admin/coupons",
     page: CouponList,
+  },
+  {
+    path: "/admin/reports",
+    page: Reports,
   },
 ];
 

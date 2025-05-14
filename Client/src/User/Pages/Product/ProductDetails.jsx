@@ -33,6 +33,7 @@ export default function ProductDetails() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [editingReply, setEditingReply] = useState(null);
   const [editReplyText, setEditReplyText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { slug } = useParams();
   const topElementRef = useRef(null);
   const navigate = useNavigate();
@@ -40,6 +41,7 @@ export default function ProductDetails() {
   // Kiểm tra xem người dùng đã đăng nhập chưa
   const checkIsAuthenticated = () => {
     const accessToken = localStorage.getItem('accessToken');
+    const access_token = localStorage.getItem('access_token');
     const token = localStorage.getItem('token');
     const userAccessToken = localStorage.getItem('userAccessToken');
     const adminAccessToken = localStorage.getItem('adminAccessToken');
@@ -47,12 +49,13 @@ export default function ProductDetails() {
     // Log để debug
     console.log('Authentication tokens:', {
       accessToken,
+      access_token,
       token,
       userAccessToken,
       adminAccessToken
     });
     
-    return !!(accessToken || token || userAccessToken || adminAccessToken); // Chuyển token thành boolean
+    return !!(accessToken || access_token || token || userAccessToken || adminAccessToken); // Chuyển token thành boolean
   };
 
   useEffect(() => {
@@ -223,6 +226,19 @@ export default function ProductDetails() {
   const handleSubmitReview = async (e) => {
     e.preventDefault();
     
+    // Đảm bảo token được lưu ở cả hai vị trí
+    const accessToken = localStorage.getItem('accessToken');
+    const access_token = localStorage.getItem('access_token');
+    
+    // Đồng bộ token nếu một trong hai tồn tại
+    if (accessToken && !access_token) {
+      localStorage.setItem('access_token', accessToken);
+      console.log('Đã sao chép accessToken sang access_token');
+    } else if (!accessToken && access_token) {
+      localStorage.setItem('accessToken', access_token);
+      console.log('Đã sao chép access_token sang accessToken');
+    }
+    
     if (!checkIsAuthenticated()) {
       toast.error("Vui lòng đăng nhập để đánh giá sản phẩm");
       return;
@@ -369,6 +385,19 @@ export default function ProductDetails() {
 
   // Hàm xử lý gửi phản hồi cho đánh giá
   const handleSubmitReply = async (reviewId) => {
+    // Đảm bảo token được lưu ở cả hai vị trí
+    const accessToken = localStorage.getItem('accessToken');
+    const access_token = localStorage.getItem('access_token');
+    
+    // Đồng bộ token nếu một trong hai tồn tại
+    if (accessToken && !access_token) {
+      localStorage.setItem('access_token', accessToken);
+      console.log('Đã sao chép accessToken sang access_token');
+    } else if (!accessToken && access_token) {
+      localStorage.setItem('accessToken', access_token);
+      console.log('Đã sao chép access_token sang accessToken');
+    }
+    
     if (!checkIsAuthenticated()) {
       toast.error("Vui lòng đăng nhập để trả lời đánh giá");
       return;
@@ -378,6 +407,8 @@ export default function ProductDetails() {
       toast.error("Vui lòng nhập nội dung phản hồi");
       return;
     }
+    
+    setSubmitting(true);
     
     try {
       await reviewsApi.addReplyToReview(reviewId, replyText);
@@ -393,6 +424,8 @@ export default function ProductDetails() {
     } catch (error) {
       console.error("Lỗi khi gửi phản hồi:", error);
       toast.error(error.response?.data?.message || "Không thể gửi phản hồi. Vui lòng thử lại sau.");
+    } finally {
+      setSubmitting(false);
     }
   };
   
@@ -402,6 +435,8 @@ export default function ProductDetails() {
       toast.error("Vui lòng nhập nội dung phản hồi");
       return;
     }
+    
+    setSubmitting(true);
     
     try {
       await reviewsApi.updateReply(reviewId, replyId, editReplyText);
@@ -417,6 +452,8 @@ export default function ProductDetails() {
     } catch (error) {
       console.error("Lỗi khi cập nhật phản hồi:", error);
       toast.error(error.response?.data?.message || "Không thể cập nhật phản hồi. Vui lòng thử lại sau.");
+    } finally {
+      setSubmitting(false);
     }
   };
   
@@ -425,6 +462,8 @@ export default function ProductDetails() {
     if (!window.confirm("Bạn có chắc chắn muốn xóa phản hồi này?")) {
       return;
     }
+    
+    setSubmitting(true);
     
     try {
       await reviewsApi.deleteReply(reviewId, replyId);
@@ -436,6 +475,8 @@ export default function ProductDetails() {
     } catch (error) {
       console.error("Lỗi khi xóa phản hồi:", error);
       toast.error(error.response?.data?.message || "Không thể xóa phản hồi. Vui lòng thử lại sau.");
+    } finally {
+      setSubmitting(false);
     }
   };
   
@@ -850,8 +891,9 @@ export default function ProductDetails() {
                                           <button
                                             onClick={() => handleUpdateReply(review._id, reply._id)}
                                             className="bg-blue-500 text-white py-0.5 px-2 rounded-md text-[10px]"
+                                            disabled={submitting}
                                           >
-                                            Lưu
+                                            {submitting ? 'Đang lưu...' : 'Lưu'}
                                           </button>
                                           <button
                                             onClick={() => {
@@ -888,8 +930,9 @@ export default function ProductDetails() {
                                       <button
                                         onClick={() => handleSubmitReply(review._id)}
                                         className="bg-[#51bb1a] text-white py-0.5 px-2 rounded-md text-[10px]"
+                                        disabled={submitting}
                                       >
-                                        Gửi
+                                        {submitting ? 'Đang gửi...' : 'Gửi'}
                                       </button>
                                       <button
                                         onClick={() => {
@@ -1139,16 +1182,17 @@ export default function ProductDetails() {
                                     <div className="flex gap-2 mt-2">
                                       <button
                                         onClick={() => handleUpdateReply(review._id, reply._id)}
-                                        className="bg-blue-500 text-white py-1 px-3 rounded-md text-sm"
+                                        className="bg-blue-500 text-white py-0.5 px-2 rounded-md text-sm"
+                                        disabled={submitting}
                                       >
-                                        Lưu
+                                        {submitting ? 'Đang lưu...' : 'Lưu'}
                                       </button>
                                       <button
                                         onClick={() => {
                                           setEditingReply(null);
                                           setEditReplyText("");
                                         }}
-                                        className="bg-gray-300 text-gray-700 py-1 px-3 rounded-md text-sm"
+                                        className="bg-gray-300 text-gray-700 py-0.5 px-2 rounded-md text-sm"
                                       >
                                         Hủy
                                       </button>
@@ -1178,8 +1222,15 @@ export default function ProductDetails() {
                                   <button
                                     onClick={() => handleSubmitReply(review._id)}
                                     className="bg-[#51bb1a] text-white py-1 px-3 rounded-md text-sm"
+                                    disabled={submitting}
                                   >
-                                    Gửi phản hồi
+                                    {submitting ? (
+                                      <span className="flex items-center gap-1">
+                                        <span className="animate-spin">↻</span> Đang gửi...
+                                      </span>
+                                    ) : (
+                                      'Gửi phản hồi'
+                                    )}
                                   </button>
                                   <button
                                     onClick={() => {

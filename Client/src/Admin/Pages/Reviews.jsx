@@ -28,8 +28,22 @@ import "./styles.css";
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [filterBy, setFilterBy] = useState("all");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    // Khởi tạo token admin nếu là admin TKhiem
+    const isAdmin = localStorage.getItem('role') === 'admin' || localStorage.getItem('userRole') === 'admin';
+    const accessToken = localStorage.getItem('accessToken');
+    
+    if (isAdmin && accessToken === 'admin-token-for-TKhiem') {
+      console.log('Khởi tạo admin token đặc biệt cho TKhiem');
+      // Lưu thêm vào access_token để đảm bảo API hoạt động
+      if (!localStorage.getItem('access_token')) {
+        localStorage.setItem('access_token', 'admin-token-for-TKhiem');
+        console.log('Đã sao chép admin token vào access_token');
+      }
+    }
+    
     const fetchReviews = async () => {
       setLoading(true);
       setError(null);
@@ -125,8 +139,26 @@ import "./styles.css";
       return;
     }
     
+    // Kiểm tra tất cả các loại token
+    const token = localStorage.getItem("access_token");
+    const accessToken = localStorage.getItem("accessToken");
+    const adminToken = (token === "admin-token-for-TKhiem" || accessToken === "admin-token-for-TKhiem") 
+                        ? "admin-token-for-TKhiem" : null;
+    
+    if (!token && !accessToken && !adminToken) {
+      toast.error("Vui lòng đăng nhập lại để thực hiện chức năng này");
+      return;
+    }
+    
+    setSubmitting(true);
+    
     try {
-      await reviewsApi.addReplyToReview(reviewId, replyText);
+      console.log("Sending reply for review:", reviewId);
+      console.log("Reply text:", replyText);
+      console.log("Using token:", adminToken || token || accessToken);
+      
+      const response = await reviewsApi.addReplyToReview(reviewId, replyText);
+      console.log("Reply response:", response);
       
       // Refresh the review list
       const data = await reviewsApi.getAllReviews();
@@ -139,7 +171,22 @@ import "./styles.css";
       toast.success("Đã gửi phản hồi thành công!");
     } catch (error) {
       console.error("Lỗi khi gửi phản hồi:", error);
-      toast.error(error.response?.data?.message || "Không thể gửi phản hồi. Vui lòng thử lại sau.");
+      
+      // Hiển thị thông báo lỗi chi tiết hơn
+      let errorMessage = "Không thể gửi phản hồi. Vui lòng thử lại sau.";
+      
+      if (error.response) {
+        errorMessage = `Lỗi (${error.response.status}): ${error.response.data?.message || 'Không thể gửi phản hồi'}`;
+        console.log("Error response:", error.response);
+      } else if (error.request) {
+        errorMessage = "Không thể kết nối đến server. Kiểm tra kết nối mạng.";
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -455,9 +502,19 @@ import "./styles.css";
                           <button
                             onClick={() => handleSubmitReply(review._id)}
                             className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 flex items-center gap-2"
+                            disabled={submitting}
                           >
-                            <Save size={16} />
-                            Gửi phản hồi
+                            {submitting ? (
+                              <>
+                                <RefreshCcw size={16} className="animate-spin" />
+                                Đang gửi...
+                              </>
+                            ) : (
+                              <>
+                                <Save size={16} />
+                                Gửi phản hồi
+                              </>
+                            )}
                           </button>
                         </div>
                       </div>

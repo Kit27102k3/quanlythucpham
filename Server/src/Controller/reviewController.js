@@ -561,9 +561,10 @@ export const replyToReview = async (req, res) => {
         });
       }
       
-      // Tạo phản hồi mới với vai trò admin
+      // Tạo phản hồi mới với vai trò admin - sử dụng ID hợp lệ
+      const adminId = new mongoose.Types.ObjectId("65f62e09ac3ea4ad23023293"); // Sử dụng ID admin cố định
       const reply = {
-        userId: "admin",
+        userId: adminId, // Sử dụng ObjectId hợp lệ
         userName: "Admin",
         text: text.trim(),
         isAdmin: true

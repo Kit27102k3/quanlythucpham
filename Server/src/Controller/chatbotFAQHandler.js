@@ -20,7 +20,9 @@ const intentKeywords = {
   'faq_organic_products': ['hữu cơ', 'organic', 'tự nhiên', 'không hóa chất', 'sạch', 'an toàn', 'sinh học', 'không thuốc trừ sâu', 'không phân bón', 'sản phẩm hữu cơ', 'thực phẩm sạch', 'xanh', 'eco'],
   'faq_dietary_options': ['ăn kiêng', 'chay', 'thuần chay', 'vegan', 'keto', 'low-carb', 'gluten-free', 'không đường', 'ít đường', 'không lactose', 'ăn chay', 'đồ chay', 'không tinh bột', 'ít muối', 'ít béo'],
   'faq_gift_services': ['quà tặng', 'gói quà', 'giỏ quà', 'thẻ quà tặng', 'gift card', 'gửi quà', 'quà biếu', 'quà sinh nhật', 'dịch vụ quà', 'gửi quà tặng', 'có dịch vụ gói quà không', 'làm hộp quà'],
-  'faq_bulk_orders': ['đơn hàng lớn', 'mua số lượng nhiều', 'mua sỉ', 'đặt hàng số lượng lớn', 'doanh nghiệp', 'công ty đặt hàng', 'số lượng lớn', 'mua nhiều', 'giá sỉ', 'giảm giá khi mua nhiều', 'đơn đoàn', 'mua hàng loạt', 'mua với số lượng lớn', 'đơn hàng số lượng lớn', 'đơn số lượng lớn']
+  'faq_bulk_orders': ['đơn hàng lớn', 'mua số lượng nhiều', 'mua sỉ', 'đặt hàng số lượng lớn', 'doanh nghiệp', 'công ty đặt hàng', 'số lượng lớn', 'mua nhiều', 'giá sỉ', 'giảm giá khi mua nhiều', 'đơn đoàn', 'mua hàng loạt', 'mua với số lượng lớn', 'đơn hàng số lượng lớn', 'đơn số lượng lớn'],
+  'faq_chatbot_help': ['chatbot có thể giúp gì cho tôi', 'chatbot giúp gì cho tôi', 'chatbot giúp gì', 'chatbot có thể giúp gì', 'chatbot hỗ trợ', 'bot có thể làm gì', 'chatbot làm được gì', 'trợ lý ảo', 'bot giúp được gì', 'bot hỗ trợ gì', 'chatbot có tính năng gì', 'website hỗ trợ', 'tính năng chatbot', 'tính năng website', 'hệ thống hỗ trợ', 'chatbot làm gì'],
+  'faq_product_not_found': ['không tìm thấy sản phẩm', 'tìm không ra', 'không có sản phẩm', 'sản phẩm không có', 'không thấy hàng', 'không tìm được', 'sản phẩm không hiển thị', 'không thấy sản phẩm', 'tìm sản phẩm', 'tìm kiếm sản phẩm', 'tìm không thấy']
 };
 
 // Đánh giá mức độ ưu tiên cho từng loại intent
@@ -28,12 +30,14 @@ const intentPriority = {
   'faq_bulk_orders': 3,
   'faq_organic_products': 3,
   'faq_gift_services': 3,
+  'faq_chatbot_help': 3,
   'faq_promotions': 2,
   'faq_payment_methods': 2,
   'faq_shipping_fee': 2,
   'faq_shipping_time': 2,
   'faq_return_policy': 2,
   'faq_dietary_options': 2,
+  'faq_product_not_found': 2,
   'faq_how_to_buy': 1,
   'faq_how_to_order': 1,
   'faq_store_location': 1,
@@ -53,27 +57,41 @@ export const detectIntentFromKeywords = (query) => {
   
   // Chuyển câu hỏi thành chữ thường để so sánh dễ dàng hơn
   const normalizedQuery = query.toLowerCase();
+  console.log(`Normalized Query: "${normalizedQuery}"`);
+  
+  // Kiểm tra khớp chính xác với câu hỏi
+  for (const [intent, keywords] of Object.entries(intentKeywords)) {
+    const priority = intentPriority[intent] || 1;
+    for (const keyword of keywords) {
+      // Nếu câu hỏi khớp chính xác với từ khóa
+      if (normalizedQuery === keyword.toLowerCase() || 
+          normalizedQuery.replace(/[?.,!]/g, '') === keyword.toLowerCase()) {
+        console.log(`Exact match found for intent: ${intent}, keyword: "${keyword}"`);
+        return intent;
+      }
+    }
+  }
   
   // Điểm số cho mỗi intent
   const scores = {};
   let bestMatch = null;
   let highestScore = 0;
   
-  // Kiểm tra các intent với độ ưu tiên cao trước
-  // Kiểm tra chính xác cụm từ hoàn chỉnh
+  // Kiểm tra khớp một phần với từ khóa
   for (const [intent, keywords] of Object.entries(intentKeywords)) {
     const priority = intentPriority[intent] || 1;
     scores[intent] = 0;
     
     for (const keyword of keywords) {
-      // Kiểm tra từ khóa chính xác
-      if (normalizedQuery === keyword.toLowerCase()) {
-        // Khớp hoàn toàn
-        scores[intent] += keyword.length * 3 * priority;
+      // Kiểm tra từ khóa dài trong câu hỏi
+      if (keyword.length > 10 && normalizedQuery.includes(keyword.toLowerCase())) {
+        scores[intent] += keyword.length * 2 * priority;
+        console.log(`Long keyword match: "${keyword}" for intent ${intent}, score +${keyword.length * 2 * priority}`);
       }
+      // Từ khóa ngắn chỉ tính nếu là từ riêng biệt trong câu
       else if (normalizedQuery.includes(keyword.toLowerCase())) {
-        // Từ khóa dài sẽ có trọng số cao hơn
         scores[intent] += keyword.length * priority;
+        console.log(`Keyword match: "${keyword}" for intent ${intent}, score +${keyword.length * priority}`);
       }
     }
     
@@ -84,6 +102,7 @@ export const detectIntentFromKeywords = (query) => {
     }
   }
   
+  console.log(`Best matching intent: ${bestMatch}, score: ${highestScore}`);
   // Trả về intent phù hợp nhất nếu điểm đủ cao
   return highestScore > 0 ? bestMatch : null;
 };
@@ -137,6 +156,10 @@ export const handleFAQQuestion = (intent, query = "") => {
       return handleGiftServices();
     case 'faq_bulk_orders':
       return handleBulkOrders();
+    case 'faq_chatbot_help':
+      return handleChatbotHelp();
+    case 'faq_product_not_found':
+      return handleProductNotFound();
     default:
       return {
         success: true,
@@ -636,5 +659,35 @@ Vui lòng đặt trước ít nhất 3-5 ngày với đơn hàng lớn.`;
     type: 'text',
     message: message,
     intent: 'faq_bulk_orders'
+  };
+};
+
+/**
+ * Xử lý câu hỏi về việc chatbot có thể giúp gì
+ * @returns {object} - Phản hồi cho câu hỏi
+ */
+const handleChatbotHelp = () => {
+  const message = `Tôi có thể giúp bạn tìm sản phẩm, kiểm tra đơn hàng, giải đáp chính sách giao hàng – thanh toán – đổi trả.`;
+  
+  return {
+    success: true,
+    type: 'text',
+    message: message,
+    intent: 'faq_chatbot_help'
+  };
+};
+
+/**
+ * Xử lý câu hỏi khi không tìm thấy sản phẩm
+ * @returns {object} - Phản hồi cho câu hỏi
+ */
+const handleProductNotFound = () => {
+  const message = `Bạn hãy thử nhập tên sản phẩm khác hoặc mô tả chi tiết hơn. Nếu vẫn không có, bạn có thể gửi yêu cầu đặt hàng riêng.`;
+  
+  return {
+    success: true,
+    type: 'text',
+    message: message,
+    intent: 'faq_product_not_found'
   };
 };

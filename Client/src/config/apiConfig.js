@@ -2,7 +2,7 @@
 const getApiBaseUrl = () => {
   // Trong môi trường phát triển (development/local)
   if (import.meta.env.DEV) {
-    return import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
+    return import.meta.env.VITE_SERVER_URL || "http://localhost:8081";
   }
   
   // Trong môi trường production (Vercel), sử dụng URL backend được cấu hình

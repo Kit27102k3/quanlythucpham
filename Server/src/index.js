@@ -33,6 +33,7 @@ import messageRoutes from "./routes/messageRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
 import savedVoucherRoutes from "./routes/savedVoucherRoutes.js";
+import reportRoutes from "./routes/reportRoutes.js";
 
 dotenv.config({ path: ".env" });
 const app = express();
@@ -109,6 +110,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/saved-vouchers", savedVoucherRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Dọn dẹp các webhook handler trùng lặp
 // Đây là danh sách các đường dẫn webhook cần hỗ trợ

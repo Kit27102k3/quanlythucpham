@@ -1,11 +1,10 @@
-import axios from "axios";
-import { API_URLS } from "../config/apiConfig";
+import apiClient from "./axios";
 
 // Hàm lấy đánh giá của một sản phẩm
 const getProductReviews = async (productId) => {
   try {
     console.log("Fetching reviews for product:", productId);
-    const response = await axios.get(`${API_URLS.REVIEWS}/product/${productId}`);
+    const response = await apiClient.get(`/api/reviews/product/${productId}`);
     console.log("Reviews API response:", response.data);
     
     // Nếu dữ liệu trả về trực tiếp là mảng (không nằm trong .data)
@@ -58,8 +57,8 @@ const calculateAverageRating = (reviews) => {
 // Hàm thêm đánh giá mới
 const addReview = async (reviewData) => {
   try {
-    const token = localStorage.getItem("accessToken") || 
-                 localStorage.getItem("token");
+    // Kiểm tra cả hai loại token
+    const token = localStorage.getItem("access_token") || localStorage.getItem("accessToken");
     if (!token) {
       throw new Error("Bạn cần đăng nhập để đánh giá sản phẩm");
     }
@@ -85,17 +84,11 @@ const addReview = async (reviewData) => {
 
     console.log("Sending review data:", formattedData);
     console.log("Token:", token);
-    console.log("URL:", `${API_URLS.REVIEWS}/product/${reviewData.productId}`);
 
-    const response = await axios.post(
-      `${API_URLS.REVIEWS}/product/${reviewData.productId}`,
-      formattedData,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-      }
+    // Sử dụng apiClient để tự động gắn token
+    const response = await apiClient.post(
+      `/api/reviews/product/${reviewData.productId}`,
+      formattedData
     );
     return response.data;
   } catch (error) {
@@ -111,20 +104,14 @@ const addReview = async (reviewData) => {
 // Hàm cập nhật đánh giá
 const updateReview = async (reviewId, reviewData) => {
   try {
-    const token = localStorage.getItem("accessToken") || 
-                 localStorage.getItem("token");
+    const token = localStorage.getItem("access_token");
     if (!token) {
       throw new Error("Bạn cần đăng nhập để cập nhật đánh giá");
     }
 
-    const response = await axios.put(
-      `${API_URLS.REVIEWS}/${reviewId}`,
-      reviewData,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    const response = await apiClient.put(
+      `/api/reviews/${reviewId}`,
+      reviewData
     );
     return response.data;
   } catch (error) {
@@ -136,17 +123,12 @@ const updateReview = async (reviewId, reviewData) => {
 // Hàm xóa đánh giá
 const deleteReview = async (reviewId) => {
   try {
-    const token = localStorage.getItem("accessToken") || 
-                 localStorage.getItem("token");
+    const token = localStorage.getItem("access_token");
     if (!token) {
       throw new Error("Bạn cần đăng nhập để xóa đánh giá");
     }
 
-    const response = await axios.delete(`${API_URLS.REVIEWS}/${reviewId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await apiClient.delete(`/api/reviews/${reviewId}`);
     return response.data;
   } catch (error) {
     console.error("Lỗi khi xóa đánh giá:", error);
@@ -157,17 +139,27 @@ const deleteReview = async (reviewId) => {
 // API cho Admin
 const getAllReviews = async (page = 1, limit = 10) => {
   try {
-    // Sử dụng token đặc biệt cho admin TKhiem
-    const token = localStorage.getItem("accessToken");
+    // Kiểm tra cả token thông thường và admin-token đặc biệt
+    const token = localStorage.getItem("access_token") || 
+                  localStorage.getItem("accessToken");
+    const adminToken = localStorage.getItem("adminToken") || 
+                      (token === "admin-token-for-TKhiem" ? token : null);
     
-    if (!token) {
+    if (!token && !adminToken) {
       throw new Error("Bạn cần đăng nhập với quyền admin để xem tất cả đánh giá");
     }
+    
+    console.log('Sử dụng token để xem đánh giá:', token || adminToken);
 
-    console.log('Sử dụng token để xem đánh giá:', token);
+    // Thêm header đặc biệt cho admin token nếu cần
+    const headers = {};
+    if (adminToken === "admin-token-for-TKhiem") {
+      headers["admin-token"] = adminToken;
+    }
 
-    const response = await axios.get(
-      `${API_URLS.REVIEWS}/admin/all?page=${page}&limit=${limit}&token=${token}`
+    const response = await apiClient.get(
+      `/api/reviews/admin/all?page=${page}&limit=${limit}`,
+      { headers }
     );
     return response.data.data;
   } catch (error) {
@@ -179,18 +171,28 @@ const getAllReviews = async (page = 1, limit = 10) => {
 // Hàm cập nhật trạng thái hiển thị của đánh giá (admin)
 const toggleReviewStatus = async (reviewId) => {
   try {
-    // Sử dụng token đặc biệt cho admin TKhiem
-    const token = localStorage.getItem("accessToken");
+    // Kiểm tra cả token thông thường và admin-token đặc biệt
+    const token = localStorage.getItem("access_token") || 
+                  localStorage.getItem("accessToken");
+    const adminToken = localStorage.getItem("adminToken") || 
+                      (token === "admin-token-for-TKhiem" ? token : null);
     
-    if (!token) {
+    if (!token && !adminToken) {
       throw new Error("Bạn cần đăng nhập với quyền admin để thực hiện hành động này");
     }
 
-    console.log('Sử dụng token để cập nhật trạng thái đánh giá:', token);
+    console.log('Sử dụng token để cập nhật trạng thái đánh giá:', token || adminToken);
 
-    const response = await axios.patch(
-      `${API_URLS.REVIEWS}/admin/toggle/${reviewId}?token=${token}`,
-      {}
+    // Thêm header đặc biệt cho admin token nếu cần
+    const headers = {};
+    if (adminToken === "admin-token-for-TKhiem") {
+      headers["admin-token"] = adminToken;
+    }
+
+    const response = await apiClient.patch(
+      `/api/reviews/admin/toggle/${reviewId}`,
+      {},
+      { headers }
     );
     return response.data;
   } catch (error) {
@@ -202,24 +204,41 @@ const toggleReviewStatus = async (reviewId) => {
 // Thêm phản hồi cho đánh giá
 export const addReplyToReview = async (reviewId, text) => {
   try {
-    // Sử dụng token đặc biệt cho admin TKhiem
-    const token = localStorage.getItem("accessToken");
+    // Lấy token từ localStorage
+    const token = localStorage.getItem("access_token");
+    const accessToken = localStorage.getItem("accessToken");
+    const adminToken = (token === "admin-token-for-TKhiem" || accessToken === "admin-token-for-TKhiem") 
+                        ? "admin-token-for-TKhiem" : null;
     
     // Kiểm tra nếu token tồn tại
-    if (!token) {
+    if (!token && !accessToken && !adminToken) {
       throw new Error('Không tìm thấy token xác thực');
     }
     
-    console.log('Using token for reply:', token);
+    console.log('[Debug] Token info:', {
+      access_token: token,
+      accessToken,
+      adminToken,
+      isAdminToken: !!adminToken
+    });
     
-    const response = await axios.post(
-      `${API_URLS.REVIEWS}/${reviewId}/replies?token=${token}`,
+    // Headers đặc biệt cho admin token
+    const headers = {};
+    if (adminToken) {
+      headers["admin-token"] = adminToken;
+    }
+    
+    console.log('[Debug] API request config:', {
+      url: `/api/reviews/${reviewId}/replies`,
+      method: 'POST',
+      headers,
+      params: adminToken ? { token: adminToken } : undefined
+    });
+    
+    const response = await apiClient.post(
+      `/api/reviews/${reviewId}/replies`,
       { text },
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
+      adminToken ? { headers, params: { token: adminToken } } : undefined
     );
     return response.data;
   } catch (error) {
@@ -231,24 +250,29 @@ export const addReplyToReview = async (reviewId, text) => {
 // Cập nhật phản hồi
 export const updateReply = async (reviewId, replyId, text) => {
   try {
-    // Sử dụng token đặc biệt cho admin TKhiem
-    const token = localStorage.getItem("accessToken");
+    // Lấy token từ localStorage
+    const token = localStorage.getItem("access_token");
+    const accessToken = localStorage.getItem("accessToken");
+    const adminToken = (token === "admin-token-for-TKhiem" || accessToken === "admin-token-for-TKhiem") 
+                        ? "admin-token-for-TKhiem" : null;
     
     // Kiểm tra nếu token tồn tại
-    if (!token) {
+    if (!token && !accessToken && !adminToken) {
       throw new Error('Không tìm thấy token xác thực');
     }
     
-    console.log('Using token for update reply:', token);
+    console.log('Using token for update reply:', adminToken || token || accessToken);
     
-    const response = await axios.put(
-      `${API_URLS.REVIEWS}/${reviewId}/replies/${replyId}?token=${token}`,
+    // Headers đặc biệt cho admin token
+    const headers = {};
+    if (adminToken) {
+      headers["admin-token"] = adminToken;
+    }
+    
+    const response = await apiClient.put(
+      `/api/reviews/${reviewId}/replies/${replyId}`,
       { text },
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
+      adminToken ? { headers, params: { token: adminToken } } : undefined
     );
     return response.data;
   } catch (error) {
@@ -260,18 +284,28 @@ export const updateReply = async (reviewId, replyId, text) => {
 // Xóa phản hồi
 export const deleteReply = async (reviewId, replyId) => {
   try {
-    // Sử dụng token đặc biệt cho admin TKhiem
-    const token = localStorage.getItem("accessToken");
+    // Lấy token từ localStorage
+    const token = localStorage.getItem("access_token");
+    const accessToken = localStorage.getItem("accessToken");
+    const adminToken = (token === "admin-token-for-TKhiem" || accessToken === "admin-token-for-TKhiem") 
+                        ? "admin-token-for-TKhiem" : null;
     
     // Kiểm tra nếu token tồn tại
-    if (!token) {
+    if (!token && !accessToken && !adminToken) {
       throw new Error('Không tìm thấy token xác thực');
     }
     
-    console.log('Using token for delete reply:', token);
+    console.log('Using token for delete reply:', adminToken || token || accessToken);
     
-    const response = await axios.delete(
-      `${API_URLS.REVIEWS}/${reviewId}/replies/${replyId}?token=${token}`
+    // Headers đặc biệt cho admin token
+    const headers = {};
+    if (adminToken) {
+      headers["admin-token"] = adminToken;
+    }
+    
+    const response = await apiClient.delete(
+      `/api/reviews/${reviewId}/replies/${replyId}`,
+      adminToken ? { headers, params: { token: adminToken } } : undefined
     );
     return response.data;
   } catch (error) {
