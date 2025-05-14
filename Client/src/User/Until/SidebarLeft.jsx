@@ -23,8 +23,7 @@ const menuItems = [
   { name: "Giới Thiệu", path: "/gioi-thieu" },
   { name: "Sản Phẩm", path: "/san-pham" },
   { name: "Khuyến Mãi", path: "/khuyen-mai" },
-  { name: "Tin Tức", path: "/tin-tuc" },
-  { name: "Mẹo Hay", path: "/meo-hay" },
+  { name: "Voucher", path: "/voucher" },
   { name: "Liên Hệ", path: "/lien-he" },
   { name: "Cửa Hàng", path: "/cua-hang" },
 ];
@@ -134,7 +133,7 @@ export default function SidebarLeft() {
 
   try {
     return (
-      <div className="relative mt-7 hide-on-pc w-full h-full">
+      <div className="relative mt-7 hide-on-pc w-full h-full -mb-5">
         <Sidebar
           visible={visible}
           style={{

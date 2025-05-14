@@ -130,7 +130,7 @@ function Drinks() {
   return (
     <AnimatePresence mode="sync">
       <motion.div
-        className="grid grid-cols-1 px-4"
+        className="grid grid-cols-1 px-4 mt-5"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

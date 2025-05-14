@@ -57,7 +57,9 @@ const Header = () => {
   const [showPromotion, setShowPromotion] = useState(false);
   const [cartItemCount, setCartItemCount] = useState(0);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const [avatarUrl, setAvatarUrl] = useState("https://www.gravatar.com/avatar/?d=mp");
+  const [avatarUrl, setAvatarUrl] = useState(
+    "https://www.gravatar.com/avatar/?d=mp"
+  );
   const inputRef = useRef(null);
   const timeoutRef = useRef(null);
   const mobileInputRef = useRef(null);
@@ -76,25 +78,26 @@ const Header = () => {
   // Helper function to handle Facebook URLs
   const cleanFacebookImageUrl = (url) => {
     if (!url) return "https://www.gravatar.com/avatar/?d=mp";
-    
+
     // For debugging
     console.log("Processing image URL:", url);
-    
+
     // If it's a Facebook URL, try to clean it up
-    if (url.includes('platform-lookaside.fbsbx.com')) {
+    if (url.includes("platform-lookaside.fbsbx.com")) {
       // Add a cache-busting parameter to force a fresh request
       const cacheBuster = new Date().getTime();
-      return `${url}${url.includes('?') ? '&' : '?'}v=${cacheBuster}`;
+      return `${url}${url.includes("?") ? "&" : "?"}v=${cacheBuster}`;
     }
-    
+
     // Return original url for non-Facebook images
     return url;
   };
 
   useEffect(() => {
     if (userId) {
-      authApi.getProfile()
-        .then(response => {
+      authApi
+        .getProfile()
+        .then((response) => {
           if (response.data && response.data.userImage) {
             console.log("User profile image found:", response.data.userImage);
             setAvatarUrl(response.data.userImage);
@@ -103,7 +106,7 @@ const Header = () => {
             setAvatarUrl("https://www.gravatar.com/avatar/?d=mp");
           }
         })
-        .catch(error => {
+        .catch((error) => {
           console.error("Error fetching user profile:", error);
           setAvatarUrl("https://www.gravatar.com/avatar/?d=mp");
         });
@@ -115,7 +118,7 @@ const Header = () => {
       if (userId) {
         const res = await cartApi.getCart(userId);
         setCartItemCount(res.cart.items.length);
-      } 
+      }
     } catch (error) {
       // console.log("Lỗi khi lấy giỏ hàng:", error);
     }
@@ -133,11 +136,11 @@ const Header = () => {
     const handleCartUpdate = () => {
       fetchCart();
     };
-    
-    window.addEventListener('cart-updated', handleCartUpdate);
-    
+
+    window.addEventListener("cart-updated", handleCartUpdate);
+
     return () => {
-      window.removeEventListener('cart-updated', handleCartUpdate);
+      window.removeEventListener("cart-updated", handleCartUpdate);
     };
   }, [userId]); // Thêm userId vào dependency array
 
@@ -193,7 +196,7 @@ const Header = () => {
   };
 
   const toggleMobileSearch = () => {
-    setShowMobileSearch(prev => !prev);
+    setShowMobileSearch((prev) => !prev);
     // Focus vào ô tìm kiếm sau khi hiển thị
     if (!showMobileSearch) {
       setTimeout(() => {
@@ -261,7 +264,7 @@ const Header = () => {
     }
     setShowProduct(true);
   };
-  
+
   const handleMouseLeave = () => {
     timeoutRef.current = setTimeout(() => {
       setShowProduct(false);
@@ -281,12 +284,13 @@ const Header = () => {
               href="/tai-khoan"
               className="grid items-center mr-2 cursor-pointer"
             >
-              {avatarUrl.includes('platform-lookaside.fbsbx.com') || avatarUrl.includes('graph.facebook.com') ? (
+              {avatarUrl.includes("platform-lookaside.fbsbx.com") ||
+              avatarUrl.includes("graph.facebook.com") ? (
                 // For Facebook profile pictures, use specialized handling
                 <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
                   <img
                     src={avatarUrl}
-                    alt="Facebook Avatar" 
+                    alt="Facebook Avatar"
                     className="w-full h-full object-cover"
                     referrerPolicy="no-referrer"
                     crossOrigin="anonymous"
@@ -294,7 +298,8 @@ const Header = () => {
                     importance="high"
                     onError={(e) => {
                       console.log("Facebook avatar load error, using default");
-                      e.target.src = "https://www.gravatar.com/avatar/?d=mp&s=200";
+                      e.target.src =
+                        "https://www.gravatar.com/avatar/?d=mp&s=200";
                     }}
                   />
                 </div>
@@ -306,7 +311,8 @@ const Header = () => {
                   className="w-8 h-8 rounded-full hide-on-mobile object-cover"
                   onError={(e) => {
                     console.log("Avatar load error, using default");
-                    e.target.src = "https://www.gravatar.com/avatar/?d=mp&s=200";
+                    e.target.src =
+                      "https://www.gravatar.com/avatar/?d=mp&s=200";
                   }}
                 />
               )}
@@ -335,7 +341,10 @@ const Header = () => {
           ) : (
             <div className="flex items-center text-white p-1 border-l-2 ml-1 pl-2 ">
               <PersonIcon />
-              <a href="dang-ky" className="text-[12px] text-white  font-medium uppercase cursor-pointer p-1">
+              <a
+                href="dang-ky"
+                className="text-[12px] text-white  font-medium uppercase cursor-pointer p-1"
+              >
                 Đăng ký
               </a>
             </div>
@@ -345,7 +354,9 @@ const Header = () => {
 
       <div className="bg-[#5ccd16] relative">
         <div className="grid grid-cols-[25%_35%_20%_20%] lg:grid-cols-3 lg:px-[120px] md:grid-cols-3 items-center justify-around p-5">
-          <SidebarLeft />
+          
+            <SidebarLeft />
+        
           <h3 className="text-white text-4xl lg:text-4xl font-bold text-center">
             DNC<span className="text-green-200"> FO</span>OD
           </h3>
@@ -386,13 +397,13 @@ const Header = () => {
 
             <div className="flex items-center justify-end">
               <div className="relative">
-                <RouterLink 
-                  to="/gio-hang" 
-                  className="text-white block" 
+                <RouterLink
+                  to="/gio-hang"
+                  className="text-white block"
                   onClick={(e) => {
                     // Ngăn chặn sự kiện lan truyền và hành vi mặc định
                     e.stopPropagation();
-                    navigate('/gio-hang');
+                    navigate("/gio-hang");
                     return false;
                   }}
                 >
@@ -414,7 +425,7 @@ const Header = () => {
                       right: "-10px",
                       fontSize: "12px",
                       backgroundColor: "#F9C938",
-                      color: "white"
+                      color: "white",
                     }}
                   />
                 )}
@@ -429,8 +440,8 @@ const Header = () => {
             <div className="bg-white p-4 shadow-md mobile-search-panel">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-medium">Tìm kiếm</h3>
-                <Cross2Icon 
-                  className="cursor-pointer" 
+                <Cross2Icon
+                  className="cursor-pointer"
                   onClick={toggleMobileSearch}
                   width={20}
                   height={20}
@@ -446,10 +457,7 @@ const Header = () => {
                   placeholder="Nhập từ khóa tìm kiếm..."
                   className="mobile-search-input"
                 />
-                <button
-                  onClick={handleSearch}
-                  className="mobile-search-button"
-                >
+                <button onClick={handleSearch} className="mobile-search-button">
                   <MagnifyingGlassIcon />
                 </button>
               </div>
@@ -475,7 +483,7 @@ const Header = () => {
               onMouseEnter={() =>
                 item.name === "Sản Phẩm" && handleMouseEnter()
               }
-              onMouseLeave={() => 
+              onMouseLeave={() =>
                 item.name === "Sản Phẩm" && handleMouseLeave()
               }
             >

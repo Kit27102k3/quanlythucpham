@@ -302,7 +302,7 @@ const AdminSidebar = () => {
                     </div>
                   </div>
                   <button
-                    onClick={() => handleNavigation("/logout", "logout")}
+                    onClick={() => handleNavigation("/dang-nhap", "logout")}
                     className="flex items-center justify-center mt-3 p-2 w-full bg-red-50 text-red-500 hover:bg-red-100 rounded-md transition-colors"
                   >
                     <ExitIcon className="size-5 mr-2" />
