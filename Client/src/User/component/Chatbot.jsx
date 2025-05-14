@@ -604,11 +604,47 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
       );
     }
     
+    // Hàm chuyển đổi HTML string thành React elements an toàn
+    const createMarkup = (htmlContent) => {
+      if (!htmlContent || typeof htmlContent !== 'string') {
+        return '';
+      }
+      
+      try {
+        // Thay thế các thẻ HTML phổ biến bằng các định dạng văn bản thông thường
+        let sanitizedText = htmlContent
+          .replace(/<strong>(.*?)<\/strong>/gi, '$1') // Bỏ thẻ strong nhưng giữ nội dung
+          .replace(/<span.*?>(.*?)<\/span>/gi, '$1') // Bỏ thẻ span nhưng giữ nội dung
+          .replace(/<b>(.*?)<\/b>/gi, '$1') // Bỏ thẻ b nhưng giữ nội dung
+          .replace(/<i>(.*?)<\/i>/gi, '$1') // Bỏ thẻ i nhưng giữ nội dung
+          .replace(/<em>(.*?)<\/em>/gi, '$1') // Bỏ thẻ em nhưng giữ nội dung
+          .replace(/<br\s*\/?>/gi, '\n') // Chuyển <br> thành xuống dòng
+          .replace(/<p>(.*?)<\/p>/gi, '$1\n') // Chuyển <p> thành đoạn văn với xuống dòng
+          .replace(/<div>(.*?)<\/div>/gi, '$1\n') // Chuyển <div> thành đoạn với xuống dòng
+          .replace(/<li>(.*?)<\/li>/gi, '• $1\n') // Chuyển <li> thành dạng danh sách với dấu chấm
+          .replace(/<[^>]+>/g, ''); // Loại bỏ tất cả các thẻ HTML còn lại
+        
+        // Xử lý các ký tự đặc biệt trong HTML
+        sanitizedText = sanitizedText
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .replace(/&quot;/g, '"')
+          .replace(/&nbsp;/g, ' ');
+        
+        return sanitizedText;
+      } catch (error) {
+        console.error("Lỗi khi xử lý HTML:", error);
+        // Fallback: trả về văn bản gốc nếu có lỗi
+        return htmlContent;
+      }
+    };
+    
     // Render tin nhắn thông thường
     return (
       <div key={`msg-${index}`} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-3`}>
         <div className={`${msg.sender === "user" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-800"} px-4 py-2 rounded-2xl max-w-[85%]`}>
-          <p className="whitespace-pre-line">{msg.text}</p>
+          <p className="whitespace-pre-line">{createMarkup(msg.text)}</p>
           
           {/* Hiển thị các tùy chọn nếu có */}
           {msg.sender === "bot" && msg.showOptions && (

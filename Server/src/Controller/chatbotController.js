@@ -445,6 +445,25 @@ const searchProductsMongoDB = async (query) => {
     console.log("Từ khóa giá:", priceKeywords);
     console.log("Từ khóa tìm kiếm:", keywords);
     
+    // Xử lý đặc biệt cho trường hợp tìm kiếm "rau"
+    const isVegetableSearch = keywords.some(kw => ['rau', 'củ', 'quả'].includes(kw));
+    let isSpecialCategorySearch = false;
+    
+    if (isVegetableSearch) {
+      isSpecialCategorySearch = true;
+      // Nếu chỉ toàn từ khóa liên quan đến rau củ quả, ưu tiên sử dụng danh mục thay vì tìm theo từ khóa
+      if (keywords.every(kw => ['rau', 'củ', 'quả', 'trái'].includes(kw))) {
+        console.log("Tìm tất cả sản phẩm trong danh mục Rau củ quả");
+        // Xóa điều kiện tìm kiếm hiện tại nếu có
+        const categoryIndex = conditions.findIndex(c => c.category === 'Rau củ quả');
+        if (categoryIndex !== -1) {
+          conditions.splice(categoryIndex, 1);
+        }
+        // Thêm điều kiện tìm kiếm theo danh mục
+        conditions.push({ category: 'Rau củ quả' });
+      }
+    }
+    
     // Nếu đây là câu hỏi về giá, ưu tiên chỉ tìm theo giá nếu không có từ khóa đặc biệt
     if (isPriceQuery) {
       if (keywords.length === 0) {
@@ -464,7 +483,7 @@ const searchProductsMongoDB = async (query) => {
       }
     }
     // Nếu không phải câu hỏi về giá, tìm theo từ khóa thông thường
-    else if (keywords.length > 0) {
+    else if (keywords.length > 0 && !isSpecialCategorySearch) {
       // Tạo các điều kiện tìm kiếm theo từng từ khóa
       const keywordConditions = [];
       for (const keyword of keywords) {
@@ -539,6 +558,21 @@ const searchProductsMongoDB = async (query) => {
           
           // Nếu vẫn không tìm thấy hoặc không có từ khóa, thử tìm theo danh mục
           if (products.length === 0 && !foundSpecificPhrase) {
+            // Xử lý đặc biệt cho từ khóa "rau"
+            const isVegetableQuery = lowerQuery.includes("rau") || 
+                                    lowerQuery.includes("củ") || 
+                                    lowerQuery.includes("quả");
+                                    
+            if (isVegetableQuery) {
+              console.log("Thử tìm tất cả sản phẩm trong danh mục Rau củ quả");
+              products = await Product.find({ category: "Rau củ quả" }).limit(10);
+              // Nếu đã tìm thấy sản phẩm, bỏ qua việc tìm kiếm danh mục tiếp theo
+              if (products.length > 0) {
+                console.log(`Tìm thấy ${products.length} sản phẩm trong danh mục Rau củ quả`);
+                return products;
+              }
+            }
+            
             const categoryKeywords = [
               { keywords: ['rau', 'củ', 'quả', 'rau củ', 'rau quả', 'trái cây'], category: 'Rau củ quả' },
               { keywords: ['thịt', 'cá', 'hải sản', 'thịt cá', 'thủy hải sản'], category: 'Thịt và hải sản' },

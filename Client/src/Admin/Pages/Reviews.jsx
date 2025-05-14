@@ -49,6 +49,8 @@ import "./styles.css";
       setError(null);
       try {
         const data = await reviewsApi.getAllReviews();
+        console.log("Loaded reviews data:", data);
+        console.log("Reviews array:", data.reviews || []);
         setReviews(data.reviews || []);
       } catch (error) {
         console.error("Lỗi khi tải đánh giá:", error);
@@ -62,6 +64,7 @@ import "./styles.css";
     const fetchProducts = async () => {
       try {
         const data = await productsApi.getAllProducts();
+        console.log("Loaded products data:", data ? data.length : 0, "products");
         setProducts(data || []);
       } catch (error) {
         console.error("Lỗi khi tải sản phẩm:", error);
@@ -214,8 +217,14 @@ import "./styles.css";
   const filteredReviews = reviews
     .filter(review => {
       // Lọc theo sản phẩm
-      if (selectedProduct !== "all" && review.productId !== selectedProduct) {
-        return false;
+      if (selectedProduct !== "all") {
+        // Handle case when productId is an object or a string
+        const reviewProductId = typeof review.productId === 'object' 
+          ? review.productId._id || review.productId.id || review.productId.toString()
+          : review.productId;
+        
+        // Use string comparison to avoid issues with object references
+        return String(reviewProductId) === String(selectedProduct);
       }
       
       // Lọc theo trạng thái
@@ -263,6 +272,30 @@ import "./styles.css";
   const averageRating = reviews.length > 0 
     ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
     : 0;
+
+  // Debug effect to track filtering 
+  useEffect(() => {
+    if (reviews.length > 0) {
+      console.log("Current filtering state:", {
+        totalReviews: reviews.length,
+        selectedProduct,
+        filterBy,
+        searchQuery,
+        filteredResults: filteredReviews.length
+      });
+      
+      if (selectedProduct !== "all") {
+        console.log("Product filter active, showing first few reviews:");
+        reviews.slice(0, 3).forEach(review => {
+          console.log("Review:", {
+            id: review._id,
+            productId: typeof review.productId === 'object' ? review.productId._id : review.productId,
+            matches: (typeof review.productId === 'object' ? review.productId._id : review.productId) === selectedProduct
+          });
+        });
+      }
+    }
+  }, [reviews, selectedProduct, filterBy, searchQuery, filteredReviews.length]);
 
   return (
     <div className="container mx-auto p-4">
@@ -335,7 +368,10 @@ import "./styles.css";
             <select 
               className="w-full p-2 border rounded-md"
               value={selectedProduct}
-              onChange={(e) => setSelectedProduct(e.target.value)}
+              onChange={(e) => {
+                console.log("Selected product changed to:", e.target.value);
+                setSelectedProduct(e.target.value);
+              }}
             >
               <option value="all">Tất cả sản phẩm</option>
               {products.map(product => (
@@ -405,7 +441,15 @@ import "./styles.css";
           <div className="divide-y">
             {filteredReviews.map((review) => {
               // Tìm tên sản phẩm
-              const product = products.find(p => p._id === review.productId);
+              const product = products.find(p => {
+                // Use string comparison for more reliable matching
+                const reviewProductId = typeof review.productId === 'object'
+                  ? review.productId._id || review.productId.id || review.productId.toString()
+                  : review.productId;
+                  
+                return String(p._id) === String(reviewProductId);
+              });
+              
               let productName = 'Sản phẩm không xác định';
               
               // Hiển thị productId hoặc tên sản phẩm

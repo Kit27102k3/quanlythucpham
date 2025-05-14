@@ -115,12 +115,12 @@ export default function Register() {
           className="hidden md:block bg-cover bg-center relative"
           style={{
             backgroundImage:
-              "url('https://vinatechgroup.vn/wp-content/uploads/2022/08/ke-sieu-thi-tai-sieu-thi-nova-tinh-ba-ria-vung-tau-5.png')",
+              "url('https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2')",
             backgroundSize: "cover",
           }}
         >
           <div className="absolute inset-0 bg-opacity-50 flex items-center justify-center">
-            <h2 className="text-4xl font-bold text-white text-center px-8">
+            <h2 className="text-4xl font-bold  text-center px-8">
               Khám Phá Ẩm Thực <br />
               <span className="text-[#51bb1a]">DNC FOOD</span>
             </h2>

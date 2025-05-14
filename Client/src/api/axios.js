@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import axios from "axios";
 import { API_BASE_URL } from "../config/apiConfig";
 
