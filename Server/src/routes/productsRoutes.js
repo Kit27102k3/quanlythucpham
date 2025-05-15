@@ -25,6 +25,9 @@ router.get("/products/search", searchProducts);
 // Route để lấy danh sách sản phẩm bán chạy nhất
 router.get("/products/best-selling", getBestSellingProducts);
 
+// Route để lấy danh sách sản phẩm bán chạy nhất (endpoint mới cho BestSelling.jsx)
+router.get("/products/best-sellers", getBestSellingProducts);
+
 router.get("/products/category/:category", getProductByCategory);
 
 // Route để lấy sản phẩm theo slug

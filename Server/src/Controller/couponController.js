@@ -91,104 +91,110 @@ export const getCouponByCode = async (req, res) => {
   }
 };
 
-// Kiểm tra và áp dụng mã giảm giá
+// Get active coupons for public display
+export const getActiveCoupons = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 3;
+    const now = new Date();
+    
+    // Find active coupons that haven't expired and haven't reached usage limit
+    const coupons = await Coupon.find({
+      isActive: true,
+      $or: [
+        { expiresAt: { $gt: now } },
+        { expiresAt: null }
+      ],
+      $or: [
+        { $expr: { $lt: ["$used", "$usageLimit"] } },
+        { usageLimit: null }
+      ]
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit);
+    
+    return res.status(200).json(coupons);
+  } catch (error) {
+    console.error("Error getting active coupons:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Validate a coupon code
 export const validateCoupon = async (req, res) => {
   try {
     const { code, orderTotal } = req.body;
     
     if (!code) {
-      return res.status(400).json({
-        success: false,
-        message: "Vui lòng nhập mã giảm giá"
-      });
+      return res.status(400).json({ message: "Coupon code is required" });
     }
     
-    const coupon = await Coupon.findOne({ code: code.toUpperCase() });
+    const now = new Date();
+    const coupon = await Coupon.findOne({
+      code: code.toUpperCase(),
+      isActive: true,
+      $or: [
+        { expiresAt: { $gt: now } },
+        { expiresAt: null }
+      ],
+      $or: [
+        { $expr: { $lt: ["$used", "$usageLimit"] } },
+        { usageLimit: null }
+      ]
+    });
     
-    // Kiểm tra mã giảm giá có tồn tại không
     if (!coupon) {
-      return res.status(404).json({
-        success: false,
-        message: "Mã giảm giá không hợp lệ"
+      return res.status(404).json({ message: "Invalid or expired coupon code" });
+    }
+    
+    // Check if order meets minimum amount
+    if (orderTotal < coupon.minOrder) {
+      return res.status(400).json({ 
+        message: `Order total must be at least ${coupon.minOrder} to use this coupon` 
       });
     }
     
-    // Kiểm tra mã giảm giá có còn hoạt động không
-    if (!coupon.isActive) {
-      return res.status(400).json({
-        success: false,
-        message: "Mã giảm giá này đã bị vô hiệu hóa"
-      });
-    }
-    
-    // Kiểm tra thời hạn
-    if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
-      return res.status(400).json({
-        success: false,
-        message: "Mã giảm giá đã hết hạn"
-      });
-    }
-    
-    // Kiểm tra giới hạn sử dụng
-    if (coupon.usageLimit !== null && coupon.used >= coupon.usageLimit) {
-      return res.status(400).json({
-        success: false,
-        message: "Mã giảm giá đã đạt giới hạn sử dụng"
-      });
-    }
-    
-    // Kiểm tra đơn hàng tối thiểu
-    if (coupon.minOrder && orderTotal < coupon.minOrder) {
-      return res.status(400).json({
-        success: false,
-        message: `Đơn hàng tối thiểu ${coupon.minOrder.toLocaleString('vi-VN')}đ để sử dụng mã này`
-      });
-    }
-    
-    // Tính toán số tiền giảm giá
+    // Calculate discount amount
     let discountAmount = 0;
-    
     if (coupon.type === 'percentage') {
-      // Giảm theo phần trăm
       discountAmount = (orderTotal * coupon.value) / 100;
-      
-      // Áp dụng giới hạn giảm giá tối đa (nếu có)
+      // Apply max discount limit if it exists
       if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
         discountAmount = coupon.maxDiscount;
       }
     } else {
-      // Giảm theo số tiền cố định
       discountAmount = coupon.value;
-      
-      // Không giảm nhiều hơn giá trị đơn hàng
-      if (discountAmount > orderTotal) {
-        discountAmount = orderTotal;
-      }
     }
     
-    // Làm tròn số tiền giảm giá
-    discountAmount = Math.round(discountAmount);
-    
-    const finalAmount = orderTotal - discountAmount;
-    
-    res.status(200).json({
-      success: true,
-      data: {
-        coupon,
-        discountAmount,
-        finalAmount,
-        message: coupon.type === 'percentage' 
-          ? `Áp dụng giảm ${coupon.value}%, số tiền giảm: ${discountAmount.toLocaleString('vi-VN')}đ`
-          : `Áp dụng giảm ${discountAmount.toLocaleString('vi-VN')}đ`
-      }
+    return res.status(200).json({
+      valid: true,
+      coupon,
+      discountAmount
     });
   } catch (error) {
     console.error("Error validating coupon:", error);
-    res.status(500).json({
-      success: false,
-      message: "Đã xảy ra lỗi khi kiểm tra mã giảm giá",
-      error: error.message
-    });
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// Apply a coupon (increment usage count)
+export const applyCoupon = async (req, res) => {
+  try {
+    const { code } = req.body;
+    
+    const coupon = await Coupon.findOne({ code: code.toUpperCase() });
+    
+    if (!coupon) {
+      return res.status(404).json({ message: "Coupon not found" });
+    }
+    
+    // Increment usage count
+    coupon.used += 1;
+    await coupon.save();
+    
+    return res.status(200).json({ message: "Coupon applied successfully" });
+  } catch (error) {
+    console.error("Error applying coupon:", error);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 

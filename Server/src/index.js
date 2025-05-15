@@ -35,6 +35,9 @@ import couponRoutes from "./routes/couponRoutes.js";
 import savedVoucherRoutes from "./routes/savedVoucherRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
 
+// Import specific controller for direct endpoint handling
+import { getBestSellingProducts } from './Controller/productsController.js';
+
 dotenv.config({ path: ".env" });
 const app = express();
 
@@ -111,6 +114,9 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/saved-vouchers", savedVoucherRoutes);
 app.use("/api/reports", reportRoutes);
+
+// Handle best-sellers endpoint directly to avoid route conflicts
+app.get('/api/products/best-sellers', getBestSellingProducts);
 
 // Dọn dẹp các webhook handler trùng lặp
 // Đây là danh sách các đường dẫn webhook cần hỗ trợ

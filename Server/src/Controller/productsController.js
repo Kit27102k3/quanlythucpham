@@ -7,6 +7,7 @@ import Category from "../Model/Categories.js";
 import BestSellingProduct from "../Model/BestSellingProduct.js";
 import fs from "fs";
 import path from "path";
+import mongoose from "mongoose";
 
 export const createProduct = async (req, res) => {
   try {
@@ -430,28 +431,50 @@ export const updateProductCategory = async (req, res) => {
 
 // Lấy danh sách sản phẩm bán chạy
 export const getBestSellingProducts = async (req, res) => {
+  console.log("Best Sellers API called with query:", req.query);
   try {
     const { limit = 10, period = 'all' } = req.query;
     
     // Chuyển đổi limit từ string sang number
     const limitNum = parseInt(limit, 10) || 10;
+    console.log(`Getting ${limitNum} best selling products for period: ${period}`);
     
-    // Lấy danh sách sản phẩm bán chạy với giới hạn và khoảng thời gian
-    const bestSellingProducts = await BestSellingProduct.getBestSellers(limitNum, period);
-    
-    // Kiểm tra xem các sản phẩm có còn tồn tại và còn hàng không
-    const activeProducts = bestSellingProducts.filter(item => 
-      item.productId && item.productId.productStatus !== "Hết hàng"
-    );
-    
-    res.status(200).json({
-      success: true,
-      count: activeProducts.length,
-      data: activeProducts
-    });
+    try {
+      // Lấy danh sách sản phẩm bán chạy với giới hạn và khoảng thời gian
+      const bestSellingProducts = await BestSellingProduct.getBestSellers(limitNum, period);
+      console.log(`Found ${bestSellingProducts.length} best selling products`);
+      
+      // Kiểm tra xem các sản phẩm có còn tồn tại và còn hàng không
+      const activeProducts = bestSellingProducts.filter(item => 
+        item.productId && item.productId.productStatus !== "Hết hàng"
+      );
+      console.log(`After filtering: ${activeProducts.length} active products`);
+      
+      return res.status(200).json({
+        success: true,
+        count: activeProducts.length,
+        data: activeProducts
+      });
+    } catch (innerError) {
+      console.error("Lỗi khi truy vấn BestSellingProduct:", innerError);
+      
+      // Fallback: Trả về danh sách sản phẩm thông thường nếu không lấy được sản phẩm bán chạy
+      const regularProducts = await Product.find({ productStatus: { $ne: "Hết hàng" } })
+        .sort({ createdAt: -1 })
+        .limit(limitNum);
+      
+      console.log(`Using fallback: Found ${regularProducts.length} regular products`);
+      
+      return res.status(200).json({
+        success: true,
+        count: regularProducts.length,
+        data: regularProducts,
+        message: "Fallback to regular products"
+      });
+    }
   } catch (error) {
     console.error("Lỗi khi lấy danh sách sản phẩm bán chạy:", error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Lỗi khi lấy danh sách sản phẩm bán chạy",
       error: error.message

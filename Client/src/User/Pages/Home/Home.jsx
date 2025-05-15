@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from "react";
+import { lazy, Suspense } from "react";
 import slide from "../../../assets/slide.png";
 import SEO from "../../../components/SEO";
 
@@ -7,6 +7,8 @@ const Fruit = lazy(() => import("../../Pages/Product/Fruit"));
 const Kitchen = lazy(() => import("../../Pages/Product/Kitchen"));
 const Drinks = lazy(() => import("../../Pages/Product/Drinks"));
 const ProductNew = lazy(() => import("./ProductNew"));
+const BestSelling = lazy(() => import("./BestSelling"));
+const Vouchers = lazy(() => import("./Vouchers"));
 
 // Loading component
 const Loading = () => (
@@ -51,6 +53,14 @@ function Home() {
       <div className="mt-5 lg:mt-5 lg:px-[120px]">
         <Suspense fallback={<Loading />}>
           <ProductNew />
+        </Suspense>
+        
+        <Suspense fallback={<Loading />}>
+          <BestSelling />
+        </Suspense>
+        
+        <Suspense fallback={<Loading />}>
+          <Vouchers />
         </Suspense>
         
         <Suspense fallback={<Loading />}>

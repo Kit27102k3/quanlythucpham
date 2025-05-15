@@ -19,39 +19,39 @@ router.post("/validate", validateCoupon);
 router.get("/code/:code", getCouponByCode);
 router.post("/use/:code", updateCouponUsage);
 
+// Route để lấy danh sách mã giảm giá công khai cho người dùng
+router.get("/active", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 3;
+    const now = new Date();
+    
+    // Find active coupons that haven't expired and haven't reached usage limit
+    const coupons = await Coupon.find({
+      isActive: true,
+      $or: [
+        { expiresAt: { $gt: now } },
+        { expiresAt: null }
+      ],
+      $or: [
+        { $expr: { $lt: ["$used", "$usageLimit"] } },
+        { usageLimit: null }
+      ]
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit);
+    
+    return res.status(200).json(coupons);
+  } catch (error) {
+    console.error("Error getting active coupons:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 // Protected API - yêu cầu xác thực và quyền Admin
 router.post("/", verifyToken, isAdmin, createCoupon);
 router.get("/", verifyToken, isAdmin, getAllCoupons);
 router.put("/:id", verifyToken, isAdmin, updateCoupon);
 router.delete("/:id", verifyToken, isAdmin, deleteCoupon);
-
-// Route để lấy danh sách mã giảm giá công khai cho người dùng
-router.get("/public", async (req, res) => {
-  try {
-    const coupons = await Coupon.find({ 
-      isActive: true,
-      $or: [
-        { expiresAt: null },
-        { expiresAt: { $gt: new Date() } }
-      ]
-    })
-    .sort({ createdAt: -1 })
-    .select('-__v');
-    
-    res.status(200).json({ 
-      success: true, 
-      message: "Danh sách mã giảm giá công khai",
-      data: coupons
-    });
-  } catch (error) {
-    console.error("Error fetching public coupons:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Lỗi khi lấy danh sách mã giảm giá",
-      error: error.message 
-    });
-  }
-});
 
 // Reset số lần sử dụng mã giảm giá (Admin only)
 router.patch("/reset-usage/:id", verifyToken, isAdmin, resetCouponUsage);
