@@ -8,6 +8,8 @@ import savedVoucherApi from "../../../api/savedVoucherApi";
 import { Helmet } from "react-helmet-async";
 import { Dialog } from "primereact/dialog";
 import { Toaster, toast } from "sonner";
+import axios from "axios";
+import { API_URLS } from "../../../config/apiConfig";
 
 const VoucherPage = () => {
   const [vouchers, setVouchers] = useState([]);
@@ -36,15 +38,45 @@ const VoucherPage = () => {
   const fetchVouchers = async () => {
     try {
       setLoading(true);
-      const response = await couponApi.getPublicCoupons();
-      if (response.success) {
+      
+      // Try to get all vouchers directly from the all-for-debug endpoint
+      const response = await axios.get(`${API_URLS.COUPONS}/all-for-debug`);
+      console.log('Fetched all vouchers from debug endpoint:', response.data);
+      
+      if (response.data && Array.isArray(response.data) && response.data.length > 0) {
         setVouchers(response.data);
+      } else if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+        setVouchers(response.data.data);
       } else {
-        showToast("error", "Không thể tải danh sách voucher");
+        // Fallback to regular coupon API if debug endpoint fails
+        const coupons = await couponApi.getPublicCoupons();
+        console.log('Fallback to couponApi:', coupons);
+        
+        if (coupons && Array.isArray(coupons) && coupons.length > 0) {
+          setVouchers(coupons);
+        } else {
+          console.log('No vouchers found');
+          setVouchers([]);
+          showToast("info", "Không có mã giảm giá nào trong hệ thống");
+        }
       }
     } catch (error) {
       console.error("Error fetching vouchers:", error);
-      showToast("error", "Đã xảy ra lỗi khi tải danh sách voucher");
+      
+      try {
+        // Try the regular endpoint as fallback
+        const coupons = await couponApi.getPublicCoupons();
+        if (coupons && Array.isArray(coupons) && coupons.length > 0) {
+          setVouchers(coupons);
+        } else {
+          setVouchers([]);
+          showToast("error", "Đã xảy ra lỗi khi tải danh sách voucher");
+        }
+      } catch (secondError) {
+        console.error("Fallback also failed:", secondError);
+        setVouchers([]);
+        showToast("error", "Không thể tải danh sách voucher");
+      }
     } finally {
       setLoading(false);
     }
@@ -54,9 +86,12 @@ const VoucherPage = () => {
   const fetchUserSavedVoucher = async (token) => {
     try {
       const response = await savedVoucherApi.getUserSavedVouchers(token);
+      console.log('User saved vouchers response:', response);
+      
       if (response.success && response.data) {
         setUserSavedVoucher(response.data);
       } else {
+        console.log('No saved vouchers found or unexpected format');
         setUserSavedVoucher([]);
       }
     } catch (error) {

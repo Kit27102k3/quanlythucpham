@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCopy } from "@fortawesome/free-solid-svg-icons";
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import couponApi from '../../../api/couponApi';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -52,31 +53,54 @@ function Vouchers() {
 
   useEffect(() => {
     const fetchVouchers = async () => {
+      setLoading(true);
+      let success = false;
+      
       try {
-        setLoading(true);
-        try {
-          const response = await axios.get('/api/coupons/active?limit=3');
-          
-          // Handle different response formats
-          if (response.data && Array.isArray(response.data)) {
-            setVouchers(response.data);
-          } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-            setVouchers(response.data.data);
-          } else {
-            console.error('Unexpected response format:', response.data);
-            setVouchers([]);
-          }
-        } catch (error) {
-          console.error('Error fetching vouchers:', error);
-          setVouchers([]);
-        } finally {
-          setLoading(false);
+        // Use the existing couponApi instead of direct axios calls
+        const data = await couponApi.getPublicCoupons();
+        console.log('Fetched vouchers:', data);
+        
+        if (data && Array.isArray(data) && data.length > 0) {
+          setVouchers(data);
+          success = true;
+        } else if (data && Array.isArray(data) && data.length === 0) {
+          console.log('No active vouchers found');
+        } else {
+          console.log('Unexpected response format from API:', data);
         }
-      } catch (mainError) {
-        console.error('Top-level error in fetchVouchers:', mainError);
-        setLoading(false);
+      } catch (error) {
+        console.error('Error fetching vouchers:', error);
+      }
+      
+      // Fallback to dummy data if in development and no vouchers were fetched
+      if (!success && process.env.NODE_ENV === 'development') {
+        console.log('Using dummy voucher data for development');
+        setVouchers([
+          {
+            _id: 'dummy1',
+            code: 'WELCOME10',
+            type: 'percentage',
+            value: 10,
+            minOrder: 100000,
+            isActive: true,
+            description: 'Giảm 10% cho đơn hàng từ 100.000đ'
+          },
+          {
+            _id: 'dummy2',
+            code: 'FREESHIP',
+            type: 'fixed',
+            value: 30000,
+            minOrder: 200000,
+            isActive: true,
+            description: 'Giảm 30.000đ cho đơn hàng từ 200.000đ'
+          }
+        ]);
+      } else if (!success) {
         setVouchers([]);
       }
+      
+      setLoading(false);
     };
 
     fetchVouchers();

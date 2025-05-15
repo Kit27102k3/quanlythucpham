@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "../../../utils/formatCurrency";
-import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartShopping } from "@fortawesome/free-solid-svg-icons";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
@@ -27,7 +26,6 @@ const itemVariants = {
 function BestSelling() {
   const [bestSellers, setBestSellers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
   const { handleAddToCart, handleClick } = useCartAndNavigation();
   const [isMobile, setIsMobile] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -313,10 +311,10 @@ function BestSelling() {
                       <div className="flex items-center gap-2 mt-4 justify-between">
                         <div className="flex items-center gap-2">
                           <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[14px]">
-                            {formatCurrency(getPrice(productData))}đ
+                            {formatCurrency(getPrice(productData))}
                           </p>
                           <p className="text-gray-400 text-[10px] mt-1 lg:text-[14px] line-through">
-                            {formatCurrency(productData.productPrice)}đ
+                            {formatCurrency(productData.productPrice)}
                           </p>
                         </div>
                         <FontAwesomeIcon

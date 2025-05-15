@@ -142,16 +142,39 @@ const couponApi = {
   // Lấy tất cả mã giảm giá công khai (cho trang Voucher)
   getPublicCoupons: async () => {
     try {
-      const response = await axios.get(`${API_URLS.COUPONS}/public`);
-      return {
-        success: true,
-        data: response.data.data
-      };
+      const response = await axios.get(`${API_URLS.COUPONS}/active`);
+      console.log('Fetched coupons:', response.data);
+      
+      // Handle different response formats
+      if (response.data && response.data.success === true && Array.isArray(response.data.data)) {
+        return response.data.data;
+      } else if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && typeof response.data === 'object') {
+        console.log('Unexpected response format:', response.data);
+        return [];
+      }
+      
+      return [];
     } catch (error) {
-      return {
-        success: false,
-        message: error.response?.data?.message || "Không thể lấy danh sách mã giảm giá"
-      };
+      console.error('Error fetching public coupons:', error);
+      
+      // Try fallback endpoint if primary fails
+      try {
+        console.log('Trying fallback endpoint /all-for-debug');
+        const fallbackResponse = await axios.get(`${API_URLS.COUPONS}/all-for-debug`);
+        
+        if (Array.isArray(fallbackResponse.data)) {
+          return fallbackResponse.data;
+        } else if (fallbackResponse.data && fallbackResponse.data.success && Array.isArray(fallbackResponse.data.data)) {
+          return fallbackResponse.data.data;
+        }
+        
+        return [];
+      } catch (fallbackError) {
+        console.error('Fallback endpoint also failed:', fallbackError);
+        return [];
+      }
     }
   },
 
