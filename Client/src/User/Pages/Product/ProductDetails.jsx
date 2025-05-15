@@ -513,6 +513,84 @@ export default function ProductDetails() {
     return total;
   };
 
+  // Lưu thông tin sản phẩm vào localStorage khi click vào nút chat
+  const saveProductInfoToChat = () => {
+    try {
+      // Lấy URL đầy đủ của hình ảnh sản phẩm (đảm bảo là URL hoàn chỉnh)
+      let imageUrl = selectedImage || (products?.productImages && products.productImages.length > 0 ? products.productImages[0] : "");
+      
+      console.log("URL hình ảnh Cloudinary:", imageUrl);
+      
+      // Kiểm tra và xử lý URL hình ảnh - CHỈ xử lý nếu không phải URL Cloudinary
+      if (imageUrl && !imageUrl.includes('cloudinary.com')) {
+        // Xóa các tham số URL không cần thiết (nếu có)
+        imageUrl = imageUrl.split('?')[0];
+        
+        // Kiểm tra nếu URL không phải là http/https, thêm origin vào trước
+        if (!imageUrl.startsWith('http')) {
+          // Đảm bảo không có nhiều dấu gạch chéo (/) trùng lặp
+          if (imageUrl.startsWith('/')) {
+            imageUrl = window.location.origin + imageUrl;
+          } else {
+            imageUrl = window.location.origin + '/' + imageUrl;
+          }
+        }
+      }
+      
+      // Hiển thị URL hình ảnh sau khi xử lý
+      console.log("URL hình ảnh sản phẩm cuối cùng:", imageUrl);
+      
+      // Tạo đối tượng hình ảnh để kiểm tra tải
+      const img = new Image();
+      img.src = imageUrl;
+      
+      // Lưu thông tin sản phẩm vào localStorage
+      const productInfo = {
+        id: products?._id || "",
+        name: products?.productName || "Sản phẩm",
+        price: products?.productPrice || 0,
+        image: imageUrl,
+        url: window.location.href
+      };
+      
+      // Đánh dấu thời gian lưu để tránh sử dụng dữ liệu quá cũ
+      productInfo.timestamp = Date.now();
+      
+      console.log("Lưu thông tin sản phẩm vào localStorage:", productInfo);
+      localStorage.setItem('chatProduct', JSON.stringify(productInfo));
+      
+      // Thêm sự kiện lỗi cho hình ảnh
+      img.onerror = () => {
+        console.log("Lỗi tải hình ảnh, sử dụng placeholder");
+        productInfo.image = "https://via.placeholder.com/250x250.png?text=No+Image";
+        localStorage.setItem('chatProduct', JSON.stringify(productInfo));
+      };
+      
+      return true;
+    } catch (error) {
+      console.error("Lỗi khi lưu thông tin sản phẩm:", error);
+      return false;
+    }
+  };
+
+  // Hàm mở chat với sản phẩm hiện tại
+  const handleChatProduct = () => {
+    try {
+      if (saveProductInfoToChat()) {
+        // Thông báo cho người dùng
+        toast.success("Bạn đang trao đổi với Người bán về sản phẩm này");
+        
+        // Chuyển hướng đến trang tin nhắn
+        navigate("/tai-khoan/tin-nhan");
+      } else {
+        throw new Error("Không thể lưu thông tin sản phẩm");
+      }
+    } catch (error) {
+      console.error("Lỗi khi chuẩn bị chat với sản phẩm:", error);
+      toast.error("Có lỗi xảy ra. Vui lòng thử lại sau.");
+    }
+  };
+
   return (
     <div ref={topElementRef} className="p-2 lg:mb-5">
       <Toaster position="bottom-right" richColors />
@@ -1033,7 +1111,8 @@ export default function ProductDetails() {
             Để được hỗ trợ tốt nhất. Hãy gọi
           </p>
           <button
-            className="hover-animation-button cursor-pointer p-2 bg-[#51bb1a] text-white border-[#51bb1a]  mt-2 container mx-auto lg:text-sm"
+            className="hover-animation-button cursor-pointer p-2 bg-[#51bb1a] text-white border-[#51bb1a] mt-2 container mx-auto lg:text-sm"
+            onClick={handleChatProduct}
           >
             CHAT VỚI CHÚNG TÔI
           </button>

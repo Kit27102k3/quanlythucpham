@@ -1,13 +1,13 @@
 import {
   EnvelopeClosedIcon,
   GitHubLogoIcon,
-  InstagramLogoIcon,
 } from "@radix-ui/react-icons";
 import {
   faEnvelope,
   faLocationDot,
   faPhone,
 } from "@fortawesome/free-solid-svg-icons";
+import { faFacebook, faInstagram } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 function Footer() {
@@ -54,9 +54,10 @@ function Footer() {
             DNC FOOD bán lẻ thực phẩm tươi sống, bánh kẹp, đồ hộp, đồ dùng gia
             đình giá rẻ, sản phẩm tươi mới, nguồn gốc đảm bảo, dịch vụ chu đáo.
           </p>
-          <div className="flex justify-center lg:justify-start space-x-4 mt-4">
-            <GitHubLogoIcon className="w-8 h-8 text-gray-700 hover:text-black transition-colors" />
-            <InstagramLogoIcon className="w-8 h-8 text-gray-700 hover:text-black transition-colors" />
+          <div className="flex justify-center lg:justify-start space-x-4 mt-4 gap-4">
+            <GitHubLogoIcon className="w-8 h-8 text-black hover:opacity-75 transition-colors" />
+            <FontAwesomeIcon icon={faInstagram} className="w-8 h-8 text-[#C13584] hover:opacity-75 transition-colors" />
+            <FontAwesomeIcon href="https://www.facebook.com/tzkit27" icon={faFacebook} className="w-8 h-8 text-[#1877F2] hover:opacity-75 transition-colors" />
           </div>
         </div>
 
@@ -67,17 +68,17 @@ function Footer() {
           </h4>
           <div className="space-y-3 flex flex-col gap-2 text-sm text-gray-600">
             <div className="flex items-start space-x-2 gap-2">
-              <FontAwesomeIcon icon={faLocationDot} className="mt-1 w-4" />
+              <FontAwesomeIcon icon={faLocationDot} className="mt-1 w-4 text-red-500" />
               <p>
                 Trường Đại học Nam Cần Thơ, Nguyễn Văn Cừ nối dài, Cần Thơ City
               </p>
             </div>
             <div className="flex items-center space-x-2 gap-2">
-              <FontAwesomeIcon icon={faPhone} className="w-4" />
+              <FontAwesomeIcon icon={faPhone} className="w-4 text-green-500" />
               <p>0326 743 391</p>
             </div>
             <div className="flex items-center space-x-2 gap-2">
-              <FontAwesomeIcon icon={faEnvelope} className="w-4" />
+              <FontAwesomeIcon icon={faEnvelope} className="w-4 text-blue-500" />
               <p>kit10012003@gmail.com</p>
             </div>
           </div>

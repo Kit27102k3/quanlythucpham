@@ -79,9 +79,6 @@ const Header = () => {
   const cleanFacebookImageUrl = (url) => {
     if (!url) return "https://www.gravatar.com/avatar/?d=mp";
 
-    // For debugging
-    console.log("Processing image URL:", url);
-
     // If it's a Facebook URL, try to clean it up
     if (url.includes("platform-lookaside.fbsbx.com")) {
       // Add a cache-busting parameter to force a fresh request
@@ -99,10 +96,8 @@ const Header = () => {
         .getProfile()
         .then((response) => {
           if (response.data && response.data.userImage) {
-            console.log("User profile image found:", response.data.userImage);
             setAvatarUrl(response.data.userImage);
           } else {
-            console.log("No user image, using default");
             setAvatarUrl("https://www.gravatar.com/avatar/?d=mp");
           }
         })
@@ -297,7 +292,6 @@ const Header = () => {
                     loading="eager"
                     importance="high"
                     onError={(e) => {
-                      console.log("Facebook avatar load error, using default");
                       e.target.src =
                         "https://www.gravatar.com/avatar/?d=mp&s=200";
                     }}
@@ -310,7 +304,6 @@ const Header = () => {
                   alt="Avatar"
                   className="w-8 h-8 rounded-full hide-on-mobile object-cover"
                   onError={(e) => {
-                    console.log("Avatar load error, using default");
                     e.target.src =
                       "https://www.gravatar.com/avatar/?d=mp&s=200";
                   }}

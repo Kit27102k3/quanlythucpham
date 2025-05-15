@@ -145,63 +145,41 @@ const SavedVoucher = () => {
   const renderStatus = (coupon, isPaid) => {
     if (isPaid) {
       return (
-        <div className="voucher-status used">
-          <i className="pi pi-check"></i>
+        <div className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
+          <i className="pi pi-check mr-1"></i>
           <span>Đã sử dụng</span>
         </div>
       );
     } else if (isExpired(coupon)) {
       return (
-        <div className="voucher-status expired">
-          <i className="pi pi-clock"></i>
+        <div className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
+          <i className="pi pi-clock mr-1"></i>
           <span>Đã hết hạn</span>
         </div>
       );
     } else if (isInactive(coupon)) {
       return (
-        <div className="voucher-status inactive">
-          <i className="pi pi-ban"></i>
+        <div className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
+          <i className="pi pi-ban mr-1"></i>
           <span>Đã ngừng hoạt động</span>
         </div>
       );
     } else {
       return (
-        <div className="voucher-status active">
-          <i className="pi pi-check-circle"></i>
+        <div className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-white/25 text-white">
+          <i className="pi pi-check-circle mr-1"></i>
           <span>Có thể sử dụng</span>
         </div>
       );
     }
   };
 
-  // Thiết lập style cho Dialog
-  const dialogStyle = {
-    width: "90%",
-    maxWidth: "450px",
-    padding: "0",
-    borderRadius: "8px",
-  };
-
-  const dialogHeaderStyle = {
-    padding: "12px 16px",
-    fontSize: "1rem",
-  };
-
-  const dialogFooterStyle = {
-    padding: "8px 16px",
-    borderTop: "1px solid #f0f0f0",
-  };
-
-  const dialogContentStyle = {
-    padding: "12px 16px",
-  };
-
   return (
-    <div className="saved-voucher-page px-4 py-8">
+    <div className="px-4 py-8 min-h-[60vh]">
       <Toaster position="top-right" richColors />
       <ConfirmDialog />
 
-      <div className="mb-6 flex justify-between items-center">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Voucher của bạn</h2>
         <Button
           label="Tìm thêm voucher"
@@ -212,33 +190,34 @@ const SavedVoucher = () => {
       </div>
 
       {savedVouchers.length === 0 ? (
-        <div className="empty-voucher">
-          <div className="empty-content">
-            <i className="pi pi-ticket"></i>
-            <h3>Bạn chưa lưu voucher nào</h3>
-            <p>Hãy khám phá các voucher có sẵn và lưu để sử dụng sau</p>
+        <div className="flex flex-col items-center justify-center min-h-[200px] bg-gray-50 rounded-lg p-5 mt-4">
+          <i className="pi pi-ticket text-4xl text-gray-300 mb-3"></i>
+          <h3 className="text-base font-semibold text-gray-800 mb-1">Bạn chưa lưu voucher nào</h3>
+          <p className="text-sm text-gray-500 mb-4">Hãy khám phá các voucher có sẵn và lưu để sử dụng sau</p>
             <Button
               label="Tìm voucher ngay"
               icon="pi pi-search"
               className="p-button p-button-success"
               onClick={handleFindMoreVouchers}
             />
-          </div>
         </div>
       ) : (
-        <div className="vouchers-list">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {savedVouchers.map((savedVoucher) => (
             <div
               key={savedVoucher._id}
-              className={`saved-voucher-card ${
-                isExpired(savedVoucher.couponId) ||
-                isInactive(savedVoucher.couponId)
-                  ? "inactive-voucher"
+              className={`bg-white rounded-lg shadow-sm overflow-hidden transition-all hover:translate-y-[-2px] hover:shadow-md ${
+                isExpired(savedVoucher.couponId) || isInactive(savedVoucher.couponId)
+                  ? "opacity-70"
                   : ""
               }`}
             >
-              <div className="saved-voucher-header">
-                <div className="saved-voucher-value">
+              <div className={`flex justify-between items-center p-3 text-white ${
+                isExpired(savedVoucher.couponId) || isInactive(savedVoucher.couponId)
+                  ? "bg-gray-500"
+                  : "bg-[#5ccd16]"
+              }`}>
+                <div className="text-xl font-bold">
                   {savedVoucher.couponId.type === "percentage"
                     ? `${savedVoucher.couponId.value}%`
                     : formatCurrency(savedVoucher.couponId.value)}
@@ -246,47 +225,53 @@ const SavedVoucher = () => {
                 {renderStatus(savedVoucher.couponId, savedVoucher.isPaid)}
               </div>
 
-              <div className="saved-voucher-content">
-                <h3 className="voucher-title">
+              <div className="p-3">
+                <h3 className="text-base font-semibold text-gray-800 mb-2">
                   {savedVoucher.couponId.type === "percentage"
                     ? `Giảm ${savedVoucher.couponId.value}% đơn hàng`
                     : `Giảm ${formatCurrency(savedVoucher.couponId.value)}`}
                 </h3>
 
-                <div className="voucher-code-section">
+                <div className="bg-gray-50 p-2 rounded-md mb-2">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-sm text-gray-600">Mã giảm giá:</span>
                   </div>
-                  <div className="code-display">
-                    <span>{savedVoucher.couponId.code}</span>
+                  <div className="bg-white border border-dashed border-gray-300 p-2 rounded text-center">
+                    <span className={`font-mono text-base font-bold tracking-wider ${
+                      isExpired(savedVoucher.couponId) || isInactive(savedVoucher.couponId)
+                        ? "text-gray-500"
+                        : "text-[#5ccd16]"
+                    }`}>
+                      {savedVoucher.couponId.code}
+                    </span>
                   </div>
                 </div>
 
-                <div className="voucher-info-section">
-                  <div className="info-item">
-                    <span className="info-label">Đơn hàng tối thiểu:</span>
-                    <span className="info-value">
+                <div className="mb-2">
+                  <div className="flex justify-between py-1 text-sm border-b border-dashed border-gray-200">
+                    <span className="text-gray-500">Đơn hàng tối thiểu:</span>
+                    <span className="font-semibold text-gray-800">
                       {formatCurrency(savedVoucher.couponId.minOrder)}
                     </span>
                   </div>
                   {savedVoucher.couponId.maxDiscount && (
-                    <div className="info-item">
-                      <span className="info-label">Giảm tối đa:</span>
-                      <span className="info-value">
+                    <div className="flex justify-between py-1 text-sm border-b border-dashed border-gray-200">
+                      <span className="text-gray-500">Giảm tối đa:</span>
+                      <span className="font-semibold text-gray-800">
                         {formatCurrency(savedVoucher.couponId.maxDiscount)}
                       </span>
                     </div>
                   )}
-                  <div className="info-item">
-                    <span className="info-label">Hạn sử dụng:</span>
-                    <span className="info-value">
+                  <div className="flex justify-between py-1 text-sm border-b border-dashed border-gray-200">
+                    <span className="text-gray-500">Hạn sử dụng:</span>
+                    <span className="font-semibold text-gray-800">
                       {formatDate(savedVoucher.couponId.expiresAt)}
                     </span>
                   </div>
                 </div>
 
                 {savedVoucher.couponId.usageLimit && (
-                  <div className="voucher-usage-limit-section">
+                  <div className="mb-2">
                     <div className="flex justify-between text-xs text-gray-500 mb-1">
                       <span>
                         Còn lại: {getRemainingVouchers(savedVoucher.couponId)}/
@@ -308,32 +293,32 @@ const SavedVoucher = () => {
                         savedVoucher.couponId.usageLimit
                       )}
                       showValue={false}
-                      style={{ height: "6px" }}
+                      className="h-1.5 rounded"
                     />
                   </div>
                 )}
 
-                <div className="saved-date">
+                <div className="text-right text-xs text-gray-500 mt-1">
                   <span>Đã lưu vào: {formatDate(savedVoucher.savedAt)}</span>
                 </div>
               </div>
 
-              <div className="saved-voucher-actions">
+              <div className="flex justify-between px-3 py-2 border-t border-gray-200">
                 <Button
                   label="Xem chi tiết"
                   icon="pi pi-info-circle"
                   onClick={() => openVoucherDetail(savedVoucher)}
-                  className="p-button-text gap-2"
+                  className="p-button-text text-sm gap-1 p-2"
                 />
                 <Button
                   label="Bỏ lưu"
                   icon="pi pi-trash"
                   onClick={() => handleRemoveVoucher(savedVoucher)}
-                  className="p-button-danger p-button-text gap-2"
+                  className="p-button-danger p-button-text text-sm gap-1 p-2"
                 />
               </div>
 
-              <div className="flex justify-center mt-4">
+              <div className="flex justify-center px-3 pb-3">
                 <Button
                   label="Mua sắm ngay"
                   icon="pi pi-shopping-cart"
@@ -345,7 +330,7 @@ const SavedVoucher = () => {
                     !isVoucherValid(savedVoucher.couponId, savedVoucher.isPaid)
                       ? "p-button-secondary"
                       : "p-button-success"
-                  } gap-2 text-white bg-[#51bb1a] rounded`}
+                  } gap-2 text-white bg-[#51bb1a] rounded w-full p-2 text-sm`}
                 />
               </div>
             </div>
@@ -357,83 +342,95 @@ const SavedVoucher = () => {
         visible={showDetailDialog}
         onHide={() => setShowDetailDialog(false)}
         header="Chi tiết voucher"
-        style={dialogStyle}
-        contentStyle={dialogContentStyle}
-        headerStyle={dialogHeaderStyle}
+        style={{ width: '90%', maxWidth: '450px', borderRadius: '8px', padding: '0' }}
+        contentStyle={{ padding: '12px 16px' }}
+        headerStyle={{ padding: '12px 16px', fontSize: '1rem' }}
         breakpoints={{ "960px": "75vw", "641px": "90vw" }}
       >
         {selectedVoucher && (
-          <div className="voucher-detail-dialog">
-            <div className="voucher-detail-header">
+          <div>
+            <div className="text-center mb-2">
               <h3 className="text-xl font-bold mb-2">
                 {selectedVoucher.couponId.type === "percentage"
                   ? `Giảm ${selectedVoucher.couponId.value}% đơn hàng`
                   : `Giảm ${formatCurrency(selectedVoucher.couponId.value)}`}
               </h3>
-              {renderStatus(selectedVoucher.couponId, selectedVoucher.isPaid)}
+              <div className="inline-block">
+                {isVoucherValid(selectedVoucher.couponId, selectedVoucher.isPaid) ? (
+                  <div className="px-3 py-1 text-xs font-medium bg-[#5ccd16] text-white rounded-full">
+                    <i className="pi pi-check-circle mr-1"></i>
+                    <span>Có thể sử dụng</span>
+                  </div>
+                ) : (
+                  <div className="px-3 py-1 text-xs font-medium bg-red-500 text-white rounded-full">
+                    <i className={`pi ${isExpired(selectedVoucher.couponId) ? 'pi-clock' : 'pi-ban'} mr-1`}></i>
+                    <span>{isExpired(selectedVoucher.couponId) ? 'Đã hết hạn' : 'Đã ngừng hoạt động'}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="voucher-detail-info mt-4">
-              <div className="info-row">
-                <div className="info-label">Mã giảm giá:</div>
-                <div className="info-value code">
+            <div className="mt-3">
+              <div className="flex py-1.5 border-b border-gray-200">
+                <div className="w-1/2 text-gray-500">Mã giảm giá:</div>
+                <div className="w-1/2 text-right font-mono font-semibold tracking-wider text-[#5ccd16]">
                   {selectedVoucher.couponId.code}
                 </div>
               </div>
-              <div className="info-row">
-                <div className="info-label">Loại giảm giá:</div>
-                <div className="info-value">
+              <div className="flex py-1.5 border-b border-gray-200">
+                <div className="w-1/2 text-gray-500">Loại giảm giá:</div>
+                <div className="w-1/2 text-right font-semibold">
                   {selectedVoucher.couponId.type === "percentage"
                     ? "Phần trăm (%)"
                     : "Số tiền cố định"}
                 </div>
               </div>
-              <div className="info-row">
-                <div className="info-label">Giá trị:</div>
-                <div className="info-value">
+              <div className="flex py-1.5 border-b border-gray-200">
+                <div className="w-1/2 text-gray-500">Giá trị:</div>
+                <div className="w-1/2 text-right font-semibold">
                   {selectedVoucher.couponId.type === "percentage"
                     ? `${selectedVoucher.couponId.value}%`
                     : formatCurrency(selectedVoucher.couponId.value)}
                 </div>
               </div>
-              <div className="info-row">
-                <div className="info-label">Đơn hàng tối thiểu:</div>
-                <div className="info-value">
+              <div className="flex py-1.5 border-b border-gray-200">
+                <div className="w-1/2 text-gray-500">Đơn hàng tối thiểu:</div>
+                <div className="w-1/2 text-right font-semibold">
                   {formatCurrency(selectedVoucher.couponId.minOrder)}
                 </div>
               </div>
               {selectedVoucher.couponId.maxDiscount && (
-                <div className="info-row">
-                  <div className="info-label">Giảm tối đa:</div>
-                  <div className="info-value">
+                <div className="flex py-1.5 border-b border-gray-200">
+                  <div className="w-1/2 text-gray-500">Giảm tối đa:</div>
+                  <div className="w-1/2 text-right font-semibold">
                     {formatCurrency(selectedVoucher.couponId.maxDiscount)}
                   </div>
                 </div>
               )}
-              <div className="info-row">
-                <div className="info-label">Hạn sử dụng:</div>
-                <div className="info-value">
+              <div className="flex py-1.5 border-b border-gray-200">
+                <div className="w-1/2 text-gray-500">Hạn sử dụng:</div>
+                <div className="w-1/2 text-right font-semibold">
                   {formatDate(selectedVoucher.couponId.expiresAt)}
                 </div>
               </div>
               {selectedVoucher.couponId.usageLimit && (
-                <div className="info-row">
-                  <div className="info-label">Còn lại:</div>
-                  <div className="info-value">
+                <div className="flex py-1.5 border-b border-gray-200">
+                  <div className="w-1/2 text-gray-500">Còn lại:</div>
+                  <div className="w-1/2 text-right font-semibold">
                     {getRemainingVouchers(selectedVoucher.couponId)}/
                     {selectedVoucher.couponId.usageLimit} voucher
                   </div>
                 </div>
               )}
-              <div className="info-row">
-                <div className="info-label">Ngày lưu:</div>
-                <div className="info-value">
+              <div className="flex py-1.5 border-b border-gray-200">
+                <div className="w-1/2 text-gray-500">Ngày lưu:</div>
+                <div className="w-1/2 text-right font-semibold">
                   {formatDate(selectedVoucher.savedAt)}
                 </div>
               </div>
             </div>
 
-            <div className="voucher-detail-actions mt-4">
+            <div className="mt-4">
               <Button
                 label="Mua sắm ngay"
                 icon="pi pi-shopping-cart"
@@ -451,344 +448,12 @@ const SavedVoucher = () => {
                   )
                     ? "p-button-secondary w-full"
                     : "p-button-success w-full"
-                } flex justify-center text-center text-white bg-[#51bb1a] rounded`}
+                } flex justify-center text-center text-white bg-[#51bb1a] rounded p-2`}
               />
             </div>
           </div>
         )}
       </Dialog>
-
-      <style>{`
-        .saved-voucher-page {
-          min-height: 60vh;
-          padding: 15px;
-        }
-        
-        .mb-6 {
-          margin-bottom: 1rem;
-        }
-        
-        .text-xl {
-          font-size: 1.1rem;
-        }
-        
-        .empty-voucher {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 200px;
-          background-color: #f8f9fa;
-          border-radius: 8px;
-          padding: 20px;
-          margin-top: 15px;
-        }
-        
-        .empty-content {
-          text-align: center;
-        }
-        
-        .empty-content i {
-          font-size: 2rem;
-          color: #cfd8dc;
-          margin-bottom: 12px;
-          display: block;
-        }
-        
-        .empty-content h3 {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #37474f;
-          margin-bottom: 6px;
-        }
-        
-        .empty-content p {
-          color: #78909c;
-          margin-bottom: 15px;
-          font-size: 0.85rem;
-        }
-        
-        .vouchers-list {
-          display: grid;
-          grid-template-columns: 1fr;
-          gap: 12px;
-        }
-        
-        .saved-voucher-card {
-          background-color: white;
-          border-radius: 8px;
-          box-shadow: 0 1px 6px rgba(0, 0, 0, 0.05);
-          overflow: hidden;
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .saved-voucher-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
-        }
-        
-        .saved-voucher-card.inactive-voucher {
-          opacity: 0.7;
-        }
-        
-        .saved-voucher-header {
-          background-color: #5ccd16;
-          color: white;
-          padding: 10px 12px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        
-        .inactive-voucher .saved-voucher-header {
-          background-color: #9e9e9e;
-        }
-        
-        .saved-voucher-value {
-          font-size: 1.3rem;
-          font-weight: 700;
-        }
-        
-        .voucher-status {
-          display: flex;
-          align-items: center;
-          font-size: 0.75rem;
-          font-weight: 500;
-          padding: 3px 8px;
-          border-radius: 20px;
-          gap: 3px;
-        }
-        
-        .voucher-status.active {
-          background-color: rgba(255, 255, 255, 0.25);
-        }
-        
-        .voucher-status.expired, .voucher-status.inactive {
-          background-color: rgba(255, 255, 255, 0.25);
-        }
-        
-        .saved-voucher-content {
-          padding: 12px;
-        }
-        
-        .voucher-title {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #333;
-          margin-bottom: 10px;
-        }
-        
-        .voucher-code-section {
-          background-color: #f5f7fa;
-          padding: 10px;
-          border-radius: 6px;
-          margin-bottom: 10px;
-        }
-        
-        .code-display {
-          background-color: white;
-          border: 1px dashed #ddd;
-          padding: 7px;
-          border-radius: 4px;
-          text-align: center;
-        }
-        
-        .code-display span {
-          font-family: monospace;
-          font-size: 1rem;
-          font-weight: 700;
-          letter-spacing: 1px;
-          color: #5ccd16;
-        }
-        
-        .inactive-voucher .code-display span {
-          color: #9e9e9e;
-        }
-        
-        .voucher-info-section {
-          margin-bottom: 10px;
-        }
-        
-        .info-item {
-          display: flex;
-          justify-content: space-between;
-          padding: 5px 0;
-          border-bottom: 1px dashed #eee;
-          font-size: 0.85rem;
-        }
-        
-        .info-label {
-          color: #64748b;
-        }
-        
-        .info-value {
-          font-weight: 600;
-          color: #333;
-        }
-        
-        .voucher-usage-limit-section {
-          margin-bottom: 10px;
-        }
-        
-        .saved-date {
-          margin-top: 6px;
-          font-size: 0.75rem;
-          color: #64748b;
-          text-align: right;
-        }
-        
-        .saved-voucher-actions {
-          border-top: 1px solid #eee;
-          padding: 10px 12px;
-          display: flex;
-          justify-content: space-between;
-        }
-        
-        .saved-voucher-actions .p-button {
-          font-size: 0.85rem;
-        }
-        
-        .saved-voucher-actions .p-button-text {
-          padding: 0.4rem 0.6rem;
-        }
-        
-        .saved-voucher-actions .p-button .p-button-icon {
-          font-size: 0.85rem;
-        }
-        
-        .flex.justify-center.mt-4 {
-          margin-top: 0;
-          padding: 0 12px 12px 12px;
-        }
-        
-        .flex.justify-center.mt-4 .p-button {
-          font-size: 0.9rem;
-          padding: 0.5rem;
-        }
-        
-        /* Dialog styles */
-        .voucher-detail-dialog {
-          padding: 0;
-        }
-        
-        .voucher-detail-dialog .voucher-detail-header {
-          text-align: center;
-          margin-bottom: 10px;
-        }
-        
-        .voucher-detail-dialog .voucher-detail-header h3 {
-          font-size: 1rem;
-          margin-bottom: 5px;
-        }
-        
-        .voucher-detail-dialog .voucher-detail-header .voucher-status {
-          margin: 0 auto;
-          width: fit-content;
-          color: white;
-          padding: 2px 8px;
-          font-size: 0.7rem;
-        }
-        
-        .voucher-detail-dialog .voucher-status.active {
-          background-color: #5ccd16;
-        }
-        
-        .voucher-detail-dialog .voucher-status.expired, 
-        .voucher-detail-dialog .voucher-status.inactive {
-          background-color: #f44336;
-        }
-        
-        .voucher-detail-info {
-          margin-top: 0.75rem !important;
-        }
-        
-        .voucher-detail-info .info-row {
-          display: flex;
-          padding: 5px 0;
-          border-bottom: 1px solid #eee;
-          font-size: 0.85rem;
-        }
-        
-        .voucher-detail-info .info-label {
-          flex: 1;
-          color: #64748b;
-        }
-        
-        .voucher-detail-info .info-value {
-          flex: 1;
-          font-weight: 600;
-          text-align: right;
-        }
-        
-        .voucher-detail-info .info-value.code {
-          color: #5ccd16;
-          font-family: monospace;
-          letter-spacing: 1px;
-          font-size: 0.9rem;
-        }
-        
-        .voucher-detail-actions.mt-4 {
-          margin-top: 0.75rem;
-        }
-        
-        .voucher-detail-actions .p-button {
-          font-size: 0.9rem;
-          padding: 0.5rem;
-        }
-        
-        /* PrimeReact customizations */
-        .p-button-success {
-          background-color: #5ccd16 !important;
-          border-color: #5ccd16 !important;
-        }
-        
-        .p-button-success:hover {
-          background-color: #4cae0e !important;
-          border-color: #4cae0e !important;
-        }
-        
-        .p-button-success:focus {
-          box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(92, 205, 22, 0.5) !important;
-        }
-        
-        .p-progressbar {
-          height: 5px !important;
-          border-radius: 3px !important;
-          background: #e9ecef !important;
-        }
-        
-        .p-progressbar-value {
-          background-color: #5ccd16 !important;
-        }
-        
-        /* Responsive styles */
-        @media (min-width: 768px) {
-          .vouchers-list {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-        
-        @media (max-width: 640px) {
-          .saved-voucher-header {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-          
-          .voucher-status {
-            align-self: flex-start;
-            margin-top: 5px;
-          }
-          
-          .voucher-title {
-            font-size: 0.95rem;
-          }
-          
-          .saved-voucher-actions {
-            flex-direction: column;
-            gap: 6px;
-          }
-        }
-      `}</style>
     </div>
   );
 };

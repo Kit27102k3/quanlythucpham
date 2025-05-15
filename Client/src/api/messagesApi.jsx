@@ -12,8 +12,6 @@ const getAuthHeader = () => {
   const userRole = localStorage.getItem("userRole");
   const isAdmin = userRole === "admin";
   
-  console.log("Using token for API request:", token);
-  
   const headers = {};
   
   if (token) {
@@ -46,20 +44,16 @@ const messagesApi = {
     try {
       // Lấy userId từ localStorage
       const currentUserId = localStorage.getItem("userId");
-      console.log("Current userId from localStorage:", currentUserId);
-      console.log("Requested userId for messages:", userId);
       
       // Sử dụng currentUserId nếu không có userId được truyền vào
       const targetUserId = userId === "admin" ? "admin" : (userId || currentUserId);
       
       const headers = getAuthHeader();
-      console.log("Auth headers:", headers);
       
       const response = await axios.get(`${API_URLS.MESSAGES}/user/${targetUserId}`, {
         headers: headers
       });
       
-      console.log("Messages response:", response.data);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi lấy tin nhắn:", error);
