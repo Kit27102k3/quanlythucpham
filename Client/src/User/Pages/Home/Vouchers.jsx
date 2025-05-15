@@ -6,7 +6,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCopy } from "@fortawesome/free-solid-svg-icons";
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import couponApi from '../../../api/couponApi';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -53,54 +52,97 @@ function Vouchers() {
 
   useEffect(() => {
     const fetchVouchers = async () => {
-      setLoading(true);
-      let success = false;
-      
       try {
-        // Use the existing couponApi instead of direct axios calls
-        const data = await couponApi.getPublicCoupons();
-        console.log('Fetched vouchers:', data);
+        setLoading(true);
+        let success = false;
         
-        if (data && Array.isArray(data) && data.length > 0) {
-          setVouchers(data);
-          success = true;
-        } else if (data && Array.isArray(data) && data.length === 0) {
-          console.log('No active vouchers found');
-        } else {
-          console.log('Unexpected response format from API:', data);
-        }
-      } catch (error) {
-        console.error('Error fetching vouchers:', error);
-      }
-      
-      // Fallback to dummy data if in development and no vouchers were fetched
-      if (!success && process.env.NODE_ENV === 'development') {
-        console.log('Using dummy voucher data for development');
-        setVouchers([
-          {
-            _id: 'dummy1',
-            code: 'WELCOME10',
-            type: 'percentage',
-            value: 10,
-            minOrder: 100000,
-            isActive: true,
-            description: 'Giảm 10% cho đơn hàng từ 100.000đ'
-          },
-          {
-            _id: 'dummy2',
-            code: 'FREESHIP',
-            type: 'fixed',
-            value: 30000,
-            minOrder: 200000,
-            isActive: true,
-            description: 'Giảm 30.000đ cho đơn hàng từ 200.000đ'
+        // List of potential endpoints to try
+        const endpoints = [
+          '/api/coupons/active',
+          '/api/coupons/public',
+          '/api/coupons/all-for-debug'
+        ];
+        
+        for (const endpoint of endpoints) {
+          if (success) break;
+          
+          try {
+            console.log(`Attempting to fetch vouchers from ${endpoint} endpoint`);
+            const response = await axios.get(`${endpoint}?limit=3`);
+            
+            console.log(`Vouchers API response from ${endpoint}:`, response.data);
+            
+            // Handle different response formats
+            if (response.data && Array.isArray(response.data)) {
+              setVouchers(response.data);
+              success = true;
+              console.log(`Successfully fetched vouchers from ${endpoint}`);
+              break;
+            } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+              setVouchers(response.data.data);
+              success = true;
+              console.log(`Successfully fetched vouchers from ${endpoint} with data property`);
+              break;
+            } else {
+              console.error(`Unexpected response format from ${endpoint}:`, response.data);
+            }
+          } catch (error) {
+            console.error(`Error fetching vouchers from ${endpoint}:`, error);
           }
-        ]);
-      } else if (!success) {
+        }
+        
+        // If all endpoints failed, use dummy data in development
+        if (!success) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('All endpoints failed. Creating dummy voucher data for development');
+            setVouchers([
+              {
+                _id: 'dummy1',
+                code: 'WELCOME10',
+                type: 'percentage',
+                value: 10,
+                minOrder: 100000,
+                maxDiscount: 50000,
+                usageLimit: 100,
+                used: 45,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                description: 'Giảm 10% cho đơn hàng đầu tiên'
+              },
+              {
+                _id: 'dummy2',
+                code: 'FREESHIP',
+                type: 'fixed',
+                value: 30000,
+                minOrder: 200000,
+                usageLimit: null,
+                used: 0,
+                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                description: 'Miễn phí vận chuyển'
+              },
+              {
+                _id: 'dummy3',
+                code: 'SUMMER25',
+                type: 'percentage',
+                value: 25,
+                minOrder: 500000,
+                maxDiscount: 100000,
+                usageLimit: 50,
+                used: 12,
+                expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
+                description: 'Giảm 25% cho mùa hè'
+              }
+            ]);
+          } else {
+            console.log('All endpoints failed and not in development mode. Setting empty vouchers array.');
+            setVouchers([]);
+          }
+        }
+      } catch (mainError) {
+        console.error('Top-level error in fetchVouchers:', mainError);
         setVouchers([]);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     fetchVouchers();

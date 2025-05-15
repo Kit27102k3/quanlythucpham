@@ -6,6 +6,30 @@ import orderApi from "../../../api/orderApi"; // Giả sử bạn có file API n
 import formatCurrency from "../../Until/FotmatPrice"; // Hàm định dạng tiền tệ
 import { toast } from "sonner";
 import { translateStatus } from "../../component/OrderStatusDisplay"; // Import hàm dịch trạng thái
+import { Scrollbars } from 'react-custom-scrollbars-2';
+
+// Custom scrollbar render components
+const renderThumb = ({ style, ...props }) => {
+  const thumbStyle = {
+    backgroundColor: '#51bb1a',
+    borderRadius: '6px',
+    ...style,
+  };
+  return <div style={thumbStyle} {...props} />;
+};
+
+const renderTrack = ({ style, ...props }) => {
+  const trackStyle = {
+    backgroundColor: '#f1f1f1',
+    borderRadius: '6px',
+    height: '10px',
+    bottom: 0,
+    position: 'absolute',
+    width: '100%',
+    ...style,
+  };
+  return <div style={trackStyle} {...props} />;
+};
 
 // Hàm kiểm tra trạng thái thanh toán
 const isOrderPaid = (order) => {
@@ -209,173 +233,189 @@ export default function Order() {
 
       {/* Tabs */}
       <div className="mb-6 overflow-x-auto">
-        <div className="flex space-x-2 min-w-max border-b border-gray-200">
-          {ORDER_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-1 px-4 py-2 text-sm font-medium rounded-t-lg ${
-                activeTab === tab.id
-                  ? "text-[#51bb1a] border-b-2 border-[#51bb1a]"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-              {statusCounts[tab.id] > 0 && (
-                <span className="ml-1 bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs">
-                  {statusCounts[tab.id]}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        <Scrollbars
+          style={{ width: '100%', height: 40 }}
+          renderThumbHorizontal={renderThumb}
+          renderTrackHorizontal={renderTrack}
+          universal={true}
+        >
+          <div className="flex space-x-2 text-sm min-w-max border-b border-gray-200">
+            {ORDER_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center space-x-1 px-4 py-2 text-sm font-medium rounded-t-lg ${
+                  activeTab === tab.id
+                    ? "text-[#51bb1a] border-b-2 border-[#51bb1a]"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+                {statusCounts[tab.id] > 0 && (
+                  <span className="ml-1 bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full text-xs">
+                    {statusCounts[tab.id]}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </Scrollbars>
       </div>
 
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-green-50 border-b border-green-100">
-              <tr>
-                {[
-                  "Đơn hàng",
-                  "Ngày",
-                  "Địa chỉ",
-                  "Giá trị đơn hàng",
-                  "TT thanh toán",
-                  "TT vận chuyển",
-                  "Thao tác"
-                ].map((header, index) => (
-                  <th
-                    key={index}
-                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredOrders.length === 0 ? (
-                <tr className="text-center">
-                  <td
-                    colSpan={7}
-                    className="px-4 py-6 text-center text-gray-500 bg-gray-50"
-                  >
-                    <div className="flex flex-col items-center justify-center space-y-4">
-                      <PackageIcon className="w-12 h-12 text-gray-400" />
-                      <p className="text-sm text-gray-600">
-                        Không có đơn hàng nào {activeTab !== 'all' ? `trong mục "${ORDER_TABS.find(tab => tab.id === activeTab)?.label}"` : ''}.
-                      </p>
-                      <button
-                        onClick={() => navigate("/san-pham")}
-                        className="px-4 py-2 bg-[#51bb1a] text-white rounded-md hover:bg-[#51bb1a] transition-colors"
-                      >
-                        Bắt đầu mua sắm
-                      </button>
-                    </div>
-                  </td>
+        <Scrollbars
+          style={{ width: '100%', height: 400 }}
+          renderThumbHorizontal={renderThumb}
+          renderTrackHorizontal={renderTrack}
+          renderThumbVertical={renderThumb}
+          renderTrackVertical={props => <div {...props} className="track-vertical" style={{position: 'absolute', width: '6px', right: '2px', bottom: '2px', top: '2px', borderRadius: '3px'}} />}
+          universal={true}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-green-50 border-b border-green-100">
+                <tr>
+                  {[
+                    "Đơn hàng",
+                    "Ngày",
+                    "Địa chỉ",
+                    "Giá trị đơn hàng",
+                    "TT thanh toán",
+                    "TT vận chuyển",
+                    "Thao tác"
+                  ].map((header, index) => (
+                    <th
+                      key={index}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      {header}
+                    </th>
+                  ))}
                 </tr>
-              ) : (
-                filteredOrders.map((order) => (
-                  <tr
-                    key={order._id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => handleOrderClick(order._id)}
-                  >
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      #{order._id.slice(-6).toUpperCase()}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(order.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
-                      {order.userId?.address ? (
-                        <span className="line-clamp-1">
-                          {order.userId.address}
-                          {order.userId.ward && `, ${order.userId.ward}`}
-                          {order.userId.district && `, ${order.userId.district}`}
-                        </span>
-                      ) : (
-                        "Chưa có địa chỉ"
-                      )}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
-                      {formatCurrency(order.totalAmount)}đ
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          isOrderPaid(order)
-                            ? "bg-green-100 text-green-800"
-                            : order.status === "awaiting_payment"
-                            ? "bg-orange-100 text-orange-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {isOrderPaid(order)
-                          ? "Đã thanh toán"
-                          : order.status === "awaiting_payment"
-                          ? "Chờ thanh toán"
-                          : "Chưa thanh toán"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          order.status === "completed"
-                            ? "bg-purple-100 text-purple-800"
-                            : order.status === "cancelled"
-                            ? "bg-red-100 text-red-800"
-                            : order.status === "delivering"
-                            ? "bg-indigo-100 text-indigo-800"
-                            : order.status === "preparing"
-                            ? "bg-blue-100 text-blue-800"
-                            : order.status === "packaging"
-                            ? "bg-green-100 text-green-800"
-                            : order.status === "shipping"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        {getShippingStatus(order.status)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {(order.status === "pending" || order.status === "awaiting_payment" || 
-                        order.status === "preparing" || order.status === "packaging") && (
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredOrders.length === 0 ? (
+                  <tr className="text-center">
+                    <td
+                      colSpan={7}
+                      className="px-4 py-6 text-center text-gray-500 bg-gray-50"
+                    >
+                      <div className="flex flex-col items-center justify-center space-y-4">
+                        <PackageIcon className="w-12 h-12 text-gray-400" />
+                        <p className="text-sm text-gray-600">
+                          Không có đơn hàng nào {activeTab !== 'all' ? `trong mục "${ORDER_TABS.find(tab => tab.id === activeTab)?.label}"` : ''}.
+                        </p>
                         <button
-                          onClick={(e) => handleCancelOrder(order._id, e)}
-                          className="text-red-500 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1 text-sm transition-colors"
-                          disabled={cancelLoading}
+                          onClick={() => navigate("/san-pham")}
+                          className="px-4 py-2 bg-[#51bb1a] text-white rounded-md hover:bg-[#51bb1a] transition-colors"
                         >
-                          <XCircleIcon className="w-4 h-4" />
-                          Hủy đơn
+                          Bắt đầu mua sắm
                         </button>
-                      )}
-                      {order.status === "delivering" && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Add confirmation for received order
-                            if (window.confirm("Xác nhận đã nhận được đơn hàng?")) {
-                              // Todo: implement confirm delivery API
-                              toast.success("Đã xác nhận giao hàng thành công");
-                            }
-                          }}
-                          className="text-green-500 hover:bg-green-50 px-2 py-1 rounded flex items-center gap-1 text-sm transition-colors"
-                        >
-                          <ClipboardListIcon className="w-4 h-4" />
-                          Đã nhận
-                        </button>
-                      )}
+                      </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  filteredOrders.map((order) => (
+                    <tr
+                      key={order._id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleOrderClick(order._id)}
+                    >
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        #{order._id.slice(-6).toUpperCase()}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(order.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-500">
+                        {order.userId?.address ? (
+                          <span className="line-clamp-1">
+                            {order.userId.address}
+                            {order.userId.ward && `, ${order.userId.ward}`}
+                            {order.userId.district && `, ${order.userId.district}`}
+                          </span>
+                        ) : (
+                          "Chưa có địa chỉ"
+                        )}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                        {formatCurrency(order.totalAmount)}đ
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full ${
+                            isOrderPaid(order)
+                              ? "bg-green-100 text-green-800"
+                              : order.status === "awaiting_payment"
+                              ? "bg-orange-100 text-orange-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {isOrderPaid(order)
+                            ? "Đã thanh toán"
+                            : order.status === "awaiting_payment"
+                            ? "Chờ thanh toán"
+                            : "Chưa thanh toán"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 text-xs rounded-full ${
+                            order.status === "completed"
+                              ? "bg-purple-100 text-purple-800"
+                              : order.status === "cancelled"
+                              ? "bg-red-100 text-red-800"
+                              : order.status === "delivering"
+                              ? "bg-indigo-100 text-indigo-800"
+                              : order.status === "preparing"
+                              ? "bg-blue-100 text-blue-800"
+                              : order.status === "packaging"
+                              ? "bg-green-100 text-green-800"
+                              : order.status === "shipping"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          {getShippingStatus(order.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        {(order.status === "pending" || order.status === "awaiting_payment" || 
+                          order.status === "preparing" || order.status === "packaging") && (
+                          <button
+                            onClick={(e) => handleCancelOrder(order._id, e)}
+                            className="text-red-500 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1 text-sm transition-colors"
+                            disabled={cancelLoading}
+                          >
+                            <XCircleIcon className="w-4 h-4" />
+                            Hủy đơn
+                          </button>
+                        )}
+                        {order.status === "delivering" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Add confirmation for received order
+                              if (window.confirm("Xác nhận đã nhận được đơn hàng?")) {
+                                // Todo: implement confirm delivery API
+                                toast.success("Đã xác nhận giao hàng thành công");
+                              }
+                            }}
+                            className="text-green-500 hover:bg-green-50 px-2 py-1 rounded flex items-center gap-1 text-sm transition-colors"
+                          >
+                            <ClipboardListIcon className="w-4 h-4" />
+                            Đã nhận
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Scrollbars>
       </div>
 
       {activeTab === 'awaiting_payment' && pendingSePayOrders.length > 0 && (
@@ -387,63 +427,72 @@ export default function Order() {
             </h3>
           </div>
           <div className="bg-white shadow-md rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-orange-50 border-b border-orange-100">
-                  <tr>
-                    {[
-                      "Đơn hàng",
-                      "Ngày",
-                      "Giá trị đơn hàng",
-                      "Hành động"
-                    ].map((header, index) => (
-                      <th
-                        key={index}
-                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {pendingSePayOrders.map((order) => (
-                    <tr
-                      key={order._id}
-                      className="hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{order._id.slice(-6).toUpperCase()}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
-                        {formatCurrency(order.totalAmount)}đ
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => navigate(`/payment-qr?orderId=${order._id}`)}
-                            className="bg-orange-500 text-white px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors"
-                          >
-                            Thanh toán
-                          </button>
-                          <button
-                            onClick={(e) => handleCancelOrder(order._id, e)}
-                            className="text-red-500 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1 text-sm transition-colors"
-                            disabled={cancelLoading}
-                          >
-                            <XCircleIcon className="w-4 h-4" />
-                            Hủy
-                          </button>
-                        </div>
-                      </td>
+            <Scrollbars
+              style={{ width: '100%', height: 200 }}
+              renderThumbHorizontal={renderThumb}
+              renderTrackHorizontal={renderTrack}
+              renderThumbVertical={renderThumb}
+              renderTrackVertical={props => <div {...props} className="track-vertical" style={{position: 'absolute', width: '6px', right: '2px', bottom: '2px', top: '2px', borderRadius: '3px'}} />}
+              universal={true}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-orange-50 border-b border-orange-100">
+                    <tr>
+                      {[
+                        "Đơn hàng",
+                        "Ngày",
+                        "Giá trị đơn hàng",
+                        "Hành động"
+                      ].map((header, index) => (
+                        <th
+                          key={index}
+                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          {header}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {pendingSePayOrders.map((order) => (
+                      <tr
+                        key={order._id}
+                        className="hover:bg-gray-50"
+                      >
+                        <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          #{order._id.slice(-6).toUpperCase()}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
+                          {formatCurrency(order.totalAmount)}đ
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => navigate(`/payment-qr?orderId=${order._id}`)}
+                              className="bg-orange-500 text-white px-3 py-1 rounded text-sm hover:bg-orange-600 transition-colors"
+                            >
+                              Thanh toán
+                            </button>
+                            <button
+                              onClick={(e) => handleCancelOrder(order._id, e)}
+                              className="text-red-500 hover:bg-red-50 px-2 py-1 rounded flex items-center gap-1 text-sm transition-colors"
+                              disabled={cancelLoading}
+                            >
+                              <XCircleIcon className="w-4 h-4" />
+                              Hủy
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Scrollbars>
           </div>
         </div>
       )}
@@ -455,15 +504,3 @@ export default function Order() {
 function getShippingStatus(status) {
   return translateStatus(status);
 }
-
-const OrderStatusCard = ({ icon, title, count }) => (
-  <div className="bg-white p-6 rounded-lg shadow-md">
-    <div className="flex items-center space-x-4">
-      <div className="bg-gray-50 p-3 rounded-lg">{icon}</div>
-      <div>
-        <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-        <p className="text-2xl font-bold text-[#51bb1a]">{count}</p>
-      </div>
-    </div>
-  </div>
-);

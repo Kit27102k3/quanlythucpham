@@ -39,6 +39,7 @@ import CouponList from "../Admin/Pages/CouponList";
 import VoucherPage from "../User/Pages/Voucher/VoucherPage";
 import SavedVoucher from "../User/Pages/Profile/SavedVoucher";
 import Reports from "../Admin/Pages/Reports/Reports";
+import StoreLocations from "../User/Pages/Store/StoreLocations";
 const publicRoutes = [
   {
     path: "/",
@@ -161,6 +162,10 @@ const publicRoutes = [
   {
     path: "/voucher",
     page: VoucherPage,
+  },
+  {
+    path: "/cua-hang",
+    page: StoreLocations,
   },
 ];
 

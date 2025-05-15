@@ -145,36 +145,70 @@ const couponApi = {
       const response = await axios.get(`${API_URLS.COUPONS}/active`);
       console.log('Fetched coupons:', response.data);
       
-      // Handle different response formats
-      if (response.data && response.data.success === true && Array.isArray(response.data.data)) {
-        return response.data.data;
-      } else if (Array.isArray(response.data)) {
-        return response.data;
-      } else if (response.data && typeof response.data === 'object') {
-        console.log('Unexpected response format:', response.data);
-        return [];
-      }
-      
-      return [];
-    } catch (error) {
-      console.error('Error fetching public coupons:', error);
-      
-      // Try fallback endpoint if primary fails
-      try {
-        console.log('Trying fallback endpoint /all-for-debug');
-        const fallbackResponse = await axios.get(`${API_URLS.COUPONS}/all-for-debug`);
+      if (Array.isArray(response.data)) {
+        return {
+          success: true,
+          data: response.data
+        };
+      } else if (response.data && response.data.data) {
+        return {
+          success: true,
+          data: response.data.data
+        };
+      } else {
+        console.error('Unexpected response format from active endpoint:', response.data);
         
-        if (Array.isArray(fallbackResponse.data)) {
-          return fallbackResponse.data;
-        } else if (fallbackResponse.data && fallbackResponse.data.success && Array.isArray(fallbackResponse.data.data)) {
-          return fallbackResponse.data.data;
+        try {
+          const fallbackResponse = await axios.get(`${API_URLS.COUPONS}/all-for-debug`);
+          console.log('Fallback coupons:', fallbackResponse.data);
+          
+          if (Array.isArray(fallbackResponse.data)) {
+            return {
+              success: true,
+              data: fallbackResponse.data
+            };
+          } else if (fallbackResponse.data && fallbackResponse.data.data) {
+            return {
+              success: true,
+              data: fallbackResponse.data.data
+            };
+          }
+        } catch (fallbackError) {
+          console.error('Fallback request failed:', fallbackError);
         }
         
-        return [];
-      } catch (fallbackError) {
-        console.error('Fallback endpoint also failed:', fallbackError);
-        return [];
+        return {
+          success: false,
+          message: "Unexpected response format"
+        };
       }
+    } catch (error) {
+      console.error('Error in getPublicCoupons:', error);
+      
+      try {
+        console.log('Trying fallback to all-for-debug endpoint');
+        const fallbackResponse = await axios.get(`${API_URLS.COUPONS}/all-for-debug`);
+        console.log('Fallback coupons:', fallbackResponse.data);
+        
+        if (Array.isArray(fallbackResponse.data)) {
+          return {
+            success: true,
+            data: fallbackResponse.data
+          };
+        } else if (fallbackResponse.data && fallbackResponse.data.data) {
+          return {
+            success: true,
+            data: fallbackResponse.data.data
+          };
+        }
+      } catch (fallbackError) {
+        console.error('Fallback request failed:', fallbackError);
+      }
+      
+      return {
+        success: false,
+        message: error.response?.data?.message || "Không thể lấy danh sách mã giảm giá"
+      };
     }
   },
 

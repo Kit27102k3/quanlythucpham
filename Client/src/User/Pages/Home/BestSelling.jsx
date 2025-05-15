@@ -200,11 +200,11 @@ function BestSelling() {
 
   return (
     <div className="mt-10 mb-12">
-      <div className="text-center mb-6">
+      <div className=" mb-6">
         <button className="bg-yellow-400 text-[#000000] text-sm p-2 rounded font-medium lg:text-[16px]">
           SẢN PHẨM NỔI BẬT
         </button>
-        <h1 className="text-[26px] font-medium mt-2 text-center lg:text-[40px]">BÁN CHẠY NHẤT</h1>
+        <h1 className="text-[26px] font-medium mt-2 lg:text-[40px]">BÁN CHẠY NHẤT</h1>
         <p className="text-gray-500 text-[13px] lg:text-[16px]">
           Những sản phẩm được khách hàng tin dùng và mua nhiều nhất
         </p>
