@@ -14,9 +14,19 @@ const savedVoucherApi = {
         }
       );
 
+      // Đảm bảo dữ liệu trả về là một mảng
+      let vouchers = [];
+      if (Array.isArray(response.data)) {
+        vouchers = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        vouchers = response.data.data;
+      } else if (response.data?.data) {
+        vouchers = [response.data.data];
+      }
+
       return {
         success: true,
-        data: response.data.data,
+        data: vouchers,
         message: response.data.message
       };
     } catch (error) {
@@ -29,9 +39,11 @@ const savedVoucherApi = {
         };
       }
       
+      console.error("Error fetching saved vouchers:", error);
       return {
         success: false,
-        message: error.response?.data?.message || "Không thể lấy danh sách voucher đã lưu"
+        message: error.response?.data?.message || "Không thể lấy danh sách voucher đã lưu",
+        data: []
       };
     }
   },

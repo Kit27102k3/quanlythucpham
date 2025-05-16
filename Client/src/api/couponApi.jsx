@@ -143,9 +143,20 @@ const couponApi = {
   getPublicCoupons: async () => {
     try {
       const response = await axios.get(`${API_URLS.COUPONS}/public`);
+      
+      // Đảm bảo dữ liệu trả về là một mảng
+      let coupons = [];
+      if (Array.isArray(response.data)) {
+        coupons = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        coupons = response.data.data;
+      } else if (response.data?.data) {
+        coupons = [response.data.data];
+      }
+      
       return {
         success: true,
-        data: response.data.data || response.data
+        data: coupons
       };
     } catch (error) {
       console.error('Error in getPublicCoupons:', error);
@@ -153,17 +164,20 @@ const couponApi = {
       // Retry with fallback endpoint
       try {
         const fallbackResponse = await axios.get(`${API_URLS.COUPONS}/all-for-debug`);
+        let coupons = [];
+        
         if (Array.isArray(fallbackResponse.data)) {
-          return {
-            success: true,
-            data: fallbackResponse.data
-          };
+          coupons = fallbackResponse.data;
+        } else if (fallbackResponse.data?.data && Array.isArray(fallbackResponse.data.data)) {
+          coupons = fallbackResponse.data.data;
         } else if (fallbackResponse.data?.data) {
-          return {
-            success: true,
-            data: fallbackResponse.data.data
-          };
+          coupons = [fallbackResponse.data.data];
         }
+        
+        return {
+          success: true,
+          data: coupons
+        };
       } catch (fallbackError) {
         console.error('Fallback request failed:', fallbackError);
       }
