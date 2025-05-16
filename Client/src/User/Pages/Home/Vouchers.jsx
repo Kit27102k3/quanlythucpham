@@ -3,9 +3,11 @@ import axios from 'axios';
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "../../../utils/formatCurrency";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCopy } from "@fortawesome/free-solid-svg-icons";
+import { faBookmark, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { API_URLS } from "../../../config/apiConfig";
+import { Toaster, toast } from "sonner";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -27,11 +29,13 @@ const itemVariants = {
 function Vouchers() {
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [activeImage, setActiveImage] = useState(0);
   const [isChangingBanner, setIsChangingBanner] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userSavedVoucher, setUserSavedVoucher] = useState([]);
+  const [savingVoucher, setSavingVoucher] = useState(false);
   
   // Handle swipe gestures
   const swipeRef = useRef(null);
@@ -50,6 +54,15 @@ function Vouchers() {
     }
   ];
 
+  // Kiểm tra xem người dùng đã đăng nhập chưa
+  useEffect(() => {
+    const token = localStorage.getItem("accessToken");
+    if (token) {
+      setIsLoggedIn(true);
+      fetchUserSavedVoucher(token);
+    }
+  }, []);
+
   useEffect(() => {
     const fetchVouchers = async () => {
       try {
@@ -60,7 +73,7 @@ function Vouchers() {
         const endpoints = [
           '/api/coupons/active',
           '/api/coupons/public',
-          '/api/coupons/all-for-debug'
+          `${API_URLS.COUPONS}/all-for-debug`
         ];
         
         for (const endpoint of endpoints) {
@@ -93,7 +106,7 @@ function Vouchers() {
         
         // If all endpoints failed, use dummy data in development
         if (!success) {
-          if (process.env.NODE_ENV === 'development') {
+          if (import.meta.env.DEV) {
             console.log('All endpoints failed. Creating dummy voucher data for development');
             setVouchers([
               {
@@ -158,15 +171,139 @@ function Vouchers() {
     return () => {
       window.removeEventListener('resize', checkIsMobile);
     };
-  }, []);
+  }, [userSavedVoucher]);
 
-  const handleCopyCode = (code) => {
-    navigator.clipboard.writeText(code)
-      .then(() => {
-        setCopied(code);
-        setTimeout(() => setCopied(null), 2000);
-      })
-      .catch(err => console.error('Failed to copy code:', err));
+  // Lấy voucher đã lưu của người dùng
+  const fetchUserSavedVoucher = async (token) => {
+    try {
+      const response = await axios.get(
+        `${API_URLS.SAVED_VOUCHERS}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+      
+      console.log('User saved vouchers response:', response.data);
+      
+      if (response.data && response.data.data) {
+        setUserSavedVoucher(response.data.data);
+      } else {
+        console.log('No saved vouchers found or unexpected format');
+        setUserSavedVoucher([]);
+      }
+    } catch (error) {
+      console.error("Error fetching user saved vouchers:", error);
+      setUserSavedVoucher([]);
+    }
+  };
+
+  // Hiển thị thông báo toast
+  const showToast = (type, message) => {
+    if (type === "success") {
+      toast.success(message);
+    } else if (type === "error") {
+      toast.error(message);
+    } else {
+      toast(message);
+    }
+  };
+
+  // Xử lý lưu voucher mới
+  const handleSaveVoucher = async (voucherId) => {
+    if (!isLoggedIn) {
+      showToast("error", "Bạn cần đăng nhập để lưu voucher");
+      return;
+    }
+
+    try {
+      setSavingVoucher(true);
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        showToast("error", "Bạn chưa đăng nhập");
+        return;
+      }
+
+      // Kiểm tra xem voucher đã lưu chưa
+      if (isVoucherSaved(voucherId)) {
+        showToast("error", "Bạn đã lưu voucher này rồi");
+        return;
+      }
+
+      const response = await axios.post(
+        `${API_URLS.SAVED_VOUCHERS}`,
+        { couponId: voucherId },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      console.log("Save voucher response:", response.data);
+
+      if (response.data && response.data.success !== false) {
+        showToast("success", response.data.message || "Đã lưu voucher thành công");
+        // Cập nhật lại danh sách voucher đã lưu
+        fetchUserSavedVoucher(token);
+      } else {
+        console.error("Error from API:", response.data);
+        showToast("error", response.data.message || "Không thể lưu voucher");
+      }
+    } catch (error) {
+      console.error("Error saving voucher:", error);
+      showToast("error", error.response?.data?.message || "Đã xảy ra lỗi khi lưu voucher");
+    } finally {
+      setSavingVoucher(false);
+    }
+  };
+
+  // Xử lý xóa voucher đã lưu
+  const handleRemoveSavedVoucher = async (couponId) => {
+    if (!isLoggedIn) {
+      showToast("error", "Bạn cần đăng nhập để thực hiện thao tác này");
+      return;
+    }
+
+    try {
+      setSavingVoucher(true);
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        showToast("error", "Bạn chưa đăng nhập");
+        return;
+      }
+
+      const response = await axios.delete(
+        `${API_URLS.SAVED_VOUCHERS}/${couponId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data && response.data.success !== false) {
+        showToast("success", response.data.message || "Đã xóa voucher thành công");
+        fetchUserSavedVoucher(token);
+      } else {
+        showToast("error", response.data.message || "Không thể xóa voucher");
+      }
+    } catch (error) {
+      console.error("Error removing saved voucher:", error);
+      showToast("error", error.response?.data?.message || "Đã xảy ra lỗi khi xóa voucher");
+    } finally {
+      setSavingVoucher(false);
+    }
+  };
+
+  // Kiểm tra xem voucher có phải là voucher đã lưu của người dùng không
+  const isVoucherSaved = (voucherId) => {
+    if (!userSavedVoucher || !userSavedVoucher.length) return false;
+    return userSavedVoucher.some((saved) => 
+      saved.couponId._id === voucherId && saved.isPaid === false
+    );
   };
 
   const formatVoucherValue = (voucher) => {
@@ -275,6 +412,7 @@ function Vouchers() {
 
   return (
     <div className="mt-10 mb-12">
+      <Toaster position="top-right" richColors />
       <div className="text-center mb-6">
         <button className="bg-yellow-400 text-[#000000] text-sm p-2 rounded font-medium lg:text-[16px]">
           KHUYẾN MÃI
@@ -356,6 +494,12 @@ function Vouchers() {
                 variants={itemVariants}
                 className={`rounded-lg shadow-md overflow-hidden relative ${getVoucherColor(index)} text-white`}
               >
+                {isVoucherSaved(voucher._id) && (
+                  <div className="absolute top-2 right-2 bg-white text-green-600 rounded-full p-1 shadow-md z-10">
+                    <span className="text-xs font-bold px-2">Đã lưu</span>
+                  </div>
+                )}
+                
                 <div className="absolute top-0 right-0 w-16 h-16">
                   <div className="absolute transform rotate-45 bg-white text-green-600 text-xs font-bold py-1 right-[-35px] top-[15px] w-[140px] text-center">
                     {voucher.usageLimit ? `Còn ${voucher.usageLimit - voucher.used}` : 'Không giới hạn'}
@@ -378,17 +522,23 @@ function Vouchers() {
                   
                   <div className="mt-4 flex items-center justify-between bg-white rounded p-2">
                     <span className="text-gray-800 font-bold">{voucher.code}</span>
+                    {isVoucherSaved(voucher._id) ? (
+                      <button
+                        onClick={() => handleRemoveSavedVoucher(voucher._id)}
+                        className="ml-2 p-2 bg-red-500 hover:bg-red-600 rounded text-white transition-colors disabled:opacity-50"
+                        disabled={savingVoucher}
+                      >
+                        <FontAwesomeIcon icon={faTrash} />
+                      </button>
+                    ) : (
                     <button
-                      onClick={() => handleCopyCode(voucher.code)}
-                      className="ml-2 p-2 bg-green-500 hover:bg-green-600 rounded text-white transition-colors"
+                        onClick={() => handleSaveVoucher(voucher._id)}
+                        className="ml-2 p-2 bg-green-500 hover:bg-green-600 rounded text-white transition-colors disabled:opacity-50"
+                        disabled={savingVoucher}
                     >
-                      <FontAwesomeIcon icon={faCopy} />
-                      {copied === voucher.code && (
-                        <span className="absolute top-0 right-0 bg-black text-white text-xs p-1 rounded mt-[-20px]">
-                          Đã sao chép!
-                        </span>
-                      )}
-                    </button>
+                        <FontAwesomeIcon icon={faBookmark} />
+                      </button>
+                    )}
                   </div>
                   
                   {voucher.description && (

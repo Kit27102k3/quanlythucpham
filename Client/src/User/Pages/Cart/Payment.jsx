@@ -449,6 +449,49 @@ export default function Payment() {
               });
             }, 100);
 
+            // Gửi email thông báo đặt hàng thành công
+            try {
+              console.log("========== GỬI EMAIL XÁC NHẬN ĐƠN HÀNG ==========");
+              console.log("Đang gửi yêu cầu email xác nhận đến API...");
+              console.log(`OrderID: ${orderIdCreated}`);
+              console.log("Thông tin người dùng:", {
+                email: users.email,
+                fullName: `${users.firstName || ''} ${users.lastName || ''}`.trim(),
+                phone: users.phone,
+                address: users.address
+              });
+              
+              // Gửi yêu cầu sau 1 giây để đảm bảo đơn hàng đã được lưu hoàn toàn vào database
+              setTimeout(async () => {
+                try {
+                  const emailResponse = await axios.post(`${API_URLS.ORDERS}/notify-order-success/${orderIdCreated}`, {
+                    email: users.email,
+                    fullName: `${users.firstName || ''} ${users.lastName || ''}`.trim(),
+                    phone: users.phone,
+                    address: users.address
+                  }, {
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                    }
+                  });
+                  
+                  console.log("Phản hồi API gửi email:", emailResponse.data);
+                  if (emailResponse.data.success) {
+                    console.log("Email xác nhận đã được gửi thành công");
+                  } else {
+                    console.error("Không thể gửi email xác nhận:", emailResponse.data.message);
+                  }
+                } catch (err) {
+                  console.error("Lỗi khi gửi email xác nhận đơn hàng:", err);
+                }
+                console.log("============================================");
+              }, 1000);
+            } catch (emailError) {
+              console.error("Lỗi khi gửi email xác nhận đơn hàng:", emailError);
+              // Không cần phải hiển thị thông báo lỗi về email cho người dùng
+            }
+
             // Kiểm tra nếu có QR code ngân hàng, ưu tiên chuyển hướng tới trang QR
             if (sepayResponse.qrCode || sepayResponse.method === "bank_transfer") {
               toast.info("Sử dụng phương thức thanh toán QR chuyển khoản");
@@ -555,6 +598,49 @@ export default function Payment() {
             });
           }, 100);
 
+          // Gửi email thông báo đặt hàng thành công
+          try {
+            console.log("========== GỬI EMAIL XÁC NHẬN ĐƠN HÀNG ==========");
+            console.log("Đang gửi yêu cầu email xác nhận đến API...");
+            console.log(`OrderID: ${orderIdCreated}`);
+            console.log("Thông tin người dùng:", {
+              email: users.email,
+              fullName: `${users.firstName || ''} ${users.lastName || ''}`.trim(),
+              phone: users.phone,
+              address: users.address
+            });
+            
+            // Gửi yêu cầu sau 1 giây để đảm bảo đơn hàng đã được lưu hoàn toàn vào database
+            setTimeout(async () => {
+              try {
+                const emailResponse = await axios.post(`${API_URLS.ORDERS}/notify-order-success/${orderIdCreated}`, {
+                  email: users.email,
+                  fullName: `${users.firstName || ''} ${users.lastName || ''}`.trim(),
+                  phone: users.phone,
+                  address: users.address
+                }, {
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                  }
+                });
+                
+                console.log("Phản hồi API gửi email:", emailResponse.data);
+                if (emailResponse.data.success) {
+                  console.log("Email xác nhận đã được gửi thành công");
+                } else {
+                  console.error("Không thể gửi email xác nhận:", emailResponse.data.message);
+                }
+              } catch (err) {
+                console.error("Lỗi khi gửi email xác nhận đơn hàng:", err);
+              }
+              console.log("============================================");
+            }, 1000);
+          } catch (emailError) {
+            console.error("Lỗi khi gửi email xác nhận đơn hàng:", emailError);
+            // Không cần phải hiển thị thông báo lỗi về email cho người dùng
+          }
+
           toast.success("Đặt hàng thành công!");
           navigate(
             `/payment-result?orderId=${orderIdCreated}&status=success&amount=${totalAmount}`
@@ -631,7 +717,7 @@ export default function Payment() {
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                 className="flex-grow p-2 border border-gray-300 border-r-0 rounded-l-md outline-none"
-                disabled={validatingCoupon}
+                disabled={true}
               />
               <button
                 onClick={handleApplyCoupon}

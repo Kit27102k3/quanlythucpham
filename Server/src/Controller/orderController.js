@@ -118,11 +118,31 @@ export const orderCreate = async (req, res) => {
     // Gửi email xác nhận nếu đơn hàng đã được tạo thành công
     if (populatedOrder && populatedOrder.userId && populatedOrder.userId.email) {
       try {
-        await sendOrderConfirmationEmail(populatedOrder);
+        // Chuẩn bị thông tin giao hàng cho email
+        const shippingInfo = {
+          fullName: `${populatedOrder.userId.firstName || ''} ${populatedOrder.userId.lastName || ''}`.trim(),
+          address: populatedOrder.address || populatedOrder.userId.address || '',
+          phone: populatedOrder.userId.phone || '',
+          email: populatedOrder.userId.email || ''
+        };
+        
+        // Thêm thông tin giao hàng vào đơn hàng để gửi email
+        populatedOrder.shippingInfo = shippingInfo;
+        
+        console.log("Sending confirmation email to:", populatedOrder.userId.email);
+        const emailSent = await sendOrderConfirmationEmail(populatedOrder);
+        console.log("Email sent status:", emailSent ? "Success" : "Failed");
       } catch (emailError) {
         console.error("Error sending confirmation email:", emailError);
         // Không throw error nếu gửi email thất bại để không ảnh hưởng đến luồng đặt hàng
       }
+    } else {
+      console.log("Missing email information for order confirmation:", {
+        hasOrder: !!populatedOrder,
+        hasUserId: !!(populatedOrder && populatedOrder.userId),
+        hasEmail: !!(populatedOrder && populatedOrder.userId && populatedOrder.userId.email),
+        email: populatedOrder?.userId?.email
+      });
     }
     
     return res.status(201).json(order);
@@ -1233,6 +1253,100 @@ export const updateOrderPaymentStatus = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Error updating payment status",
+      error: error.message
+    });
+  }
+};
+
+// Thêm controller function mới để gửi email xác nhận đơn hàng
+export const notifyOrderSuccess = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const { email, fullName, phone, address } = req.body;
+    
+    console.log(`=====================================================`);
+    console.log(`NOTIFY ORDER SUCCESS - ATTEMPTING TO SEND EMAIL`);
+    console.log(`Order ID: ${orderId}`);
+    console.log(`Email data:`, { email, fullName, phone, address });
+    
+    // Lấy thông tin đơn hàng
+    const order = await Order.findById(orderId)
+      .populate("userId")
+      .populate("products.productId");
+    
+    if (!order) {
+      console.log(`Order not found with ID: ${orderId}`);
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đơn hàng"
+      });
+    }
+    
+    console.log(`Order found:`, {
+      orderCode: order.orderCode,
+      userId: order.userId?._id,
+      userEmail: order.userId?.email,
+      totalAmount: order.totalAmount
+    });
+    
+    // Tạo thông tin giao hàng cho email
+    const shippingInfo = {
+      fullName: fullName || `${order.userId?.firstName || ''} ${order.userId?.lastName || ''}`.trim(),
+      address: address || order.address || order.userId?.address || '',
+      phone: phone || order.userId?.phone || '',
+      email: email || order.userId?.email || ''
+    };
+    
+    console.log(`Shipping info prepared:`, shippingInfo);
+    
+    // Đảm bảo có email trong shippingInfo
+    if (!shippingInfo.email) {
+      console.log(`ERROR: No email provided in request or found in order`);
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu địa chỉ email để gửi xác nhận đơn hàng"
+      });
+    }
+    
+    // Gắn thông tin giao hàng vào đơn hàng
+    order.shippingInfo = shippingInfo;
+    
+    // Lưu lại thông tin shippingInfo vào đơn hàng để sử dụng sau này
+    try {
+      await Order.findByIdAndUpdate(orderId, { shippingInfo: shippingInfo });
+      console.log(`Updated order with shippingInfo`);
+    } catch (updateError) {
+      console.log(`Warning: Could not update order with shippingInfo: ${updateError.message}`);
+      // Tiếp tục thực hiện gửi email mặc dù không cập nhật được order
+    }
+    
+    // Gửi email xác nhận đơn hàng
+    console.log(`Attempting to send confirmation email to: ${shippingInfo.email}`);
+    
+    const emailSent = await sendOrderConfirmationEmail(order);
+    console.log(`Email sent result: ${emailSent ? "SUCCESS" : "FAILED"}`);
+    
+    if (emailSent) {
+      console.log(`Email successfully sent to: ${shippingInfo.email}`);
+      console.log(`=====================================================`);
+      return res.status(200).json({
+        success: true,
+        message: "Email xác nhận đơn hàng đã được gửi thành công"
+      });
+    } else {
+      console.log(`Failed to send email to: ${shippingInfo.email}`);
+      console.log(`=====================================================`);
+      return res.status(400).json({
+        success: false,
+        message: "Không thể gửi email xác nhận đơn hàng"
+      });
+    }
+  } catch (error) {
+    console.error("Error in notifyOrderSuccess:", error);
+    console.log(`=====================================================`);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi gửi email xác nhận đơn hàng",
       error: error.message
     });
   }

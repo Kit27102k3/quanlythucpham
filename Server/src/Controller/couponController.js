@@ -1,3 +1,4 @@
+/* eslint-disable no-dupe-keys */
 import Coupon from "../Model/Coupon.js";
 
 // Tạo mã giảm giá mới
@@ -149,7 +150,7 @@ export const validateCoupon = async (req, res) => {
     // Check if order meets minimum amount
     if (orderTotal < coupon.minOrder) {
       return res.status(400).json({ 
-        message: `Order total must be at least ${coupon.minOrder} to use this coupon` 
+        message: `Tổng giá trị đơn hàng phải ít nhất là ${coupon.minOrder} để sử dụng phiếu giảm giá này` 
       });
     }
     

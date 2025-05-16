@@ -9,7 +9,8 @@ import {
   getOrderTracking,
   updateOrder,
   markOrderAsPaid,
-  updateOrderPaymentStatus
+  updateOrderPaymentStatus,
+  notifyOrderSuccess
 } from "../Controller/orderController.js";
 
 const router = Router();
@@ -24,5 +25,6 @@ router.post("/:id/cancel", cancelOrder);
 router.patch("/:id", updateOrder);
 router.patch("/:id/mark-paid", markOrderAsPaid);
 router.patch("/:id/payment-status", updateOrderPaymentStatus);
+router.post("/notify-order-success/:id", notifyOrderSuccess);
 
 export default router;

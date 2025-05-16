@@ -574,7 +574,7 @@ const CouponList = () => {
                       setFormData({ ...formData, code: e.target.value.toUpperCase() });
                     }}
                     placeholder="Nhập mã giảm giá"
-                    className="w-full border border-gray-300 rounded-md hover:border-blue-500"
+                    className="w-full border border-gray-300  rounded-md hover:border-blue-500"
                   />
                 </span>
                 <Button
