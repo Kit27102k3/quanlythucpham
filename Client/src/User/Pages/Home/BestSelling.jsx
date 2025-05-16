@@ -5,6 +5,7 @@ import { formatCurrency } from "../../../utils/formatCurrency";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartShopping } from "@fortawesome/free-solid-svg-icons";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
+import {API_URLS} from "../../../config/apiConfig";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -56,7 +57,7 @@ function BestSelling() {
         let products = [];
         
         try {
-          const response = await axios.get('/api/products/best-sellers?limit=4');
+          const response = await axios.get(`${API_URLS.PRODUCTS}/best-sellers?limit=4`);
           
           // Check if the response has a data property structure used by the server
           if (response.data && response.data.success && response.data.data) {
@@ -200,11 +201,11 @@ function BestSelling() {
 
   return (
     <div className="mt-10 mb-12">
-      <div className=" mb-6">
+      <div className=" mb-6 text-center lg:text-left">
         <button className="bg-yellow-400 text-[#000000] text-sm p-2 rounded font-medium lg:text-[16px]">
           SẢN PHẨM NỔI BẬT
         </button>
-        <h1 className="text-[26px] font-medium mt-2 lg:text-[40px]">BÁN CHẠY NHẤT</h1>
+        <h1 className="text-[26px]  font-medium mt-2 lg:text-[40px]">BÁN CHẠY NHẤT</h1>
         <p className="text-gray-500 text-[13px] lg:text-[16px]">
           Những sản phẩm được khách hàng tin dùng và mua nhiều nhất
         </p>
