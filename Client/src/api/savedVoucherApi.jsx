@@ -20,6 +20,15 @@ const savedVoucherApi = {
         message: response.data.message
       };
     } catch (error) {
+      // Nếu lỗi 401, trả về mảng rỗng thay vì lỗi
+      if (error.response?.status === 401) {
+        return {
+          success: true,
+          data: [],
+          message: "Bạn cần đăng nhập để xem voucher đã lưu"
+        };
+      }
+      
       return {
         success: false,
         message: error.response?.data?.message || "Không thể lấy danh sách voucher đã lưu"

@@ -142,60 +142,23 @@ const couponApi = {
   // Lấy tất cả mã giảm giá công khai (cho trang Voucher)
   getPublicCoupons: async () => {
     try {
-      const response = await axios.get(`${API_URLS.COUPONS}/active`);
-      console.log('Fetched coupons:', response.data);
-      
-      if (Array.isArray(response.data)) {
-        return {
-          success: true,
-          data: response.data
-        };
-      } else if (response.data && response.data.data) {
-        return {
-          success: true,
-          data: response.data.data
-        };
-      } else {
-        console.error('Unexpected response format from active endpoint:', response.data);
-        
-        try {
-          const fallbackResponse = await axios.get(`${API_URLS.COUPONS}/all-for-debug`);
-          console.log('Fallback coupons:', fallbackResponse.data);
-          
-          if (Array.isArray(fallbackResponse.data)) {
-            return {
-              success: true,
-              data: fallbackResponse.data
-            };
-          } else if (fallbackResponse.data && fallbackResponse.data.data) {
-            return {
-              success: true,
-              data: fallbackResponse.data.data
-            };
-          }
-        } catch (fallbackError) {
-          console.error('Fallback request failed:', fallbackError);
-        }
-        
-        return {
-          success: false,
-          message: "Unexpected response format"
-        };
-      }
+      const response = await axios.get(`${API_URLS.COUPONS}/public`);
+      return {
+        success: true,
+        data: response.data.data || response.data
+      };
     } catch (error) {
       console.error('Error in getPublicCoupons:', error);
       
+      // Retry with fallback endpoint
       try {
-        console.log('Trying fallback to all-for-debug endpoint');
         const fallbackResponse = await axios.get(`${API_URLS.COUPONS}/all-for-debug`);
-        console.log('Fallback coupons:', fallbackResponse.data);
-        
         if (Array.isArray(fallbackResponse.data)) {
           return {
             success: true,
             data: fallbackResponse.data
           };
-        } else if (fallbackResponse.data && fallbackResponse.data.data) {
+        } else if (fallbackResponse.data?.data) {
           return {
             success: true,
             data: fallbackResponse.data.data
@@ -205,9 +168,10 @@ const couponApi = {
         console.error('Fallback request failed:', fallbackError);
       }
       
+      // Return empty array instead of error to prevent UI breakage
       return {
-        success: false,
-        message: error.response?.data?.message || "Không thể lấy danh sách mã giảm giá"
+        success: true,
+        data: []
       };
     }
   },
