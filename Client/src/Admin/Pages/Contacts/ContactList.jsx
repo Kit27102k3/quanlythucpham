@@ -3,6 +3,7 @@ import axios from "axios";
 import { toast, Toaster } from "sonner";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
+import { API_URLS } from "../../../config/apiConfig";
 
 function ContactList() {
   const [contacts, setContacts] = useState([]);
@@ -24,9 +25,8 @@ function ContactList() {
   const fetchContacts = async () => {
     try {
       setLoading(true);
-      const apiUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
       
-      const response = await axios.get(`${apiUrl}/api/contact`);
+      const response = await axios.get(API_URLS.CONTACT);
       console.log("Dữ liệu liên hệ:", response.data);
       setContacts(response.data);
     } catch (error) {
@@ -44,8 +44,7 @@ function ContactList() {
     if (!window.confirm("Bạn có chắc chắn muốn xóa liên hệ này?")) return;
 
     try {
-      const apiUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
-      await axios.delete(`${apiUrl}/api/contact/${id}`);
+      await axios.delete(`${API_URLS.CONTACT}/${id}`);
       setContacts(contacts.filter((contact) => contact._id !== id));
       toast.success("Đã xóa liên hệ thành công");
     } catch (error) {
@@ -64,8 +63,7 @@ function ContactList() {
     // Nếu liên hệ chưa đọc, cập nhật trạng thái thành đã đọc
     if (!contact.isRead) {
       try {
-        const apiUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
-        const updatedContact = await axios.put(`${apiUrl}/api/contact/${contact._id}`, {
+        await axios.put(`${API_URLS.CONTACT}/${contact._id}`, {
           isRead: true
         });
         
@@ -103,7 +101,23 @@ function ContactList() {
 
     try {
       setReplyData(prev => ({ ...prev, sendingEmail: true }));
-      const apiUrl = import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
+      
+      // Kiểm tra cấu hình email trước khi gửi
+      try {
+        const configResponse = await axios.get(`${API_URLS.CONTACT}/test-email/config`);
+        console.log("Email configuration status:", configResponse.data);
+        
+        if (!configResponse.data.success) {
+          toast.error(`Lỗi cấu hình email: ${configResponse.data.message}`);
+          setReplyData(prev => ({ ...prev, sendingEmail: false }));
+          return;
+        }
+      } catch (configError) {
+        console.error("Lỗi kiểm tra cấu hình email:", configError);
+        toast.error("Không thể xác minh cấu hình email. Vui lòng kiểm tra lại cài đặt server.");
+        setReplyData(prev => ({ ...prev, sendingEmail: false }));
+        return;
+      }
       
       console.log("Đang gửi dữ liệu:", {
         contactId: selectedContact._id,
@@ -113,7 +127,7 @@ function ContactList() {
       });
       
       // Gửi email
-      const replyResponse = await axios.post(`${apiUrl}/api/contact/reply`, {
+      const replyResponse = await axios.post(`${API_URLS.CONTACT}/reply`, {
         contactId: selectedContact._id,
         to: replyData.to,
         subject: replyData.subject,
@@ -123,7 +137,7 @@ function ContactList() {
       console.log("Kết quả gửi email:", replyResponse.data);
       
       // Cập nhật trạng thái đã trả lời
-      const updateResponse = await axios.put(`${apiUrl}/api/contact/${selectedContact._id}`, {
+      const updateResponse = await axios.put(`${API_URLS.CONTACT}/${selectedContact._id}`, {
         isReplied: true
       });
       
@@ -143,7 +157,19 @@ function ContactList() {
       
       if (error.response) {
         console.error("Chi tiết lỗi:", error.response.status, error.response.data);
-        toast.error(`Không thể gửi phản hồi: ${error.response.data.message || 'Lỗi server'}`);
+        
+        // Hiển thị thông báo lỗi chi tiết hơn
+        if (error.response.data && error.response.data.error) {
+          if (error.response.data.error.includes("Missing credentials")) {
+            toast.error("Lỗi xác thực email: Chưa cấu hình đúng tài khoản và mật khẩu email trong file .env");
+          } else if (error.response.data.error.includes("Invalid login")) {
+            toast.error("Lỗi đăng nhập email: Sai tài khoản hoặc mật khẩu email");
+          } else {
+            toast.error(`Lỗi gửi email: ${error.response.data.error}`);
+          }
+        } else {
+          toast.error(`Không thể gửi phản hồi: ${error.response.data.message || 'Lỗi server'}`);
+        }
       } else if (error.request) {
         console.error("Không nhận được phản hồi từ server");
         toast.error("Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.");

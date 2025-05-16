@@ -5,7 +5,8 @@ import {
   createContact, 
   updateContact, 
   deleteContact,
-  replyToContact
+  replyToContact,
+  testEmailConfig
 } from "../Controller/contactController.js";
 
 const router = express.Router();
@@ -27,5 +28,8 @@ router.delete("/:id", deleteContact);
 
 // Reply to a contact - không yêu cầu xác thực
 router.post("/reply", replyToContact);
+
+// Test email configuration
+router.get("/test-email/config", testEmailConfig);
 
 export default router; 

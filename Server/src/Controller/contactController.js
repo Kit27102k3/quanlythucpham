@@ -101,34 +101,114 @@ export const replyToContact = async (req, res) => {
       return res.status(404).json({ message: "Contact not found" });
     }
 
+    // Lấy thông tin email từ biến môi trường
+    const emailUsername = process.env.EMAIL_USERNAME;
+    const emailPassword = process.env.EMAIL_PASSWORD;
+    
+    if (!emailUsername || !emailPassword) {
+      return res.status(500).json({
+        message: "Email configuration is missing",
+        error: "Missing email credentials in server configuration"
+      });
+    }
+
     // Cấu hình nodemailer transporter
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-      }
+        user: emailUsername,
+        pass: emailPassword
+      },
+      debug: true, // Thêm để xem lỗi chi tiết hơn
     });
+
+    console.log("Email configuration:", {
+      emailUser: emailUsername ? "Set" : "Not set",
+      emailPass: emailPassword ? "Set" : "Not set"
+    });
+
+    // Xác thực kết nối trước khi gửi
+    try {
+      await transporter.verify();
+      console.log("Email transport verified successfully");
+    } catch (verifyError) {
+      console.error("Email transport verification failed:", verifyError);
+      return res.status(500).json({
+        message: "Email server configuration error",
+        error: verifyError.message
+      });
+    }
 
     // Cấu hình email
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: emailUsername,
       to: to,
       subject: subject,
       html: message.replace(/\n/g, '<br>')
     };
 
     // Gửi email
-    await transporter.sendMail(mailOptions);
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Email sent successfully:", info.messageId);
 
     // Cập nhật trạng thái liên hệ thành đã trả lời
     contact.isRead = true;
     contact.isReplied = true;
     await contact.save();
 
-    res.status(200).json({ message: "Reply sent successfully" });
+    res.status(200).json({ 
+      message: "Reply sent successfully",
+      messageId: info.messageId,
+      deliveryStatus: info.response
+    });
   } catch (error) {
     console.error("Error sending reply:", error);
     res.status(500).json({ message: "Failed to send reply", error: error.message });
+  }
+};
+
+// Test email configuration
+export const testEmailConfig = async (req, res) => {
+  try {
+    // Lấy thông tin cấu hình từ biến môi trường
+    const emailUsername = process.env.EMAIL_USERNAME;
+    const emailPassword = process.env.EMAIL_PASSWORD;
+    
+    if (!emailUsername || !emailPassword) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Email configuration is missing", 
+        config: {
+          username: emailUsername ? "Set" : "Not set",
+          password: emailPassword ? "Set" : "Not set"
+        }
+      });
+    }
+    
+    // Cấu hình nodemailer transporter để kiểm tra
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: emailUsername,
+        pass: emailPassword
+      }
+    });
+    
+    // Kiểm tra kết nối
+    await transporter.verify();
+    
+    res.status(200).json({ 
+      success: true,
+      message: "Email configuration is valid",
+      email: emailUsername
+    });
+  } catch (error) {
+    console.error("Error testing email config:", error);
+    res.status(500).json({ 
+      success: false,
+      message: "Failed to verify email configuration", 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 }; 
