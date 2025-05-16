@@ -10,13 +10,13 @@ const StoreLocations = () => {
   const stores = [
     {
       id: 1,
-      name: "DNC FOOD - Chi nhánh Nam Cần Thơ",
+      name: "DNC FOOD - Chi nhánh Cần Thơ",
       address: "Trường Đại học Nam Cần Thơ, Nguyễn Văn Cừ nối dài, Cần Thơ City",
       phone: "0326 743 391",
       email: "kit10012003@gmail.com",
       hours: "7:00 - 21:00",
       days: "Thứ 2 - Chủ nhật",
-      mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3928.8577638672!2d105.75907597469275!3d10.029933690077606!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31a0895a51d60719%3A0x9d76b0035f6d53d0!2zxJDhuqFpIGjhu41jIE5hbSBD4bqnbiBUaMah!5e0!3m2!1svi!2s!4v1684317052839!5m2!1svi!2s",
+      mapUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3929.107887665177!2d105.72025667460117!3d10.0079464900979!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31a08903d92d1d0d%3A0x2c147a40ead97caa!2zVHLGsOG7nW5nIMSQ4bqhaSBo4buNYyBOYW0gQ-G6p24gVGjGoQ!5e0!3m2!1svi!2s!4v1739710011236!5m2!1svi!2s",
       image: "https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1000&auto=format&fit=crop"
     },
     {
