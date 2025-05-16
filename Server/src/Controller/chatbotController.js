@@ -188,6 +188,32 @@ export const handleMessage = async (req, res) => {
         };
         break;
         
+      case 'cooking_recipe':
+        try {
+          // Gọi API Python backend để lấy công thức nấu ăn
+          const pyRes = await axios.post('http://localhost:5000/api/chatbot/ask', { question: message });
+          if (pyRes.data && pyRes.data.answer) {
+            return res.status(200).json({
+              success: true,
+              type: 'text',
+              message: pyRes.data.answer
+            });
+          }
+          return res.status(200).json({
+            success: true,
+            type: 'text',
+            message: "Xin lỗi, tôi không tìm thấy công thức phù hợp."
+          });
+        } catch (error) {
+          console.error("Lỗi khi lấy công thức nấu ăn:", error);
+          return res.status(200).json({
+            success: true,
+            type: 'text',
+            message: "Xin lỗi, đã có lỗi xảy ra khi lấy công thức nấu ăn."
+          });
+        }
+        break;
+        
       case 'product':
         // Tìm kiếm sản phẩm
         try {
@@ -668,28 +694,26 @@ const searchProductsMongoDB = async (query) => {
  * @returns {string} - Intent được phát hiện
  */
 const detectIntent = (message) => {
-  // Đơn giản hóa, bạn có thể thêm logic phức tạp hơn sau
   const lowerMessage = message.toLowerCase();
-  
   // Kiểm tra xem có phải là câu hỏi FAQ không
   const faqIntent = detectFAQIntent(lowerMessage);
   if (faqIntent) {
     return faqIntent;
   }
-  
+  // Thêm nhận diện intent công thức nấu ăn
+  if (isCookingQuestion(lowerMessage)) {
+    return 'cooking_recipe';
+  }
   // Mẫu xử lý intent đơn giản
   if (lowerMessage.includes('chào') || lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
     return 'greeting';
   }
-  
   if (lowerMessage.includes('giá') || lowerMessage.includes('bao nhiêu')) {
     return 'price';
   }
-  
   if (lowerMessage.includes('sản phẩm') || lowerMessage.includes('mua') || lowerMessage.includes('hàng')) {
     return 'product';
   }
-  
   // Trả về intent mặc định nếu không nhận diện được
   return 'unknown';
 };
@@ -814,6 +838,9 @@ const detectFAQIntent = (message) => {
  */
 const checkContextDependentQuery = (message) => {
   const lowerMessage = message.toLowerCase();
+  
+  // Nếu là câu hỏi về món ăn/công thức thì KHÔNG phụ thuộc ngữ cảnh sản phẩm
+  if (isCookingQuestion(lowerMessage)) return false;
   
   // Kiểm tra xem có phải là câu tìm kiếm mới không
   // Nếu là tìm kiếm mới thì không phụ thuộc ngữ cảnh
@@ -970,4 +997,10 @@ const formatCurrency = (amount) => {
     currency: 'VND',
     maximumFractionDigits: 0
   }).format(validAmount);
+};
+
+// Thêm hàm nhận diện câu hỏi về món ăn/công thức
+const isCookingQuestion = (message) => {
+  const cookingKeywords = ["nấu", "công thức", "nguyên liệu", "cách làm"];
+  return cookingKeywords.some(kw => message.toLowerCase().includes(kw));
 };

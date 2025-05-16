@@ -3,8 +3,8 @@ import json
 from typing import List, Dict, Any
 import pandas as pd
 from dotenv import load_dotenv
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
 from langchain.chains import RetrievalQA
@@ -254,23 +254,57 @@ class RagChatbot:
         
         return ""
     
-    def get_answer(self, question: str) -> str:
-        """Generate an answer for the given question"""
-        # Attempt to find a direct match first
-        direct_match = self.find_direct_faq_match(question)
-        if direct_match:
-            return direct_match
+    def get_cooking_recipe(self, dish_name: str) -> str:
+        """Get cooking recipe information using ChatGPT"""
+        if not self.llm:
+            return "Xin lỗi, tôi không thể truy cập được thông tin công thức nấu ăn lúc này."
+            
+        prompt = f"""
+        Bạn là một chuyên gia ẩm thực Việt Nam. Hãy cung cấp thông tin chi tiết về nguyên liệu cần thiết để nấu món {dish_name}.
         
+        Yêu cầu:
+        1. Liệt kê đầy đủ các nguyên liệu cần thiết
+        2. Phân loại nguyên liệu thành các nhóm: nguyên liệu chính, gia vị, và nguyên liệu phụ (nếu có)
+        3. Ghi rõ số lượng cho mỗi nguyên liệu
+        4. Thêm một vài lưu ý quan trọng khi chọn nguyên liệu
+        5. Định dạng câu trả lời rõ ràng, dễ đọc với các emoji phù hợp
+        
+        Hãy trả lời bằng tiếng Việt và sử dụng định dạng markdown để trình bày đẹp mắt.
+        """
+        
+        try:
+            response = self.llm.predict(prompt)
+            # Thêm thông tin về nguồn dữ liệu
+            response += "\n\n💡 Thông tin được cung cấp bởi chuyên gia ẩm thực AI"
+            return response
+        except Exception as e:
+            print(f"Error getting cooking recipe: {str(e)}")
+            return "Xin lỗi, có lỗi xảy ra khi tìm thông tin công thức nấu ăn. Vui lòng thử lại sau."
+
+    def get_answer(self, question: str) -> str:
+        # Ưu tiên nhận diện câu hỏi về món ăn trước
+        cooking_keywords = ["nấu", "công thức", "nguyên liệu", "cách làm"]
+        if any(keyword in question.lower() for keyword in cooking_keywords):
+            # Extract dish name from question
+            dish_name = question.lower()
+            for keyword in cooking_keywords:
+                dish_name = dish_name.replace(keyword, "").strip()
+            return self.get_cooking_recipe(dish_name)
+        
+        # Nếu không phải câu hỏi về món ăn, mới tìm trong FAQ/sản phẩm
+        faq_answer = self.find_direct_faq_match(question)
+        if faq_answer:
+            return faq_answer
+
+        # Nếu không có, dùng QA chain
         if self.llm:
-            # Use the QA chain to generate an answer
             try:
-                response = self.qa_chain.invoke({"query": question})
-                return response["result"]
+                result = self.qa_chain({"query": question})
+                return result["result"]
             except Exception as e:
-                print(f"Error generating response: {str(e)}")
+                print(f"Error in QA chain: {str(e)}")
                 return self.generate_fallback_response(question)
         else:
-            # Use a simple response generator
             return self.generate_fallback_response(question)
     
     def generate_fallback_response(self, question: str) -> str:
