@@ -22,17 +22,9 @@ router.post("/use/:code", updateCouponUsage);
 // Public debug route for development
 router.get("/all-for-debug", async (req, res) => {
   try {
-    console.log("Debug route to get all coupons triggered");
     const allCoupons = await Coupon.find().limit(10);
-    
-    console.log(`Found ${allCoupons.length} coupons for debugging`);
-    if (allCoupons.length > 0) {
-      console.log("Sample coupon:", allCoupons[0]);
-    }
-    
     return res.status(200).json(allCoupons);
   } catch (error) {
-    console.error("Error in debug route:", error);
     return res.status(500).json({ message: "Internal server error in debug route" });
   }
 });

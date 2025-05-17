@@ -13,13 +13,6 @@ const ENV = {
   CLIENT_URL: process.env.CLIENT_URL || 'https://quanlythucpham-client.vercel.app'
 };
 
-// In ra thông tin cấu hình email để debug
-console.log('===== EMAIL SERVICE CONFIGURATION =====');
-console.log('EMAIL_USERNAME:', ENV.EMAIL_USERNAME);
-console.log('EMAIL_PASSWORD length:', ENV.EMAIL_PASSWORD ? ENV.EMAIL_PASSWORD.length : 0);
-console.log('CLIENT_URL:', ENV.CLIENT_URL);
-console.log('=====================================');
-
 // Khởi tạo transporter để gửi email
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -40,7 +33,6 @@ const generateQRCode = async (data) => {
   try {
     return await QRCode.toDataURL(JSON.stringify(data));
   } catch (error) {
-    console.error('Lỗi khi tạo mã QR:', error);
     return null;
   }
 };
@@ -198,38 +190,20 @@ const createOrderEmailTemplate = (order, qrCodeImage) => {
 // Hàm gửi email xác nhận đơn hàng
 export const sendOrderConfirmationEmail = async (order) => {
   try {
-    console.log('\n===== SENDING ORDER CONFIRMATION EMAIL =====');
-    console.log('Order info:', {
-      id: order._id,
-      code: order.orderCode,
-      totalAmount: order.totalAmount
-    });
-    
     // Kiểm tra tất cả các thông tin cần thiết để gửi email
     if (!order.shippingInfo) {
-      console.log('ERROR: Missing shippingInfo object');
-      console.log('===== EMAIL SENDING FAILED =====\n');
       return false;
     }
     
     // Khắc phục lỗi email bị thiếu trong shippingInfo
     if (!order.shippingInfo.email) {
-      console.log('WARNING: Email missing in shippingInfo, attempting to get from order.userId');
-      
       // Nếu không có email trong shippingInfo nhưng có trong userId
       if (order.userId && order.userId.email) {
-        console.log(`Found email in userId: ${order.userId.email}, using it instead`);
         order.shippingInfo.email = order.userId.email;
       } else {
-        console.log('ERROR: No email found in both shippingInfo and userId');
-        console.log('Order shippingInfo:', order.shippingInfo);
-        console.log('UserId info:', order.userId || 'No userId object');
-        console.log('===== EMAIL SENDING FAILED =====\n');
         return false;
       }
     }
-    
-    console.log('Recipient email:', order.shippingInfo.email);
     
     // Tạo dữ liệu cho mã QR
     const qrData = {
@@ -239,18 +213,11 @@ export const sendOrderConfirmationEmail = async (order) => {
       date: order.createdAt
     };
     
-    console.log('Creating QR code for order');
-    
     // Tạo mã QR
     const qrCodeImage = await generateQRCode(qrData);
     
-    console.log('QR code created successfully');
-    console.log('Creating email template');
-    
     // Tạo nội dung email
     const htmlContent = createOrderEmailTemplate(order, qrCodeImage);
-    
-    console.log('Email template created');
     
     // Cấu hình email
     const mailOptions = {
@@ -260,29 +227,10 @@ export const sendOrderConfirmationEmail = async (order) => {
       html: htmlContent
     };
     
-    console.log('Sending email with config:', {
-      from: mailOptions.from,
-      to: mailOptions.to,
-      subject: mailOptions.subject
-    });
-    
     // Gửi email
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully!');
-    console.log('Message ID:', info.messageId);
-    console.log('===== EMAIL SENT SUCCESSFULLY =====\n');
     return true;
   } catch (error) {
-    console.error('ERROR sending confirmation email:', error);
-    console.log('Error details:', error.message);
-    
-    if (error.code === 'EAUTH') {
-      console.error('Authentication error - Check email/password in .env');
-      console.log('Current email user:', ENV.EMAIL_USERNAME);
-      console.log('Password length:', ENV.EMAIL_PASSWORD ? ENV.EMAIL_PASSWORD.length : 0);
-    }
-    
-    console.log('===== EMAIL SENDING FAILED =====\n');
     return false;
   }
 };
@@ -327,16 +275,6 @@ const createOrderShippingTemplate = (order) => {
     shippingAddress = order.userId.address || '';
     phoneNumber = order.userId.phone || '';
   }
-  
-  console.log("Thông tin giao hàng trước khi tạo email:", {
-    customerName,
-    shippingAddress,
-    phoneNumber,
-    userId: order.userId ? {
-      address: order.userId.address,
-      phone: order.userId.phone
-    } : 'không có userId'
-  });
   
   return `
     <!DOCTYPE html>
@@ -406,69 +344,39 @@ const createOrderShippingTemplate = (order) => {
 
 // Function to send email notification when order is being delivered
 export const sendOrderShippingEmail = async (order) => {
-  try {
-    console.log("sendOrderShippingEmail được gọi với order:", JSON.stringify({
-      _id: order._id,
-      orderCode: order.orderCode,
-      hasShippingInfo: !!order.shippingInfo,
-      hasUserId: !!order.userId,
-      userIdType: order.userId ? typeof order.userId : 'undefined',
-      userIdIsObject: order.userId ? (typeof order.userId === 'object') : false,
-      userIdEmail: order.userId?.email,
-    }, null, 2));
-
-    // Check if order has email information either in shippingInfo or userId
-    let recipientEmail = null;
-    
-    // First try to get email from shippingInfo
-    if (order.shippingInfo && order.shippingInfo.email) {
-      recipientEmail = order.shippingInfo.email;
-      console.log("Lấy email từ shippingInfo:", recipientEmail);
-    } 
-    // If not available, try to get from userId if it's populated
-    else if (order.userId && order.userId.email) {
-      recipientEmail = order.userId.email;
-      console.log("Lấy email từ userId:", recipientEmail);
-    }
-    
-    if (!recipientEmail) {
-      console.log('Không có email để gửi thông báo giao hàng. Chi tiết userId:', order.userId);
-      return false;
-    }
-    
-    // Handle case where orderCode is missing
-    const orderIdentifier = order.orderCode || (order._id ? order._id.toString().slice(-6).toUpperCase() : 'N/A');
-    
-    // Create email content
-    const htmlContent = createOrderShippingTemplate(order);
-    
-    // Configure email
-    const mailOptions = {
-      from: `"DNC FOOD" <${ENV.EMAIL_USERNAME || 'no-reply@dncfood.com'}>`,
-      to: recipientEmail,
-      subject: `Đơn hàng #${orderIdentifier} đang được giao đến bạn`,
-      html: htmlContent
-    };
-    
-    console.log("Cấu hình email:", {
-      from: mailOptions.from,
-      to: mailOptions.to,
-      subject: mailOptions.subject,
-      emailUserEnv: ENV.EMAIL_USERNAME,
-      emailPasswordLength: ENV.EMAIL_PASSWORD ? ENV.EMAIL_PASSWORD.length : 0
-    });
-    
-    // Send email
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email thông báo giao hàng đã được gửi:', info.messageId);
-    console.log('Email được gửi đến:', recipientEmail);
-    return true;
-  } catch (error) {
-    console.error('Lỗi khi gửi email thông báo giao hàng:', error);
-    console.error('Chi tiết lỗi:', error.message);
-    console.error('Stack trace:', error.stack);
+  // Check if order has email information either in shippingInfo or userId
+  let recipientEmail = null;
+  
+  // First try to get email from shippingInfo
+  if (order.shippingInfo && order.shippingInfo.email) {
+    recipientEmail = order.shippingInfo.email;
+  } 
+  // If not available, try to get from userId if it's populated
+  else if (order.userId && order.userId.email) {
+    recipientEmail = order.userId.email;
+  }
+  
+  if (!recipientEmail) {
     return false;
   }
+  
+  // Handle case where orderCode is missing
+  const orderIdentifier = order.orderCode || (order._id ? order._id.toString().slice(-6).toUpperCase() : 'N/A');
+  
+  // Create email content
+  const htmlContent = createOrderShippingTemplate(order);
+  
+  // Configure email
+  const mailOptions = {
+    from: `"DNC FOOD" <${ENV.EMAIL_USERNAME || 'no-reply@dncfood.com'}>`,
+    to: recipientEmail,
+    subject: `Đơn hàng #${orderIdentifier} đang được giao đến bạn`,
+    html: htmlContent
+  };
+  
+  // Send email
+  const info = await transporter.sendMail(mailOptions);
+  return true;
 };
 
 export default {

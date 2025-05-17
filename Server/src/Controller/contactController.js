@@ -1,4 +1,5 @@
-import Contact from "../models/Contact.js";
+/* eslint-disable no-undef */
+import Contact from "../Model/Contact.js";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
 

@@ -34,9 +34,6 @@ class PaymentService {
             // Đường dẫn webhook SePay chính xác
             const notifyUrl = `${apiBaseUrl}/api/payments/webhook/bank`;
             
-            console.log("Using SePay callback URLs:", { returnUrl, notifyUrl });
-            console.log("Using ngrokUrl:", ngrokUrl || "Not set");
-            
             const requestData = {
                 merchantId: SEPAY.merchantId,
                 orderId: orderId.toString(),
@@ -81,8 +78,6 @@ class PaymentService {
     // Tạo URL thanh toán dự phòng
     static async createFallbackPayment(orderId, amount, orderInfo) {
         try {
-            console.log("[SePay] Tạo URL thanh toán dự phòng");
-            
             // Sử dụng URL động dựa vào môi trường
             const baseUrl = SITE_CONFIG.baseUrl;
                 
@@ -99,8 +94,6 @@ class PaymentService {
                 qr_code: qrCodeDataURL
             };
         } catch (error) {
-            console.error("[SePay] Lỗi khi tạo thanh toán dự phòng:", error);
-            
             // Đảm bảo luôn trả về kết quả hợp lệ
             const baseUrl = SITE_CONFIG.baseUrl;
             const emergencyUrl = `${baseUrl}/payment-result?orderId=${orderId}&status=success&amount=${amount}`;
@@ -185,11 +178,6 @@ class PaymentService {
     // Lưu lại lịch sử webhook
     static logWebhook(data) {
         try {
-            console.log("====== WEBHOOK LOG ======");
-            console.log("Timestamp:", new Date().toISOString());
-            console.log("Webhook data:", JSON.stringify(data, null, 2));
-            console.log("=========================");
-            
             // Nếu có order_id hoặc orderId, kiểm tra và cập nhật đơn hàng
             const orderId = data.order_id || data.orderId;
             if (orderId) {

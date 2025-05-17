@@ -56,18 +56,15 @@ export const getAllContacts = async (req, res) => {
 export const getMessagesByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("Đang lấy tin nhắn cho userId:", userId);
     
     // Kiểm tra xem người dùng có phải là admin không
     const isAdmin = req.headers['admin-token'] === ADMIN_SECRET_TOKEN 
       || (req.user && req.user.role === 'admin');
-    console.log("Người dùng là admin:", isAdmin);
     
     // Nếu userId là "admin", thay thế bằng ID admin thực
     let actualUserId = userId;
     if (userId === "admin") {
       actualUserId = await getAdminId();
-      console.log("Changed userId from 'admin' to:", actualUserId);
     }
     
     // Tìm cuộc hội thoại với userId
@@ -106,7 +103,6 @@ export const getMessagesByUserId = async (req, res) => {
 export const sendMessage = async (req, res) => {
   try {
     const { text, sender, receiverId, userId: requestUserId } = req.body;
-    console.log("Parameters:", { text, sender, receiverId, requestUserId });
     
     if (!text || !sender) {
       return res.status(400).json({ message: "Thiếu thông tin tin nhắn" });
@@ -122,29 +118,22 @@ export const sendMessage = async (req, res) => {
     if (sender === 'admin') {
       // Nếu admin gửi tin nhắn, receiverId chính là userId
       userId = receiverId;
-      console.log("Admin đang gửi tin nhắn cho userId:", userId);
     } else {
       // Nếu user gửi tin nhắn, lấy userId từ request hoặc token
       userId = requestUserId || (req.user ? req.user.id : null);
-      console.log("User đang gửi tin nhắn, userId:", userId);
     }
     
     if (!userId) {
       return res.status(400).json({ message: "Không xác định được người nhận tin nhắn" });
     }
     
-    console.log(`Tìm cuộc hội thoại với userId: ${userId} và adminId: ${adminId}`);
-    
     // Tìm cuộc hội thoại hiện có
     let conversation = await Conversation.findOne({ 
       userId: userId 
     });
     
-    console.log("Kết quả tìm kiếm conversation:", conversation ? "Tìm thấy" : "Không tìm thấy");
-    
     if (!conversation) {
       // Tạo mới cuộc hội thoại nếu chưa tồn tại
-      console.log("Tạo conversation mới");
       conversation = new Conversation({
         userId,
         adminId,
@@ -193,8 +182,6 @@ export const markAllAsRead = async (req, res) => {
   try {
     const { userId } = req.params;
     
-    console.log(`Đánh dấu tất cả tin nhắn đã đọc cho userId: ${userId}`);
-    
     // Tìm cuộc hội thoại
     const conversation = await Conversation.findOne({ userId });
     
@@ -217,9 +204,6 @@ export const markAllAsRead = async (req, res) => {
     if (updated) {
       conversation.unreadCount = 0;
       await conversation.save();
-      console.log(`Đã cập nhật ${conversation.messages.length} tin nhắn, đánh dấu đã đọc`);
-    } else {
-      console.log("Không có tin nhắn nào cần cập nhật");
     }
     
     return res.status(200).json({ success: true });

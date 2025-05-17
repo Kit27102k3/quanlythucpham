@@ -28,10 +28,12 @@ export const verifyToken = async (req, res, next) => {
     // Tiếp tục với xác thực Bearer token tiêu chuẩn
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      console.log("No token provided in header");
       return res.status(401).json({ message: "Access Denied - No token provided" });
     }
 
     const token = authHeader.split(' ')[1];
+    console.log("Received token:", token);
     
     // Kiểm tra xem có phải là token đặc biệt cho admin không
     if (token === ADMIN_SECRET_TOKEN) {
@@ -46,9 +48,11 @@ export const verifyToken = async (req, res, next) => {
     
     // Xác thực JWT token thông thường
     const decoded = jwt.verify(token, JWT_SECRET);
+    console.log("Decoded token:", decoded);
     req.user = decoded;
     next();
   } catch (error) {
+    console.error("Token verification error:", error);
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ message: 'Token has expired' });
     }
@@ -61,11 +65,13 @@ export const isAdmin = (req, res, next) => {
   try {
     // Kiểm tra xem user đã được xác thực chưa
     if (!req.user) {
+      console.log("No user found in request");
       return res.status(401).json({ message: "Chưa xác thực người dùng" });
     }
     
     // Kiểm tra quyền
     if (req.user.role !== 'admin') {
+      console.log("User role:", req.user.role);
       return res.status(403).json({ message: "Không có quyền thực hiện hành động này" });
     }
     

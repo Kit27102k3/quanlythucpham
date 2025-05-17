@@ -68,7 +68,12 @@ const productsApi = {
 
   updateProduct: async (id, data) => {
     try {
-      const response = await axios.put(`${API_URL}/${id}`, data);
+      const token = localStorage.getItem("accessToken");
+      const headers = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const response = await axios.put(`${API_URL}/${id}`, data, { headers });
       return response.data;
     } catch (error) {
       console.error("Lỗi khi cập nhật sản phẩm:", error);
@@ -78,7 +83,12 @@ const productsApi = {
 
   deleteProduct: async (id) => {
     try {
-      const response = await axios.delete(`${API_URL}/${id}`);
+      const token = localStorage.getItem("accessToken");
+      const headers = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const response = await axios.delete(`${API_URL}/${id}`, { headers });
       return response.data;
     } catch (error) {
       console.error("Lỗi khi xóa sản phẩm:", error);

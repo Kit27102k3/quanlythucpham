@@ -381,59 +381,22 @@ router.get('/users', authMiddleware, async (req, res) => {
 // Thêm endpoint kiểm tra cấu trúc Order
 router.get('/test-structure', authMiddleware, async (req, res) => {
   try {
-    console.log("Kiểm tra cấu trúc dữ liệu");
+    const orders = await Order.find().limit(1);
+    const products = await Product.find().limit(1);
+    const users = await User.find().limit(1);
     
-    // Kiểm tra số lượng bản ghi
     const orderCount = await Order.countDocuments();
     const productCount = await Product.countDocuments();
     const userCount = await User.countDocuments();
     
-    console.log(`Số lượng đơn hàng: ${orderCount}`);
-    console.log(`Số lượng sản phẩm: ${productCount}`);
-    console.log(`Số lượng người dùng: ${userCount}`);
-    
-    // Lấy số lượng đơn hàng theo trạng thái
     const orderStatus = await Order.aggregate([
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
+      { $group: { _id: "$status", count: { $sum: 1 } } }
     ]);
     
-    console.log("Số lượng đơn hàng theo trạng thái:", orderStatus);
-    
-    // Lấy danh sách các danh mục sản phẩm
-    const categories = await Product.distinct('productCategory');
-    console.log("Danh mục sản phẩm:", categories);
-    
-    // Lấy 2 order bất kỳ
-    const orders = orderCount > 0 ? await Order.find().limit(2).lean() : [];
-    if (orders.length > 0) {
-      console.log("Order structure sample:", JSON.stringify(orders[0], null, 2));
-    } else {
-      console.log("Không có đơn hàng để kiểm tra cấu trúc");
-    }
-    
-    // Lấy 2 product bất kỳ
-    const products = productCount > 0 ? await Product.find().limit(2).lean() : [];
-    if (products.length > 0) {
-      console.log("Product structure sample:", JSON.stringify(products[0], null, 2));
-    } else {
-      console.log("Không có sản phẩm để kiểm tra cấu trúc");
-    }
-    
-    // Lấy 2 user bất kỳ
-    const users = userCount > 0 ? await User.find().limit(2).lean() : [];
-    if (users.length > 0) {
-      console.log("User structure sample:", JSON.stringify(users[0], null, 2));
-    } else {
-      console.log("Không có người dùng để kiểm tra cấu trúc");
-    }
+    const categories = await Category.find();
     
     res.json({ 
-      message: "Cấu trúc dữ liệu đã được log vào console",
+      message: "Cấu trúc dữ liệu đã được kiểm tra",
       orderCount,
       productCount,
       userCount,
@@ -441,7 +404,6 @@ router.get('/test-structure', authMiddleware, async (req, res) => {
       categories
     });
   } catch (error) {
-    console.error('Lỗi khi kiểm tra cấu trúc dữ liệu:', error);
     res.status(500).json({ message: 'Đã xảy ra lỗi khi kiểm tra cấu trúc dữ liệu' });
   }
 });

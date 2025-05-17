@@ -1,4 +1,4 @@
-// server/routes/productRoutes.js
+// server/routes/productsRoutes.js
 import express from "express";
 import {
   createProduct,
@@ -11,35 +11,22 @@ import {
   getProductBySlug,
   getBestSellingProducts,
 } from "../Controller/productsController.js";
+import { verifyToken, isAdmin } from "../Middleware/AuthMiddleware.js";
 
 const router = express.Router();
 
-// Route để tạo sản phẩm (sử dụng Cloudinary trực tiếp)
-router.post("/products", createProduct);
-
-// Route để lấy tất cả sản phẩm
+// Public routes
 router.get("/products", getAllProducts);
-
 router.get("/products/search", searchProducts);
-
-// Route để lấy danh sách sản phẩm bán chạy nhất
 router.get("/products/best-selling", getBestSellingProducts);
-
-// Route để lấy danh sách sản phẩm bán chạy nhất (endpoint mới cho BestSelling.jsx)
 router.get("/products/best-sellers", getBestSellingProducts);
-
 router.get("/products/category/:category", getProductByCategory);
-
-// Route để lấy sản phẩm theo slug
 router.get("/products/slug/:slug", getProductBySlug);
-
-// Route để lấy sản phẩm theo ID
 router.get("/products/:id", getProductById);
 
-// Route để cập nhật sản phẩm
-router.put("/products/:id", updateProduct);
-
-// Route để xóa sản phẩm
-router.delete("/products/:id", deleteProduct);
+// Protected routes (require authentication)
+router.post("/products", verifyToken, isAdmin, createProduct);
+router.put("/products/:id", verifyToken, isAdmin, updateProduct);
+router.delete("/products/:id", verifyToken, isAdmin, deleteProduct);
 
 export default router;

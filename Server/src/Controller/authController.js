@@ -4,7 +4,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import User from "../Model/Register.js";
 import RefreshToken from "../Model/RefreshToken.js";
-import { generateOTP } from "../Untils/otp.until.js";
+import { generateOTP } from "../utils/otp.until.js";
 import { sendOTPEmail } from "../Services/email.service.js";
 import Admin from "../Model/adminModel.js";
 import dotenv from "dotenv";
