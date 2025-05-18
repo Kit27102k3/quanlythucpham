@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import useFetchUserProfile from "../../Until/useFetchUserProfile";
-import authApi from "../../../api/authApi";
+import {authApi} from "../../../api/authApi";
 import { toast } from "sonner";
 
 function Account() {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import paymentApi from '../../../api/paymentApi';
-import authApi from '../../../api/authApi';
+import {authApi} from '../../../api/authApi';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 

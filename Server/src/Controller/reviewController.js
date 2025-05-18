@@ -334,11 +334,11 @@ export const getAllReviews = async (req, res) => {
       // Verify token trong block try-catch riêng để xử lý lỗi verify
       const decodedToken = jwt.verify(token, JWT_SECRET);
       
-      // Kiểm tra quyền admin
-      if (!decodedToken.isAdmin) {
+      // Kiểm tra quyền admin hoặc manager
+      if (!decodedToken.isAdmin && decodedToken.role !== "manager") {
         return res.status(403).json({ 
           success: false, 
-          message: "Chỉ admin mới có quyền xem tất cả đánh giá" 
+          message: "Chỉ admin hoặc manager mới có quyền xem tất cả đánh giá" 
         });
       }
 

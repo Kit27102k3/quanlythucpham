@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { KeyIcon, CheckIcon, LockIcon } from "lucide-react";
-import authApi from "../../../api/authApi"; // Đảm bảo đường dẫn đúng
+import {authApi} from "../../../api/authApi"; // Đảm bảo đường dẫn đúng
 import { toast } from "sonner";
 
 export default function ResetPassword() {

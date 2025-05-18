@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Dialog } from "primereact/dialog";
 import { Button } from "primereact/button";
-import authApi from "../../api/authApi";
+import {authApi} from "../../api/authApi";
 import { useNavigate } from "react-router-dom";
+import adminApi from "../../api/adminApi";
 
 const BlockedAccountAlert = () => {
   try {
@@ -18,11 +19,24 @@ const BlockedAccountAlert = () => {
         return;
       }
 
-      // Kiểm tra nếu là tài khoản admin thì bỏ qua
+      // Kiểm tra nếu là tài khoản admin/manager/employee thì kiểm tra trạng thái khóa qua adminApi
       const userRole = localStorage.getItem("userRole");
-      if (userRole === "admin") {
-        console.log("Tài khoản admin, bỏ qua kiểm tra trạng thái khóa");
-        setLoading(false);
+      if (userRole === "admin" || userRole === "manager" || userRole === "employee") {
+        console.log("Tài khoản admin/manager/employee, kiểm tra trạng thái khóa qua adminApi");
+        const checkAccountStatus = async () => {
+          try {
+            const response = await adminApi.getProfile(userId);
+            if (response.data && response.data.isActive === false) {
+              localStorage.setItem("isBlocked", "true");
+              setVisible(true);
+            }
+            setLoading(false);
+          } catch (error) {
+            console.error("Lỗi khi kiểm tra trạng thái tài khoản admin:", error);
+            setLoading(false);
+          }
+        };
+        checkAccountStatus();
         return;
       }
 

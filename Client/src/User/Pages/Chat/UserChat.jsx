@@ -11,7 +11,7 @@ import { toast, Toaster } from 'sonner'; // Thay thế Toast từ PrimeReact b�
 import PropTypes from 'prop-types';
 import { UnreadMessagesContext } from "../../Pages/Profile/DefaultProfile";
 import { Scrollbars } from 'react-custom-scrollbars-2';
-import authApi from "../../../api/authApi";
+import {authApi} from "../../../api/authApi";
 import { formatCurrency } from "../../../utils/formatCurrency";
 // Custom Scrollbar Thumb component
 const CustomThumb = ({ style, ...props }) => {

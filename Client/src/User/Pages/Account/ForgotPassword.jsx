@@ -6,7 +6,7 @@ import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { toast } from "sonner";
 import { classNames } from "primereact/utils";
-import authApi from "../../../api/authApi";
+import {authApi} from "../../../api/authApi";
 import "../../../App.css";
 
 export default function ForgotPassword() {

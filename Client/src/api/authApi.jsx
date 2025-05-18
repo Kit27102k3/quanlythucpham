@@ -216,37 +216,21 @@ const authApi = {
   adminLogin: async (credentials) => {
     try {
       const loginData = {
-        // Gửi tất cả các biến thể có thể của tên đăng nhập
-        username: credentials.username || credentials.userName, // Admin.js model
-        userName: credentials.username || credentials.userName, // Dùng để xử lý tài khoản có cả 2 trường
-        TKhiem: "TKhiem", // Hardcode tên đăng nhập TKhiem để thử
+        userName: credentials.userName || credentials.username,
         password: credentials.password,
       };
-
-      if (
-        (credentials.username === "TKhiem" ||
-          credentials.userName === "TKhiem") &&
-        credentials.password === "Kit@2710"
-      ) {
-        console.log("Phát hiện đăng nhập với tài khoản admin TKhiem đặc biệt");
-      }
-
-      const response = await axios.post(`${API_URLS.AUTH}/login`, loginData, {
+      // Gọi đúng endpoint đăng nhập admin
+      const response = await axios.post(`${API_BASE_URL}/admin/auth/login`, loginData, {
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
       });
-
-      if (response.data && response.data.role === "admin") {
-        return response;
-      } else {
-        console.log("Tài khoản không có quyền admin:", response.data);
-        return response; // Vẫn trả về response để xử lý đăng nhập thường nếu không phải admin
-      }
+      return response;
     } catch (error) {
       console.error("Admin login API error:", error);
-      if (error.response && error.response.data) {
-        console.error("Admin login error details:", error.response.data);
+      if (error.response) {
+        console.error("Error details:", error.response.data);
       }
       throw error;
     }
@@ -375,4 +359,4 @@ const authApi = {
   },
 };
 
-export default authApi;
+export { authApi, instance };

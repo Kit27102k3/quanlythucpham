@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import authApi from "../api/authApi";
+import {authApi} from "../api/authApi";
 import { toast } from "sonner";
 import PropTypes from "prop-types";
 

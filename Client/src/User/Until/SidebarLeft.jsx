@@ -13,7 +13,7 @@ import {
 } from "@radix-ui/react-icons";
 import { Badge } from "primereact/badge";
 import { toast } from "react-toastify";
-import authApi from "../../api/authApi";
+import {authApi} from "../../api/authApi";
 import LogoHeader from "../../assets/Logo.png";
 import MenuDropDown from "./PanelMenu";
 import cartApi from "../../api/cartApi";

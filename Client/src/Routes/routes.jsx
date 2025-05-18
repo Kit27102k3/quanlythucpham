@@ -40,6 +40,7 @@ import VoucherPage from "../User/Pages/Voucher/VoucherPage";
 import SavedVoucher from "../User/Pages/Profile/SavedVoucher";
 import Reports from "../Admin/Pages/Reports/Reports";
 import StoreLocations from "../User/Pages/Store/StoreLocations";
+import Settings from "../Admin/Pages/Settings";
 const publicRoutes = [
   {
     path: "/",
@@ -234,6 +235,10 @@ const privateRoutes = [
   {
     path: "/admin/reports",
     page: Reports,
+  },
+  {
+    path: "/admin/settings",
+    page: Settings,
   },
 ];
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import UpdateAddress from "../../../utils/UpdateAddress";
 import useFetchUserProfile from "../../Until/useFetchUserProfile";
-import authApi from "../../../api/authApi";
+import {authApi} from "../../../api/authApi";
 
 function Address() {
   const [isShow, setIsShow] = useState(false);

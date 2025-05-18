@@ -10,7 +10,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import formatCurrency from "../../Until/FotmatPrice";
 import orderApi from "../../../api/orderApi";
-import authApi from "../../../api/authApi";
+import {authApi} from "../../../api/authApi";
 import couponApi from "../../../api/couponApi";
 import savedVoucherApi from "../../../api/savedVoucherApi";
 import axios from "axios";

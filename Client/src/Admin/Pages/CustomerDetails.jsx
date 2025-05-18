@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import authApi from "../../api/authApi";
+import {authApi} from "../../api/authApi";
 import { Package, XCircle, CreditCard } from "lucide-react";
 
 function CustomerDetails() {

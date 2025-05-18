@@ -8,6 +8,7 @@ import { Calendar } from "primereact/calendar";
 import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
 import adminApi from "../../api/adminApi";
+import { canAccess } from "../../utils/permission";
 
 const Employees = () => {
   // State management
@@ -33,8 +34,20 @@ const Employees = () => {
   const roles = [
     { label: "Quản trị viên", value: "admin" },
     { label: "Quản lý", value: "manager" },
-    { label: "Nhân viên", value: "user" },
+    { label: "Nhân viên", value: "employee" },
   ];
+
+  // Lấy vai trò hiện tại
+  const currentRole = localStorage.getItem("userRole");
+  if (!canAccess(currentRole, "employees")) {
+    return <div className="text-center text-red-500 font-bold text-xl mt-10">Bạn không có quyền truy cập trang này.</div>;
+  }
+  let allowedRoles = roles;
+  if (currentRole === "manager") {
+    allowedRoles = roles.filter(r => r.value === "employee");
+  } else if (currentRole === "employee") {
+    allowedRoles = [];
+  }
 
   useEffect(() => {
     fetchEmployees();
@@ -232,12 +245,14 @@ const Employees = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-blue-700">
             Quản Lý Nhân Viên
           </h1>
-          <Button
-            label="Thêm Nhân Viên"
-            icon="pi pi-plus"
-            onClick={() => openEmployeeDialog()}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md"
-          />
+          {currentRole !== "employee" && (
+            <Button
+              label="Thêm Nhân Viên"
+              icon="pi pi-plus"
+              onClick={() => openEmployeeDialog()}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold shadow-md"
+            />
+          )}
         </div>
 
         {/* Employee Table */}
@@ -333,108 +348,111 @@ const Employees = () => {
           </table>
         </div>
 
-        <Dialog
-          header={isEditMode ? "Chỉnh Sửa Nhân Viên" : "Thêm Nhân Viên Mới"}
-          visible={isDialogVisible}
-          style={{ width: "90vw", maxWidth: "600px" }}
-          modal
-          onHide={closeDialog}
-          headerClassName="bg-emerald-50 border-b border-emerald-200 p-4 rounded-t-lg"
-          contentClassName="p-0"
-          footer={
-            <div className="flex justify-end gap-3 p-4 border-t border-emerald-200 bg-emerald-50/50">
-              <Button
-                label="Hủy"
-                onClick={closeDialog}
-                className="p-button-text p-button-secondary bg-red-600 text-white  p-2 rounded px-4"
-                disabled={loading}
-              />
-              <Button
-                label={isEditMode ? "Cập Nhật" : "Thêm"}
-                onClick={handleSaveEmployee}
-                className="p-button-success bg-[#51bb1a] p-2 text-white text-[14px] gap-2 rounded"
-                icon={
-                  loading
-                    ? "pi pi-spinner pi-spin"
-                    : isEditMode
-                    ? "pi pi-check"
-                    : "pi pi-plus"
-                }
-                disabled={loading}
-              />
+        {/* Chỉ render Dialog nếu không phải là employee */}
+        {currentRole !== "employee" && (
+          <Dialog
+            header={isEditMode ? "Chỉnh Sửa Nhân Viên" : "Thêm Nhân Viên Mới"}
+            visible={isDialogVisible}
+            style={{ width: "90vw", maxWidth: "600px" }}
+            modal
+            onHide={closeDialog}
+            headerClassName="bg-emerald-50 border-b border-emerald-200 p-4 rounded-t-lg"
+            contentClassName="p-0"
+            footer={
+              <div className="flex justify-end gap-3 p-4 border-t border-emerald-200 bg-emerald-50/50">
+                <Button
+                  label="Hủy"
+                  onClick={closeDialog}
+                  className="p-button-text p-button-secondary bg-red-600 text-white  p-2 rounded px-4"
+                  disabled={loading}
+                />
+                <Button
+                  label={isEditMode ? "Cập Nhật" : "Thêm"}
+                  onClick={handleSaveEmployee}
+                  className="p-button-success bg-[#51bb1a] p-2 text-white text-[14px] gap-2 rounded"
+                  icon={
+                    loading
+                      ? "pi pi-spinner pi-spin"
+                      : isEditMode
+                      ? "pi pi-check"
+                      : "pi pi-plus"
+                  }
+                  disabled={loading}
+                />
+              </div>
+            }
+          >
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-5">
+                {[
+                  {
+                    id: "userName",
+                    label: "Tên Đăng Nhập",
+                    type: "text",
+                  },
+                  {
+                    id: "password",
+                    label: "Mật Khẩu",
+                    type: "password",
+                  },
+                  {
+                    id: "fullName",
+                    label: "Họ Tên",
+                    type: "text",
+                  },
+                  {
+                    id: "phone",
+                    label: "Số Điện Thoại",
+                    type: "tel",
+                  },
+                  {
+                    id: "email",
+                    label: "Email",
+                    type: "email",
+                    colSpan: 2,
+                  },
+                ].map((field) => (
+                  <div key={field.id} className={field.colSpan ? `col-span-${field.colSpan}` : ''}>
+                    {renderFormField({ ...field })}
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-col col-span-2">
+                <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                  <i className="pi pi-calendar mr-2 text-emerald-600" />
+                  Ngày Sinh
+                </label>
+                <Calendar
+                  id="birthday"
+                  value={employeeForm.birthday || null}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, birthday: e.value })}
+                  dateFormat="dd/mm/yy"
+                  showIcon
+                  maxDate={new Date()}
+                  className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                  placeholder="Chọn ngày sinh"
+                />
+              </div>
+              <div className="flex flex-col col-span-2">
+                <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                  <i className="pi pi-users mr-2 text-emerald-600" />
+                  Vai Trò
+                </label>
+                <Dropdown
+                  id="role"
+                  value={employeeForm.role || null}
+                  options={allowedRoles}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, role: e.value })}
+                  optionLabel="label"
+                  optionValue="value"
+                  className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                  placeholder="Chọn vai trò"
+                  required
+                />
+              </div>
             </div>
-          }
-        >
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-5">
-              {[
-                {
-                  id: "userName",
-                  label: "Tên Đăng Nhập",
-                  type: "text",
-                },
-                {
-                  id: "password",
-                  label: "Mật Khẩu",
-                  type: "password",
-                },
-                {
-                  id: "fullName",
-                  label: "Họ Tên",
-                  type: "text",
-                },
-                {
-                  id: "phone",
-                  label: "Số Điện Thoại",
-                  type: "tel",
-                },
-                {
-                  id: "email",
-                  label: "Email",
-                  type: "email",
-                  colSpan: 2,
-                },
-              ].map((field) => (
-                <div key={field.id} className={field.colSpan ? `col-span-${field.colSpan}` : ''}>
-                  {renderFormField({ ...field })}
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-col col-span-2">
-              <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
-                <i className="pi pi-calendar mr-2 text-emerald-600" />
-                Ngày Sinh
-              </label>
-              <Calendar
-                id="birthday"
-                value={employeeForm.birthday || null}
-                onChange={(e) => setEmployeeForm({ ...employeeForm, birthday: e.value })}
-                dateFormat="dd/mm/yy"
-                showIcon
-                maxDate={new Date()}
-                className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
-                placeholder="Chọn ngày sinh"
-              />
-            </div>
-            <div className="flex flex-col col-span-2">
-              <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
-                <i className="pi pi-users mr-2 text-emerald-600" />
-                Vai Trò
-              </label>
-              <Dropdown
-                id="role"
-                value={employeeForm.role || null}
-                options={roles}
-                onChange={(e) => setEmployeeForm({ ...employeeForm, role: e.value })}
-                optionLabel="label"
-                optionValue="value"
-                className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
-                placeholder="Chọn vai trò"
-                required
-              />
-            </div>
-          </div>
-        </Dialog>
+          </Dialog>
+        )}
       </div>
     </div>
   );

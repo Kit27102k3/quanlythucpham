@@ -29,6 +29,7 @@ import "./styles.css";
   const [sortBy, setSortBy] = useState("newest");
   const [filterBy, setFilterBy] = useState("all");
   const [submitting, setSubmitting] = useState(false);
+  const userRole = localStorage.getItem("userRole");
 
   useEffect(() => {
     // Khởi tạo token admin nếu là admin TKhiem
@@ -72,9 +73,11 @@ import "./styles.css";
       }
     };
 
-    fetchReviews();
+    if (userRole === "admin" || userRole === "manager") {
+      fetchReviews();
+    }
     fetchProducts();
-  }, []);
+  }, [userRole]);
 
   // Hàm tải lại dữ liệu đánh giá
   const handleRefresh = async () => {
@@ -296,6 +299,10 @@ import "./styles.css";
       }
     }
   }, [reviews, selectedProduct, filterBy, searchQuery, filteredReviews.length]);
+
+  if (userRole !== "admin" && userRole !== "manager") {
+    return <div className="text-center text-red-500 font-bold text-xl mt-10">Bạn không có quyền xem tất cả đánh giá.</div>;
+  }
 
   return (
     <div className="container mx-auto p-4">

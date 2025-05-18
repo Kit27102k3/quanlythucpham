@@ -211,3 +211,33 @@ export const getAdminById = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const updateRolePermissions = async (req, res) => {
+  try {
+    const { roleKey } = req.params;
+    const { permissions } = req.body;
+
+    // Kiểm tra xem mảng permissions có hợp lệ không
+    if (!Array.isArray(permissions)) {
+      return res.status(400).json({ message: "Permissions phải là một mảng" });
+    }
+
+    // Tìm tất cả admin/manager/employee với roleKey và cập nhật quyền
+    const result = await Admin.updateMany(
+      { role: roleKey },
+      { $set: { permissions: permissions } }
+    );
+
+    // Optional: Log số lượng documents đã được cập nhật
+    console.log(`Updated permissions for ${result.modifiedCount} users with role ${roleKey}`);
+
+    res.status(200).json({
+      success: true,
+      message: `Cập nhật quyền cho vai trò ${roleKey} thành công.`, // Message tiếng Việt
+      modifiedCount: result.modifiedCount,
+    });
+  } catch (error) {
+    console.error("Error updating role permissions:", error);
+    res.status(500).json({ message: "Lỗi server khi cập nhật quyền vai trò" });
+  }
+};

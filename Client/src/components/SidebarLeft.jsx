@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import authApi from '../api/authApi';
+import {authApi} from '../api/authApi';
 import { FaUser } from 'react-icons/fa';
 import { CaretDownIcon, ExitIcon, EnterIcon, PersonIcon } from '@radix-ui/react-icons';
 

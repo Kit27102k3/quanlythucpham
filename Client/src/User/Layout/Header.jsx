@@ -16,7 +16,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPhone } from "@fortawesome/free-solid-svg-icons";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import authApi from "../../api/authApi";
+import {authApi} from "../../api/authApi";
 import ProductDetail from "../Pages/Product/ProductDetail";
 import SidebarLeft from "../Until/SidebarLeft";
 import "../../index.css";

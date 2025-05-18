@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { InputText } from "primereact/inputtext";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import authApi from "../../../api/authApi";
+import {authApi} from "../../../api/authApi";
 import { useNavigate } from "react-router-dom";
 
 export default function Register() {

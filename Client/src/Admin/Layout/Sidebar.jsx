@@ -19,6 +19,7 @@ import {
   IdCardIcon
 } from "@radix-ui/react-icons";
 import messagesApi from "../../api/messagesApi";
+import { canAccess } from "../../utils/permission";
 
 const AdminSidebar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -29,73 +30,6 @@ const AdminSidebar = () => {
   });
   const [unreadMessages, setUnreadMessages] = useState(0);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      // Auto-collapse sidebar on mobile
-      if (mobile && isSidebarOpen) {
-        setIsSidebarOpen(false);
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    handleResize(); // Initial check
-    
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [isSidebarOpen]);
-
-  const toggleSidebar = () => {
-    if (isMobile) {
-      setShowMobileMenu(!showMobileMenu);
-    } else {
-      setIsSidebarOpen(!isSidebarOpen);
-    }
-  };
-
-  const handleNavigation = (path, item) => {
-    setActiveItem(item);
-    localStorage.setItem("activeItem", item);
-    navigate(path);
-    
-    // Auto close sidebar on mobile after navigation
-    if (isMobile) {
-      setShowMobileMenu(false);
-    }
-  };
-
-  useEffect(() => {
-    const savedActiveItem = localStorage.getItem("activeItem");
-    if (savedActiveItem) {
-      setActiveItem(savedActiveItem);
-    }
-  }, []);
-
-  // Lấy số lượng tin nhắn chưa đọc
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      try {
-        const response = await messagesApi.getUnreadCount();
-        if (response && response.count) {
-          setUnreadMessages(response.count);
-        }
-      } catch (error) {
-        console.error("Lỗi khi lấy số tin nhắn chưa đọc:", error);
-      }
-    };
-
-    // Lấy dữ liệu khi component mount
-    fetchUnreadCount();
-
-    // Thiết lập interval để cập nhật mỗi 30 giây
-    const intervalId = setInterval(fetchUnreadCount, 30000);
-
-    // Dọn dẹp interval khi component unmount
-    return () => clearInterval(intervalId);
-  }, []);
 
   const menuItems = [
     {
@@ -180,6 +114,76 @@ const AdminSidebar = () => {
     },
   ];
 
+  // Lấy vai trò từ localStorage
+  const role = localStorage.getItem("userRole");
+
+  // Lọc menuItems theo quyền thao tác (dùng canAccess)
+  const filteredMenuItems = menuItems.filter(item => canAccess(role, item.key));
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // Auto-collapse sidebar on mobile
+      if (mobile && isSidebarOpen) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    handleResize(); // Initial check
+    
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [isSidebarOpen]);
+
+  const toggleSidebar = () => {
+    if (isMobile) {
+      setShowMobileMenu(!showMobileMenu);
+    } else {
+      setIsSidebarOpen(!isSidebarOpen);
+    }
+  };
+
+  const handleNavigation = (path, item) => {
+    setActiveItem(item);
+    localStorage.setItem("activeItem", item);
+    navigate(path);
+    
+    // Auto close sidebar on mobile after navigation
+    if (isMobile) {
+      setShowMobileMenu(false);
+    }
+  };
+
+  useEffect(() => {
+    const savedActiveItem = localStorage.getItem("activeItem");
+    if (savedActiveItem) {
+      setActiveItem(savedActiveItem);
+    }
+  }, []);
+
+  // Lấy số lượng tin nhắn chưa đọc chỉ khi là admin
+  useEffect(() => {
+    const userRole = localStorage.getItem("userRole");
+    if (userRole === "admin") {
+      const fetchUnreadCount = async () => {
+        try {
+          const response = await messagesApi.getUnreadCount();
+          if (response && response.count) {
+            setUnreadMessages(response.count);
+          }
+        } catch (error) {
+          console.error("Lỗi khi lấy số tin nhắn chưa đọc:", error);
+        }
+      };
+      fetchUnreadCount();
+      const intervalId = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(intervalId);
+    }
+  }, []);
+
   // Render mobile bottom navigation bar
   if (isMobile) {
     return (
@@ -188,7 +192,7 @@ const AdminSidebar = () => {
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg">
           <div className="flex justify-between items-center px-2 py-2">
             {/* Only show first 5 menu items in the bottom bar */}
-            {menuItems.slice(0, 5).map((item) => (
+            {filteredMenuItems.slice(0, 5).map((item) => (
               <div
                 key={item.key}
                 onClick={() => handleNavigation(item.path, item.key)}
@@ -265,7 +269,7 @@ const AdminSidebar = () => {
               </div>
               <div className="p-2">
                 <div className="grid grid-cols-3 gap-2">
-                  {menuItems.map((item) => (
+                  {filteredMenuItems.map((item) => (
                     <div
                       key={item.key}
                       onClick={() => handleNavigation(item.path, item.key)}
@@ -364,7 +368,7 @@ const AdminSidebar = () => {
       {/* Menu Items */}
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
-          {menuItems.map((item) => (
+          {filteredMenuItems.map((item) => (
             <SidebarItem
               key={item.key}
               icon={item.icon}

@@ -3,7 +3,7 @@ import { InputText } from "primereact/inputtext";
 import { Dialog } from "primereact/dialog";
 import { FaFacebook, FaLock, FaUser, FaGoogle } from "react-icons/fa";
 import ForgotPassword from "./ForgotPassword";
-import authApi from "../../../api/authApi";
+import {authApi} from "../../../api/authApi";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
