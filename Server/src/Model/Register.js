@@ -16,7 +16,17 @@ const UserSchema = new mongoose.Schema(
     lastLogin: { type: Date, default: null },
     facebookId: { type: String, default: null },
     googleId: { type: String, default: null },
-    authProvider: { type: String, enum: ['local', 'facebook', 'google'], default: 'local' }
+    authProvider: { type: String, enum: ['local', 'facebook', 'google'], default: 'local' },
+    pushSubscriptions: [
+      {
+        endpoint: { type: String, required: true },
+        expirationTime: { type: Date, default: null },
+        keys: {
+          p256dh: { type: String, required: true },
+          auth: { type: String, required: true },
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

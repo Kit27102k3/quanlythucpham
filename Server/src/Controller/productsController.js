@@ -8,6 +8,8 @@ import BestSellingProduct from "../Model/BestSellingProduct.js";
 import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
+import Admin from "../Model/adminModel.js"; // Import Admin model
+import { sendPushNotification } from "../Services/notificationService.js"; // Import notification service
 
 export const createProduct = async (req, res) => {
   try {
@@ -71,6 +73,34 @@ export const createProduct = async (req, res) => {
 
     const savedProduct = await newProduct.save();
     
+    // --- Push Notification Logic for New Product ---
+    const adminsToNotify = await Admin.find({
+      $or: [
+        { role: 'admin' }, // Admin gets all notifications
+        { role: 'manager', permissions: { $in: ['Quản lý sản phẩm', 'products'] } }, // Managers with product permission
+        // Add other roles/permissions if needed
+      ],
+      'pushSubscriptions.0': { $exists: true } // Only users with at least one subscription
+    });
+
+    const notificationPayload = {
+      title: 'Sản phẩm mới',
+      body: `Sản phẩm \"${savedProduct.productName}\" đã được thêm mới.`, // Sử dụng tên sản phẩm
+      data: {
+        url: `/admin/products/edit/${savedProduct._id}`, // URL để mở khi click (ví dụ: trang chi tiết sản phẩm admin)
+        productId: savedProduct._id,
+      },
+    };
+
+    for (const admin of adminsToNotify) {
+      for (const subscription of admin.pushSubscriptions) {
+        // Use async/await here if you want to wait for each notification to be sent
+        // or use .catch() if you want to send them concurrently without waiting
+        sendPushNotification(admin._id, subscription, notificationPayload).catch(error => console.error('Error sending notification:', error));
+      }
+    }
+    // --- End Push Notification Logic ---
+
     // Chuyển đổi dữ liệu số thành chuỗi trước khi gửi về client
     const productToSend = savedProduct.toObject();
     productToSend.productPrice = String(productToSend.productPrice);

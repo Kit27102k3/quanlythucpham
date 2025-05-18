@@ -14,7 +14,9 @@ import {
   googleLogin,
   facebookCallback,
   facebookTokenLogin,
-  getUserAvatar
+  getUserAvatar,
+  getVapidPublicKey,
+  subscribeToPush
 } from "../Controller/authController.js";
 import { verifyToken } from "../Middleware/authMiddleware.js";
 
@@ -39,5 +41,11 @@ router.post("/facebook-login", facebookLogin);
 router.post("/facebook-token", facebookTokenLogin);
 router.post("/google-login", googleLogin);
 router.get("/facebook/callback", facebookCallback);
+
+// Route để lấy VAPID Public Key
+router.get("/vapid-public-key", getVapidPublicKey);
+
+// Route để đăng ký nhận Push Subscription
+router.post("/subscribe", verifyToken, subscribeToPush);
 
 export default router;

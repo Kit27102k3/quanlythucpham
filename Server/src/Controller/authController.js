@@ -1186,3 +1186,57 @@ export const getUserAvatar = async (req, res) => {
     return res.json({ userImage: 'https://www.gravatar.com/avatar/?d=mp&s=256' });
   }
 };
+
+// New controller function to provide VAPID public key
+export const getVapidPublicKey = (req, res) => {
+  try {
+    const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+    if (!vapidPublicKey) {
+      return res.status(500).json({ message: "VAPID Public Key not configured on server." });
+    }
+    res.status(200).json({ vapidPublicKey });
+  } catch (error) {
+    console.error("Error providing VAPID Public Key:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+// Controller function to subscribe a user to push notifications
+export const subscribeToPush = async (req, res) => {
+  const subscription = req.body;
+  const userId = req.user.id; // Get user ID from the token (assuming verifyToken middleware is used)
+
+  if (!subscription) {
+    return res.status(400).json({ message: "Push subscription object is required." });
+  }
+
+  try {
+    // Find the user by ID
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Check if this subscription already exists for the user
+    const existingSubscription = user.pushSubscriptions.find(
+      (sub) => sub.endpoint === subscription.endpoint
+    );
+
+    if (existingSubscription) {
+      console.log("Subscription already exists for this user.");
+      return res.status(200).json({ message: "Subscription already exists." });
+    }
+
+    // Add the new subscription to the user's pushSubscriptions array
+    user.pushSubscriptions.push(subscription);
+
+    // Save the updated user document
+    await user.save();
+
+    res.status(201).json({ message: "Push subscription saved successfully." });
+  } catch (error) {
+    console.error("Error saving push subscription:", error);
+    res.status(500).json({ message: "Internal server error while saving subscription", error: error.message });
+  }
+};
