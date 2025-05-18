@@ -11,7 +11,7 @@ import {
   getProductBySlug,
   getBestSellingProducts,
 } from "../Controller/productsController.js";
-import { verifyToken, isAdmin } from "../Middleware/AuthMiddleware.js";
+import { verifyToken, isAdmin } from "../Middleware/authMiddleware.js";
 
 const router = express.Router();
 
