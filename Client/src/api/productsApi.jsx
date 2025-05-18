@@ -39,7 +39,7 @@ const productsApi = {
       // Log the data being sent for debugging
       console.log("Data being sent:", data);
       
-      const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+      const token = localStorage.getItem("accessToken");
       const headers = {
         "Content-Type": "application/json",
       };
