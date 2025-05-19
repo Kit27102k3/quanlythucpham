@@ -10,6 +10,7 @@ import Admin from "../Model/adminModel.js";
 import dotenv from "dotenv";
 import { OAuth2Client } from 'google-auth-library';
 import axios from 'axios';
+import webpush from 'web-push';
 
 // Load environment variables
 dotenv.config();
@@ -1218,7 +1219,11 @@ export const subscribeToPush = async (req, res) => {
   const subscription = req.body;
   const userId = req.user.id; // Get user ID from the token (assuming verifyToken middleware is used)
 
-  if (!subscription) {
+  console.log(`[subscribeToPush] Đang xử lý yêu cầu đăng ký thông báo cho user ${userId}`);
+  console.log(`[subscribeToPush] Dữ liệu subscription:`, JSON.stringify(subscription, null, 2));
+
+  if (!subscription || !subscription.endpoint) {
+    console.error(`[subscribeToPush] Missing or invalid subscription object`);
     return res.status(400).json({ message: "Push subscription object is required." });
   }
 
@@ -1227,28 +1232,75 @@ export const subscribeToPush = async (req, res) => {
     const user = await User.findById(userId);
 
     if (!user) {
+      console.error(`[subscribeToPush] User not found: ${userId}`);
       return res.status(404).json({ message: "User not found." });
     }
 
-    // Check if this subscription already exists for the user
+    // Kiểm tra đã có pushSubscriptions array chưa
+    if (!user.pushSubscriptions) {
+      console.log(`[subscribeToPush] Initializing pushSubscriptions array for user: ${userId}`);
+      user.pushSubscriptions = [];
+    }
+
+    // Kiểm tra xem subscription này đã tồn tại chưa
     const existingSubscription = user.pushSubscriptions.find(
       (sub) => sub.endpoint === subscription.endpoint
     );
 
     if (existingSubscription) {
-      console.log("Subscription already exists for this user.");
-      return res.status(200).json({ message: "Subscription already exists." });
+      console.log(`[subscribeToPush] Subscription already exists for user: ${userId}`);
+      console.log(`[subscribeToPush] Existing subscriptions count: ${user.pushSubscriptions.length}`);
+      return res.status(200).json({ 
+        message: "Subscription already exists.",
+        subscriptionCount: user.pushSubscriptions.length
+      });
+    }
+
+    // Kiểm tra tính hợp lệ của subscription
+    if (!subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
+      console.error(`[subscribeToPush] Invalid subscription object, missing required keys`);
+      return res.status(400).json({ message: "Invalid subscription object. Missing required keys." });
     }
 
     // Add the new subscription to the user's pushSubscriptions array
+    console.log(`[subscribeToPush] Adding new subscription for user: ${userId}`);
     user.pushSubscriptions.push(subscription);
 
     // Save the updated user document
     await user.save();
+    console.log(`[subscribeToPush] Subscription saved successfully. Total subscriptions: ${user.pushSubscriptions.length}`);
 
-    res.status(201).json({ message: "Push subscription saved successfully." });
+    // Send a test notification
+    try {
+      const testPayload = {
+        notification: {
+          title: "Đăng ký thành công",
+          body: "Bạn đã đăng ký nhận thông báo thành công!",
+          icon: "/Logo.png",
+          vibrate: [100, 50, 100],
+          data: {
+            url: "/",
+            dateOfArrival: Date.now(),
+            primaryKey: 1,
+            type: "test_notification"
+          }
+        }
+      };
+      
+      console.log(`[subscribeToPush] Sending test notification to new subscription`);
+      await webpush.sendNotification(subscription, JSON.stringify(testPayload));
+      console.log(`[subscribeToPush] Test notification sent successfully`);
+    } catch (notificationError) {
+      console.error(`[subscribeToPush] Error sending test notification:`, notificationError);
+      // We don't want to fail the subscription if the test notification fails
+    }
+
+    res.status(201).json({ 
+      message: "Push subscription saved successfully.",
+      subscriptionCount: user.pushSubscriptions.length
+    });
   } catch (error) {
-    console.error("Error saving push subscription:", error);
+    console.error(`[subscribeToPush] Error saving push subscription:`, error);
     res.status(500).json({ message: "Internal server error while saving subscription", error: error.message });
   }
 };

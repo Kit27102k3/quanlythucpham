@@ -1,30 +1,84 @@
 // Service Worker for Web Push Notifications
 
+// Listen for the 'install' event
+self.addEventListener('install', (event) => {
+  console.log('[Service Worker] Installing Service Worker...', event);
+  self.skipWaiting(); // Force activation
+});
+
+// Listen for the 'activate' event
+self.addEventListener('activate', (event) => {
+  console.log('[Service Worker] Activating Service Worker...', event);
+  return self.clients.claim(); // Take control immediately
+});
+
 // Listen for the 'push' event
 self.addEventListener('push', (event) => {
-  const data = event.data.json();
-  console.log('Push received:', data);
+  console.log('[Service Worker] Push Received:', event);
+  
+  let data;
+  try {
+    data = event.data.json();
+    console.log('[Service Worker] Push data:', data);
+  } catch (error) {
+    console.error('[Service Worker] Error parsing push data:', error);
+    data = {
+      title: 'Thông báo',
+      body: 'Không thể đọc nội dung thông báo',
+      icon: '/Logo.png'
+    };
+  }
 
-  const title = data.title || 'Thông báo mới';
+  const title = data.title || data.notification?.title || 'Thông báo mới';
   const options = {
-    body: data.body || 'Nội dung thông báo.',
-    icon: data.icon || '/icons/icon-192x192.png', // Thêm icon phù hợp
-    badge: data.badge || '/icons/badge-96x96.png', // Thêm badge phù hợp
-    data: data.data, // Dữ liệu tùy chỉnh
+    body: data.body || data.notification?.body || 'Nội dung thông báo.',
+    icon: data.icon || data.notification?.icon || '/Logo.png',
+    badge: data.badge || data.notification?.badge || '/Logo.png',
+    vibrate: data.vibrate || data.notification?.vibrate || [100, 50, 100],
+    data: data.data || data.notification?.data || {},
+    actions: data.actions || data.notification?.actions || [
+      {
+        action: 'explore',
+        title: 'Xem ngay'
+      }
+    ]
   };
+
+  console.log('[Service Worker] Showing notification with title:', title);
+  console.log('[Service Worker] Notification options:', options);
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 // Listen for the 'notificationclick' event
 self.addEventListener('notificationclick', (event) => {
-  console.log('Notification clicked:', event);
+  console.log('[Service Worker] Notification clicked:', event);
 
   event.notification.close();
 
+  // Get the notification data
+  const url = event.notification.data?.url || '/';
+  console.log('[Service Worker] Opening URL:', url);
+
   // Mở cửa sổ/tab khi click vào thông báo
   event.waitUntil(
-    clients.openWindow(event.notification.data.url || '/') // Chuyển hướng đến URL trong data hoặc trang chủ
+    clients.matchAll({type: 'window'}).then(windowClients => {
+      // Check if there is already a window/tab open with the target URL
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        console.log('[Service Worker] Found client:', client.url);
+        
+        // If so, just focus it.
+        if (client.url === url && 'focus' in client) {
+          console.log('[Service Worker] Focusing existing client');
+          return client.focus();
+        }
+      }
+      
+      // If not, open a new window/tab
+      console.log('[Service Worker] Opening new client');
+      return clients.openWindow(url);
+    })
   );
 });
 
