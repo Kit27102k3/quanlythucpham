@@ -4,19 +4,28 @@ import dotenv from 'dotenv';
 import User from '../Model/Register.js'; // Import User model
 // import Admin from '../Model/adminModel.js'; // Import Admin model - commented out as not used yet
 
+// Cấu hình dotenv
 dotenv.config();
 
-// Configure web-push with VAPID keys
-const vapidKeys = {
-  publicKey: process.env.VAPID_PUBLIC_KEY,
-  privateKey: process.env.VAPID_PRIVATE_KEY,
-};
+// Lấy VAPID keys từ biến môi trường
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
 
-webpush.setVapidDetails(
-  'mailto:kit10012003@gmail.com', // Sửa lỗi: thêm "mailto:" vào trước email
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
+console.log('Kiểm tra VAPID keys:');
+console.log('- Public key exists:', !!vapidPublicKey);
+console.log('- Private key exists:', !!vapidPrivateKey);
+
+// Configure web-push with VAPID keys
+try {
+  webpush.setVapidDetails(
+    'mailto:kit10012003@gmail.com', // Đảm bảo có tiền tố mailto:
+    vapidPublicKey,
+    vapidPrivateKey
+  );
+  console.log('✅ VAPID details set successfully');
+} catch (error) {
+  console.error('❌ Error setting VAPID details:', error);
+}
 
 // Function to send a push notification to a single subscription
 export const sendPushNotification = async (userId, subscription, payload) => {

@@ -21,18 +21,65 @@ const primeReactConfig = {
 
 // Helper function to convert URL-safe base64 string to Uint8Array
 const urlBase64ToUint8Array = (base64String) => {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, "+")
-    .replace(/_/g, "/");
+  try {
+    console.log("Converting VAPID key base64 to Uint8Array");
+    console.log("Base64 string length:", base64String.length);
+    
+    if (!base64String || base64String.length < 10) {
+      console.error("Invalid base64 string:", base64String);
+      return null;
+    }
+    
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, "+")
+      .replace(/_/g, "/");
 
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
 
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    
+    console.log("Uint8Array length:", outputArray.length);
+    return outputArray;
+  } catch (error) {
+    console.error("Error converting base64 to Uint8Array:", error);
+    return null;
   }
-  return outputArray;
+};
+
+// Function to test VAPID key
+const testVapidKey = (key) => {
+  try {
+    if (!key) {
+      console.error("Empty VAPID key provided");
+      return false;
+    }
+    
+    // Test if key is valid base64
+    const isValidBase64 = /^[A-Za-z0-9\-_]+=*$/.test(key);
+    console.log("VAPID key is valid base64:", isValidBase64);
+    
+    if (!isValidBase64) {
+      console.error("VAPID key is not valid base64");
+      return false;
+    }
+    
+    // Test conversion to Uint8Array
+    const array = urlBase64ToUint8Array(key);
+    if (!array) {
+      console.error("Failed to convert VAPID key to Uint8Array");
+      return false;
+    }
+    
+    console.log("VAPID key tests passed ✅");
+    return true;
+  } catch (error) {
+    console.error("Error testing VAPID key:", error);
+    return false;
+  }
 };
 
 // Function to send push subscription to backend
@@ -103,6 +150,12 @@ const registerServiceWorker = async () => {
           }
           
           const applicationServerKey = data.vapidPublicKey;
+          console.log("VAPID key validation check:");
+          const isKeyValid = testVapidKey(applicationServerKey);
+          
+          if (!isKeyValid) {
+            throw new Error("VAPID key validation failed");
+          }
 
           // Check if a subscription already exists
           console.log("Checking for existing push subscription...");
