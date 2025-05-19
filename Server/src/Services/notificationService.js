@@ -17,7 +17,7 @@ console.log('- Private key exists:', !!vapidPrivateKey);
 
 // Configure web-push with VAPID keys
 try {
-  webpush.setVapidDetails(
+webpush.setVapidDetails(
     'mailto:kit10012003@gmail.com', // Đảm bảo có tiền tố mailto:
     vapidPublicKey,
     vapidPrivateKey

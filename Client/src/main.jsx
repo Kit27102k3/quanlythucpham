@@ -30,20 +30,20 @@ const urlBase64ToUint8Array = (base64String) => {
       return null;
     }
     
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding)
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
       .replace(/-/g, "+")
-      .replace(/_/g, "/");
+    .replace(/_/g, "/");
 
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
 
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
     
     console.log("Uint8Array length:", outputArray.length);
-    return outputArray;
+  return outputArray;
   } catch (error) {
     console.error("Error converting base64 to Uint8Array:", error);
     return null;
@@ -93,8 +93,8 @@ const sendSubscriptionToBackend = async (subscription) => {
 
   try {
     console.log("Sending subscription to server...");
-    // Sử dụng đường dẫn tuyệt đối đến server thay vì qua proxy
-    const response = await fetch("http://localhost:8080/auth/subscribe", {
+    // Sử dụng đường dẫn tương đối để hoạt động trên cả local và vercel
+    const response = await fetch("/auth/subscribe", {
       method: "POST",
       body: JSON.stringify(subscription),
       headers: {
@@ -140,14 +140,11 @@ const registerServiceWorker = async () => {
         console.log("Notification permission granted.");
 
         try {
-          // Fetch VAPID public key trực tiếp từ server
+          // Fetch VAPID public key từ server
           console.log("Fetching VAPID public key from server...");
           
-          // Sử dụng đường dẫn tuyệt đối để đảm bảo không bị lỗi proxy
-          const serverUrl = "http://localhost:8080/auth/vapid-public-key";
-          console.log("Using direct server URL:", serverUrl);
-          
-          const response = await fetch(serverUrl);
+          // Sử dụng đường dẫn tương đối để hoạt động trên cả local và Vercel
+          const response = await fetch("/auth/vapid-public-key");
           console.log("VAPID key response status:", response.status);
           
           if (!response.ok) {

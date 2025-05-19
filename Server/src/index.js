@@ -50,7 +50,13 @@ Object.keys(mongoose.models).forEach(modelName => {
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "https://quanlythucpham.vercel.app", process.env.NODE_ENV !== 'production' ? '*' : null].filter(Boolean),
+    origin: [
+      "http://localhost:3000", 
+      "https://quanlythucpham.vercel.app", 
+      "https://quanlythucpham-vercel.app",
+      "https://quanlythucpham-git-main-kits-projects.vercel.app",
+      process.env.NODE_ENV !== 'production' ? '*' : null
+    ].filter(Boolean),
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     maxAge: 3600,
