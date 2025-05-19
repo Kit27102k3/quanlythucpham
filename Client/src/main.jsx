@@ -32,7 +32,7 @@ const urlBase64ToUint8Array = (base64String) => {
     
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding)
-      .replace(/\-/g, "+")
+      .replace(/-/g, "+")
       .replace(/_/g, "/");
 
     const rawData = window.atob(base64);
@@ -87,12 +87,14 @@ const sendSubscriptionToBackend = async (subscription) => {
   const token = localStorage.getItem("accessToken");
   if (!token) {
     console.warn("No access token found. Cannot send subscription to backend.");
-    // Optionally, handle this case - maybe ask user to log in
-    return;
+    alert("Bạn cần đăng nhập để nhận thông báo");
+    return false;
   }
 
   try {
-    const response = await fetch("/auth/subscribe", {
+    console.log("Sending subscription to server...");
+    // Sử dụng đường dẫn tuyệt đối đến server thay vì qua proxy
+    const response = await fetch("http://localhost:8080/auth/subscribe", {
       method: "POST",
       body: JSON.stringify(subscription),
       headers: {
@@ -101,19 +103,22 @@ const sendSubscriptionToBackend = async (subscription) => {
       },
     });
 
+    console.log("Subscription send response status:", response.status);
+    
     if (response.ok) {
-      console.log("Push subscription sent to backend successfully.");
-      // Optionally show a success message to the user
-      // toast.success("Đăng ký nhận thông báo thành công!");
+      const responseData = await response.json();
+      console.log("Push subscription sent to backend successfully:", responseData);
+      return true;
     } else {
-      console.error("Failed to send push subscription to backend:", response.statusText);
-      // Optionally show an error message to the user
-      // toast.error("Đăng ký nhận thông báo thất bại.");
+      const errorData = await response.json().catch(() => ({ message: response.statusText }));
+      console.error("Failed to send push subscription to backend:", errorData);
+      alert("Không thể đăng ký nhận thông báo: " + (errorData.message || response.statusText));
+      return false;
     }
   } catch (error) {
     console.error("Error sending push subscription to backend:", error);
-    // Optionally show an error message
-    // toast.error("Đã xảy ra lỗi khi đăng ký nhận thông báo.");
+    alert("Lỗi kết nối: " + error.message);
+    return false;
   }
 };
 
@@ -123,9 +128,11 @@ const registerServiceWorker = async () => {
     console.log("Service Worker and Push API supported");
 
     try {
+      // Đầu tiên đăng ký Service Worker
       const registration = await navigator.serviceWorker.register("/sw.js");
       console.log("Service Worker registered:", registration);
 
+      // Yêu cầu quyền thông báo
       const permission = await Notification.requestPermission();
       console.log("Notification permission result:", permission);
       
@@ -133,9 +140,14 @@ const registerServiceWorker = async () => {
         console.log("Notification permission granted.");
 
         try {
-          // Fetch VAPID public key from backend
+          // Fetch VAPID public key trực tiếp từ server
           console.log("Fetching VAPID public key from server...");
-          const response = await fetch("/auth/vapid-public-key");
+          
+          // Sử dụng đường dẫn tuyệt đối để đảm bảo không bị lỗi proxy
+          const serverUrl = "http://localhost:8080/auth/vapid-public-key";
+          console.log("Using direct server URL:", serverUrl);
+          
+          const response = await fetch(serverUrl);
           console.log("VAPID key response status:", response.status);
           
           if (!response.ok) {
@@ -170,7 +182,7 @@ const registerServiceWorker = async () => {
             });
             
             // Send existing subscription to backend again in case it wasn't saved before
-            sendSubscriptionToBackend(existingSubscription);
+            await sendSubscriptionToBackend(existingSubscription);
           } else {
             console.log("No existing push subscription found. Subscribing user...");
             
@@ -192,18 +204,21 @@ const registerServiceWorker = async () => {
               console.log("Subscription JSON:", JSON.stringify(subscription));
 
               // Send the new subscription object to your backend
-              sendSubscriptionToBackend(subscription);
+              await sendSubscriptionToBackend(subscription);
             } catch (subscribeError) {
               console.error("Failed to subscribe the user:", subscribeError);
               console.error("Error details:", subscribeError.message);
+              alert("Không thể đăng ký thông báo: " + subscribeError.message);
             }
           }
         } catch (vapidError) {
           console.error("Error fetching VAPID key:", vapidError);
           console.error("Error details:", vapidError.message);
+          alert("Lỗi lấy khóa VAPID: " + vapidError.message);
         }
       } else {
         console.warn("Notification permission denied by user:", permission);
+        alert("Bạn cần cho phép thông báo để nhận được cập nhật từ hệ thống");
       }
     } catch (error) {
       console.error("Service Worker registration failed:", error);
@@ -216,6 +231,7 @@ const registerServiceWorker = async () => {
     if (!("PushManager" in window)) {
       console.warn("Push API not supported in this browser.");
     }
+    alert("Trình duyệt của bạn không hỗ trợ thông báo Push. Vui lòng sử dụng Chrome hoặc Firefox.");
   }
 };
 
