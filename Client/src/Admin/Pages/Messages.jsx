@@ -9,6 +9,7 @@ import { useRef } from "react";
 import messagesApi from "../../api/messagesApi";
 import './styles.css'; // Import CSS file for custom styles
 import { toast, Toaster } from 'sonner'; // Thêm toast từ Sonner
+import { Scrollbars } from 'react-custom-scrollbars-2';
 
 const Messages = () => {
   const [selectedContact, setSelectedContact] = useState(null);
@@ -343,70 +344,72 @@ const Messages = () => {
         <div className="lg:col-span-1 h-full overflow-hidden">
           <Card className="shadow-sm h-full flex flex-col border border-gray-200 rounded-xl bg-white">
             <div className="mb-3 p-3 border-b">
-              <span className="p-input-icon-left w-full">
-                <i className="pi pi-search text-gray-400" />
-                <InputText 
-                  placeholder="Tìm kiếm liên hệ" 
-                  className="w-full border-gray-300 rounded-lg"
+              <div className="relative w-full">
+                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                  <i className="pi pi-search" />
+                </span>
+                <InputText
+                  placeholder="Tìm kiếm liên hệ"
+                  className="w-full border-gray-300 rounded-lg pl-10 py-2 focus:ring-2 focus:ring-green-200"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-              </span>
+              </div>
             </div>
             
-            <div className="custom-scrollbar force-scrollbar flex-1 overflow-hidden px-2" style={{ height: 'calc(100% - 50px)' }}>
-              {loading ? (
-                <div className="flex justify-center items-center h-64 text-green-500">
-                  <i className="pi pi-spin pi-spinner text-xl"></i>
-                </div>
-              ) : filteredContacts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                  <i className="pi pi-inbox text-4xl mb-2 text-gray-300"></i>
-                  <p>{searchTerm ? "Không tìm thấy liên hệ nào" : "Chưa có tin nhắn nào"}</p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {filteredContacts.map(contact => (
+            <Scrollbars style={{ height: 'calc(100vh - 220px)' }} autoHide className="custom-scrollbar">
+              <div className="flex flex-col gap-2 pr-2">
+                {loading ? (
+                  <div className="flex justify-center items-center h-64 text-green-500">
+                    <i className="pi pi-spin pi-spinner text-xl"></i>
+                  </div>
+                ) : filteredContacts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                    <i className="pi pi-inbox text-4xl mb-2 text-gray-300"></i>
+                    <p>{searchTerm ? "Không tìm thấy liên hệ nào" : "Chưa có tin nhắn nào"}</p>
+                  </div>
+                ) : (
+                  filteredContacts.map(contact => (
                     <div
                       key={contact.id}
-                      className={`
-                        contact-item flex items-center p-3 rounded-lg cursor-pointer transition-all duration-200
-                        ${selectedContact?.id === contact.id ? 'bg-green-50 border-l-4 border-green-500' : 'hover:bg-gray-100 border-l-4 border-transparent'}
-                      `}
-                      onClick={() => {
-                        // Cập nhật trạng thái unread ngay lập tức khi click
+                      className={
+                        `contact-item flex items-center p-3 rounded-xl cursor-pointer transition-all duration-200 ` +
+                        (selectedContact?.id === contact.id ? 'bg-green-100 border-l-4 border-green-500 shadow-md' : 'hover:bg-gray-100 border-l-4 border-transparent')
+                      }
+                      style={{ minHeight: 64 }}
+                      onClick={async () => {
                         if (contact.unread > 0) {
-                          setContacts(prevContacts => 
-                            prevContacts.map(c => 
-                              c.id === contact.id 
-                                ? { ...c, unread: 0 } 
-                                : c
-                            )
-                          );
+                          try {
+                            await messagesApi.markAllAsRead(contact.id);
+                            // Cập nhật ngay trên UI
+                            setContacts(prevContacts =>
+                              prevContacts.map(c =>
+                                c.id === contact.id ? { ...c, unread: 0 } : c
+                              )
+                            );
+                            // Sau đó fetch lại để đồng bộ với backend
+                            await fetchContacts();
+                          } catch (err) {
+                            console.error("Lỗi khi đánh dấu đã đọc:", err);
+                          }
                         }
                         setSelectedContact(contact);
                       }}
                     >
-                      <div className="relative">
-                        <Avatar 
-                          image={contact.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`} 
-                          shape="circle" 
-                          size="large"
-                          className="mr-3"
-                        />
-                        {contact.online && (
-                          <span className="absolute bottom-0 right-2 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
-                        )}
-                      </div>
-                      
+                      <Avatar
+                        image={contact.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`}
+                        shape="circle"
+                        size="large"
+                        className="mr-3"
+                        style={{ minWidth: 48, minHeight: 48 }}
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
-                          <h3 className={`text-sm ${selectedContact?.id === contact.id ? 'font-semibold text-green-800' : 'font-medium text-gray-800'} truncate`}>
+                          <h3 className={`text-base font-semibold truncate ${selectedContact?.id === contact.id ? 'text-green-800' : 'text-gray-800'}`}>
                             {contact.name}
                           </h3>
                           <span className="text-xs text-gray-500">{formatTimestamp(contact.lastSeen || contact.lastActive)}</span>
                         </div>
-                        
                         <div className="flex justify-between items-center">
                           <p className={`text-xs ${contact.unread > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'} truncate w-40`}>
                             {contact.lastMessage}
@@ -417,10 +420,10 @@ const Messages = () => {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            </Scrollbars>
           </Card>
         </div>
         
