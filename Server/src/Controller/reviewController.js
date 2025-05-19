@@ -1,10 +1,11 @@
-import Review from "../Model/Review.js";
-import Product from "../Model/Products.js";
-import User from "../Model/Register.js";
 import mongoose from "mongoose";
+import Review from "../Model/Review.js";
+import User from "../Model/Register.js";
+import Product from "../Model/Products.js";
 import { getTokenFrom } from "../utils/tokenExtractor.js";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import { sendReviewReplyNotification } from "../Services/notificationService.js";
 
 // Khởi tạo cấu hình dotenv
 dotenv.config();
@@ -574,6 +575,26 @@ export const replyToReview = async (req, res) => {
       review.replies.push(reply);
       await review.save();
 
+      // Gửi thông báo khi admin phản hồi đánh giá của người dùng
+      if (reply.isAdmin && review.userId) {
+        try {
+          // Tìm thêm thông tin sản phẩm để hiển thị tên
+          const product = await Product.findById(review.productId);
+          const reviewWithProductInfo = {
+            ...review.toObject(),
+            productName: product ? product.productName : 'Sản phẩm'
+          };
+          
+          await sendReviewReplyNotification(reviewWithProductInfo)
+            .catch(error => console.error('Error sending review reply notification:', error));
+          
+          console.log(`Đã gửi thông báo phản hồi đánh giá đến user ${review.userId}`);
+        } catch (notificationError) {
+          console.error('Lỗi khi gửi thông báo phản hồi đánh giá:', notificationError);
+          // Không ảnh hưởng đến việc trả về response
+        }
+      }
+
       return res.status(201).json({
         success: true,
         message: "Đã thêm phản hồi thành công",
@@ -652,6 +673,26 @@ export const replyToReview = async (req, res) => {
     // Thêm phản hồi vào danh sách
     review.replies.push(reply);
     await review.save();
+
+    // Gửi thông báo khi admin phản hồi đánh giá của người dùng
+    if (isAdmin && review.userId) {
+      try {
+        // Tìm thêm thông tin sản phẩm để hiển thị tên
+        const product = await Product.findById(review.productId);
+        const reviewWithProductInfo = {
+          ...review.toObject(),
+          productName: product ? product.productName : 'Sản phẩm'
+        };
+        
+        await sendReviewReplyNotification(reviewWithProductInfo)
+          .catch(error => console.error('Error sending review reply notification:', error));
+        
+        console.log(`Đã gửi thông báo phản hồi đánh giá đến user ${review.userId}`);
+      } catch (notificationError) {
+        console.error('Lỗi khi gửi thông báo phản hồi đánh giá:', notificationError);
+        // Không ảnh hưởng đến việc trả về response
+      }
+    }
 
     return res.status(201).json({
       success: true,

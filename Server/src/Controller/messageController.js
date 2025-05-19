@@ -3,6 +3,7 @@ import User from "../Model/Register.js";
 import Admin from "../Model/Admin.js";
 import { getAdminId } from "../config/admin.js";
 import dotenv from 'dotenv';
+import { sendNewMessageNotification } from "../Services/notificationService.js";
 
 // Cấu hình dotenv
 dotenv.config();
@@ -162,6 +163,24 @@ export const sendMessage = async (req, res) => {
     
     // Lấy tin nhắn vừa thêm vào
     const addedMessage = conversation.messages[conversation.messages.length - 1];
+    
+    // Gửi thông báo nếu tin nhắn từ admin gửi cho user
+    if (sender === 'admin' && userId) {
+      try {
+        // Lấy thông tin người gửi (admin)
+        const admin = await Admin.findById(adminId);
+        const senderName = admin ? admin.fullName || "Admin" : "Admin";
+        
+        // Gửi thông báo đến người dùng
+        await sendNewMessageNotification(userId, senderName, text)
+          .catch(error => console.error('Error sending message notification:', error));
+        
+        console.log(`Đã gửi thông báo tin nhắn mới đến user ${userId}`);
+      } catch (notificationError) {
+        console.error('Lỗi khi gửi thông báo tin nhắn mới:', notificationError);
+        // Không ảnh hưởng đến việc trả về response
+      }
+    }
     
     // Trả về thông tin tin nhắn đã gửi
     return res.status(201).json({

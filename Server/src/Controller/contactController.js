@@ -2,6 +2,8 @@
 import Contact from "../Model/Contact.js";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import { sendPushNotification } from "../Services/notificationService.js";
+import Admin from "../Model/adminModel.js";
 
 dotenv.config();
 
@@ -47,6 +49,38 @@ export const createContact = async (req, res) => {
     });
     
     const savedContact = await newContact.save();
+
+    // Gửi thông báo cho admin về liên hệ mới
+    try {
+      // Tìm tất cả admin có đăng ký nhận thông báo
+      const adminsToNotify = await Admin.find({
+        'pushSubscriptions.0': { $exists: true }
+      });
+
+      if (adminsToNotify && adminsToNotify.length > 0) {
+        const notificationPayload = {
+          title: 'Liên hệ mới',
+          body: `${name} đã gửi một liên hệ mới qua website.`,
+          data: {
+            url: '/admin/contacts',
+            type: 'new_contact'
+          }
+        };
+
+        // Gửi thông báo đến từng admin
+        for (const admin of adminsToNotify) {
+          for (const subscription of admin.pushSubscriptions) {
+            sendPushNotification(admin._id, subscription, notificationPayload)
+              .catch(error => console.error('Error sending contact notification to admin:', error));
+          }
+        }
+        console.log(`Đã gửi thông báo liên hệ mới đến ${adminsToNotify.length} admins`);
+      }
+    } catch (notificationError) {
+      console.error('Lỗi khi gửi thông báo liên hệ mới:', notificationError);
+      // Không ảnh hưởng đến việc trả về response
+    }
+
     res.status(201).json(savedContact);
   } catch (error) {
     res.status(500).json({ message: error.message });

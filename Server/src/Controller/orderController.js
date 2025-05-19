@@ -5,6 +5,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import { sendOrderConfirmationEmail, sendOrderShippingEmail } from "../utils/emailService.js";
 import BestSellingProduct from "../Model/BestSellingProduct.js";
+import { sendOrderStatusNotification } from "../Services/notificationService.js";
 
 dotenv.config();
 
@@ -436,6 +437,16 @@ export const updateOrder = async (req, res) => {
         console.log(`Đã gửi email cập nhật trạng thái đơn hàng ${updatedOrder.orderCode} đến ${updatedOrder.shippingInfo.email}`);
       } catch (emailError) {
         console.error('Lỗi khi gửi email cập nhật trạng thái đơn hàng:', emailError);
+      }
+    }
+    
+    // Gửi thông báo khi cập nhật trạng thái đơn hàng
+    if (newStatus && newStatus !== previousStatus && updatedOrder.userId) {
+      try {
+        await sendOrderStatusNotification(updatedOrder);
+        console.log(`Đã gửi thông báo cập nhật trạng thái đơn hàng ${updatedOrder.orderCode} đến user ${updatedOrder.userId}`);
+      } catch (notificationError) {
+        console.error('Lỗi khi gửi thông báo cập nhật trạng thái đơn hàng:', notificationError);
       }
     }
     
@@ -1243,10 +1254,22 @@ export const updateOrderPaymentStatus = async (req, res) => {
       }
     }
 
+    // Gửi thông báo khi cập nhật trạng thái thanh toán
+    if (updatedOrder.userId && 
+        ((paymentStatus && paymentStatus !== oldPaymentStatus) || 
+        (isPaid !== undefined && isPaid !== oldIsPaid))) {
+      try {
+        await sendOrderStatusNotification(updatedOrder);
+        console.log(`Đã gửi thông báo cập nhật trạng thái thanh toán đơn hàng ${updatedOrder.orderCode} đến user ${updatedOrder.userId}`);
+      } catch (notificationError) {
+        console.error('Lỗi khi gửi thông báo cập nhật trạng thái thanh toán:', notificationError);
+      }
+    }
+    
     return res.status(200).json({
       success: true,
-      message: "Payment status updated successfully",
-      order: updatedOrder
+      message: "Order payment status updated successfully",
+      data: updatedOrder
     });
   } catch (error) {
     console.error("Error updating payment status:", error);

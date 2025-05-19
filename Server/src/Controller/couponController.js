@@ -1,5 +1,6 @@
 /* eslint-disable no-dupe-keys */
 import Coupon from "../Model/Coupon.js";
+import { sendNewCouponNotification } from "../Services/notificationService.js";
 
 // Tạo mã giảm giá mới
 export const createCoupon = async (req, res) => {
@@ -30,6 +31,11 @@ export const createCoupon = async (req, res) => {
     });
 
     await newCoupon.save();
+
+    // Gửi thông báo về mã giảm giá mới đến tất cả người dùng đã đăng ký
+    sendNewCouponNotification(newCoupon).catch(error => 
+      console.error('Error sending coupon notification to users:', error)
+    );
 
     return res.status(201).json({
       success: true,
