@@ -12,11 +12,10 @@ import {
   ReaderIcon,
   TriangleLeftIcon,
   TriangleRightIcon,
-  InfoCircledIcon,
   EnvelopeClosedIcon,
   ChatBubbleIcon,
   StarFilledIcon,
-  IdCardIcon
+  IdCardIcon,
 } from "@radix-ui/react-icons";
 import messagesApi from "../../api/messagesApi";
 import { canAccess } from "../../utils/permission";
@@ -76,12 +75,7 @@ const AdminSidebar = () => {
       badge: unreadMessages > 0 ? unreadMessages : null,
       badgeClassName: "bg-red-500 text-white",
     },
-    {
-      icon: <InfoCircledIcon className="size-5 md:size-6" />,
-      text: "Mẹo hay",
-      path: "/admin/tips",
-      key: "tips",
-    },
+
     {
       icon: <EnvelopeClosedIcon className="size-5 md:size-6" />,
       text: "Liên hệ",
@@ -118,7 +112,9 @@ const AdminSidebar = () => {
   const role = localStorage.getItem("userRole");
 
   // Lọc menuItems theo quyền thao tác (dùng canAccess)
-  const filteredMenuItems = menuItems.filter(item => canAccess(role, item.key));
+  const filteredMenuItems = menuItems.filter((item) =>
+    canAccess(role, item.key)
+  );
 
   useEffect(() => {
     const handleResize = () => {
@@ -132,7 +128,7 @@ const AdminSidebar = () => {
 
     window.addEventListener("resize", handleResize);
     handleResize(); // Initial check
-    
+
     return () => {
       window.removeEventListener("resize", handleResize);
     };
@@ -150,7 +146,7 @@ const AdminSidebar = () => {
     setActiveItem(item);
     localStorage.setItem("activeItem", item);
     navigate(path);
-    
+
     // Auto close sidebar on mobile after navigation
     if (isMobile) {
       setShowMobileMenu(false);
@@ -205,8 +201,10 @@ const AdminSidebar = () => {
                 <span>{item.icon}</span>
                 <span className="text-[10px] mt-1">{item.text}</span>
                 {item.badge && (
-                  <span 
-                    className={`badge inline-block px-2 py-1 text-xs font-semibold rounded-full ${item.badgeClassName || 'bg-green-500 text-white'}`}
+                  <span
+                    className={`badge inline-block px-2 py-1 text-xs font-semibold rounded-full ${
+                      item.badgeClassName || "bg-green-500 text-white"
+                    }`}
                   >
                     {item.badge}
                   </span>
@@ -217,11 +215,22 @@ const AdminSidebar = () => {
             <div
               onClick={toggleSidebar}
               className={`flex flex-col items-center justify-center p-2 rounded-md ${
-                showMobileMenu ? "text-green-600" : "text-gray-500 hover:text-green-500"
+                showMobileMenu
+                  ? "text-green-600"
+                  : "text-gray-500 hover:text-green-500"
               }`}
             >
               <span>
-                <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="size-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <circle cx="12" cy="12" r="1" />
                   <circle cx="19" cy="12" r="1" />
                   <circle cx="5" cy="12" r="1" />
@@ -234,11 +243,20 @@ const AdminSidebar = () => {
 
         {/* Floating action button for adding - positioned above bottom nav */}
         <div className="fixed right-4 bottom-16 z-30">
-          <button 
-            onClick={() => navigate('/admin/products')}
+          <button
+            onClick={() => navigate("/admin/products")}
             className="bg-green-500 hover:bg-green-600 text-white p-3 rounded-full shadow-lg transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="size-6"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="12" y1="5" x2="12" y2="19"></line>
               <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
@@ -248,19 +266,30 @@ const AdminSidebar = () => {
         {/* Mobile menu popup */}
         {showMobileMenu && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div 
-              className="absolute inset-0 bg-black bg-opacity-50" 
+            <div
+              className="absolute inset-0 bg-black bg-opacity-50"
               onClick={toggleSidebar}
             ></div>
             <div className="relative bg-white w-11/12 max-w-md mx-auto rounded-lg shadow-xl z-10 max-h-[80vh] overflow-y-auto">
               <div className="p-4 bg-gradient-to-r from-green-500 to-green-400 rounded-t-lg">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-white">Menu chức năng</h2>
+                  <h2 className="text-xl font-bold text-white">
+                    Menu chức năng
+                  </h2>
                   <button
                     onClick={toggleSidebar}
                     className="p-2 hover:bg-green-400 rounded-full text-white"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="size-6"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
                       <line x1="18" y1="6" x2="6" y2="18"></line>
                       <line x1="6" y1="6" x2="18" y2="18"></line>
                     </svg>
@@ -282,14 +311,18 @@ const AdminSidebar = () => {
                       <div className="relative">
                         <span>{item.icon}</span>
                         {item.badge && (
-                          <span 
-                            className={`badge absolute -top-2 -right-2 inline-block px-2 py-0.5 min-w-[20px] text-center text-xs font-semibold rounded-full ${item.badgeClassName || 'bg-green-500 text-white'}`}
+                          <span
+                            className={`badge absolute -top-2 -right-2 inline-block px-2 py-0.5 min-w-[20px] text-center text-xs font-semibold rounded-full ${
+                              item.badgeClassName || "bg-green-500 text-white"
+                            }`}
                           >
                             {item.badge}
                           </span>
                         )}
                       </div>
-                      <span className="text-xs mt-2 text-center">{item.text}</span>
+                      <span className="text-xs mt-2 text-center">
+                        {item.text}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -302,7 +335,9 @@ const AdminSidebar = () => {
                     />
                     <div className="flex flex-col">
                       <span className="font-semibold text-gray-700">Admin</span>
-                      <span className="text-xs text-gray-500">Quản trị viên</span>
+                      <span className="text-xs text-gray-500">
+                        Quản trị viên
+                      </span>
                     </div>
                   </div>
                   <button
@@ -352,12 +387,21 @@ const AdminSidebar = () => {
       {/* Mobile close button - only visible on mobile with sidebar open */}
       {isMobile && isSidebarOpen && (
         <div className="absolute top-4 right-4">
-          <button 
+          <button
             onClick={toggleSidebar}
             className="p-2 bg-green-400 rounded-full text-white"
             aria-label="Close Sidebar"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="size-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
@@ -403,13 +447,17 @@ const AdminSidebar = () => {
           className="flex items-center mt-4 p-2 w-full text-red-500 hover:bg-red-50 rounded-md transition-colors"
         >
           <ExitIcon className="size-6" />
-          {isSidebarOpen && <a href="/dang-nhap" className="ml-3 font-medium">Đăng xuất</a>}
+          {isSidebarOpen && (
+            <a href="/dang-nhap" className="ml-3 font-medium">
+              Đăng xuất
+            </a>
+          )}
         </button>
       </div>
-      
+
       {/* Overlay for mobile sidebar */}
       {isMobile && isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40"
           onClick={toggleSidebar}
         ></div>
@@ -418,13 +466,21 @@ const AdminSidebar = () => {
   );
 };
 
-const SidebarItem = ({ icon, text, onClick, isSidebarOpen, isActive, badge, badgeClassName }) => {
+const SidebarItem = ({
+  icon,
+  text,
+  onClick,
+  isSidebarOpen,
+  isActive,
+  badge,
+  badgeClassName,
+}) => {
   return (
     <li
       onClick={onClick}
       className={`${
-        isActive 
-          ? "bg-green-50 text-green-600 border-l-4 border-green-500" 
+        isActive
+          ? "bg-green-50 text-green-600 border-l-4 border-green-500"
           : "text-gray-700 hover:bg-gray-100 hover:border-l-4 hover:border-green-300"
       } relative flex items-center px-3 py-3 rounded-md cursor-pointer transition-all duration-200`}
     >
@@ -435,8 +491,10 @@ const SidebarItem = ({ icon, text, onClick, isSidebarOpen, isActive, badge, badg
         </span>
       )}
       {badge && (
-        <span 
-          className={`${badgeClassName || 'bg-red-500 text-white'} ml-auto px-2 py-0.5 min-w-[20px] text-center text-xs font-semibold rounded-full`}
+        <span
+          className={`${
+            badgeClassName || "bg-red-500 text-white"
+          } ml-auto px-2 py-0.5 min-w-[20px] text-center text-xs font-semibold rounded-full`}
         >
           {badge}
         </span>

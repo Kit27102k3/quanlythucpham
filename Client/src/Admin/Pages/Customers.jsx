@@ -10,11 +10,14 @@ import {
 } from "lucide-react";
 import { API_BASE_URL } from '../../config/apiConfig';
 import { Link } from "react-router-dom";
+import { Paginator } from "primereact/paginator";
 
 function Customers() {
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredUsers, setFilteredUsers] = useState([]);
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(10);
 
   useEffect(() => {
     fetchUserProfile();
@@ -125,6 +128,13 @@ function Customers() {
     }
   };
 
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
+  const paginatedUsers = filteredUsers.slice(first, first + rows);
+
   return (
     <div className="container mx-auto px-2 md:px-4 py-4 md:py-8 bg-gray-50">
       <div className="bg-white shadow-md md:shadow-xl rounded-lg overflow-hidden">
@@ -156,7 +166,7 @@ function Customers() {
                 </tr>
               </thead>
               <tbody>
-                {filteredUsers.map((user) => (
+                {paginatedUsers.map((user) => (
                   <tr
                     key={user._id}
                     className="border-b border-gray-200 hover:bg-gray-100 transition duration-200"
@@ -232,6 +242,31 @@ function Customers() {
               </tbody>
             </table>
           </div>
+          
+          {filteredUsers.length > 0 && (
+            <div className="mt-4 md:mt-6">
+              <Paginator 
+                first={first} 
+                rows={rows} 
+                totalRecords={filteredUsers.length} 
+                rowsPerPageOptions={[5, 10, 20, 50]} 
+                onPageChange={onPageChange}
+                template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+                className="border-none"
+                pt={{
+                  root: { className: 'flex items-center justify-center my-4 px-4' },
+                  pageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  currentPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors font-medium bg-blue-500 text-white border border-blue-500' },
+                  prevPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  nextPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  firstPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  lastPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  pages: { className: 'flex items-center' },
+                  dropdown: { root: { className: 'border border-gray-300 rounded-lg mx-2 text-sm' } }
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

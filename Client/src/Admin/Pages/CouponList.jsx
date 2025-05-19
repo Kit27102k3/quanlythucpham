@@ -517,6 +517,17 @@ const CouponList = () => {
           resizableColumns
           size="small"
           sortMode="single"
+          pt={{
+            paginator: {
+              root: { className: 'flex items-center justify-center my-4 px-4' },
+              pageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+              currentPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors font-medium bg-blue-500 text-white border border-blue-500' },
+              prevPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+              nextPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+              pages: { className: 'flex items-center' },
+              dropdown: { root: { className: 'border border-gray-300 rounded-lg mx-2 text-sm' } }
+            }
+          }}
         >
           <Column field="code" header="Mã giảm giá" body={codeTemplate} sortable={false} headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '10rem' }} />
           <Column field="value" header="Giá trị" body={valueTemplate} sortable={false} headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '8rem' }} />
@@ -720,7 +731,7 @@ const CouponList = () => {
         </div>
       </Dialog>
 
-      <style>{`
+      <style jsx>{`
         .p-input-icon-left > i {
           left: 1rem;
           top: 50%;
@@ -838,24 +849,45 @@ const CouponList = () => {
         
         .p-datatable .p-paginator {
           padding: 0.75rem 1rem;
-          background: #f8fafc;
-          border: 1px solid #e2e8f0;
-          border-bottom-left-radius: 0.5rem;
-          border-bottom-right-radius: 0.5rem;
+          background: transparent;
+          border: none;
+          display: flex;
+          justify-content: center;
+          align-items: center;
         }
         
-        .p-datatable .p-paginator .p-paginator-element {
-          margin: 0 0.2rem;
-          min-width: 2.5rem;
-          height: 2.5rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+        .p-paginator .p-paginator-pages .p-paginator-page {
+          width: 2.25rem;
+          height: 2.25rem;
+          margin: 0 0.25rem;
+          border-radius: 50%;
+          border: 1px solid transparent;
         }
         
         .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
           background: #3b82f6;
           color: #fff;
+          border: 1px solid #3b82f6;
+        }
+        
+        .p-paginator .p-paginator-first,
+        .p-paginator .p-paginator-prev,
+        .p-paginator .p-paginator-next,
+        .p-paginator .p-paginator-last {
+          width: 2.25rem;
+          height: 2.25rem;
+          margin: 0 0.25rem;
+          border-radius: 50%;
+          border: 1px solid transparent;
+        }
+        
+        .p-paginator .p-paginator-first:hover,
+        .p-paginator .p-paginator-prev:hover,
+        .p-paginator .p-paginator-next:hover,
+        .p-paginator .p-paginator-last:hover,
+        .p-paginator .p-paginator-pages .p-paginator-page:hover {
+          background: #eff6ff;
+          border-color: #bfdbfe;
         }
         
         .p-datatable .p-datatable-loading-overlay {

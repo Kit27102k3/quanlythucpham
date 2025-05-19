@@ -15,6 +15,7 @@ import {
   Search,
   RefreshCcw
 } from "lucide-react";
+import { Paginator } from "primereact/paginator";
 import "./styles.css";
 
  function Reviews() {
@@ -30,6 +31,8 @@ import "./styles.css";
   const [filterBy, setFilterBy] = useState("all");
   const [submitting, setSubmitting] = useState(false);
   const userRole = localStorage.getItem("userRole");
+  const [first, setFirst] = useState(0);
+  const [rows, setRows] = useState(10);
 
   useEffect(() => {
     // Khởi tạo token admin nếu là admin TKhiem
@@ -266,6 +269,15 @@ import "./styles.css";
       return 0;
     });
 
+  // Xử lý khi thay đổi trang
+  const onPageChange = (event) => {
+    setFirst(event.first);
+    setRows(event.rows);
+  };
+
+  // Lấy reviews cho trang hiện tại
+  const paginatedReviews = filteredReviews.slice(first, first + rows);
+
   // Tổng số đánh giá
   const totalReviews = reviews.length;
   const publishedReviews = reviews.filter(r => r.isPublished).length;
@@ -445,147 +457,173 @@ import "./styles.css";
             Không có đánh giá nào phù hợp với tiêu chí tìm kiếm
           </div>
         ) : (
-          <div className="divide-y">
-            {filteredReviews.map((review) => {
-              // Tìm tên sản phẩm
-              const product = products.find(p => {
-                // Use string comparison for more reliable matching
-                const reviewProductId = typeof review.productId === 'object'
-                  ? review.productId._id || review.productId.id || review.productId.toString()
-                  : review.productId;
+          <>
+            <div className="divide-y">
+              {paginatedReviews.map((review) => {
+                // Tìm tên sản phẩm
+                const product = products.find(p => {
+                  // Use string comparison for more reliable matching
+                  const reviewProductId = typeof review.productId === 'object'
+                    ? review.productId._id || review.productId.id || review.productId.toString()
+                    : review.productId;
                   
-                return String(p._id) === String(reviewProductId);
-              });
-              
-              let productName = 'Sản phẩm không xác định';
-              
-              // Hiển thị productId hoặc tên sản phẩm
-              if (product) {
-                productName = product.productName;
-              } else if (review.productId && typeof review.productId === 'object') {
-                // Trường hợp productId đã được populate từ API
-                productName = review.productId.productName || `Sản phẩm ID: ${review.productId._id}`;
-              } else if (review.productId) {
-                // Trường hợp chỉ có ID
-                productName = `Sản phẩm ID: ${review.productId}`;
-              }
-              
-              return (
-                <div key={review._id} className={`p-4 ${!review.isPublished ? 'bg-gray-50' : ''}`}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center">
-                        <h3 className="font-medium mr-2">{review.userName}</h3>
-                        <div className="flex mr-1">{renderStars(review.rating)}</div>
-                        <span className="text-sm text-gray-500">({review.rating})</span>
+                  return String(p._id) === String(reviewProductId);
+                });
+                
+                let productName = 'Sản phẩm không xác định';
+                
+                // Hiển thị productId hoặc tên sản phẩm
+                if (product) {
+                  productName = product.productName;
+                } else if (review.productId && typeof review.productId === 'object') {
+                  // Trường hợp productId đã được populate từ API
+                  productName = review.productId.productName || `Sản phẩm ID: ${review.productId._id}`;
+                } else if (review.productId) {
+                  // Trường hợp chỉ có ID
+                  productName = `Sản phẩm ID: ${review.productId}`;
+                }
+                
+                return (
+                  <div key={review._id} className={`p-4 ${!review.isPublished ? 'bg-gray-50' : ''}`}>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center">
+                          <h3 className="font-medium mr-2">{review.userName}</h3>
+                          <div className="flex mr-1">{renderStars(review.rating)}</div>
+                          <span className="text-sm text-gray-500">({review.rating})</span>
+                        </div>
+                        <p className="text-sm text-gray-600">Đánh giá cho: <span className="font-medium">{productName}</span></p>
+                        <p className="text-sm text-gray-500">{new Date(review.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
-                      <p className="text-sm text-gray-600">Đánh giá cho: <span className="font-medium">{productName}</span></p>
-                      <p className="text-sm text-gray-500">{new Date(review.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        className={`p-2 rounded-full ${review.isPublished ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
-                        onClick={() => handleTogglePublish(review._id, review.isPublished)}
-                        title={review.isPublished ? 'Ẩn đánh giá' : 'Hiển thị đánh giá'}
-                      >
-                        {review.isPublished ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-2">
-                    <p>{review.comment}</p>
-                  </div>
-                  
-                  {/* Phần phản hồi */}
-                  {review.replies && review.replies.length > 0 && (
-                    <div className="mt-4 ml-6 space-y-3 border-l-2 border-green-200 pl-4">
-                      <div className="text-sm text-green-600 font-medium">
-                        {review.replies.length} phản hồi từ quản trị viên
+                      <div className="flex gap-2">
+                        <button 
+                          className={`p-2 rounded-full ${review.isPublished ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-green-100 text-green-600 hover:bg-green-200'}`}
+                          onClick={() => handleTogglePublish(review._id, review.isPublished)}
+                          title={review.isPublished ? 'Ẩn đánh giá' : 'Hiển thị đánh giá'}
+                        >
+                          {review.isPublished ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
                       </div>
-                      {review.replies.map((reply) => (
-                        <div key={reply._id} className="bg-gray-50 p-3 rounded">
-                          <div className="flex justify-between">
-                            <span className="font-medium text-green-600">
-                              {reply.isAdmin ? 'Admin' : reply.userName}:
-                            </span>
+                    </div>
+                    
+                    <div className="mt-2">
+                      <p>{review.comment}</p>
+                    </div>
+                    
+                    {/* Phần phản hồi */}
+                    {review.replies && review.replies.length > 0 && (
+                      <div className="mt-4 ml-6 space-y-3 border-l-2 border-green-200 pl-4">
+                        <div className="text-sm text-green-600 font-medium">
+                          {review.replies.length} phản hồi từ quản trị viên
+                        </div>
+                        {review.replies.map((reply) => (
+                          <div key={reply._id} className="bg-gray-50 p-3 rounded">
+                            <div className="flex justify-between">
+                              <span className="font-medium text-green-600">
+                                {reply.isAdmin ? 'Admin' : reply.userName}:
+                              </span>
+                              <button
+                                onClick={() => handleDeleteReply(review._id, reply._id)}
+                                className="text-red-500 hover:text-red-700"
+                                title="Xóa phản hồi"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                            <p className="mt-1 text-sm">{reply.text}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(reply.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Form trả lời */}
+                    <div className="mt-3">
+                      {replyingTo === review._id ? (
+                        <div className="bg-gray-50 p-3 rounded border">
+                          <div className="flex justify-between items-center">
+                            <h4 className="font-medium">Trả lời đánh giá</h4>
                             <button
-                              onClick={() => handleDeleteReply(review._id, reply._id)}
-                              className="text-red-500 hover:text-red-700"
-                              title="Xóa phản hồi"
+                              onClick={() => {
+                                setReplyingTo(null);
+                                setReplyText("");
+                              }}
+                              className="text-gray-500 hover:text-gray-700"
                             >
                               <X size={16} />
                             </button>
                           </div>
-                          <p className="mt-1 text-sm">{reply.text}</p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {new Date(reply.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </p>
+                          <textarea
+                            value={replyText}
+                            onChange={(e) => setReplyText(e.target.value)}
+                            className="w-full p-2 border rounded-md mt-2"
+                            rows={3}
+                            placeholder="Nhập phản hồi của bạn..."
+                          ></textarea>
+                          <div className="flex justify-end mt-2">
+                            <button
+                              onClick={() => handleSubmitReply(review._id)}
+                              className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 flex items-center gap-2"
+                              disabled={submitting}
+                            >
+                              {submitting ? (
+                                <>
+                                  <RefreshCcw size={16} className="animate-spin" />
+                                  Đang gửi...
+                                </>
+                              ) : (
+                                <>
+                                  <Save size={16} />
+                                  Gửi phản hồi
+                                </>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                      ))}
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setReplyingTo(review._id);
+                            setReplyText("");
+                          }}
+                          className="mt-2 flex items-center gap-1 text-blue-500 hover:text-blue-700"
+                        >
+                          <MessageCircle size={16} />
+                          Trả lời
+                        </button>
+                      )}
                     </div>
-                  )}
-                  
-                  {/* Form trả lời */}
-                  <div className="mt-3">
-                    {replyingTo === review._id ? (
-                      <div className="bg-gray-50 p-3 rounded border">
-                        <div className="flex justify-between items-center">
-                          <h4 className="font-medium">Trả lời đánh giá</h4>
-                          <button
-                            onClick={() => {
-                              setReplyingTo(null);
-                              setReplyText("");
-                            }}
-                            className="text-gray-500 hover:text-gray-700"
-                          >
-                            <X size={16} />
-                          </button>
-                        </div>
-                        <textarea
-                          value={replyText}
-                          onChange={(e) => setReplyText(e.target.value)}
-                          className="w-full p-2 border rounded-md mt-2"
-                          rows={3}
-                          placeholder="Nhập phản hồi của bạn..."
-                        ></textarea>
-                        <div className="flex justify-end mt-2">
-                          <button
-                            onClick={() => handleSubmitReply(review._id)}
-                            className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 flex items-center gap-2"
-                            disabled={submitting}
-                          >
-                            {submitting ? (
-                              <>
-                                <RefreshCcw size={16} className="animate-spin" />
-                                Đang gửi...
-                              </>
-                            ) : (
-                              <>
-                                <Save size={16} />
-                                Gửi phản hồi
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setReplyingTo(review._id);
-                          setReplyText("");
-                        }}
-                        className="mt-2 flex items-center gap-1 text-blue-500 hover:text-blue-700"
-                      >
-                        <MessageCircle size={16} />
-                        Trả lời
-                      </button>
-                    )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+            
+            {/* Thêm phân trang */}
+            <div className="p-4 border-t">
+              <Paginator 
+                first={first} 
+                rows={rows} 
+                totalRecords={filteredReviews.length} 
+                rowsPerPageOptions={[5, 10, 20, 50]} 
+                onPageChange={onPageChange}
+                template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
+                className="border-none"
+                pt={{
+                  root: { className: 'flex items-center justify-center my-4 px-4' },
+                  pageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  currentPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors font-medium bg-blue-500 text-white border border-blue-500' },
+                  prevPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  nextPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  firstPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  lastPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  pages: { className: 'flex items-center' },
+                  dropdown: { root: { className: 'border border-gray-300 rounded-lg mx-2 text-sm' } }
+                }}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>

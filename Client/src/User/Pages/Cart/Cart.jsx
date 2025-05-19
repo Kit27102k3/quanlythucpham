@@ -46,12 +46,61 @@ const Cart = () => {
       try {
         setIsLoading(true);
         const res = await cartApi.getCart(userId);
+        
+        // Lọc bỏ các sản phẩm đã bị xóa khỏi database (productId là null hoặc undefined)
+        const validItems = res.cart.items.filter(item => item.productId && item.productId._id);
+        
+        if (validItems.length !== res.cart.items.length) {
+          // Nếu có sản phẩm không hợp lệ, cập nhật giỏ hàng
+          console.log('Phát hiện sản phẩm không tồn tại trong giỏ hàng, đang loại bỏ...');
+          
+          // Tìm các sản phẩm không hợp lệ để xóa khỏi giỏ hàng
+          const invalidItems = res.cart.items.filter(item => !item.productId || !item.productId._id);
+          
+          // Xóa từng sản phẩm không hợp lệ khỏi giỏ hàng trên server
+          try {
+            for (const item of invalidItems) {
+              if (item._id) {
+                // Sử dụng item._id thay vì productId._id vì productId có thể là null
+                await cartApi.removeInvalidItem(userId, item._id);
+                console.log(`Đã xóa sản phẩm không hợp lệ khỏi giỏ hàng: ${item._id}`);
+              }
+            }
+            toast.success("Đã cập nhật giỏ hàng của bạn", {
+              description: "Một số sản phẩm đã bị xóa do không còn tồn tại",
+            });
+          } catch (removeError) {
+            console.error("Lỗi khi xóa sản phẩm không hợp lệ:", removeError);
+          }
+          
+          // Cập nhật giỏ hàng cục bộ
+          res.cart.items = validItems;
+        }
+        
         setCart(res.cart);
-        setSelectedItems(res.cart.items.map((item) => item.productId._id));
+        // Chỉ chọn những sản phẩm hợp lệ
+        setSelectedItems(validItems.map(item => item.productId._id));
         setIsLoading(false);
       } catch (error) {
         console.error("Lỗi khi tải giỏ hàng!", error);
         setIsLoading(false);
+        
+        // Nếu lỗi liên quan đến việc sản phẩm không tồn tại
+        if (error.message && error.message.includes("Cannot read properties of null")) {
+          toast.error("Giỏ hàng có sản phẩm không hợp lệ", {
+            description: "Đang thử cập nhật giỏ hàng...",
+          });
+          
+          // Thử tải lại giỏ hàng sau 1 giây
+          setTimeout(() => {
+            // Gọi API để lấy giỏ hàng và tự động loại bỏ sản phẩm không hợp lệ
+            try {
+              cartApi.getCart(userId, true); // Thêm tham số để yêu cầu server loại bỏ sản phẩm không hợp lệ
+            } catch (retryError) {
+              console.error("Không thể cập nhật giỏ hàng:", retryError);
+            }
+          }, 1000);
+        }
       }
     };
 
@@ -134,10 +183,16 @@ const Cart = () => {
       }
     };
 
+    // Thêm hàm hỗ trợ kiểm tra sản phẩm hợp lệ để tránh lỗi khi tính toán
+    const isValidProduct = (item) => {
+      return item && item.productId && item.productId._id;
+    };
+
     const calculateTotal = () => {
       if (!cart || !cart.items) return 0;
       return cart.items.reduce((total, item) => {
-        if (selectedItems.includes(item.productId._id)) {
+        // Chỉ tính tổng cho sản phẩm hợp lệ và được chọn
+        if (isValidProduct(item) && selectedItems.includes(item.productId._id)) {
           const itemPrice = item.price || item.productId.productPrice;
           return total + itemPrice * item.quantity;
         }
@@ -147,8 +202,10 @@ const Cart = () => {
 
     const calculateTotalQuantity = () => {
       if (!cart || !cart.items) return 0;
-      // Count the number of unique products (not the sum of quantities)
-      return selectedItems.length;
+      // Đếm số sản phẩm hợp lệ và được chọn
+      return selectedItems.filter(id => 
+        cart.items.some(item => isValidProduct(item) && item.productId._id === id)
+      ).length;
     };
 
     const handleCheckout = async () => {
@@ -270,8 +327,8 @@ const Cart = () => {
                 </div>
 
                 {/* Product Items */}
-                {cart.items.map((item) => {
-                  const itemPrice = item.price || item.productId.productPrice;
+                {cart.items.filter(item => item.productId && item.productId._id).map((item) => {
+                  const itemPrice = item.price || (item.productId ? item.productId.productPrice : 0);
                   const totalItemPrice = itemPrice * item.quantity;
 
                   return (
@@ -289,12 +346,16 @@ const Cart = () => {
 
                       {/* Image */}
                       <div className="md:w-20">
-                        {item?.productId?.productImages?.length > 0 && (
+                        {item?.productId?.productImages?.length > 0 ? (
                           <img
                             src={`${item.productId.productImages[0]}`}
                             alt={item.productId.productName}
                             className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-md shadow-sm"
                           />
+                        ) : (
+                          <div className="w-16 h-16 md:w-20 md:h-20 bg-gray-200 rounded-md flex items-center justify-center">
+                            <span className="text-gray-400 text-xs">Không có ảnh</span>
+                          </div>
                         )}
                       </div>
 

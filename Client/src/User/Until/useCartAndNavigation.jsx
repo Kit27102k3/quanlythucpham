@@ -33,14 +33,42 @@ const useCartAndNavigation = () => {
       navigate("/dang-nhap");
       return;
     }
+    
     try {
-      await cartApi.addToCart(userId, productId);
-      toast.success("Sản phẩm đã được thêm vào giỏ hàng");
+      // Kiểm tra và log thông tin sản phẩm để debug
+      console.log("Đang thêm sản phẩm vào giỏ hàng:", productId);
       
-      // Kích hoạt sự kiện cập nhật giỏ hàng
-      triggerCartUpdateEvent();
+      if (!productId) {
+        console.error("Product ID is undefined or null");
+        toast.error("Không thể thêm sản phẩm vào giỏ hàng: ID sản phẩm không hợp lệ");
+        return;
+      }
+      
+      // Chuyển đổi sang string nếu là object ID
+      const actualProductId = typeof productId === 'object' ? productId.toString() : productId;
+      
+      // Gọi API với xử lý lỗi tốt hơn
+      const response = await cartApi.addToCart(userId, actualProductId);
+      
+      // Log thông tin phản hồi
+      console.log("Phản hồi API:", response);
+      
+      if (response && response.success) {
+        toast.success("Sản phẩm đã được thêm vào giỏ hàng");
+        
+        // Kích hoạt sự kiện cập nhật giỏ hàng
+        triggerCartUpdateEvent();
+      } else {
+        // Xử lý trường hợp API trả về success: false
+        toast.error(response?.message || "Không thể thêm sản phẩm vào giỏ hàng");
+      }
     } catch (error) {
-      console.log("Lỗi khi thêm sản phẩm vào giỏ hàng!", error);
+      console.error("Lỗi khi thêm sản phẩm vào giỏ hàng:", error);
+      
+      // Hiển thị thông báo lỗi cụ thể hơn cho người dùng
+      const errorMessage = error.response?.data?.message || 
+                          "Không thể thêm sản phẩm vào giỏ hàng, vui lòng thử lại sau";
+      toast.error(errorMessage);
     }
   };
 

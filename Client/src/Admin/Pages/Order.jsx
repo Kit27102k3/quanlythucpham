@@ -173,7 +173,7 @@ const OrderAutoTransition = {
 // Memoized Order Stats Component
 const OrderStats = memo(({ stats }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-5 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 mb-8">
       <Card className="shadow-lg bg-gradient-to-br from-white to-blue-50 p-6 border border-gray-100 rounded-xl hover:shadow-xl transition-all transform hover:-translate-y-1"
         pt={{ 
           root: { className: 'overflow-hidden' },
@@ -1311,67 +1311,29 @@ const OrderAdmin = () => {
               animation: dropdown 0.2s ease-out forwards;
             }
 
-            @keyframes checkbox-pop {
-              0% {
-                transform: scale(0.8);
-                opacity: 0.5;
-              }
-              50% {
-                transform: scale(1.1);
-              }
-              100% {
-                transform: scale(1);
-                opacity: 1;
-              }
-            }
-
-            /* DIRECT CHECKBOX OVERRIDE STYLES - Replacing all previous checkbox styles */
-            .p-checkbox {
-              width: 24px !important;
-              height: 24px !important;
-              position: relative !important;
-              display: inline-flex !important;
-              align-items: center !important;
-              justify-content: center !important;
-            }
-
-            .p-checkbox .p-checkbox-box {
-              width: 22px !important;
-              height: 22px !important;
-              border: 2px solid #94a3b8 !important;
-              border-radius: 4px !important;
-              background-color: white !important;
-              position: relative !important;
-              transition: all 0.2s ease !important;
-            }
-
-            .p-checkbox:hover .p-checkbox-box {
-              border-color: #3b82f6 !important;
-              box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-            }
-
-            .p-checkbox .p-checkbox-box.p-highlight {
+            /* Chỉnh sửa CSS cho checkbox để hiển thị dấu check rõ ràng */
+            .p-checkbox-box.p-highlight {
               background-color: #3b82f6 !important;
               border-color: #3b82f6 !important;
             }
-
-            /* Most important part - the visible checkmark */
-            .p-checkbox .p-checkbox-box.p-highlight:after {
-              content: '✓';
-              color: white;
-              font-size: 16px;
-              font-weight: bold;
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              z-index: 20;
-              line-height: 1;
+            
+            .p-checkbox-box.p-highlight .p-checkbox-icon {
+              color: white !important;
+              font-size: 12px !important;
+              font-weight: bold !important;
+              display: block !important;
+              visibility: visible !important;
+              opacity: 1 !important;
             }
-
-            /* Handle any hidden icon elements from Prime */
-            .p-checkbox .p-checkbox-box .p-checkbox-icon {
-              display: none !important;
+            
+            .p-checkbox {
+              width: 20px !important;
+              height: 20px !important;
+            }
+            
+            .p-checkbox .p-checkbox-box {
+              width: 20px !important;
+              height: 20px !important;
             }
           `}
         </style>
@@ -1580,6 +1542,15 @@ const OrderAdmin = () => {
                   box: { className: 'w-5 h-5 border-2 flex items-center justify-center relative' },
                   input: { className: 'cursor-pointer' },
                   icon: { className: 'text-white z-10 visible opacity-100' }
+                },
+                paginator: {
+                  root: { className: 'flex items-center justify-center my-4 px-4' },
+                  pageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  currentPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors font-medium bg-blue-500 text-white border border-blue-500' },
+                  prevPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  nextPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
+                  pages: { className: 'flex items-center' },
+                  dropdown: { root: { className: 'border border-gray-300 rounded-lg mx-2 text-sm' } }
                 }
               }}
               rowHover
@@ -1589,10 +1560,10 @@ const OrderAdmin = () => {
                 frozen 
                 pt={{
                   headerCheckbox: { 
-                    className: 'w-6 h-6 border-2 border-gray-400 rounded-md cursor-pointer hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 checked:bg-blue-500 checked:border-blue-500 transition-colors scale-125 relative' 
+                    className: 'w-6 h-6 border-2 border-gray-400 rounded-md cursor-pointer hover:border-blue-500 focus:border-blue-500 transition-colors relative' 
                   },
                   bodyCheckbox: { 
-                    className: 'w-6 h-6 border-2 border-gray-400 rounded-md cursor-pointer hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 checked:bg-blue-500 checked:border-blue-500 transition-colors scale-125 relative' 
+                    className: 'w-6 h-6 border-2 border-gray-400 rounded-md cursor-pointer hover:border-blue-500 focus:border-blue-500 transition-colors relative' 
                   }
                 }}
                 headerStyle={{ 

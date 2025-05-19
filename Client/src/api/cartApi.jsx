@@ -5,9 +5,9 @@ import { API_BASE_URL } from '../config/apiConfig';
 const API_URL = `${API_BASE_URL}/api/cart`;
 
 const cartApi = {
-  getCart: async (userId) => {
+  getCart: async (userId, cleanInvalid = false) => {
     try {
-      const response = await axios.get(`${API_URL}/${userId}`);
+      const response = await axios.get(`${API_URL}/${userId}${cleanInvalid ? '?cleanInvalid=true' : ''}`);
       return response.data;
     } catch (error) {
       throw error;
@@ -16,6 +16,15 @@ const cartApi = {
 
   addToCart: async (userId, productId, quantity = 1) => {
     try {
+      // Đảm bảo productId là string hợp lệ
+      if (!productId) {
+        console.error("Invalid product ID:", productId);
+        throw new Error("Product ID is required");
+      }
+      
+      // Ghi log cho dễ debug
+      console.log("Gọi API thêm vào giỏ hàng:", { userId, productId, quantity });
+      
       const response = await axios.post(
         `${API_URL}/add-to-cart`,
         { userId, productId, quantity },
@@ -25,8 +34,14 @@ const cartApi = {
           },
         }
       );
+      console.log("API response:", response.data);
       return response.data;
     } catch (error) {
+      console.error("Error in addToCart API call:", error);
+      if (error.response) {
+        console.error("Server response:", error.response.data);
+        console.error("Status code:", error.response.status);
+      }
       throw error;
     }
   },
@@ -35,6 +50,17 @@ const cartApi = {
     try {
       const response = await axios.delete(`${API_URL}/remove-from-cart`, {
         data: { userId, productId },
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  removeInvalidItem: async (userId, cartItemId) => {
+    try {
+      const response = await axios.delete(`${API_URL}/remove-invalid-item`, {
+        data: { userId, cartItemId },
       });
       return response.data;
     } catch (error) {

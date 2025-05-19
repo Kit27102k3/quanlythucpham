@@ -5,7 +5,7 @@ import { faCartShopping } from "@fortawesome/free-solid-svg-icons";
 import { formatCurrency } from "../../utils/formatCurrency";
 
 const ProductList = ({
-  products = [], 
+  products = [],
   isChangingPage,
   containerVariants,
   itemVariants,
@@ -38,7 +38,8 @@ const ProductList = ({
                   className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px]"
                   loading="lazy"
                 />
-                {(product.productStock === 0 || product.productStatus === "Hết hàng") && (
+                {(product.productStock === 0 ||
+                  product.productStatus === "Hết hàng") && (
                   <div className="absolute top-0 right-0 bg-red-600 text-white px-2 py-1 text-xs font-semibold">
                     Hết hàng
                   </div>
@@ -64,13 +65,35 @@ const ProductList = ({
                     <FontAwesomeIcon
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (product.productStock > 0 && product.productStatus !== "Hết hàng") {
-                        handleAddToCart(product._id);
+
+                        // Kiểm tra xem sản phẩm có thể thêm vào giỏ hàng không
+                        if (product && product._id) {
+                          // Chỉ kiểm tra status là "Hết hàng" - bỏ qua điều kiện productStock > 0 nếu productStock không tồn tại
+                          if (
+                            product.productStatus !== "Hết hàng" &&
+                            (product.productStock === undefined ||
+                              product.productStock === null ||
+                              product.productStock > 0)
+                          ) {
+                            // Gọi API thêm vào giỏ hàng
+                            handleAddToCart(product._id);
+                          } else {
+                            console.log(
+                              "Sản phẩm hết hàng hoặc không có sẵn để mua"
+                            );
+                          }
+                        } else {
+                          console.error("Product ID is missing");
                         }
                       }}
                       icon={faCartShopping}
                       className={`p-2 rounded-full text-[16px] size-5 mt-1 lg:text-[14px] ${
-                        product.productStock === 0 || product.productStatus === "Hết hàng"
+                        !product ||
+                        !product._id ||
+                        product.productStatus === "Hết hàng" ||
+                        (product.productStock !== undefined &&
+                          product.productStock !== null &&
+                          product.productStock <= 0)
                           ? "bg-gray-400 text-white cursor-not-allowed"
                           : "bg-[#51aa1b] text-white cursor-pointer hover:bg-[#438e17]"
                       }`}
@@ -84,13 +107,34 @@ const ProductList = ({
                     <FontAwesomeIcon
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (product.productStock > 0 && product.productStatus !== "Hết hàng") {
-                        handleAddToCart(product._id);
+
+                        if (product && product._id) {
+                          // Chỉ kiểm tra status là "Hết hàng" - bỏ qua điều kiện productStock > 0 nếu productStock không tồn tại
+                          if (
+                            product.productStatus !== "Hết hàng" &&
+                            (product.productStock === undefined ||
+                              product.productStock === null ||
+                              product.productStock > 0)
+                          ) {
+                            // Gọi API thêm vào giỏ hàng
+                            handleAddToCart(product._id);
+                          } else {
+                            console.log(
+                              "Sản phẩm hết hàng hoặc không có sẵn để mua"
+                            );
+                          }
+                        } else {
+                          console.error("Product ID is missing");
                         }
                       }}
                       icon={faCartShopping}
                       className={`p-2 rounded-full text-[16px] size-5 mt-1 lg:text-[14px] ${
-                        product.productStock === 0 || product.productStatus === "Hết hàng"
+                        !product ||
+                        !product._id ||
+                        product.productStatus === "Hết hàng" ||
+                        (product.productStock !== undefined &&
+                          product.productStock !== null &&
+                          product.productStock <= 0)
                           ? "bg-gray-400 text-white cursor-not-allowed"
                           : "bg-[#51aa1b] text-white cursor-pointer hover:bg-[#438e17]"
                       }`}
