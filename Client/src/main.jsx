@@ -82,6 +82,8 @@ const testVapidKey = (key) => {
   }
 };
 
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+
 // Function to send push subscription to backend
 const sendSubscriptionToBackend = async (subscription) => {
   const token = localStorage.getItem("accessToken");
@@ -93,8 +95,7 @@ const sendSubscriptionToBackend = async (subscription) => {
 
   try {
     console.log("Sending subscription to server...");
-    // Sử dụng đường dẫn tương đối để hoạt động trên cả local và vercel
-    const response = await fetch("/auth/subscribe", {
+    const response = await fetch(`${API_BASE}/auth/subscribe`, {
       method: "POST",
       body: JSON.stringify(subscription),
       headers: {
@@ -143,8 +144,7 @@ const registerServiceWorker = async () => {
           // Fetch VAPID public key từ server
           console.log("Fetching VAPID public key from server...");
           
-          // Sử dụng đường dẫn tương đối để hoạt động trên cả local và Vercel
-          const response = await fetch("/auth/vapid-public-key");
+          const response = await fetch(`${API_BASE}/auth/vapid-public-key`);
           console.log("VAPID key response status:", response.status);
           
           if (!response.ok) {
