@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import webpush from 'web-push';
 import dotenv from 'dotenv';
 import User from '../Model/Register.js'; // Import User model
@@ -12,7 +13,7 @@ const vapidKeys = {
 };
 
 webpush.setVapidDetails(
-  'kit10012003@gmail.com', // TODO: Replace with a valid email address
+  'mailto:kit10012003@gmail.com', // Sửa lỗi: thêm "mailto:" vào trước email
   vapidKeys.publicKey,
   vapidKeys.privateKey
 );
