@@ -1304,3 +1304,78 @@ export const subscribeToPush = async (req, res) => {
     res.status(500).json({ message: "Internal server error while saving subscription", error: error.message });
   }
 };
+
+// Validate Push Subscription
+export const validateSubscription = async (req, res) => {
+  try {
+    const { subscription } = req.body;
+    
+    if (!subscription) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Subscription data is required" 
+      });
+    }
+
+    const webpush = require('web-push');
+    
+    // Configure web-push with VAPID keys
+    webpush.setVapidDetails(
+      'mailto:daninc.system@gmail.com',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+    
+    // Send a small test notification payload
+    const testPayload = JSON.stringify({
+      title: "Validation Test",
+      body: "This is a test to validate your subscription",
+      silent: true
+    });
+    
+    try {
+      // Try to send a notification to check if the subscription is valid
+      await webpush.sendNotification(subscription, testPayload);
+      return res.status(200).json({ 
+        success: true,
+        valid: true,
+        message: "Subscription is valid" 
+      });
+    } catch (error) {
+      console.log("Validation error:", error);
+      
+      // Check for specific error status codes
+      if (error.statusCode === 404 || error.statusCode === 410) {
+        // 404: Not Found, 410: Gone - Subscription has expired or is invalid
+        return res.status(200).json({ 
+          success: true,
+          valid: false,
+          message: "Subscription has expired or is invalid",
+          error: error.body || error.message
+        });
+      } else if (error.statusCode === 400) {
+        // Bad request - Invalid subscription
+        return res.status(200).json({ 
+          success: true,
+          valid: false,
+          message: "Invalid subscription format",
+          error: error.body || error.message
+        });
+      } else {
+        // Other errors
+        return res.status(200).json({ 
+          success: true,
+          valid: false,
+          message: "Error validating subscription",
+          error: error.body || error.message
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Validate subscription error:", error);
+    return res.status(500).json({ 
+      success: false,
+      message: "Server error while validating subscription" 
+    });
+  }
+};

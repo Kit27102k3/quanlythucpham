@@ -16,7 +16,8 @@ import {
   facebookTokenLogin,
   getUserAvatar,
   getVapidPublicKey,
-  subscribeToPush
+  subscribeToPush,
+  validateSubscription
 } from "../Controller/authController.js";
 import { verifyToken } from "../Middleware/authMiddleware.js";
 
@@ -47,5 +48,8 @@ router.get("/vapid-public-key", getVapidPublicKey);
 
 // Route để đăng ký nhận Push Subscription
 router.post("/subscribe", verifyToken, subscribeToPush);
+
+// Add the validation route
+router.post('/validate-subscription', validateSubscription);
 
 export default router;

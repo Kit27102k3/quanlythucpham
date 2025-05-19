@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
 import App from "./App.jsx";
@@ -113,8 +114,14 @@ const registerServiceWorker = async () => {
 
     try {
       // Đầu tiên đăng ký Service Worker
-      const registration = await navigator.serviceWorker.register("/sw.js");
+      const registration = await navigator.serviceWorker.register("/sw.js", { 
+        scope: '/',
+        updateViaCache: 'none' // Không sử dụng cache cho SW
+      });
       console.log("Service Worker registered:", registration);
+
+      // Đảm bảo Service Worker được cập nhật
+      await registration.update();
 
       // Yêu cầu quyền thông báo
       const permission = await Notification.requestPermission();
@@ -151,10 +158,41 @@ const registerServiceWorker = async () => {
 
           // Check if a subscription already exists
           console.log("Checking for existing push subscription...");
-          const existingSubscription = await registration.pushManager.getSubscription();
+          let existingSubscription = await registration.pushManager.getSubscription();
 
+          // Kiểm tra xem subscription hiện tại có hợp lệ không
+          let isSubscriptionValid = false;
+          
           if (existingSubscription) {
-            console.log("Existing push subscription found:", existingSubscription);
+            try {
+              console.log("Testing existing subscription...");
+              // Gửi test validation đến server
+              const validationResponse = await fetch(`${API_BASE}/auth/validate-subscription`, {
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({subscription: existingSubscription})
+              });
+              
+              if (validationResponse.ok) {
+                const validationResult = await validationResponse.json();
+                isSubscriptionValid = validationResult.valid;
+                console.log("Subscription validation result:", validationResult);
+                
+                if (!isSubscriptionValid) {
+                  console.log("Subscription is invalid:", validationResult.message);
+                }
+              } else {
+                console.error("Failed to validate subscription - server returned:", validationResponse.status);
+                isSubscriptionValid = false;
+              }
+            } catch (error) {
+              console.log("Failed to validate subscription:", error);
+              isSubscriptionValid = false;
+            }
+          }
+
+          if (existingSubscription && isSubscriptionValid) {
+            console.log("Existing push subscription is valid:", existingSubscription);
             console.log("Subscription details:", {
               endpoint: existingSubscription.endpoint,
               expirationTime: existingSubscription.expirationTime,
@@ -164,7 +202,13 @@ const registerServiceWorker = async () => {
             // Send existing subscription to backend again in case it wasn't saved before
             await sendSubscriptionToBackend(existingSubscription);
           } else {
-            console.log("No existing push subscription found. Subscribing user...");
+            // Nếu có subscription cũ không hợp lệ, hãy hủy bỏ nó
+            if (existingSubscription) {
+              console.log("Existing subscription is invalid or expired. Unsubscribing...");
+              await existingSubscription.unsubscribe();
+            }
+            
+            console.log("Creating new push subscription...");
             
             // If no existing subscription, subscribe the user
             try {
@@ -188,7 +232,13 @@ const registerServiceWorker = async () => {
             } catch (subscribeError) {
               console.error("Failed to subscribe the user:", subscribeError);
               console.error("Error details:", subscribeError.message);
-              alert("Không thể đăng ký thông báo: " + subscribeError.message);
+              
+              // Nếu đăng ký mới lỗi, có thể là do quyền hạn. Yêu cầu người dùng reset quyền thông báo
+              if (subscribeError.message.includes('permission') || subscribeError.message.includes('denied')) {
+                alert("Quyền thông báo bị từ chối. Vui lòng vào cài đặt trình duyệt để cho phép thông báo từ trang web này.");
+              } else {
+                alert("Không thể đăng ký thông báo: " + subscribeError.message);
+              }
             }
           }
         } catch (vapidError) {
