@@ -171,11 +171,28 @@ export const sendMessage = async (req, res) => {
         const admin = await Admin.findById(adminId);
         const senderName = admin ? admin.fullName || "Admin" : "Admin";
         
-        // Gửi thông báo đến người dùng
-        await sendNewMessageNotification(userId, senderName, text)
-          .catch(error => console.error('Error sending message notification:', error));
+        // Lấy thông tin user để kiểm tra
+        const user = await User.findById(userId);
+        console.log(`Kiểm tra user trước khi gửi thông báo:`, {
+          userId,
+          hasSubscriptions: user?.pushSubscriptions?.length > 0,
+          subscriptionsCount: user?.pushSubscriptions?.length || 0,
+        });
         
-        console.log(`Đã gửi thông báo tin nhắn mới đến user ${userId}`);
+        // Gửi thông báo đến người dùng
+        console.log(`Chuẩn bị gửi thông báo với các tham số:`, {
+          userId, 
+          senderName, 
+          textPreview: text.substring(0, 20) + (text.length > 20 ? '...' : '')
+        });
+        
+        const notificationResult = await sendNewMessageNotification(userId, senderName, text)
+          .catch(error => {
+            console.error('Error sending message notification:', error);
+            return false;
+          });
+        
+        console.log(`Kết quả gửi thông báo:`, notificationResult ? 'Thành công' : 'Thất bại');
       } catch (notificationError) {
         console.error('Lỗi khi gửi thông báo tin nhắn mới:', notificationError);
         // Không ảnh hưởng đến việc trả về response

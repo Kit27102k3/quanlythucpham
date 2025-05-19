@@ -21,49 +21,83 @@ webpush.setVapidDetails(
 // Function to send a push notification to a single subscription
 export const sendPushNotification = async (userId, subscription, payload) => {
   try {
-    await webpush.sendNotification(subscription, JSON.stringify(payload));
-    console.log('Push notification sent successfully for user:', userId);
+    console.log('[sendPushNotification] Bắt đầu gửi notification cho user:', userId);
+    console.log('[sendPushNotification] Subscription endpoint:', subscription.endpoint.substring(0, 30) + '...');
+    
+    // Kiểm tra subscription hợp lệ
+    if (!subscription || !subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
+      console.error('[sendPushNotification] Invalid subscription object for user:', userId);
+      return false;
+    }
+    
+    // Chuyển payload thành chuỗi JSON
+    const payloadString = JSON.stringify(payload);
+    console.log('[sendPushNotification] Payload size:', payloadString.length, 'bytes');
+    
+    // Gửi notification
+    await webpush.sendNotification(subscription, payloadString);
+    console.log('[sendPushNotification] Push notification sent successfully for user:', userId);
+    return true;
   } catch (error) {
-    console.error('Error sending push notification for user:', userId, ':', error);
+    console.error('[sendPushNotification] Error sending push notification for user:', userId, ':', error.message);
+    console.error('[sendPushNotification] Error status code:', error.statusCode);
+    console.error('[sendPushNotification] Error stack:', error.stack);
 
     // Handle cases where the subscription is no longer valid
     if (error.statusCode === 404 || error.statusCode === 410) {
-      console.log('Subscription expired or no longer valid for user:', userId, '. Removing...');
+      console.log('[sendPushNotification] Subscription expired or no longer valid for user:', userId, '. Removing...');
       // Implement logic to remove the expired/invalid subscription from the database
       try {
-        await User.findByIdAndUpdate(
+        const result = await User.findByIdAndUpdate(
           userId,
           { $pull: { pushSubscriptions: { endpoint: subscription.endpoint } } },
           { new: true }
         );
-        console.log('Removed invalid subscription for user:', userId, ':', subscription.endpoint);
+        console.log('[sendPushNotification] Removed invalid subscription for user:', userId, ':', subscription.endpoint);
+        console.log('[sendPushNotification] User now has', result.pushSubscriptions.length, 'subscriptions');
       } catch (dbError) {
-        console.error('Error removing invalid subscription from database for user:', userId, ':', dbError);
+        console.error('[sendPushNotification] Error removing invalid subscription from database for user:', userId, ':', dbError);
       }
-
+    } else if (error.statusCode === 400) {
+      console.error('[sendPushNotification] Bad request error. Payload may be too large or subscription is invalid.');
+    } else if (error.statusCode === 401 || error.statusCode === 403) {
+      console.error('[sendPushNotification] Authentication error. VAPID details may be incorrect.');
     } else {
       // Handle other errors
-      console.error('Failed to send push notification for user:', userId, ':', error);
+      console.error('[sendPushNotification] Unknown error sending push notification for user:', userId, ':', error);
     }
+    
+    return false;
   }
 };
 
 // Gửi thông báo cho một người dùng cụ thể (tất cả các thiết bị đã đăng ký)
 export const sendNotificationToUser = async (userId, title, body, data = {}) => {
   try {
+    console.log(`[sendNotificationToUser] Bắt đầu gửi thông báo cho user: ${userId}`);
+    console.log(`[sendNotificationToUser] Tham số:`, { title, body, data });
+
     // Tìm user theo ID
     const user = await User.findById(userId);
-    if (!user || !user.pushSubscriptions || user.pushSubscriptions.length === 0) {
-      console.log('User not found or has no push subscriptions:', userId);
-      return;
+    
+    if (!user) {
+      console.log(`[sendNotificationToUser] Không tìm thấy user: ${userId}`);
+      return false;
     }
+    
+    if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) {
+      console.log(`[sendNotificationToUser] User ${userId} không có đăng ký push subscriptions nào`);
+      return false;
+    }
+    
+    console.log(`[sendNotificationToUser] Tìm thấy user ${userId} với ${user.pushSubscriptions.length} subscription`);
 
     const payload = {
       notification: {
         title: title,
         body: body,
-        icon: '/logo192.png', // Đường dẫn đến icon hiển thị trong thông báo
-        badge: '/logo192.png',
+        icon: '/Logo.png', // Đường dẫn đến icon hiển thị trong thông báo
+        badge: '/Logo.png',
         vibrate: [100, 50, 100],
         data: {
           dateOfArrival: Date.now(),
@@ -79,15 +113,26 @@ export const sendNotificationToUser = async (userId, title, body, data = {}) => 
       }
     };
 
-    // Gửi thông báo đến tất cả các subscription của user
-    const sendPromises = user.pushSubscriptions.map(subscription => 
-      sendPushNotification(userId, subscription, payload)
-    );
+    console.log(`[sendNotificationToUser] Payload được tạo:`, JSON.stringify(payload, null, 2));
 
-    await Promise.allSettled(sendPromises);
-    return true;
+    // Gửi thông báo đến tất cả các subscription của user
+    console.log(`[sendNotificationToUser] Bắt đầu gửi đến ${user.pushSubscriptions.length} subscription`);
+    
+    const sendPromises = user.pushSubscriptions.map(subscription => {
+      console.log(`[sendNotificationToUser] Gửi đến endpoint: ${subscription.endpoint.substring(0, 30)}...`);
+      return sendPushNotification(userId, subscription, payload);
+    });
+
+    const results = await Promise.allSettled(sendPromises);
+    
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
+    const failCount = results.filter(r => r.status === 'rejected').length;
+    
+    console.log(`[sendNotificationToUser] Kết quả gửi: ${successCount} thành công, ${failCount} thất bại`);
+    
+    return successCount > 0;
   } catch (error) {
-    console.error('Error sending notification to user:', userId, error);
+    console.error('[sendNotificationToUser] Error sending notification to user:', userId, error);
     return false;
   }
 };

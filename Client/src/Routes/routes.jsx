@@ -27,8 +27,6 @@ import OrderConfirmation from "../User/Pages/Cart/OrderConfirmation";
 import PaymentResult from "../User/Pages/Cart/PaymentResult";
 import PaymentQR from "../User/Pages/Cart/PaymentQR";
 import CategoryProducts from "../User/Pages/Product/CategoryProducts";
-import TipsManagement from "../Admin/Pages/Tips/TipsManagement";
-import TipForm from "../Admin/Pages/Tips/TipForm";
 import ContactList from "../Admin/Pages/Contacts/ContactList";
 import Checkout from "../User/Pages/Cart/Checkout";
 import Messages from "../Admin/Pages/Messages";
@@ -212,18 +210,7 @@ const privateRoutes = [
     page: CustomerDetails,
     layout: null,
   },
-  {
-    path: "/admin/tips",
-    page: TipsManagement,
-  },
-  {
-    path: "/admin/tips/create",
-    page: TipForm,
-  },
-  {
-    path: "/admin/tips/edit/:id",
-    page: TipForm,
-  },
+
   {
     path: "/admin/contacts",
     page: ContactList,

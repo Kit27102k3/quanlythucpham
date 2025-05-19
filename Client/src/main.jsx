@@ -80,57 +80,89 @@ const registerServiceWorker = async () => {
       console.log("Service Worker registered:", registration);
 
       const permission = await Notification.requestPermission();
+      console.log("Notification permission result:", permission);
+      
       if (permission === "granted") {
         console.log("Notification permission granted.");
 
-        // Fetch VAPID public key from backend
-        const response = await fetch("/auth/vapid-public-key");
-        if (!response.ok) {
-          throw new Error(`Failed to fetch VAPID public key: ${response.statusText}`);
-        }
-        const data = await response.json();
-        const applicationServerKey = data.vapidPublicKey;
-
-        // Check if a subscription already exists
-        const existingSubscription = await registration.pushManager.getSubscription();
-
-        if (existingSubscription) {
-          console.log("Existing push subscription found:", existingSubscription);
-          // Optionally send existing subscription to backend again in case it wasn't saved before
-          sendSubscriptionToBackend(existingSubscription);
-        } else {
-          console.log("No existing push subscription found. Subscribing user...");
-          // If no existing subscription, subscribe the user
-          try {
-            const subscribeOptions = {
-              userVisibleOnly: true,
-              applicationServerKey: urlBase64ToUint8Array(
-                applicationServerKey
-              ),
-            };
-
-            const subscription = await registration.pushManager.subscribe(
-              subscribeOptions
-            );
-
-            console.log("New Push Subscription created:", subscription);
-
-            // Send the new subscription object to your backend
-            sendSubscriptionToBackend(subscription);
-
-          } catch (subscribeError) {
-            console.error("Failed to subscribe the user:", subscribeError);
+        try {
+          // Fetch VAPID public key from backend
+          console.log("Fetching VAPID public key from server...");
+          const response = await fetch("/auth/vapid-public-key");
+          console.log("VAPID key response status:", response.status);
+          
+          if (!response.ok) {
+            throw new Error(`Failed to fetch VAPID public key: ${response.statusText}`);
           }
-        }
+          
+          const data = await response.json();
+          console.log("Received VAPID public key:", data.vapidPublicKey ? "Valid key received" : "No valid key");
+          
+          if (!data.vapidPublicKey) {
+            throw new Error("No valid VAPID public key received from server");
+          }
+          
+          const applicationServerKey = data.vapidPublicKey;
 
+          // Check if a subscription already exists
+          console.log("Checking for existing push subscription...");
+          const existingSubscription = await registration.pushManager.getSubscription();
+
+          if (existingSubscription) {
+            console.log("Existing push subscription found:", existingSubscription);
+            console.log("Subscription details:", {
+              endpoint: existingSubscription.endpoint,
+              expirationTime: existingSubscription.expirationTime,
+              hasKeys: !!existingSubscription.options?.applicationServerKey
+            });
+            
+            // Send existing subscription to backend again in case it wasn't saved before
+            sendSubscriptionToBackend(existingSubscription);
+          } else {
+            console.log("No existing push subscription found. Subscribing user...");
+            
+            // If no existing subscription, subscribe the user
+            try {
+              const subscribeOptions = {
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(applicationServerKey),
+              };
+
+              console.log("Subscribing with options:", {
+                userVisibleOnly: subscribeOptions.userVisibleOnly,
+                hasApplicationServerKey: !!subscribeOptions.applicationServerKey
+              });
+              
+              const subscription = await registration.pushManager.subscribe(subscribeOptions);
+
+              console.log("New Push Subscription created:", subscription);
+              console.log("Subscription JSON:", JSON.stringify(subscription));
+
+              // Send the new subscription object to your backend
+              sendSubscriptionToBackend(subscription);
+            } catch (subscribeError) {
+              console.error("Failed to subscribe the user:", subscribeError);
+              console.error("Error details:", subscribeError.message);
+            }
+          }
+        } catch (vapidError) {
+          console.error("Error fetching VAPID key:", vapidError);
+          console.error("Error details:", vapidError.message);
+        }
       } else {
-        console.warn("Notification permission denied.");
+        console.warn("Notification permission denied by user:", permission);
       }
     } catch (error) {
-      console.error("Service Worker registration failed or VAPID key fetch failed:", error);
+      console.error("Service Worker registration failed:", error);
+      console.error("Error details:", error.message);
     }
   } else {
-    console.warn("Service Worker or Push API not supported.");
+    if (!("serviceWorker" in navigator)) {
+      console.warn("Service Worker API not supported in this browser.");
+    }
+    if (!("PushManager" in window)) {
+      console.warn("Push API not supported in this browser.");
+    }
   }
 };
 

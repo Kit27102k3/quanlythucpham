@@ -1190,13 +1190,25 @@ export const getUserAvatar = async (req, res) => {
 // New controller function to provide VAPID public key
 export const getVapidPublicKey = (req, res) => {
   try {
+    console.log("[getVapidPublicKey] Đang lấy VAPID public key từ biến môi trường...");
+    
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+    console.log("[getVapidPublicKey] VAPID_PUBLIC_KEY:", vapidPublicKey ? "Found" : "Not found");
+    
     if (!vapidPublicKey) {
+      console.error("[getVapidPublicKey] VAPID Public Key not configured in environment variables");
       return res.status(500).json({ message: "VAPID Public Key not configured on server." });
     }
-    res.status(200).json({ vapidPublicKey });
+    
+    // Log to confirm the key is valid (should be Base64 URL-safe encoded)
+    const isValidBase64 = /^[A-Za-z0-9\-_]+=*$/.test(vapidPublicKey);
+    console.log("[getVapidPublicKey] Key appears to be valid Base64:", isValidBase64);
+    console.log("[getVapidPublicKey] Key length:", vapidPublicKey.length);
+    
+    console.log("[getVapidPublicKey] Returning VAPID public key to client");
+    res.status(200).json({ vapidPublicKey: vapidPublicKey });
   } catch (error) {
-    console.error("Error providing VAPID Public Key:", error);
+    console.error("[getVapidPublicKey] Error providing VAPID Public Key:", error);
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
