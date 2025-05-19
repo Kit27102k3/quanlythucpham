@@ -164,7 +164,7 @@ export const sendNewProductNotification = async (product) => {
     
     const notificationPromises = users.map(user => 
       sendNotificationToUser(user._id, title, body, { 
-        url: `/product/${product._id}`,
+        url: `/san-pham/${product._id}`,
         productId: product._id,
         type: 'new_product'
       })
@@ -197,7 +197,7 @@ export const sendNewCouponNotification = async (coupon) => {
     
     const notificationPromises = users.map(user => 
       sendNotificationToUser(user._id, title, body, { 
-        url: `/coupons`,
+        url: `/voucher`,
         couponCode: coupon.code,
         type: 'new_coupon'
       })
@@ -268,7 +268,7 @@ export const sendOrderStatusNotification = async (order) => {
     }
 
     return await sendNotificationToUser(order.userId, title, body, {
-      url: `/account/orders/${order._id}`,
+      url: `/tai-khoan/don-hang/${order._id}`,
       orderId: order._id,
       type: 'order_update'
     });
@@ -285,7 +285,7 @@ export const sendNewMessageNotification = async (userId, senderName, messageText
     const body = `${senderName}: ${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`;
     
     return await sendNotificationToUser(userId, title, body, {
-      url: '/account/messages',
+      url: '/tai-khoan/tin-nhan',
       type: 'new_message'
     });
   } catch (error) {
