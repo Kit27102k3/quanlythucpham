@@ -105,8 +105,8 @@ export const sendNotificationToUser = async (userId, title, body, data = {}) => 
       notification: {
         title: title,
         body: body,
-        icon: "/Logo.png", // Đúng tên file, đúng chữ hoa
-        badge: "/Logo.png",
+        icon: "/android-chrome-192x192.png", // Đúng tên file, đúng chữ hoa
+        badge: "/android-chrome-192x192.png",
         vibrate: [100, 50, 100],
         data: {
           dateOfArrival: Date.now(),

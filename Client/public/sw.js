@@ -32,8 +32,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Thông báo mới';
   const options = {
     body: data.body || '',
-    icon: data.icon || '/Logo.png',
-    badge: data.badge || '/Logo.png',
+    icon: data.icon || '/android-chrome-192x192.png',
+    badge: data.badge || '/android-chrome-192x192.png',
     vibrate: data.vibrate || data.notification?.vibrate || [100, 50, 100],
     data: data.data || data.notification?.data || {},
     actions: data.actions || data.notification?.actions || [
