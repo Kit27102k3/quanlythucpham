@@ -20,35 +20,18 @@ const primeReactConfig = {
 };
 
 // Helper function to convert URL-safe base64 string to Uint8Array
-const urlBase64ToUint8Array = (base64String) => {
-  try {
-    console.log("Converting VAPID key base64 to Uint8Array");
-    console.log("Base64 string length:", base64String.length);
-    
-    if (!base64String || base64String.length < 10) {
-      console.error("Invalid base64 string:", base64String);
-      return null;
-    }
-    
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding)
-      .replace(/-/g, "+")
-    .replace(/_/g, "/");
-
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
-
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
   }
-    
-    console.log("Uint8Array length:", outputArray.length);
   return outputArray;
-  } catch (error) {
-    console.error("Error converting base64 to Uint8Array:", error);
-    return null;
-  }
-};
+}
 
 // Function to test VAPID key
 const testVapidKey = (key) => {
@@ -158,9 +141,9 @@ const registerServiceWorker = async () => {
             throw new Error("No valid VAPID public key received from server");
           }
           
-          const applicationServerKey = data.vapidPublicKey;
+          const vapidPublicKey = data.vapidPublicKey;
           console.log("VAPID key validation check:");
-          const isKeyValid = testVapidKey(applicationServerKey);
+          const isKeyValid = testVapidKey(vapidPublicKey);
           
           if (!isKeyValid) {
             throw new Error("VAPID key validation failed");
@@ -187,7 +170,7 @@ const registerServiceWorker = async () => {
             try {
               const subscribeOptions = {
                 userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(applicationServerKey),
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
               };
 
               console.log("Subscribing with options:", {
