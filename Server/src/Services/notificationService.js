@@ -105,8 +105,8 @@ export const sendNotificationToUser = async (userId, title, body, data = {}) => 
       notification: {
         title: title,
         body: body,
-        icon: '../../../Client/public/Logo.png', // Đường dẫn đến icon hiển thị trong thông báo
-        badge: '../../../Client/public/Logo.png',
+        icon: "/Logo.png", // Đúng tên file, đúng chữ hoa
+        badge: "/Logo.png",
         vibrate: [100, 50, 100],
         data: {
           dateOfArrival: Date.now(),

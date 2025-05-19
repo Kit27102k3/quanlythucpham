@@ -29,11 +29,11 @@ self.addEventListener('push', (event) => {
     };
   }
 
-  const title = data.title || data.notification?.title || 'Thông báo mới';
+  const title = data.title || 'Thông báo mới';
   const options = {
-    body: data.body || data.notification?.body || 'Nội dung thông báo.',
-    icon: data.icon || data.notification?.icon || '/Logo.png',
-    badge: data.badge || data.notification?.badge || '/Logo.png',
+    body: data.body || '',
+    icon: data.icon || '/Logo.png',
+    badge: data.badge || '/Logo.png',
     vibrate: data.vibrate || data.notification?.vibrate || [100, 50, 100],
     data: data.data || data.notification?.data || {},
     actions: data.actions || data.notification?.actions || [

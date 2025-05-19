@@ -1,6 +1,6 @@
+/* eslint-disable no-undef */
 import Order from "../Model/Order.js";
 import Product from "../Model/Products.js";
-import SavedVoucher from "../Model/SavedVoucher.js";
 import axios from "axios";
 import dotenv from "dotenv";
 import { sendOrderConfirmationEmail, sendOrderShippingEmail } from "../utils/emailService.js";
@@ -60,6 +60,7 @@ async function updateProductStock(products, increase = false, updateSoldCount = 
 export const orderCreate = async (req, res) => {
   try {
     // Validate required fields
+    // eslint-disable-next-line no-unused-vars
     const { userId, products, totalAmount, paymentMethod, coupon } = req.body;
     if (!userId || !products || !Array.isArray(products) || products.length === 0 || !totalAmount) {
       return res.status(400).json({ 
