@@ -65,7 +65,7 @@ const testVapidKey = (key) => {
   }
 };
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8080";
+const API_BASE = "https://quanlythucpham-azf6.vercel.app" ;
 
 // Function to send push subscription to backend
 const sendSubscriptionToBackend = async (subscription) => {
