@@ -101,24 +101,55 @@ export const sendNotificationToUser = async (userId, title, body, data = {}) => 
     
     console.log(`[sendNotificationToUser] Tìm thấy user ${userId} với ${user.pushSubscriptions.length} subscription`);
 
+    // Ensure we have valid title and body
+    const finalTitle = title || 'DNC Food - Thông báo mới';
+    const finalBody = body || 'Bạn có thông báo mới. Nhấn để xem chi tiết.';
+    
+    // Build detailed notification payload
     const payload = {
+      // Include direct properties for browser notification API
+      title: finalTitle,
+      body: finalBody,
+      icon: "/Logo.png",
+      badge: "/Logo.png",
+      image: data.image || "/Logo.png",
+      tag: data.type || 'notification',
+      timestamp: Date.now(),
+      
+      // Also include nested notification format for compatibility
       notification: {
-        title: title,
-        body: body,
+        title: finalTitle,
+        body: finalBody,
         icon: "/Logo.png", // Use the logo as icon
         badge: "/Logo.png", // Use the logo as badge
+        image: data.image,
         vibrate: [100, 50, 100],
+        tag: data.type || 'notification',
+        renotify: true,
+        timestamp: Date.now(),
+        requireInteraction: true,
+        
         data: {
+          url: data.url || '/',
           dateOfArrival: Date.now(),
-          primaryKey: 1,
-          ...data
+          primaryKey: Math.floor(Math.random() * 1000000),
+          ...data // Include all custom data
         },
+        
         actions: [
           {
             action: 'explore',
             title: 'Xem ngay'
           }
         ]
+      },
+      
+      // Also include top-level data for direct access
+      data: {
+        url: data.url || '/',
+        dateOfArrival: Date.now(),
+        primaryKey: Math.floor(Math.random() * 1000000),
+        ...data
       }
     };
 
@@ -134,8 +165,8 @@ export const sendNotificationToUser = async (userId, title, body, data = {}) => 
 
     const results = await Promise.allSettled(sendPromises);
     
-    const successCount = results.filter(r => r.status === 'fulfilled').length;
-    const failCount = results.filter(r => r.status === 'rejected').length;
+    const successCount = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
+    const failCount = results.filter(r => r.status === 'rejected' || r.value === false).length;
     
     console.log(`[sendNotificationToUser] Kết quả gửi: ${successCount} thành công, ${failCount} thất bại`);
     
@@ -159,14 +190,17 @@ export const sendNewProductNotification = async (product) => {
       return;
     }
 
-    const title = 'Sản phẩm mới!';
-    const body = `${product.productName} đã được thêm vào cửa hàng. Giá: ${product.productPrice}đ`;
+    const title = `Sản phẩm mới: ${product.productName}`;
+    const body = `${product.productName} đã được thêm vào cửa hàng. Giá: ${product.productPrice.toLocaleString()}đ`;
     
     const notificationPromises = users.map(user => 
       sendNotificationToUser(user._id, title, body, { 
         url: `/product/${product._id}`,
         productId: product._id,
-        type: 'new_product'
+        type: 'new_product',
+        productName: product.productName,
+        productPrice: product.productPrice,
+        productImage: product.images?.[0] || '/Logo.png'
       })
     );
 
@@ -192,14 +226,18 @@ export const sendNewCouponNotification = async (coupon) => {
       return;
     }
 
-    const title = 'Mã giảm giá mới!';
-    const body = `Sử dụng mã ${coupon.code} để được giảm ${coupon.type === 'percentage' ? `${coupon.value}%` : `${coupon.value}đ`}`;
+    const discount = coupon.type === 'percentage' ? `${coupon.value}%` : `${coupon.value.toLocaleString()}đ`;
+    const title = `Mã giảm giá: ${coupon.code}`;
+    const body = `Sử dụng mã ${coupon.code} để được giảm ${discount}. Hạn sử dụng: ${new Date(coupon.expiryDate).toLocaleDateString('vi-VN')}`;
     
     const notificationPromises = users.map(user => 
       sendNotificationToUser(user._id, title, body, { 
         url: `/coupons`,
         couponCode: coupon.code,
-        type: 'new_coupon'
+        type: 'new_coupon',
+        discount: discount,
+        expiryDate: coupon.expiryDate,
+        image: '/images/coupon.jpg'
       })
     );
 
@@ -220,14 +258,20 @@ export const sendReviewReplyNotification = async (review) => {
       return false;
     }
 
-    const title = 'Phản hồi đánh giá';
-    const body = `Admin đã phản hồi đánh giá của bạn về sản phẩm "${review.productName || 'Sản phẩm'}"`;
+    const productName = review.productName || 'Sản phẩm';
+    const title = `Phản hồi đánh giá "${productName}"`;
+    const body = `Admin đã phản hồi đánh giá của bạn về sản phẩm "${productName}"`;
     
-    return await sendNotificationToUser(review.userId, title, body, {
+    const notificationData = {
       url: `/product/${review.productId}`,
       reviewId: review._id,
-      type: 'review_reply'
-    });
+      type: 'review_reply',
+      productName: productName,
+      productId: review.productId,
+      replyContent: review.adminReply || 'Đã có phản hồi'
+    };
+
+    return await sendNotificationToUser(review.userId, title, body, notificationData);
   } catch (error) {
     console.error('Error sending review reply notification:', error);
     return false;
@@ -271,14 +315,17 @@ export const sendOrderStatusNotification = async (order) => {
         break;
     }
 
-    return await sendNotificationToUser(order.userId, title, body, {
+    // Include explicit data for the service worker
+    const notificationData = {
       url: `/account/orders/${order._id}`,
       orderId: order._id,
       type: 'order_update',
       orderStatus: order.status,
       orderCode: orderCode,
       image: '/images/order-update.jpg' // Thêm hình ảnh nếu có
-    });
+    };
+
+    return await sendNotificationToUser(order.userId, title, body, notificationData);
   } catch (error) {
     console.error('Error sending order status notification:', error);
     return false;
@@ -291,12 +338,16 @@ export const sendNewMessageNotification = async (userId, senderName, messageText
     const title = `Tin nhắn mới từ ${senderName}`;
     const body = `${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`;
     
-    return await sendNotificationToUser(userId, title, body, {
+    // Include explicit data for the service worker
+    const notificationData = {
       url: '/account/messages',
       type: 'new_message',
       sender: senderName,
+      messagePreview: messageText.substring(0, 100),
       image: '/Logo.png' // Sử dụng logo làm hình ảnh
-    });
+    };
+    
+    return await sendNotificationToUser(userId, title, body, notificationData);
   } catch (error) {
     console.error('Error sending new message notification:', error);
     return false;
