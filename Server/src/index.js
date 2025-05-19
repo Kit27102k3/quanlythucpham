@@ -11,6 +11,7 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { deleteExpiredVouchers } from "./Controller/savedVoucherController.js";
 import { handleSepayCallback, handleBankWebhook } from "./Controller/paymentController.js";
+import reportsController from "./Controller/reportsController.js";
 
 // ES modules compatibility
 const __filename = fileURLToPath(import.meta.url);
@@ -123,6 +124,51 @@ app.use("/api/reports", reportRoutes);
 
 // Handle best-sellers endpoint directly to avoid route conflicts
 app.get('/api/products/best-sellers', getBestSellingProducts);
+
+// Add reports direct endpoints
+// Reports API routes for traditional endpoints (no authentication required)
+app.get('/api/dashboard/stats', reportsController.getDashboardStats);
+app.get('/api/analytics/revenue', reportsController.getRevenueData);
+app.get('/api/analytics/top-products', reportsController.getTopProducts);
+app.get('/api/products/inventory', reportsController.getInventoryData);
+app.get('/api/users/stats', reportsController.getUserData);
+app.get('/api/orders/stats', reportsController.getOrderData);
+app.get('/api/coupons/stats', reportsController.getPromotionData);
+app.get('/api/admin/activity-logs', reportsController.getSystemActivityData);
+app.get('/api/orders/delivery-stats', reportsController.getDeliveryData);
+app.get('/api/reviews/stats', reportsController.getFeedbackData);
+
+// Reports API routes for Edge API (no authentication required)
+app.get('/api/reports/dashboard', (req, res) => {
+  reportsController.getDashboardStats(req, res);
+});
+app.get('/api/reports/revenue', (req, res) => {
+  reportsController.getRevenueData(req, res);
+});
+app.get('/api/reports/top-products', (req, res) => {
+  reportsController.getTopProducts(req, res);
+});
+app.get('/api/reports/inventory', (req, res) => {
+  reportsController.getInventoryData(req, res);
+});
+app.get('/api/reports/users', (req, res) => {
+  reportsController.getUserData(req, res);
+});
+app.get('/api/reports/orders', (req, res) => {
+  reportsController.getOrderData(req, res);
+});
+app.get('/api/reports/promotions', (req, res) => {
+  reportsController.getPromotionData(req, res);
+});
+app.get('/api/reports/system-activity', (req, res) => {
+  reportsController.getSystemActivityData(req, res);
+});
+app.get('/api/reports/delivery', (req, res) => {
+  reportsController.getDeliveryData(req, res);
+});
+app.get('/api/reports/feedback', (req, res) => {
+  reportsController.getFeedbackData(req, res);
+});
 
 // Dọn dẹp các webhook handler trùng lặp
 // Đây là danh sách các đường dẫn webhook cần hỗ trợ
