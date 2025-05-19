@@ -105,8 +105,8 @@ export const sendNotificationToUser = async (userId, title, body, data = {}) => 
       notification: {
         title: title,
         body: body,
-        icon: "/android-chrome-192x192.png", // Đúng tên file, đúng chữ hoa
-        badge: "/android-chrome-192x192.png",
+        icon: "/Logo.png", // Use the logo as icon
+        badge: "/Logo.png", // Use the logo as badge
         vibrate: [100, 50, 100],
         data: {
           dateOfArrival: Date.now(),
@@ -244,33 +244,40 @@ export const sendOrderStatusNotification = async (order) => {
 
     let title = 'Cập nhật đơn hàng';
     let body = 'Đơn hàng của bạn đã được cập nhật';
+    let orderCode = order.orderCode || order._id.toString().substring(0, 8).toUpperCase();
 
     // Tùy chỉnh thông báo dựa trên trạng thái
     switch (order.status) {
       case 'confirmed':
-        body = 'Đơn hàng của bạn đã được xác nhận';
+        title = `Đơn hàng #${orderCode} đã xác nhận`;
+        body = 'Đơn hàng của bạn đã được xác nhận và đang chờ xử lý';
         break;
       case 'preparing':
-        body = 'Đơn hàng của bạn đang được chuẩn bị';
+        title = `Đơn hàng #${orderCode} đang chuẩn bị`;
+        body = 'Đơn hàng của bạn đang được chuẩn bị và sẽ sớm được giao cho đơn vị vận chuyển';
         break;
       case 'shipping':
       case 'delivering':
-        body = 'Đơn hàng của bạn đang được giao đến bạn';
+        title = `Đơn hàng #${orderCode} đang giao`;
+        body = 'Đơn hàng của bạn đang được giao đến địa chỉ của bạn';
         break;
       case 'completed':
-        title = 'Đơn hàng hoàn thành';
-        body = 'Đơn hàng của bạn đã được giao thành công';
+        title = `Đơn hàng #${orderCode} hoàn thành`;
+        body = 'Đơn hàng của bạn đã được giao thành công. Cảm ơn bạn đã mua hàng!';
         break;
       case 'cancelled':
-        title = 'Đơn hàng đã hủy';
-        body = 'Đơn hàng của bạn đã bị hủy';
+        title = `Đơn hàng #${orderCode} đã hủy`;
+        body = 'Đơn hàng của bạn đã bị hủy. Vui lòng liên hệ với chúng tôi nếu có thắc mắc.';
         break;
     }
 
     return await sendNotificationToUser(order.userId, title, body, {
       url: `/account/orders/${order._id}`,
       orderId: order._id,
-      type: 'order_update'
+      type: 'order_update',
+      orderStatus: order.status,
+      orderCode: orderCode,
+      image: '/images/order-update.jpg' // Thêm hình ảnh nếu có
     });
   } catch (error) {
     console.error('Error sending order status notification:', error);
@@ -281,12 +288,14 @@ export const sendOrderStatusNotification = async (order) => {
 // Gửi thông báo khi có tin nhắn mới
 export const sendNewMessageNotification = async (userId, senderName, messageText) => {
   try {
-    const title = 'Tin nhắn mới';
-    const body = `${senderName}: ${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`;
+    const title = `Tin nhắn mới từ ${senderName}`;
+    const body = `${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`;
     
     return await sendNotificationToUser(userId, title, body, {
       url: '/account/messages',
-      type: 'new_message'
+      type: 'new_message',
+      sender: senderName,
+      image: '/Logo.png' // Sử dụng logo làm hình ảnh
     });
   } catch (error) {
     console.error('Error sending new message notification:', error);

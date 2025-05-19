@@ -43,5 +43,6 @@
       "url": "/gio-hang",
       "icons": [{ "src": "/Logo.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "notification_icon": "/Logo.png"
 } 

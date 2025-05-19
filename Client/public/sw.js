@@ -29,13 +29,52 @@ self.addEventListener('push', (event) => {
     };
   }
 
-  const title = data.title || 'Thông báo mới';
+  // Extract notification details from data
+  let title, body, icon;
+  
+  // If the notification data is nested inside a notification property
+  if (data.notification) {
+    title = data.notification.title;
+    body = data.notification.body;
+    icon = data.notification.icon;
+  } else {
+    title = data.title;
+    body = data.body;
+    icon = data.icon;
+  }
+  
+  // Use specific title instead of generic "Thông báo mới"
+  if (!title) {
+    // Determine notification type if available
+    const type = data.data?.type || data.notification?.data?.type;
+    switch (type) {
+      case 'order_update':
+        title = 'Cập nhật đơn hàng';
+        break;
+      case 'new_message':
+        title = 'Tin nhắn mới';
+        break;
+      case 'review_reply':
+        title = 'Phản hồi đánh giá';
+        break;
+      case 'new_product':
+        title = 'Sản phẩm mới';
+        break;
+      case 'new_coupon':
+        title = 'Mã giảm giá mới';
+        break;
+      default:
+        title = 'DNC Food - Thông báo';
+    }
+  }
+
   const options = {
-    body: data.body || '',
-    icon: data.icon || '/android-chrome-192x192.png',
-    badge: data.badge || '/android-chrome-192x192.png',
+    body: body || '',
+    icon: icon || '/Logo.png',
+    badge: data.badge || '/Logo.png',
     vibrate: data.vibrate || data.notification?.vibrate || [100, 50, 100],
     data: data.data || data.notification?.data || {},
+    image: data.image || data.notification?.image || null,
     actions: data.actions || data.notification?.actions || [
       {
         action: 'explore',
