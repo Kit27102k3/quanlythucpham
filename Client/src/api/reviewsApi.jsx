@@ -149,7 +149,7 @@ const getAllReviews = async (page = 1, limit = 10) => {
       throw new Error("Bạn cần đăng nhập với quyền admin để xem tất cả đánh giá");
     }
     
-    console.log('Sử dụng token để xem đánh giá:', token || adminToken);
+    
 
     // Thêm header đặc biệt cho admin token nếu cần
     const headers = {};
@@ -181,7 +181,7 @@ const toggleReviewStatus = async (reviewId) => {
       throw new Error("Bạn cần đăng nhập với quyền admin để thực hiện hành động này");
     }
 
-    console.log('Sử dụng token để cập nhật trạng thái đánh giá:', token || adminToken);
+   
 
     // Thêm header đặc biệt cho admin token nếu cần
     const headers = {};

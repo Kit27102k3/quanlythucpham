@@ -1,3 +1,7 @@
+/* eslint-disable no-func-assign */
+/* eslint-disable no-constant-condition */
+/* eslint-disable no-undef */
+/* eslint-disable no-unused-vars */
 "use strict";
 
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
@@ -401,7 +405,7 @@ var getAllReviews = exports.getAllReviews = /*#__PURE__*/function () {
             _context5.next = 16;
             break;
           }
-          console.log("Sử dụng token đặc biệt cho admin TKhiem");
+         
 
           // Bỏ qua xác thực JWT, trực tiếp lấy dữ liệu
           // Phân trang
@@ -537,7 +541,7 @@ var toggleReviewPublishStatus = exports.toggleReviewPublishStatus = /*#__PURE__*
             _context6.next = 21;
             break;
           }
-          console.log("Sử dụng token đặc biệt cho admin TKhiem");
+         
 
           // Bỏ qua xác thực JWT, trực tiếp cập nhật
           // Kiểm tra xem đánh giá có tồn tại không
@@ -703,7 +707,7 @@ var replyToReview = exports.replyToReview = /*#__PURE__*/function () {
             _context7.next = 25;
             break;
           }
-          console.log("Sử dụng token đặc biệt cho admin TKhiem");
+         
 
           // Kiểm tra xem đánh giá có tồn tại không
           if (_mongoose["default"].Types.ObjectId.isValid(reviewId)) {
@@ -891,7 +895,7 @@ var editReply = exports.editReply = /*#__PURE__*/function () {
             _context8.next = 25;
             break;
           }
-          console.log("Sử dụng token đặc biệt cho admin TKhiem");
+         
 
           // Kiểm tra xem đánh giá có tồn tại không
           if (_mongoose["default"].Types.ObjectId.isValid(reviewId)) {
@@ -1061,7 +1065,7 @@ var deleteReply = exports.deleteReply = /*#__PURE__*/function () {
             _context9.next = 22;
             break;
           }
-          console.log("Sử dụng token đặc biệt cho admin TKhiem");
+         
 
           // Kiểm tra xem đánh giá có tồn tại không
           if (_mongoose["default"].Types.ObjectId.isValid(reviewId)) {

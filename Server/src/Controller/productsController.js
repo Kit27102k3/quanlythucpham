@@ -9,7 +9,55 @@ import fs from "fs";
 import path from "path";
 import mongoose from "mongoose";
 import Admin from "../Model/adminModel.js"; // Import Admin model
-import { sendPushNotification, sendNewProductNotification } from "../Services/notificationService.js"; // Import thêm sendNewProductNotification
+import {
+  sendPushNotification,
+  sendNewProductNotification,
+} from "../Services/notificationService.js"; // Import thêm sendNewProductNotification
+
+// Thêm hàm kiểm tra và cập nhật trạng thái sản phẩm dựa vào thời hạn giảm giá và hạn sử dụng
+export const updateProductExpirations = async () => {
+  try {
+    const currentDate = new Date();
+
+    // Cập nhật giảm giá của sản phẩm đã hết thời hạn giảm giá
+    const discountExpiredProducts = await Product.find({
+      discountEndDate: { $lt: currentDate },
+      productDiscount: { $gt: 0 },
+    });
+
+    for (const product of discountExpiredProducts) {
+      product.productDiscount = 0;
+      product.productPromoPrice = 0;
+      product.discountStartDate = null;
+      product.discountEndDate = null;
+      await product.save();
+      console.log(`Đã cập nhật giá gốc cho sản phẩm: ${product.productName}`);
+    }
+
+    // Cập nhật trạng thái sản phẩm đã hết hạn sử dụng
+    const expiryDateProducts = await Product.find({
+      expiryDate: { $lt: currentDate },
+      productStatus: { $ne: "Hết hàng" },
+    });
+
+    for (const product of expiryDateProducts) {
+      product.productStatus = "Hết hàng";
+      product.productStock = 0;
+      await product.save();
+      console.log(
+        `Đã cập nhật trạng thái "Hết hàng" cho sản phẩm: ${product.productName}`
+      );
+    }
+
+    return {
+      discountUpdated: discountExpiredProducts.length,
+      expiryUpdated: expiryDateProducts.length,
+    };
+  } catch (error) {
+    console.error("Lỗi khi cập nhật hạn sản phẩm:", error);
+    return { error: error.message };
+  }
+};
 
 export const createProduct = async (req, res) => {
   try {
@@ -20,14 +68,18 @@ export const createProduct = async (req, res) => {
         .json({ message: "Vui lòng tải lên ít nhất một hình ảnh" });
     }
 
-    const category = await Category.findOne({ nameCategory: req.body.productCategory });
+    const category = await Category.findOne({
+      nameCategory: req.body.productCategory,
+    });
     if (!category) {
-      return res.status(400).json({ message: "Danh mục sản phẩm không tồn tại" });
+      return res
+        .status(400)
+        .json({ message: "Danh mục sản phẩm không tồn tại" });
     }
 
     // Sử dụng URLs đã được upload thông qua Cloudinary widget
-    const uploadedUrls = Array.isArray(req.body.imageUrls) 
-      ? req.body.imageUrls 
+    const uploadedUrls = Array.isArray(req.body.imageUrls)
+      ? req.body.imageUrls
       : [req.body.imageUrls];
 
     let descriptions = [];
@@ -43,13 +95,26 @@ export const createProduct = async (req, res) => {
     // Xử lý thông tin ngày bắt đầu và kết thúc giảm giá
     let discountStartDate = null;
     let discountEndDate = null;
-    
+
     if (req.body.discountStartDate) {
       discountStartDate = new Date(req.body.discountStartDate);
     }
-    
+
     if (req.body.discountEndDate) {
       discountEndDate = new Date(req.body.discountEndDate);
+    }
+
+    // Xử lý hạn sử dụng
+    let expiryDate = null;
+    let productStatus = req.body.productStatus || "Còn hàng";
+
+    if (req.body.expiryDate) {
+      expiryDate = new Date(req.body.expiryDate);
+
+      // Nếu hạn sử dụng đã qua, cập nhật trạng thái thành "Hết hàng"
+      if (expiryDate < new Date()) {
+        productStatus = "Hết hàng";
+      }
     }
 
     const newProduct = new Product({
@@ -63,34 +128,40 @@ export const createProduct = async (req, res) => {
       productCategory: category.nameCategory,
       productUnit: req.body.productUnit || "gram",
       discountStartDate,
-      discountEndDate
+      discountEndDate,
+      expiryDate,
+      productStatus,
     });
 
     // Tính productPromoPrice từ productPrice và productDiscount
     if (newProduct.productDiscount > 0) {
-      newProduct.productPromoPrice = newProduct.productPrice * (1 - newProduct.productDiscount / 100);
+      newProduct.productPromoPrice =
+        newProduct.productPrice * (1 - newProduct.productDiscount / 100);
     }
 
     const savedProduct = await newProduct.save();
-    
+
     // --- Push Notification Logic for New Product ---
     // Gửi thông báo đến tất cả người dùng có đăng ký nhận thông báo
-    sendNewProductNotification(savedProduct).catch(error => 
-      console.error('Error sending product notification to users:', error)
+    sendNewProductNotification(savedProduct).catch((error) =>
+      console.error("Error sending product notification to users:", error)
     );
-    
+
     // Notification for admins - vẫn giữ lại
     const adminsToNotify = await Admin.find({
       $or: [
-        { role: 'admin' }, // Admin gets all notifications
-        { role: 'manager', permissions: { $in: ['Quản lý sản phẩm', 'products'] } }, // Managers with product permission
+        { role: "admin" }, // Admin gets all notifications
+        {
+          role: "manager",
+          permissions: { $in: ["Quản lý sản phẩm", "products"] },
+        }, // Managers with product permission
       ],
-      'pushSubscriptions.0': { $exists: true } // Only users with at least one subscription
+      "pushSubscriptions.0": { $exists: true }, // Only users with at least one subscription
     });
 
     const notificationPayload = {
-      title: 'Sản phẩm mới',
-      body: `Sản phẩm \"${savedProduct.productName}\" đã được thêm mới.`, 
+      title: "Sản phẩm mới",
+      body: `Sản phẩm "${savedProduct.productName}" đã được thêm mới.`,
       data: {
         url: `/admin/products/edit/${savedProduct._id}`,
         productId: savedProduct._id,
@@ -99,8 +170,12 @@ export const createProduct = async (req, res) => {
 
     for (const admin of adminsToNotify) {
       for (const subscription of admin.pushSubscriptions) {
-        sendPushNotification(admin._id, subscription, notificationPayload).catch(error => 
-          console.error('Error sending notification to admin:', error)
+        sendPushNotification(
+          admin._id,
+          subscription,
+          notificationPayload
+        ).catch((error) =>
+          console.error("Error sending notification to admin:", error)
         );
       }
     }
@@ -114,15 +189,21 @@ export const createProduct = async (req, res) => {
     productToSend.productWeight = String(productToSend.productWeight);
     productToSend.productPromoPrice = String(productToSend.productPromoPrice);
     productToSend.productWarranty = String(productToSend.productWarranty);
-    
+
     // Format discount dates
     if (productToSend.discountStartDate) {
-      productToSend.discountStartDate = productToSend.discountStartDate.toISOString();
+      productToSend.discountStartDate =
+        productToSend.discountStartDate.toISOString();
     }
     if (productToSend.discountEndDate) {
-      productToSend.discountEndDate = productToSend.discountEndDate.toISOString();
+      productToSend.discountEndDate =
+        productToSend.discountEndDate.toISOString();
     }
-    
+    // Format expiry date
+    if (productToSend.expiryDate) {
+      productToSend.expiryDate = productToSend.expiryDate.toISOString();
+    }
+
     return res.status(201).json(productToSend);
   } catch (error) {
     console.error("Error in createProduct:", error);
@@ -137,10 +218,13 @@ export const createProduct = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
+    // Kiểm tra và cập nhật hạn sử dụng và giảm giá trước khi trả về danh sách
+    await updateProductExpirations();
+
     const products = await Product.find();
-    
+
     // Chuyển đổi dữ liệu số thành chuỗi
-    const productsToSend = products.map(product => {
+    const productsToSend = products.map((product) => {
       const productObj = product.toObject();
       productObj.productPrice = String(productObj.productPrice || "");
       productObj.productDiscount = String(productObj.productDiscount || "");
@@ -150,7 +234,7 @@ export const getAllProducts = async (req, res) => {
       productObj.productWarranty = String(productObj.productWarranty || "");
       return productObj;
     });
-    
+
     res.status(200).json(productsToSend);
   } catch (error) {
     res.status(500).json({ message: "Lấy danh sách sản phẩm thất bại", error });
@@ -160,24 +244,35 @@ export const getAllProducts = async (req, res) => {
 export const getProductBySlug = async (req, res) => {
   const { slug } = req.params;
   try {
+    // Kiểm tra và cập nhật hạn sử dụng và giảm giá trước khi trả về sản phẩm
+    await updateProductExpirations();
+
     const products = await Product.find();
-    const product = products.find(p => 
-      p.productName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") === slug
+    const product = products.find(
+      (p) =>
+        p.productName
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "") === slug
     );
-    
+
     if (!product) {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
-    
+
     // Chuyển đổi dữ liệu số thành chuỗi
     const productToSend = product.toObject();
     productToSend.productPrice = String(productToSend.productPrice || "");
     productToSend.productDiscount = String(productToSend.productDiscount || "");
     productToSend.productStock = String(productToSend.productStock || "");
     productToSend.productWeight = String(productToSend.productWeight || "");
-    productToSend.productPromoPrice = String(productToSend.productPromoPrice || "");
+    productToSend.productPromoPrice = String(
+      productToSend.productPromoPrice || ""
+    );
     productToSend.productWarranty = String(productToSend.productWarranty || "");
-    
+
     res.status(200).json(productToSend);
   } catch (error) {
     res.status(500).json({ message: "Lấy chi tiết sản phẩm thất bại", error });
@@ -193,10 +288,17 @@ export const updateProduct = async (req, res) => {
     }
 
     // Kiểm tra danh mục mới nếu có thay đổi
-    if (req.body.productCategory && req.body.productCategory !== product.productCategory) {
-      const category = await Category.findOne({ nameCategory: req.body.productCategory });
+    if (
+      req.body.productCategory &&
+      req.body.productCategory !== product.productCategory
+    ) {
+      const category = await Category.findOne({
+        nameCategory: req.body.productCategory,
+      });
       if (!category) {
-        return res.status(400).json({ message: "Danh mục sản phẩm không tồn tại" });
+        return res
+          .status(400)
+          .json({ message: "Danh mục sản phẩm không tồn tại" });
       }
       req.body.productCategory = category.nameCategory;
     }
@@ -204,17 +306,17 @@ export const updateProduct = async (req, res) => {
     // Sử dụng URLs đã được upload thông qua Cloudinary widget
     let newImageUrls = [];
     if (req.body.newImageUrls && req.body.newImageUrls.length > 0) {
-      newImageUrls = Array.isArray(req.body.newImageUrls) 
-        ? req.body.newImageUrls 
+      newImageUrls = Array.isArray(req.body.newImageUrls)
+        ? req.body.newImageUrls
         : [req.body.newImageUrls];
     }
 
     let existingImages = product.productImages || [];
     if (req.body.keepImages) {
-      const keepImages = Array.isArray(req.body.keepImages) 
-        ? req.body.keepImages 
+      const keepImages = Array.isArray(req.body.keepImages)
+        ? req.body.keepImages
         : JSON.parse(req.body.keepImages);
-      
+
       existingImages = existingImages.filter((img) => keepImages.includes(img));
 
       const imagesToDelete = product.productImages.filter(
@@ -243,15 +345,34 @@ export const updateProduct = async (req, res) => {
     }
 
     // Xử lý thông tin ngày bắt đầu và kết thúc giảm giá
-    let discountStartDate = null;
-    let discountEndDate = null;
-    
+    let discountStartDate = product.discountStartDate;
+    let discountEndDate = product.discountEndDate;
+
     if (req.body.discountStartDate) {
       discountStartDate = new Date(req.body.discountStartDate);
+    } else if (req.body.discountStartDate === null) {
+      discountStartDate = null;
     }
-    
+
     if (req.body.discountEndDate) {
       discountEndDate = new Date(req.body.discountEndDate);
+    } else if (req.body.discountEndDate === null) {
+      discountEndDate = null;
+    }
+
+    // Xử lý hạn sử dụng
+    let expiryDate = product.expiryDate;
+    let productStatus = req.body.productStatus || product.productStatus;
+
+    if (req.body.expiryDate) {
+      expiryDate = new Date(req.body.expiryDate);
+
+      // Nếu hạn sử dụng đã qua, cập nhật trạng thái thành "Hết hàng"
+      if (expiryDate < new Date()) {
+        productStatus = "Hết hàng";
+      }
+    } else if (req.body.expiryDate === null) {
+      expiryDate = null;
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(
@@ -266,15 +387,19 @@ export const updateProduct = async (req, res) => {
         productWeight: Number(req.body.productWeight) || 0,
         productWarranty: Number(req.body.productWarranty) || 0,
         productUnit: req.body.productUnit || product.productUnit || "gram",
-        ...(discountStartDate && { discountStartDate }),
-        ...(discountEndDate && { discountEndDate })
+        discountStartDate,
+        discountEndDate,
+        expiryDate,
+        productStatus,
       },
       { new: true }
     );
 
     // Tính lại productPromoPrice sau khi cập nhật
     if (updatedProduct.productDiscount > 0) {
-      updatedProduct.productPromoPrice = updatedProduct.productPrice * (1 - updatedProduct.productDiscount / 100);
+      updatedProduct.productPromoPrice =
+        updatedProduct.productPrice *
+        (1 - updatedProduct.productDiscount / 100);
       await updatedProduct.save();
     } else {
       updatedProduct.productPromoPrice = 0;
@@ -289,13 +414,19 @@ export const updateProduct = async (req, res) => {
     productToSend.productWeight = String(productToSend.productWeight);
     productToSend.productPromoPrice = String(productToSend.productPromoPrice);
     productToSend.productWarranty = String(productToSend.productWarranty);
-    
+
     // Format discount dates
     if (productToSend.discountStartDate) {
-      productToSend.discountStartDate = productToSend.discountStartDate.toISOString();
+      productToSend.discountStartDate =
+        productToSend.discountStartDate.toISOString();
     }
     if (productToSend.discountEndDate) {
-      productToSend.discountEndDate = productToSend.discountEndDate.toISOString();
+      productToSend.discountEndDate =
+        productToSend.discountEndDate.toISOString();
+    }
+    // Format expiry date
+    if (productToSend.expiryDate) {
+      productToSend.expiryDate = productToSend.expiryDate.toISOString();
     }
 
     res.status(200).json({
@@ -329,23 +460,46 @@ export const deleteProduct = async (req, res) => {
 export const getProductById = async (req, res) => {
   const { id } = req.params;
   try {
+    // Kiểm tra và cập nhật hạn sử dụng và giảm giá trước khi trả về chi tiết sản phẩm
+    await updateProductExpirations();
+
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
-    
+
     // Chuyển đổi dữ liệu số thành chuỗi
     const productToSend = product.toObject();
     productToSend.productPrice = String(productToSend.productPrice || "");
     productToSend.productDiscount = String(productToSend.productDiscount || "");
     productToSend.productStock = String(productToSend.productStock || "");
     productToSend.productWeight = String(productToSend.productWeight || "");
-    productToSend.productPromoPrice = String(productToSend.productPromoPrice || "");
+    productToSend.productPromoPrice = String(
+      productToSend.productPromoPrice || ""
+    );
     productToSend.productWarranty = String(productToSend.productWarranty || "");
-    
+
     res.status(200).json(productToSend);
   } catch (error) {
     res.status(500).json({ message: "Lấy chi tiết sản phẩm thất bại", error });
+  }
+};
+
+// Thêm API endpoint để kiểm tra và cập nhật hạn sử dụng và giảm giá
+export const checkAndUpdateExpirations = async (req, res) => {
+  try {
+    const result = await updateProductExpirations();
+    res.status(200).json({
+      success: true,
+      message: "Kiểm tra và cập nhật hạn sản phẩm thành công",
+      result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Cập nhật hạn sản phẩm thất bại",
+      error: error.message,
+    });
   }
 };
 
@@ -375,9 +529,9 @@ export const searchProducts = async (req, res) => {
       .limit(limit)
       .lean();
     const total = await Product.countDocuments(searchQuery);
-    
+
     // Chuyển đổi dữ liệu số thành chuỗi
-    const productsToSend = products.map(product => {
+    const productsToSend = products.map((product) => {
       product.productPrice = String(product.productPrice || "");
       product.productDiscount = String(product.productDiscount || "");
       product.productStock = String(product.productStock || "");
@@ -386,7 +540,7 @@ export const searchProducts = async (req, res) => {
       product.productWarranty = String(product.productWarranty || "");
       return product;
     });
-    
+
     return res.status(200).json({
       products: productsToSend,
       total,
@@ -407,16 +561,16 @@ export const getProductByCategory = async (req, res) => {
   try {
     const categoryName = req.params.category;
     const excludeId = req.query.excludeId;
-    
+
     let query = { productCategory: categoryName };
     if (excludeId) {
       query._id = { $ne: excludeId };
     }
-    
+
     const products = await Product.find(query);
-    
+
     // Chuyển đổi dữ liệu số thành chuỗi
-    const productsToSend = products.map(product => {
+    const productsToSend = products.map((product) => {
       const productObj = product.toObject();
       productObj.productPrice = String(productObj.productPrice || "");
       productObj.productDiscount = String(productObj.productDiscount || "");
@@ -426,10 +580,12 @@ export const getProductByCategory = async (req, res) => {
       productObj.productWarranty = String(productObj.productWarranty || "");
       return productObj;
     });
-    
+
     res.status(200).json(productsToSend);
   } catch (error) {
-    res.status(500).json({ message: "Lấy sản phẩm theo danh mục thất bại", error });
+    res
+      .status(500)
+      .json({ message: "Lấy sản phẩm theo danh mục thất bại", error });
   }
 };
 
@@ -456,11 +612,13 @@ export const updateProductCategory = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Cập nhật danh mục sản phẩm thành công",
-      product
+      product,
     });
   } catch (error) {
     console.error("Error in updateProductCategory:", error);
-    res.status(500).json({ message: "Cập nhật danh mục sản phẩm thất bại", error });
+    res
+      .status(500)
+      .json({ message: "Cập nhật danh mục sản phẩm thất bại", error });
   }
 };
 
@@ -468,14 +626,16 @@ export const updateProductCategory = async (req, res) => {
 export const getBestSellingProducts = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 4;
-    const period = req.query.period || 'all';
+    const period = req.query.period || "all";
 
     const bestSellingProducts = await BestSellingProduct.find()
       .sort({ totalSold: -1 })
       .limit(limit)
-      .populate('productId');
+      .populate("productId");
 
-    const activeProducts = bestSellingProducts.filter(item => item.productId && item.productId.isActive);
+    const activeProducts = bestSellingProducts.filter(
+      (item) => item.productId && item.productId.isActive
+    );
 
     res.status(200).json(activeProducts);
   } catch (error) {

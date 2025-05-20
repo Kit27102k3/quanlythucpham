@@ -8,6 +8,7 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { InputNumber } from "primereact/inputnumber";
 import { Card } from "primereact/card";
+import { Calendar } from "primereact/calendar";
 import { toast } from "sonner";
 import categoriesApi from "../../api/categoriesApi";
 import productsApi from "../../api/productsApi";
@@ -24,6 +25,9 @@ const EditProduct = ({
     productDescription: product.productDescription
       ? product.productDescription.join(". ")
       : "",
+    discountStartDate: product.discountStartDate ? new Date(product.discountStartDate) : null,
+    discountEndDate: product.discountEndDate ? new Date(product.discountEndDate) : null,
+    expiryDate: product.expiryDate ? new Date(product.expiryDate) : null,
   });
 
   const [imagePreviews, setImagePreviews] = useState(
@@ -32,6 +36,7 @@ const EditProduct = ({
   const [newImages, setNewImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [hasDiscount, setHasDiscount] = useState(parseFloat(product.productDiscount) > 0);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -136,6 +141,29 @@ const EditProduct = ({
         productStatus: newStatus
       }));
     }
+    
+    // Nếu cập nhật giảm giá
+    if (name === "productDiscount") {
+      const hasDiscountValue = parseFloat(newValue) > 0;
+      setHasDiscount(hasDiscountValue);
+      
+      // Nếu bỏ giảm giá, xóa ngày giảm giá
+      if (!hasDiscountValue) {
+        setEditedProduct(prev => ({
+          ...prev,
+          discountStartDate: null,
+          discountEndDate: null
+        }));
+      }
+    }
+  };
+
+  // Thêm hàm xử lý sự kiện thay đổi ngày
+  const handleDateChange = (date, name) => {
+    setEditedProduct(prev => ({
+      ...prev,
+      [name]: date
+    }));
   };
 
   const handleCloudinaryUpload = () => {
@@ -229,6 +257,18 @@ const EditProduct = ({
         setIsSubmitting(false);
         return;
       }
+      
+      // Kiểm tra thời gian giảm giá
+      if (hasDiscount && editedProduct.discountStartDate && editedProduct.discountEndDate) {
+        const startDate = new Date(editedProduct.discountStartDate);
+        const endDate = new Date(editedProduct.discountEndDate);
+        
+        if (startDate > endDate) {
+          toast.error("Ngày bắt đầu giảm giá không thể sau ngày kết thúc");
+          setIsSubmitting(false);
+          return;
+        }
+      }
 
       const category = categories.find((cat) => cat._id === selectedCategory);
       if (!category) {
@@ -267,6 +307,24 @@ const EditProduct = ({
         keepImages: keepImages,
         newImageUrls: newImages,
       };
+      
+      // Format dates for API
+      if (hasDiscount && editedProduct.discountStartDate) {
+        productData.discountStartDate = editedProduct.discountStartDate.toISOString();
+      } else {
+        productData.discountStartDate = null;
+      }
+      
+      if (hasDiscount && editedProduct.discountEndDate) {
+        productData.discountEndDate = editedProduct.discountEndDate.toISOString();
+      } else {
+        productData.discountEndDate = null;
+      }
+      
+      // Add expiry date if set
+      if (editedProduct.expiryDate) {
+        productData.expiryDate = editedProduct.expiryDate.toISOString();
+      }
 
       console.log("Product data being submitted:", productData);
       
@@ -326,6 +384,11 @@ const EditProduct = ({
       }));
     }
   }, [editedProduct.productStock]);
+
+  // Thêm useEffect để cập nhật trạng thái hasDiscount
+  useEffect(() => {
+    setHasDiscount(parseFloat(editedProduct.productDiscount) > 0);
+  }, [editedProduct.productDiscount]);
 
   return (
     <div className="relative p-3">
@@ -548,6 +611,122 @@ const EditProduct = ({
                   max={100}
                   inputClassName="h-10 px-3 border border-gray-300 rounded-md"
                 />
+              </div>
+              
+              {hasDiscount && (
+                <div className="field col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Thời hạn giảm giá
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="discountStartDate" className="block text-sm text-gray-600 mb-1">
+                        Từ ngày
+                      </label>
+                      <Calendar
+                        id="discountStartDate"
+                        value={editedProduct.discountStartDate}
+                        onChange={(e) => handleDateChange(e.value, 'discountStartDate')}
+                        showIcon
+                        className="w-full"
+                        dateFormat="dd/mm/yy"
+                        placeholder="Chọn ngày bắt đầu"
+                        minDate={new Date()}
+                        appendTo="self"
+                        panelClassName="z-50 shadow-lg rounded-lg border border-gray-200"
+                        pt={{
+                          root: { className: 'z-50' },
+                          panel: { className: 'z-50 rounded-lg' },
+                          input: { 
+                            className: 'border border-gray-300 rounded-md h-10 w-full', 
+                            style: { height: '2.5rem' } 
+                          },
+                          button: { className: 'text-blue-500 hover:text-blue-700' },
+                          monthNavigator: { className: 'text-sm font-medium' },
+                          yearNavigator: { className: 'text-sm font-medium' },
+                          header: { className: 'bg-gray-50 rounded-t-lg p-2' },
+                          footer: { className: 'bg-gray-50 rounded-b-lg p-2' },
+                          today: { className: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+                          day: { className: 'rounded hover:bg-blue-50' },
+                          selectedDay: { className: 'bg-blue-500 text-white rounded hover:bg-blue-600' }
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="discountEndDate" className="block text-sm text-gray-600 mb-1">
+                        Đến ngày
+                      </label>
+                      <Calendar
+                        id="discountEndDate"
+                        value={editedProduct.discountEndDate}
+                        onChange={(e) => handleDateChange(e.value, 'discountEndDate')}
+                        showIcon
+                        className="w-full"
+                        dateFormat="dd/mm/yy"
+                        placeholder="Chọn ngày kết thúc"
+                        minDate={editedProduct.discountStartDate || new Date()}
+                        appendTo="self"
+                        panelClassName="z-50 shadow-lg rounded-lg border border-gray-200"
+                        pt={{
+                          root: { className: 'z-50' },
+                          panel: { className: 'z-50 rounded-lg' },
+                          input: { 
+                            className: 'border border-gray-300 rounded-md h-10 w-full', 
+                            style: { height: '2.5rem' } 
+                          },
+                          button: { className: 'text-blue-500 hover:text-blue-700' },
+                          monthNavigator: { className: 'text-sm font-medium' },
+                          yearNavigator: { className: 'text-sm font-medium' },
+                          header: { className: 'bg-gray-50 rounded-t-lg p-2' },
+                          footer: { className: 'bg-gray-50 rounded-b-lg p-2' },
+                          today: { className: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+                          day: { className: 'rounded hover:bg-blue-50' },
+                          selectedDay: { className: 'bg-blue-500 text-white rounded hover:bg-blue-600' }
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <small className="text-gray-500 mt-1 block">
+                    Sau khi hết thời hạn giảm giá, giá sản phẩm sẽ tự động trở về giá gốc.
+                  </small>
+                </div>
+              )}
+              
+              <div className="field">
+                <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  Hạn sử dụng
+                </label>
+                <Calendar
+                  id="expiryDate"
+                  value={editedProduct.expiryDate}
+                  onChange={(e) => handleDateChange(e.value, 'expiryDate')}
+                  showIcon
+                  className="w-full"
+                  dateFormat="dd/mm/yy"
+                  placeholder="Chọn hạn sử dụng"
+                  minDate={new Date()}
+                  appendTo="self"
+                  panelClassName="z-50 shadow-lg rounded-lg border border-gray-200"
+                  pt={{
+                    root: { className: 'z-50' },
+                    panel: { className: 'z-50 rounded-lg' },
+                    input: { 
+                      className: 'border border-gray-300 rounded-md h-10 w-full', 
+                      style: { height: '2.5rem' } 
+                    },
+                    button: { className: 'text-blue-500 hover:text-blue-700' },
+                    monthNavigator: { className: 'text-sm font-medium' },
+                    yearNavigator: { className: 'text-sm font-medium' },
+                    header: { className: 'bg-gray-50 rounded-t-lg p-2' },
+                    footer: { className: 'bg-gray-50 rounded-b-lg p-2' },
+                    today: { className: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+                    day: { className: 'rounded hover:bg-blue-50' },
+                    selectedDay: { className: 'bg-blue-500 text-white rounded hover:bg-blue-600' }
+                  }}
+                />
+                <small className="text-gray-500 mt-1 block">
+                  Sản phẩm sẽ tự động chuyển sang trạng thái "Hết hàng" khi quá hạn sử dụng
+                </small>
               </div>
 
               <div className="field">

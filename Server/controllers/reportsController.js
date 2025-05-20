@@ -1,4 +1,11 @@
 import { Op } from 'sequelize';
+import User from '../Model/User.js';
+import Order from '../Model/Order.js';
+import Product from '../Model/Product.js';
+import BestSellingProduct from '../Model/BestSellingProduct.js';
+import Coupon from '../Model/Coupon.js';
+import Review from '../Model/Review.js';
+import SystemLog from '../Model/SystemLog.js';
 // import db from '../models/index.js';
 
 /**
@@ -57,36 +64,60 @@ const reportsController = {
   // Top products
   getTopProducts: async (req, res) => {
     try {
-      const topProducts = [
-        { id: 1, name: 'Thịt bò Úc', quantity: 128, revenue: 25600000, category: 'Thịt' },
-        { id: 2, name: 'Cá hồi Na Uy', quantity: 95, revenue: 19000000, category: 'Hải sản' },
-        { id: 3, name: 'Tôm sú', quantity: 87, revenue: 13050000, category: 'Hải sản' },
-        { id: 4, name: 'Rau cải', quantity: 145, revenue: 4350000, category: 'Rau củ' },
-        { id: 5, name: 'Thịt gà', quantity: 76, revenue: 9120000, category: 'Thịt' }
-      ];
+      // Use BestSellingProduct model to get top products
+      const bestSellingProducts = await BestSellingProduct.getBestSellers(5, 'month');
       
-      res.json(topProducts);
+      // Format the response to match what the frontend expects
+      const topProductsResponse = bestSellingProducts.map(product => ({
+        name: product.productName,
+        category: product.productCategory,
+        sold: product.soldCount,
+        revenue: product.totalRevenue
+      }));
+      
+      res.status(200).json(topProductsResponse);
     } catch (error) {
-      console.error('Error fetching top products:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu sản phẩm bán chạy' });
+      console.error("Error generating top products report:", error);
+      res.status(500).json({ message: "Lỗi khi tạo báo cáo sản phẩm bán chạy", error: error.message });
     }
   },
 
   // Inventory data
   getInventoryData: async (req, res) => {
     try {
-      const inventory = [
-        { id: 1, name: 'Thịt bò Úc', stock: 32, category: 'Thịt', value: 6400000, status: 'Còn hàng' },
-        { id: 2, name: 'Cá hồi Na Uy', stock: 15, category: 'Hải sản', value: 3000000, status: 'Còn hàng' },
-        { id: 3, name: 'Tôm sú', stock: 8, category: 'Hải sản', value: 1200000, status: 'Sắp hết' },
-        { id: 4, name: 'Rau cải', stock: 45, category: 'Rau củ', value: 1350000, status: 'Còn hàng' },
-        { id: 5, name: 'Thịt gà', stock: 0, category: 'Thịt', value: 0, status: 'Hết hàng' }
+      // Dữ liệu mẫu cho tồn kho các danh mục
+      const inventoryData = [
+        {
+          name: "Hải sản",
+          stock: 18,
+          status: "Sắp hết"
+        },
+        {
+          name: "Trái cây",
+          stock: 15,
+          status: "Sắp hết"
+        },
+        {
+          name: "Rau củ",
+          stock: 12,
+          status: "Sắp hết"
+        },
+        {
+          name: "Thịt tươi",
+          stock: 25,
+          status: "Còn hàng"
+        },
+        {
+          name: "Sữa và các sản phẩm từ sữa",
+          stock: 30,
+          status: "Còn hàng"
+        }
       ];
-      
-      res.json(inventory);
+
+      return res.status(200).json(inventoryData);
     } catch (error) {
-      console.error('Error fetching inventory data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu tồn kho' });
+      console.error('Error getting inventory data:', error);
+      return res.status(500).json({ message: "Lỗi khi lấy dữ liệu tồn kho", error: error.message });
     }
   },
 

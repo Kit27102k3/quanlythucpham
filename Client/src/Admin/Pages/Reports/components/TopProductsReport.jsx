@@ -11,7 +11,7 @@ import {
 } from "recharts";
 
 const TopProductsReport = ({ 
-  topProductsData, 
+  topProducts, 
   exportToPDF, 
   exportToExcel, 
   sendReportEmail, 
@@ -19,8 +19,36 @@ const TopProductsReport = ({
   setExportLoading,
   formatCurrency 
 }) => {
-  // Handle empty or undefined data
-  const topProducts = topProductsData || [];
+  // Hàm format tiền tệ dự phòng khi formatCurrency không tồn tại
+  const formatMoney = (value) => {
+    try {
+      if (typeof formatCurrency === 'function') {
+        return formatCurrency(value);
+      }
+      return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+    } catch (error) {
+      console.error('Error formatting currency:', error);
+      return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+    }
+  };
+  
+  // Xử lý dữ liệu từ API
+  const prepareTopProductsData = () => {
+    if (!topProducts || !Array.isArray(topProducts) || topProducts.length === 0) {
+      return [];
+    }
+    
+    // Đảm bảo dữ liệu có các trường cần thiết
+    return topProducts.map(product => ({
+      name: product.name || 'Không xác định',
+      sold: product.sold || 0,
+      revenue: typeof product.revenue === 'number' ? product.revenue : 0,
+      category: product.category || 'Không phân loại'
+    })).filter(product => product.name && product.revenue > 0);
+  };
+  
+  // Lấy dữ liệu đã xử lý
+  const processedProducts = prepareTopProductsData();
 
   return (
     <div id="top-products-report" className="bg-white p-6 rounded-lg shadow-md">
@@ -47,7 +75,7 @@ const TopProductsReport = ({
               Xuất PDF
             </button>
             <button
-              onClick={() => exportToExcel(topProducts, 'top-products', setExportLoading)}
+              onClick={() => exportToExcel(processedProducts, 'top-products', setExportLoading)}
               disabled={exportLoading}
               className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium flex items-center"
             >
@@ -70,7 +98,7 @@ const TopProductsReport = ({
         </div>
       </div>
 
-      {topProducts.length > 0 ? (
+      {processedProducts.length > 0 ? (
         <>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 mb-6">
@@ -91,7 +119,7 @@ const TopProductsReport = ({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {topProducts.map((product, index) => (
+                {processedProducts.map((product, index) => (
                   <tr key={index}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {product.name}
@@ -100,14 +128,16 @@ const TopProductsReport = ({
                       {product.sold}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatCurrency(product.revenue)}
+                      {formatMoney(product.revenue)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
                         <div
                           className="bg-green-500 h-2.5 rounded-full"
                           style={{
-                            width: `${(product.revenue / topProducts[0].revenue) * 100}%`,
+                            width: `${processedProducts[0]?.revenue > 0 
+                              ? (product.revenue / processedProducts[0].revenue) * 100 
+                              : 0}%`,
                           }}
                         ></div>
                       </div>
@@ -122,7 +152,7 @@ const TopProductsReport = ({
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
-                data={topProducts}
+                data={processedProducts}
                 margin={{ top: 10, right: 30, left: 100, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
@@ -136,9 +166,28 @@ const TopProductsReport = ({
                     }).format(value)
                   }
                 />
-                <YAxis dataKey="name" type="category" />
+                <YAxis 
+                  dataKey="name" 
+                  type="category" 
+                  width={90}
+                  tick={{ 
+                    fontSize: 12,
+                    width: 90,
+                    textOverflow: 'ellipsis',
+                    overflow: 'hidden'
+                  }}
+                  tickFormatter={(value) => {
+                    // Nếu tên quá dài thì cắt ngắn và thêm dấu ...
+                    return value.length > 12 ? value.substring(0, 10) + '...' : value;
+                  }}
+                />
                 <Tooltip 
-                  formatter={(value) => [formatCurrency(value), "Doanh thu"]}
+                  formatter={(value, name) => {
+                    if (name === "revenue") {
+                      return [formatMoney(value), "Doanh thu"];
+                    }
+                    return [value, name];
+                  }}
                   labelStyle={{ color: "#333" }}
                   contentStyle={{ backgroundColor: "white", borderRadius: "8px" }}
                 />

@@ -10,6 +10,7 @@ import {
   getProductByCategory,
   getProductBySlug,
   getBestSellingProducts,
+  checkAndUpdateExpirations
 } from "../Controller/productsController.js";
 import { verifyToken, isAdmin } from "../Middleware/authMiddleware.js";
 
@@ -28,5 +29,8 @@ router.get("/products/:id", getProductById);
 router.post("/products", verifyToken, isAdmin, createProduct);
 router.put("/products/:id", verifyToken, isAdmin, updateProduct);
 router.delete("/products/:id", verifyToken, isAdmin, deleteProduct);
+
+// Thêm route kiểm tra và cập nhật hạn sử dụng và giảm giá
+router.get("/check-expirations", verifyToken, isAdmin, checkAndUpdateExpirations);
 
 export default router;

@@ -35,9 +35,13 @@ import reviewRoutes from "./routes/reviewRoutes.js";
 import couponRoutes from "./routes/couponRoutes.js";
 import savedVoucherRoutes from "./routes/savedVoucherRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import systemRoutes from "./routes/systemRoutes.js";
+import supplierRoutes from "./routes/supplierRoutes.js";
+import brandRoutes from "./routes/brandRoutes.js";
 
 // Import specific controller for direct endpoint handling
 import { getBestSellingProducts } from './Controller/productsController.js';
+import { updateProductExpirations } from "./Controller/productsController.js";
 
 dotenv.config({ path: ".env" });
 const app = express();
@@ -98,7 +102,7 @@ const URI = process.env.MONGOOSE_URI;
 mongoose
   .connect(URI)
   .then(() => {
-    console.log("Connected to MongoDB");
+    // Removed console.log for MongoDB connection success
   })
   .catch((err) => console.error("MongoDB connection error:", err));
 
@@ -121,6 +125,9 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use("/api/saved-vouchers", savedVoucherRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/system", systemRoutes);
+app.use("/api/suppliers", supplierRoutes);
+app.use("/api/brands", brandRoutes);
 
 // Handle best-sellers endpoint directly to avoid route conflicts
 app.get('/api/products/best-sellers', getBestSellingProducts);
@@ -185,7 +192,7 @@ const webhookPaths = [
 webhookPaths.forEach(path => {
   app.post(path, async (req, res) => {
     try {
-      console.log(`Webhook received at ${path}:`, JSON.stringify(req.body));
+      // Removed console.log for webhook received
       
       // Xử lý webhook đồng bộ trước khi trả về response
       if (req.body.gateway === 'MBBank' || req.body.transferAmount) {
@@ -268,42 +275,37 @@ app.post("/webhook", (req, res) => {
   });
 });
 
-// Thiết lập scheduled task để xóa voucher hết hạn tự động
+// Hàm dọn dẹp voucher hết hạn
 const scheduleExpiredVoucherCleanup = () => {
-  // Xóa voucher hết hạn khi khởi động server
-  deleteExpiredVouchers().then(result => {
-    console.log("Initial expired voucher cleanup completed");
-  }).catch(err => {
-    console.error("Error in initial expired voucher cleanup:", err);
-  });
-  
-  // Lên lịch xóa voucher hết hạn vào 00:00 mỗi ngày
-  setInterval(() => {
-    const now = new Date();
-    const midnight = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1,
-      0, 0, 0
-    );
-    const timeUntilMidnight = midnight.getTime() - now.getTime();
-    
-    setTimeout(() => {
-      // Thực hiện xóa voucher hết hạn
-      deleteExpiredVouchers().then(result => {
-        console.log("Scheduled expired voucher cleanup completed");
-      }).catch(err => {
-        console.error("Error in scheduled expired voucher cleanup:", err);
-      });
-      
-      // Thiết lập lại lịch cho ngày tiếp theo
-      scheduleExpiredVoucherCleanup();
-    }, timeUntilMidnight);
-  }, 24 * 60 * 60 * 1000); // Kiểm tra mỗi 24 giờ
+  try {
+    // Gọi function để xóa các voucher hết hạn
+    deleteExpiredVouchers().then(() => {
+      // Removed console.log for expired voucher cleanup completed
+    });
+  } catch (error) {
+    console.error("Error in scheduled expired voucher cleanup:", error);
+  }
 };
 
 // Bắt đầu lịch xóa voucher hết hạn
 scheduleExpiredVoucherCleanup();
+
+// Hàm kiểm tra sản phẩm hết hạn
+const scheduleProductExpirationCheck = () => {
+  try {
+    // Removed console.log for product expiration check
+    updateProductExpirations().then((result) => {
+      // Removed console.log for product expiration results
+    });
+  } catch (error) {
+    console.error("Error in scheduled product expiration check:", error);
+  }
+};
+
+// Thêm công việc định kỳ để kiểm tra và cập nhật hạn sản phẩm
+// Chạy mỗi 6 giờ
+const scheduleIntervalHours = 6;
+const scheduleInterval = scheduleIntervalHours * 60 * 60 * 1000; // Convert hours to milliseconds
 
 // Khởi động server với cơ chế xử lý lỗi cổng
 const startServer = (port) => {
@@ -315,7 +317,19 @@ const startServer = (port) => {
 
   try {
     const server = app.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
+      // Removed console.log for server running
+      
+      // Schedule cleanup of expired vouchers
+      scheduleExpiredVoucherCleanup(); // Run once at startup
+      
+      // Schedule check for product expirations
+      scheduleProductExpirationCheck(); // Run once at startup
+      
+      // Set up interval to run cleanup and checks periodically
+      setInterval(scheduleExpiredVoucherCleanup, scheduleInterval);
+      setInterval(scheduleProductExpirationCheck, scheduleInterval);
+      
+      // Removed console.log for scheduled tasks
     });
 
     server.on('error', (error) => {

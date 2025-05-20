@@ -46,6 +46,7 @@ const INITIAL_PRODUCT_STATE = {
   productUnit: "gram",
   discountStartDate: null,
   discountEndDate: null,
+  expiryDate: null,
 };
 
 const AddProduct = ({ onHide, onAddSuccess }) => {
@@ -317,6 +318,11 @@ const AddProduct = ({ onHide, onAddSuccess }) => {
         productData.discountEndDate = product.discountEndDate.toISOString();
       }
       
+      // Add expiry date if set
+      if (product.expiryDate) {
+        productData.expiryDate = product.expiryDate.toISOString();
+      }
+      
       // Add description
       const descriptions = productDescription
         .split(".")
@@ -563,7 +569,6 @@ const AddProduct = ({ onHide, onAddSuccess }) => {
               </div>
               
               {hasDiscount && (
-                <>
                   <div className="field col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Thời hạn giảm giá
@@ -581,6 +586,25 @@ const AddProduct = ({ onHide, onAddSuccess }) => {
                           className="w-full"
                           dateFormat="dd/mm/yy"
                           placeholder="Chọn ngày bắt đầu"
+                        minDate={new Date()}
+                        appendTo="self"
+                        panelClassName="z-50 shadow-lg rounded-lg border border-gray-200"
+                        pt={{
+                          root: { className: 'z-50' },
+                          panel: { className: 'z-50 rounded-lg' },
+                          input: { 
+                            className: 'border border-gray-300 rounded-md h-10 w-full', 
+                            style: { height: '2.5rem' } 
+                          },
+                          button: { className: 'text-blue-500 hover:text-blue-700' },
+                          monthNavigator: { className: 'text-sm font-medium' },
+                          yearNavigator: { className: 'text-sm font-medium' },
+                          header: { className: 'bg-gray-50 rounded-t-lg p-2' },
+                          footer: { className: 'bg-gray-50 rounded-b-lg p-2' },
+                          today: { className: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+                          day: { className: 'rounded hover:bg-blue-50' },
+                          selectedDay: { className: 'bg-blue-500 text-white rounded hover:bg-blue-600' }
+                        }}
                         />
                       </div>
                       <div>
@@ -595,16 +619,70 @@ const AddProduct = ({ onHide, onAddSuccess }) => {
                           className="w-full"
                           dateFormat="dd/mm/yy"
                           placeholder="Chọn ngày kết thúc"
-                          minDate={product.discountStartDate}
+                        minDate={product.discountStartDate || new Date()}
+                        appendTo="self"
+                        panelClassName="z-50 shadow-lg rounded-lg border border-gray-200"
+                        pt={{
+                          root: { className: 'z-50' },
+                          panel: { className: 'z-50 rounded-lg' },
+                          input: { 
+                            className: 'border border-gray-300 rounded-md h-10 w-full', 
+                            style: { height: '2.5rem' } 
+                          },
+                          button: { className: 'text-blue-500 hover:text-blue-700' },
+                          monthNavigator: { className: 'text-sm font-medium' },
+                          yearNavigator: { className: 'text-sm font-medium' },
+                          header: { className: 'bg-gray-50 rounded-t-lg p-2' },
+                          footer: { className: 'bg-gray-50 rounded-b-lg p-2' },
+                          today: { className: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+                          day: { className: 'rounded hover:bg-blue-50' },
+                          selectedDay: { className: 'bg-blue-500 text-white rounded hover:bg-blue-600' }
+                        }}
                         />
                       </div>
                     </div>
                     <small className="text-gray-500 mt-1 block">
-                      Mặc định giảm giá sẽ kết thúc vào cuối ngày được chọn
+                    Sau khi hết thời hạn giảm giá, giá sản phẩm sẽ tự động trở về giá gốc.
                     </small>
                   </div>
-                </>
               )}
+              
+              <div className="field">
+                <label htmlFor="expiryDate" className="block text-sm font-medium text-gray-700 mb-2">
+                  Hạn sử dụng
+                </label>
+                <Calendar
+                  id="expiryDate"
+                  value={product.expiryDate}
+                  onChange={(e) => handleDateChange(e.value, 'expiryDate')}
+                  showIcon
+                  className="w-full"
+                  dateFormat="dd/mm/yy"
+                  placeholder="Chọn hạn sử dụng"
+                  minDate={new Date()}
+                  appendTo="self"
+                  panelClassName="z-50 shadow-lg rounded-lg border border-gray-200"
+                  pt={{
+                    root: { className: 'z-50' },
+                    panel: { className: 'z-50 rounded-lg' },
+                    input: { 
+                      className: 'border border-gray-300 rounded-md h-10 w-full', 
+                      style: { height: '2.5rem' } 
+                    },
+                    button: { className: 'text-blue-500 hover:text-blue-700' },
+                    monthNavigator: { className: 'text-sm font-medium' },
+                    yearNavigator: { className: 'text-sm font-medium' },
+                    header: { className: 'bg-gray-50 rounded-t-lg p-2' },
+                    footer: { className: 'bg-gray-50 rounded-b-lg p-2' },
+                    today: { className: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
+                    day: { className: 'rounded hover:bg-blue-50' },
+                    selectedDay: { className: 'bg-blue-500 text-white rounded hover:bg-blue-600' }
+                  }}
+                />
+                <small className="text-gray-500 mt-1 block">
+                  Sản phẩm sẽ tự động chuyển sang trạng thái "Hết hàng" khi quá hạn sử dụng
+                </small>
+              </div>
               
               <div className="field">
                 <label htmlFor="productCode" className="block text-sm font-medium text-gray-700 mb-2">

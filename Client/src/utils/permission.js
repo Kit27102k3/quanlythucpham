@@ -11,9 +11,9 @@ export const canAccess = (role, pageKey) => {
     permissions = {
       admin: [
         "employees", "reviews", "contacts", "customers", "messages", "orders",
-        "dashboard", "products", "categories", "coupons", "tips", "reports", "settings"
+        "dashboard", "products", "categories", "coupons", "tips", "reports", "settings", "suppliers", "brands"
       ],
-      manager: ["employees", "reviews", "contacts", "customers", "messages", "orders"],
+      manager: ["employees", "reviews", "contacts", "customers", "messages", "orders", "suppliers", "brands"],
       employee: ["reviews", "contacts", "messages", "orders"],
     };
   }

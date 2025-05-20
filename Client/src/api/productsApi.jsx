@@ -15,6 +15,61 @@ const productsApi = {
     }
   },
 
+  // Lấy dữ liệu tồn kho từ MongoDB (API mới)
+  getInventoryData: async () => {
+    try {
+      console.log("Đang gọi API lấy dữ liệu tồn kho");
+      const response = await axios.get(`${API_URL}/inventory`);
+      console.log("Dữ liệu tồn kho từ API:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy dữ liệu tồn kho từ API:", error);
+      
+      // Thử phương thức thay thế nếu API bị lỗi
+      try {
+        console.log("Thử phương thức thay thế - lấy tất cả sản phẩm");
+        const productsResponse = await productsApi.getAllProducts();
+        
+        if (productsResponse?.products && Array.isArray(productsResponse.products)) {
+          console.log("Chuyển đổi dữ liệu từ danh sách sản phẩm", productsResponse.products.length, "sản phẩm");
+          
+          // Biến đổi dữ liệu sản phẩm sang định dạng tồn kho theo đúng cấu trúc MongoDB
+          return productsResponse.products.map(product => {
+            const stock = product.productStock || 0;
+            let status = 'Còn hàng';
+            
+            if (stock <= 0) status = 'Hết hàng';
+            else if (stock <= 5) status = 'Sắp hết';
+            else if (stock <= 20) status = 'Sắp hết';
+            
+            return {
+              id: product._id,
+              name: product.productName || 'Không xác định',
+              stock: product.productStock || 0,
+              value: (product.productPrice || 0) * (product.productStock || 0),
+              status: status,
+              category: product.productCategory || 'Không phân loại',
+              price: product.productPrice || 0,
+              sku: product.productCode || '',
+              image: Array.isArray(product.productImages) && product.productImages.length > 0 
+                ? product.productImages[0] 
+                : '',
+              brand: product.productBrand || '',
+              weight: product.productWeight || 0,
+              unit: product.productUnit || 'gram',
+              origin: product.productOrigin || ''
+            };
+          });
+        }
+      } catch (fallbackError) {
+        console.error("Lỗi khi thực hiện phương thức thay thế:", fallbackError);
+      }
+      
+      // Trả về mảng rỗng nếu tất cả các cách đều thất bại
+      throw error;
+    }
+  },
+
   // Check category format directly
   checkCategory: async (categoryId) => {
     try {

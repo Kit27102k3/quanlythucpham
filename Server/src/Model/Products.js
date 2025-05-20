@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import Category from "./Categories.js";
 
 const productSchema = new mongoose.Schema(
   {
@@ -20,8 +21,9 @@ const productSchema = new mongoose.Schema(
     productOrigin: { type: String, trim: true },
     productIntroduction: { type: String, trim: true },
     productUnit: { type: String, default: "gram", trim: true },
-    discountStartDate: { type: Date },
-    discountEndDate: { type: Date },
+    discountStartDate: { type: Date, default: null },
+    discountEndDate: { type: Date, default: null },
+    expiryDate: { type: Date, default: null },
     soldCount: { type: Number, default: 0 },
     averageRating: { type: Number, default: 0 },
     numOfReviews: { type: Number, default: 0 },

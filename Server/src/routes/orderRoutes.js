@@ -10,7 +10,10 @@ import {
   updateOrder,
   markOrderAsPaid,
   updateOrderPaymentStatus,
-  notifyOrderSuccess
+  notifyOrderSuccess,
+  getTopOrders,
+  getOrderStats,
+  getDeliveryStats
 } from "../Controller/orderController.js";
 
 const router = Router();
@@ -18,7 +21,10 @@ const router = Router();
 router.post("/", orderCreate);
 router.get("/", orderGetAll);
 router.get("/user", orderGet);
+router.get("/stats", getOrderStats);
+router.get("/delivery-stats", getDeliveryStats);
 router.get("/tracking/:orderCode", getOrderTracking);
+router.get("/top", getTopOrders);
 router.get("/:id", orderGetById);
 router.delete("/:id", orderDelete);
 router.post("/:id/cancel", cancelOrder);

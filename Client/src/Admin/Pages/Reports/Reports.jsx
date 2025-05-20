@@ -15,20 +15,6 @@ import {
   OrderReport,
 } from "./components";
 
-// Import sample data utilities
-import {
-  getSampleDashboardData,
-  getSampleRevenueData,
-  getSampleTopProducts,
-  getSampleInventory,
-  getSampleUserData,
-  getSampleOrderData,
-  getSamplePromotionData,
-  getSampleSystemActivityData,
-  getSampleDeliveryData,
-  getSampleFeedbackData,
-} from "./utils/sampleData";
-
 // Import utility functions
 import {
   formatCurrency,
@@ -67,23 +53,21 @@ const Reports = () => {
   });
   const [exportLoading, setExportLoading] = useState(false);
 
-  const fetchDataWithFallback = async (fetchFunction, setter, sampleDataFn) => {
+  // Function to fetch data from API
+  const fetchData = async (fetchFunction, setter) => {
     try {
       const data = await fetchFunction();
-      if (data && (Array.isArray(data) ? data.length > 0 : Object.keys(data).length > 0)) {
+      if (data) {
         console.log('Using API data');
         setter(data);
-        return true;
+      } else {
+        console.warn('API returned empty or null data');
+        setter([]); // Set empty array or appropriate default value
       }
-      console.log('API returned empty data, using sample data');
     } catch (error) {
       console.error('Error fetching data:', error);
+      setter([]); // Set empty array or appropriate default value on error
     }
-    
-    // Fallback to sample data
-    console.log('Using sample data');
-    setter(sampleDataFn());
-    return false;
   };
 
   useEffect(() => {
@@ -91,92 +75,88 @@ const Reports = () => {
       setIsLoading(true);
       
       try {
-        // Use promise.all to fetch data in parallel
+        // Lấy dữ liệu dashboard
+        const dashboardResult = await reportsApi.getDashboardData();
+        
+        // Lấy dữ liệu doanh thu cho dashboard tuần hiện tại
+        const revenueWeeklyData = await reportsApi.getRevenueData('week');
+        
+        // Cập nhật dữ liệu dashboard kèm dữ liệu doanh thu tuần
+        if (dashboardResult) {
+          setDashboardData({
+            ...dashboardResult,
+            revenueData: revenueWeeklyData || [] // Thêm dữ liệu doanh thu vào dashboard
+          });
+        } else {
+          setDashboardData({
+            revenueData: revenueWeeklyData || []
+          });
+        }
+        
+        // Use promise.all to fetch other data in parallel
         await Promise.all([
-          // Dashboard data
-          fetchDataWithFallback(
-            reportsApi.getDashboardData,
-            setDashboardData,
-            getSampleDashboardData
-          ),
-          
-          // Revenue data
-          fetchDataWithFallback(
+          // Revenue data for revenue tab
+          fetchData(
             () => reportsApi.getRevenueData(timeRange, filters.paymentMethod, filters.region),
-            setRevenueData,
-            () => getSampleRevenueData(timeRange)
+            setRevenueData
           ),
           
           // Top products data
-          fetchDataWithFallback(
+          fetchData(
             reportsApi.getTopProducts,
-            setTopProducts,
-            getSampleTopProducts
+            setTopProducts
           ),
           
           // Inventory data
-          fetchDataWithFallback(
+          fetchData(
             reportsApi.getInventoryData,
-            setInventory,
-            getSampleInventory
+            setInventory
           ),
           
           // User data
-          fetchDataWithFallback(
+          fetchData(
             reportsApi.getUserData,
-            setUserData,
-            getSampleUserData
+            setUserData
           ),
           
           // Order data
-          fetchDataWithFallback(
+          fetchData(
             () => reportsApi.getOrderData(timeRange),
-            setOrderData,
-            getSampleOrderData
+            setOrderData
           ),
           
           // Promotion data
-          fetchDataWithFallback(
+          fetchData(
             () => reportsApi.getPromotionData(timeRange),
-            setPromotionData,
-            getSamplePromotionData
+            setPromotionData
           ),
           
           // System activity data
-          fetchDataWithFallback(
-            () => reportsApi.getSystemActivityData(timeRange),
-            setSystemActivityData,
-            getSampleSystemActivityData
+          fetchData(
+            () => {
+              console.log("Fetching system activity data");
+              return reportsApi.getSystemActivityData(timeRange);
+            },
+            (data) => {
+              console.log("Setting system activity data:", data);
+              setSystemActivityData(data);
+            }
           ),
           
           // Delivery data
-          fetchDataWithFallback(
+          fetchData(
             () => reportsApi.getDeliveryData(timeRange),
-            setDeliveryData,
-            getSampleDeliveryData
+            setDeliveryData
           ),
           
           // Feedback data
-          fetchDataWithFallback(
+          fetchData(
             () => reportsApi.getFeedbackData(timeRange),
-            setFeedbackData,
-            getSampleFeedbackData
+            setFeedbackData
           )
         ]);
       } catch (error) {
         console.error("Error loading report data:", error);
-        
-        // Fallback to sample data for all reports
-        setDashboardData(getSampleDashboardData());
-        setRevenueData(getSampleRevenueData(timeRange));
-        setTopProducts(getSampleTopProducts());
-        setInventory(getSampleInventory());
-        setUserData(getSampleUserData());
-        setOrderData(getSampleOrderData());
-        setPromotionData(getSamplePromotionData());
-        setSystemActivityData(getSampleSystemActivityData());
-        setDeliveryData(getSampleDeliveryData());
-        setFeedbackData(getSampleFeedbackData());
       } finally {
         setIsLoading(false);
       }
@@ -235,7 +215,7 @@ const Reports = () => {
       case "top-products":
         return (
           <TopProductsReport
-            topProductsData={topProducts}
+            topProducts={topProducts}
             exportToPDF={exportToPDF}
             exportToExcel={exportToExcel}
             sendReportEmail={sendReportEmail}
@@ -245,15 +225,14 @@ const Reports = () => {
           />
         );
       case "inventory":
-    return (
+        return (
           <InventoryReport
-            inventoryData={inventory}
+            inventory={inventory}
             exportToPDF={exportToPDF}
             exportToExcel={exportToExcel}
             sendReportEmail={sendReportEmail}
             exportLoading={exportLoading}
             setExportLoading={setExportLoading}
-            formatCurrency={formatCurrency}
           />
         );
       case "users":
@@ -280,7 +259,7 @@ const Reports = () => {
           />
         );
       case "promotions":
-    return (
+        return (
           <PromotionReport
             promotionData={promotionData}
             exportToPDF={exportToPDF}
@@ -292,7 +271,7 @@ const Reports = () => {
           />
         );
       case "system-activity":
-    return (
+        return (
           <SystemActivityReport
             systemActivityData={systemActivityData}
             exportToPDF={exportToPDF}

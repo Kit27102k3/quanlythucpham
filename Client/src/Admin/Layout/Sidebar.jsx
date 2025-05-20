@@ -16,6 +16,8 @@ import {
   ChatBubbleIcon,
   StarFilledIcon,
   IdCardIcon,
+  BackpackIcon,
+  BarChartIcon,
 } from "@radix-ui/react-icons";
 import messagesApi from "../../api/messagesApi";
 import { canAccess } from "../../utils/permission";
@@ -48,6 +50,18 @@ const AdminSidebar = () => {
       text: "Danh mục",
       path: "/admin/categories",
       key: "categories",
+    },
+    {
+      icon: <BackpackIcon className="size-5 md:size-6" />,
+      text: "Nhà cung cấp",
+      path: "/admin/suppliers",
+      key: "suppliers",
+    },
+    {
+      icon: <BarChartIcon className="size-5 md:size-6" />,
+      text: "Thương hiệu",
+      path: "/admin/brands",
+      key: "brands",
     },
     {
       icon: <CardStackIcon className="size-5 md:size-6" />,

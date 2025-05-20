@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import mongoose from "mongoose";
 import Review from "../Model/Review.js";
 import User from "../Model/Register.js";
@@ -289,7 +290,7 @@ export const getAllReviews = async (req, res) => {
 
     // Trường hợp đặc biệt - token hardcoded cho admin TKhiem
     if (token === "admin-token-for-TKhiem") {
-      console.log("Sử dụng token đặc biệt cho admin TKhiem");
+     
       
       // Bỏ qua xác thực JWT, trực tiếp lấy dữ liệu
       // Phân trang
@@ -408,7 +409,7 @@ export const toggleReviewPublishStatus = async (req, res) => {
 
     // Trường hợp đặc biệt - token hardcoded cho admin TKhiem
     if (token === "admin-token-for-TKhiem") {
-      console.log("Sử dụng token đặc biệt cho admin TKhiem");
+     
       
       // Bỏ qua xác thực JWT, trực tiếp cập nhật
       // Kiểm tra xem đánh giá có tồn tại không
@@ -543,7 +544,7 @@ export const replyToReview = async (req, res) => {
     
     // Trường hợp đặc biệt - token hardcoded cho admin TKhiem
     if (token === "admin-token-for-TKhiem") {
-      console.log("Sử dụng token đặc biệt cho admin TKhiem");
+     
       
       // Kiểm tra xem đánh giá có tồn tại không
       if (!mongoose.Types.ObjectId.isValid(reviewId)) {
@@ -736,7 +737,7 @@ export const editReply = async (req, res) => {
     
     // Trường hợp đặc biệt - token hardcoded cho admin TKhiem
     if (token === "admin-token-for-TKhiem") {
-      console.log("Sử dụng token đặc biệt cho admin TKhiem");
+     
       
       // Kiểm tra xem đánh giá có tồn tại không
       if (!mongoose.Types.ObjectId.isValid(reviewId)) {
@@ -870,7 +871,7 @@ export const deleteReply = async (req, res) => {
     
     // Trường hợp đặc biệt - token hardcoded cho admin TKhiem
     if (token === "admin-token-for-TKhiem") {
-      console.log("Sử dụng token đặc biệt cho admin TKhiem");
+     
       
       // Kiểm tra xem đánh giá có tồn tại không
       if (!mongoose.Types.ObjectId.isValid(reviewId)) {

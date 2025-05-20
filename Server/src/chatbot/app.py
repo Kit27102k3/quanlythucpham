@@ -24,7 +24,7 @@ def ask():
     try:
         # Gọi OpenAI API đúng cách với thư viện mới
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Bạn là trợ lý tư vấn thực phẩm, trả lời ngắn gọn, dễ hiểu, thân thiện."},
                 {"role": "user", "content": question}

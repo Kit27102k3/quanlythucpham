@@ -7,7 +7,8 @@ import {
   updateCouponUsage,
   updateCoupon,
   deleteCoupon,
-  resetCouponUsage
+  resetCouponUsage,
+  getCouponStats
 } from "../Controller/couponController.js";
 import { verifyToken, isAdmin } from "../Middleware/authMiddleware.js";
 import Coupon from "../Model/Coupon.js";
@@ -18,6 +19,9 @@ const router = express.Router();
 router.post("/validate", validateCoupon);
 router.get("/code/:code", getCouponByCode);
 router.post("/use/:code", updateCouponUsage);
+
+// Route to get coupon statistics for reports
+router.get("/stats", getCouponStats);
 
 // Public debug route for development
 router.get("/all-for-debug", async (req, res) => {

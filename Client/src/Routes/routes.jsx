@@ -39,6 +39,8 @@ import SavedVoucher from "../User/Pages/Profile/SavedVoucher";
 import Reports from "../Admin/Pages/Reports/Reports";
 import StoreLocations from "../User/Pages/Store/StoreLocations";
 import Settings from "../Admin/Pages/Settings";
+import Suppliers from "../Admin/Pages/Suppliers";
+import Brands from "../Admin/Pages/Brands";
 const publicRoutes = [
   {
     path: "/",
@@ -184,6 +186,14 @@ const privateRoutes = [
   {
     path: "/admin/categories",
     page: Categories,
+  },
+  {
+    path: "/admin/suppliers",
+    page: Suppliers,
+  },
+  {
+    path: "/admin/brands",
+    page: Brands,
   },
   {
     path: "/admin/orders",

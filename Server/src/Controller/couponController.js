@@ -357,4 +357,149 @@ export const resetCouponUsage = async (req, res) => {
       error: error.message
     });
   }
+};
+
+// Get coupon statistics for reports
+export const getCouponStats = async (req, res) => {
+  try {
+    const now = new Date();
+    
+    // Get all coupons
+    const allCoupons = await Coupon.find();
+    
+    // Count active coupons
+    const activeCoupons = await Coupon.countDocuments({
+      isActive: true,
+      $or: [
+        { expiresAt: { $gt: now } },
+        { expiresAt: null }
+      ]
+    });
+    
+    // Get total used count
+    const totalUsedCount = allCoupons.reduce((sum, coupon) => sum + coupon.used, 0);
+    
+    // Calculate usage by type
+    const typeStats = {
+      percentage: {
+        count: 0,
+        used: 0,
+        totalValue: 0,
+        estimatedRevenue: 0
+      },
+      fixed: {
+        count: 0,
+        used: 0,
+        totalValue: 0,
+        estimatedRevenue: 0
+      }
+    };
+    
+    allCoupons.forEach(coupon => {
+      if (coupon.type === 'percentage') {
+        typeStats.percentage.count++;
+        typeStats.percentage.used += coupon.used;
+        typeStats.percentage.totalValue += coupon.value * coupon.used; // Total percentage points
+        
+        // Estimate revenue based on minimum order value
+        const estimatedOrderValue = coupon.minOrder * 1.5; // Assume average order is 1.5x minimum
+        typeStats.percentage.estimatedRevenue += coupon.used * estimatedOrderValue;
+      } else {
+        typeStats.fixed.count++;
+        typeStats.fixed.used += coupon.used;
+        typeStats.fixed.totalValue += coupon.value * coupon.used; // Total fixed amount
+        
+        // Estimate revenue based on minimum order value
+        const estimatedOrderValue = coupon.minOrder * 1.5; // Assume average order is 1.5x minimum
+        typeStats.fixed.estimatedRevenue += coupon.used * estimatedOrderValue;
+      }
+    });
+    
+    // Format voucher usage data for table display
+    const voucherUsage = allCoupons
+      .sort((a, b) => b.used - a.used) // Sort by most used
+      .map(coupon => ({
+        code: coupon.code,
+        discount: coupon.type === 'percentage' ? `${coupon.value}%` : new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(coupon.value),
+        used: coupon.used,
+        limit: coupon.usageLimit || '∞',
+        revenue: coupon.type === 'percentage' ? 
+          (coupon.value * coupon.used * coupon.minOrder / 100) : // Estimate for percentage type
+          (coupon.used * coupon.minOrder), // Estimate for fixed type
+        description: coupon.description
+      }));
+    
+    // Generate mock data for usage over time (last 6 months)
+    const usageOverTime = [];
+    const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", 
+                         "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+    
+    const currentMonth = new Date().getMonth();
+    for (let i = 5; i >= 0; i--) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      usageOverTime.push({
+        month: monthNames[monthIndex],
+        'Phần trăm': Math.floor(Math.random() * 30) + 10,
+        'Cố định': Math.floor(Math.random() * 20) + 5,
+      });
+    }
+    
+    // Revenue comparison: Estimated revenue with coupons vs without coupons (mock data)
+    const revenueComparison = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      const baseRevenue = Math.floor(Math.random() * 50000000) + 20000000;
+      const discountValue = Math.floor(Math.random() * 8000000) + 2000000;
+      
+      revenueComparison.push({
+        month: monthNames[monthIndex],
+        'Doanh thu thực tế': baseRevenue - discountValue,
+        'Doanh thu không có khuyến mãi': baseRevenue,
+        'Tổng giảm giá': discountValue
+      });
+    }
+    
+    // Sample data for promotion effectiveness by category
+    const promotionEffectiveness = allCoupons
+      .sort((a, b) => b.used - a.used)
+      .slice(0, 3)
+      .map(coupon => ({
+        name: coupon.code,
+        'Rau': Math.floor(Math.random() * 500000) + 300000,
+        'Thịt & Hải sản': Math.floor(Math.random() * 800000) + 600000, 
+        'Trứng & Sữa': Math.floor(Math.random() * 400000) + 200000
+      }));
+    
+    // Sample data for conversion rates - use real codes
+    const conversionRate = allCoupons
+      .sort((a, b) => b.used - a.used)
+      .slice(0, 5)
+      .map(coupon => ({
+        name: coupon.code,
+        rate: Math.floor(Math.random() * 40) + 50 // Random rate between 50-90%
+      }));
+    
+    // Return the statistics
+    res.status(200).json({
+      success: true,
+      data: {
+        totalCoupons: allCoupons.length,
+        activeCoupons,
+        totalUsedCount,
+        typeStats,
+        voucherUsage,
+        usageOverTime,
+        revenueComparison,
+        promotionEffectiveness,
+        conversionRate
+      }
+    });
+  } catch (error) {
+    console.error("Error getting coupon statistics:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi lấy thống kê mã giảm giá",
+      error: error.message
+    });
+  }
 }; 

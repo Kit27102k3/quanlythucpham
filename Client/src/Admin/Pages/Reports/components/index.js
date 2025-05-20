@@ -8,6 +8,7 @@ import PromotionReport from './PromotionReport';
 import SystemActivityReport from './SystemActivityReport';
 import DeliveryReport from './DeliveryReport';
 import FeedbackReport from './FeedbackReport';
+import RevenueChart from './RevenueChart';
 
 export {
   DashboardReport,
@@ -19,5 +20,6 @@ export {
   PromotionReport,
   SystemActivityReport,
   DeliveryReport,
-  FeedbackReport
+  FeedbackReport,
+  RevenueChart
 }; 

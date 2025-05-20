@@ -2,7 +2,8 @@ import axios from "axios";
 import { API_BASE_URL } from '../config/apiConfig';
 
 const API_URL = API_BASE_URL;
-const GHN_API_URL = "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order";
+// Không sử dụng biến này nên comment hoặc xóa để tránh lỗi linter
+// const GHN_API_URL = "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order";
 
 // Cấu hình Axios để gửi token trong header
 axios.interceptors.request.use(
@@ -128,6 +129,32 @@ const orderApi = {
       return response.data;
     } catch (error) {
       console.error("Lỗi khi cập nhật mã vận đơn:", error);
+      throw error;
+    }
+  },
+  
+  // Thêm hàm lấy top đơn hàng có giá trị cao nhất
+  getTopOrders: async (limit = 10) => {
+    try {
+      const response = await axios.get(`${API_URL}/orders/top`, {
+        params: { limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách đơn hàng giá trị cao nhất:", error);
+      throw error;
+    }
+  },
+  
+  // Thêm hàm lấy thống kê giao hàng
+  getDeliveryStats: async (period = 'week') => {
+    try {
+      const response = await axios.get(`${API_URL}/orders/delivery-stats`, {
+        params: { period }
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy thống kê giao hàng:", error);
       throw error;
     }
   }

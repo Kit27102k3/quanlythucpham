@@ -10,15 +10,12 @@ import { verifyToken as authMiddleware } from '../Middleware/authMiddleware.js';
 router.get('/revenue', authMiddleware, async (req, res) => {
   try {
     const { timeRange } = req.query;
-    console.log(`Lấy dữ liệu doanh thu với timeRange=${timeRange}`);
     
     // Kiểm tra xem có order nào đã hoàn thành không
     const completedOrderCount = await Order.countDocuments({ status: 'completed' });
-    console.log(`Số lượng đơn hàng đã hoàn thành: ${completedOrderCount}`);
     
     // Nếu không có đơn hàng hoàn thành, trả về mảng trống
     if (completedOrderCount === 0) {
-      console.log("Không có đơn hàng đã hoàn thành để tính doanh thu");
       return res.json([]);
     }
     
@@ -162,11 +159,8 @@ router.get('/revenue', authMiddleware, async (req, res) => {
       revenueData = completeData;
     }
 
-    // Log kết quả trước khi trả về
-    console.log("Revenue data result:", revenueData);
     res.json(revenueData);
   } catch (error) {
-    console.error('Lỗi khi lấy dữ liệu doanh thu:', error);
     res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy dữ liệu doanh thu' });
   }
 });
@@ -177,20 +171,17 @@ router.get('/top-products', authMiddleware, async (req, res) => {
     // Kiểm tra xem có order nào không
     const orderCount = await Order.countDocuments({ status: 'completed' });
     if (orderCount === 0) {
-      console.log("Không có đơn hàng đã hoàn thành trong hệ thống");
       return res.json([]);
     }
 
     // Kiểm tra xem Product collection có sản phẩm nào không
     const productCount = await Product.countDocuments();
     if (productCount === 0) {
-      console.log("Không có sản phẩm nào trong hệ thống");
       return res.json([]);
     }
 
     // Lấy mẫu một đơn hàng để kiểm tra cấu trúc thực tế
     const sampleOrder = await Order.findOne({ status: 'completed' }).lean();
-    console.log("Sample order structure:", JSON.stringify(sampleOrder, null, 2));
 
     const topProducts = await Order.aggregate([
       {
@@ -242,11 +233,8 @@ router.get('/top-products', authMiddleware, async (req, res) => {
       }
     ]);
 
-    // Log kết quả trước khi trả về
-    console.log("Top products result:", topProducts);
     res.json(topProducts);
   } catch (error) {
-    console.error('Lỗi khi lấy danh sách sản phẩm bán chạy:', error);
     res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy danh sách sản phẩm bán chạy' });
   }
 });
