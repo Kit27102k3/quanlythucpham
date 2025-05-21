@@ -207,6 +207,52 @@ const ProductList = React.memo(({ products, handleProductClick, getProductImageU
 });
 ProductList.displayName = 'ProductList';
 
+// Component to display multiple product search results grouped by query
+const MultiProductSearchResult = React.memo(({ searchResults, handleProductClick, getProductImageUrl }) => {
+  if (!searchResults || searchResults.length === 0) {
+    return <div className="text-sm italic">Không tìm thấy sản phẩm nào.</div>;
+  }
+  
+  return (
+    <div className="space-y-4 mt-2">
+      {searchResults.map((result, idx) => {
+        // Nếu không có sản phẩm trong kết quả này, hiển thị thông báo
+        if (!result.products || result.products.length === 0) {
+          return (
+            <div key={`search-result-${idx}`} className="border-t pt-2 first:border-t-0 first:pt-0">
+              <div className="font-medium text-sm mb-2 flex items-center">
+                <ShoppingBag className="w-4 h-4 mr-1" /> 
+                Kết quả tìm kiếm cho: "{result.query}"
+              </div>
+              <div className="text-sm italic">Không tìm thấy sản phẩm phù hợp</div>
+            </div>
+          );
+        }
+        
+        return (
+          <div key={`search-result-${idx}`} className="border-t pt-2 first:border-t-0 first:pt-0">
+            <div className="font-medium text-sm mb-2 flex items-center">
+              <ShoppingBag className="w-4 h-4 mr-1" /> 
+              Kết quả tìm kiếm cho: "{result.query}"
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {result.products.map((product, prodIdx) => (
+                <ProductItem 
+                  key={`multi-product-${idx}-${prodIdx}`} 
+                  product={product}
+                  handleProductClick={handleProductClick} 
+                  getProductImageUrl={getProductImageUrl}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+});
+MultiProductSearchResult.displayName = 'MultiProductSearchResult';
+
 const ChatBot = ({ isOpen, setIsOpen }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -371,6 +417,27 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         // Lấy dữ liệu từ response
         const responseData = response.data;
         
+        // Handle multi-product search results
+        if (responseData.type === 'multiProductSearch' && responseData.data && Array.isArray(responseData.data)) {
+          console.log("Multi-product search results:", responseData.data);
+          
+          setMessages((prev) => [
+            ...prev,
+            {
+              type: 'multiProductSearch',
+              text: responseData.message || 'Kết quả tìm kiếm nhiều sản phẩm:',
+              data: responseData.data,
+              totalResults: responseData.totalResults || responseData.data.reduce((total, result) => total + result.products.length, 0),
+              sender: "bot"
+            }
+          ]);
+          
+          // Cập nhật intent mới nhất
+          setLastIntent('multiProductSearch');
+          setIsLoading(false);
+          return;
+        }
+        
         // Kiểm tra trường hợp response chứa data đặc biệt
         if (responseData.data && Array.isArray(responseData.data)) {
           // Data là mảng các sản phẩm
@@ -501,20 +568,39 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
     if (lastIntent === 'productSearch' || lastIntent === 'relatedProducts') {
       return [
         {
-      text: "Các sản phẩm dưới 100k", 
+          text: "Các sản phẩm dưới 100k", 
           handler: () => handlePredefinedQuestion("Tìm sản phẩm dưới 100k")
-    },
-    { 
-      text: "Sản phẩm đang giảm giá", 
+        },
+        { 
+          text: "Sản phẩm đang giảm giá", 
           handler: () => handlePredefinedQuestion("Tìm sản phẩm đang giảm giá")
         },
         {
-          text: "Tìm đồ nhậu",
-          handler: () => handlePredefinedQuestion("Tìm đồ nhậu")
+          text: "Tìm nhiều sản phẩm",
+          handler: () => handlePredefinedQuestion("Tìm nhiều sản phẩm cùng lúc: nước ngọt, mì tôm và bánh kẹo")
         },
         {
-          text: "Tìm nước uống",
-          handler: () => handlePredefinedQuestion("Tìm nước uống")
+          text: "Nước uống và đồ ăn",
+          handler: () => handlePredefinedQuestion("Nước uống và đồ ăn vặt")
+        }
+      ];
+    } else if (lastIntent === 'multiProductSearch') {
+      return [
+        {
+          text: "Tìm nước giặt và nước rửa",
+          handler: () => handlePredefinedQuestion("Nước giặt và nước rửa chén")
+        },
+        {
+          text: "So sánh nước uống",
+          handler: () => handlePredefinedQuestion("So sánh các loại nước uống")
+        },
+        {
+          text: "Thịt và rau củ",
+          handler: () => handlePredefinedQuestion("Thịt cá và rau củ")
+        },
+        {
+          text: "Bánh kẹo nước ngọt",
+          handler: () => handlePredefinedQuestion("Bánh kẹo nước ngọt")
         }
       ];
     } else if (lastIntent === 'shipping' || lastIntent === 'shippingFee') {
@@ -545,12 +631,12 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         handler: () => handlePredefinedQuestion("Hướng dẫn cách đặt hàng")
       },
       {
-        text: "Phí vận chuyển",
-        handler: () => handlePredefinedQuestion("Thông tin phí vận chuyển")
+        text: "Nước giặt và nước rửa",
+        handler: () => handlePredefinedQuestion("Nước giặt và nước rửa chén")
       },
       {
-        text: "Tìm đồ nhậu",
-        handler: () => handlePredefinedQuestion("Tìm đồ nhậu")
+        text: "Thịt cá và rau củ",
+        handler: () => handlePredefinedQuestion("Thịt cá và rau củ")
       }
     ];
   }, [lastIntent, handlePredefinedQuestion]);
@@ -563,6 +649,25 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
   // Render message based on type - sử dụng React.memo để tránh re-render không cần thiết
   const renderMessage = useCallback((msg, index) => {
     console.log(`Rendering message type: ${msg.type || 'text'}`);
+    
+    // Handle multi-product search results
+    if (msg.type === 'multiProductSearch') {
+      return (
+        <div key={`msg-${index}`} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-3`}>
+          <div className={`${msg.sender === "user" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-800"} px-4 py-2 rounded-2xl max-w-[85%]`}>
+            <p className="mb-2">{msg.text}</p>
+            <div className="text-sm font-medium mb-2">
+              <Tag className="inline mr-1 w-4 h-4" /> Tìm nhiều sản phẩm
+            </div>
+            <MultiProductSearchResult 
+              searchResults={msg.data} 
+              handleProductClick={handleProductClick} 
+              getProductImageUrl={getProductImageUrl} 
+            />
+          </div>
+        </div>
+      );
+    }
     
     // Render sản phẩm cho các tin nhắn đặc biệt
     if (msg.type === 'productSearch' || msg.type === 'relatedProducts' || 

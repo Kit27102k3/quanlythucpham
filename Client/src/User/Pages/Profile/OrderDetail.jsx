@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ClipboardListIcon, ChevronLeftIcon, TruckIcon, PackageIcon, XCircleIcon, ClockIcon, MapPinIcon, EyeIcon, ArrowLeftIcon } from "lucide-react";
 import orderApi from "../../../api/orderApi";
@@ -263,7 +263,10 @@ export default function OrderDetail() {
                 if (data.routes && data.routes.length > 0) {
                   const route = data.routes[0];
                   const routeDistance = route.distance / 1000; // Chuyển từ m sang km
-                  const routeDuration = Math.ceil(route.duration / 60); // Chuyển từ giây sang phút
+                  
+                  // Sửa tốc độ trung bình từ "theo giây thực tế" sang "tốc độ trung bình 30km/h"
+                  // Do thời gian từ API có thể không chính xác cho VN
+                  const routeDuration = Math.ceil(routeDistance / 30 * 60); // Tính dựa trên 30km/h
                   
                   console.log("Nhận được dữ liệu đường đi:", {
                     distance: routeDistance,
@@ -389,7 +392,7 @@ export default function OrderDetail() {
             map.fitBounds(bounds, { padding: 80 });
             
             // Hiển thị thông tin khoảng cách và thời gian
-            const estimatedMinutes = Math.ceil(distanceStraightLine / 40 * 60);
+            const estimatedMinutes = Math.ceil(distanceStraightLine / 30 * 60);
             
             const infoDiv = document.getElementById('map-info');
             if (infoDiv) {
@@ -474,7 +477,20 @@ export default function OrderDetail() {
         
           // Lấy thông tin địa chỉ khách hàng để hiển thị trên bản đồ
           if (orderData.userId && orderData.userId.address) {
-            const fullAddress = `${orderData.userId.address}, ${orderData.userId.ward || ''}, ${orderData.userId.district || ''}, ${orderData.userId.province || ''}`;
+            // Xây dựng địa chỉ đầy đủ với tất cả thành phần chi tiết
+            const addressComponents = [];
+            if (orderData.userId.houseNumber) addressComponents.push(orderData.userId.houseNumber);
+            if (orderData.userId.address) addressComponents.push(orderData.userId.address);
+            if (orderData.userId.hamlet) addressComponents.push(orderData.userId.hamlet);
+            if (orderData.userId.ward) addressComponents.push(orderData.userId.ward);
+            if (orderData.userId.district) addressComponents.push(orderData.userId.district);
+            if (orderData.userId.province) addressComponents.push(orderData.userId.province);
+            
+            // Nối tất cả thành phần lại với nhau
+            const fullAddress = addressComponents.filter(Boolean).join(", ");
+            
+            console.log("Địa chỉ đầy đủ chi tiết khách hàng:", fullAddress);
+            
             setCustomerLocation({
               lat: 10.034236,
               lng: 105.775285,
@@ -549,11 +565,19 @@ export default function OrderDetail() {
       console.log("Đang xử lý thông tin vị trí giao hàng từ order:", order);
       
       // Lấy thông tin địa chỉ đầy đủ khách hàng để hiển thị trên bản đồ
-      const fullAddress = order.userId.address ? 
-        `${order.userId.address}, ${order.userId.ward || ''}, ${order.userId.district || ''}, ${order.userId.province || ''}` : 
-        "Địa chỉ không xác định";
+      // Đảm bảo thêm đầy đủ chi tiết: số nhà, ấp, xã, huyện, tỉnh
+      const addressComponents = [];
+      if (order.userId.houseNumber) addressComponents.push(order.userId.houseNumber);
+      if (order.userId.address) addressComponents.push(order.userId.address);
+      if (order.userId.hamlet) addressComponents.push(order.userId.hamlet);
+      if (order.userId.ward) addressComponents.push(order.userId.ward);
+      if (order.userId.district) addressComponents.push(order.userId.district);
+      if (order.userId.province) addressComponents.push(order.userId.province);
       
-      console.log("Địa chỉ đầy đủ khách hàng:", fullAddress);
+      // Nối tất cả thành phần lại với nhau
+      const fullAddress = addressComponents.filter(Boolean).join(", ");
+      
+      console.log("Địa chỉ đầy đủ chi tiết khách hàng:", fullAddress);
       
       // Ưu tiên sử dụng tọa độ từ DB nếu có
       if (order.deliveryCoordinates && order.deliveryCoordinates.lat && order.deliveryCoordinates.lng) {
@@ -583,112 +607,23 @@ export default function OrderDetail() {
         // Nếu không có tọa độ từ database, thực hiện geocoding để lấy tọa độ từ địa chỉ
         console.log("Không có tọa độ từ database, thực hiện geocoding cho địa chỉ:", fullAddress);
         
-        // Xử lý trường hợp đặc biệt cho "Mỹ Tú, Sóc Trăng"
-        if (fullAddress.includes("Mỹ Tú") && fullAddress.includes("Sóc Trăng")) {
-          console.log("Phát hiện địa chỉ Mỹ Tú, Sóc Trăng, sử dụng tọa độ cố định");
-          const myTuLocation = {
-            lng: 105.8235, 
-            lat: 9.6411,
-            address: "Mỹ Tú, Sóc Trăng, Việt Nam",
-            pending: false,
-            initialized: true
-          };
-          
-          setCustomerLocation(myTuLocation);
-          
-          setTimeout(() => {
-            try {
-              console.log("Khởi tạo bản đồ với tọa độ Mỹ Tú:", myTuLocation);
-              initMap(myTuLocation);
-            } catch (err) {
-              console.error("Lỗi khi khởi tạo bản đồ với tọa độ Mỹ Tú:", err);
-              setMapError(true);
-            }
-          }, 500);
-        } else {
-          // Thực hiện geocoding để lấy tọa độ từ địa chỉ
-          const encodedAddress = encodeURIComponent(fullAddress);
-          const geocodingUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${MAPBOX_ACCESS_TOKEN}&country=vn&limit=1`;
-          
-          fetch(geocodingUrl)
-            .then(response => response.json())
-            .then(data => {
-              if (data.features && data.features.length > 0) {
-                const [lng, lat] = data.features[0].center;
-                const placeName = data.features[0].place_name;
-                
-                console.log("Đã lấy được tọa độ từ geocoding:", { lng, lat, placeName });
-                
-                const geocodedLocation = {
-                  lng,
-                  lat,
-                  address: placeName || fullAddress,
-                  pending: false,
-                  initialized: true
-                };
-                
-                setCustomerLocation(geocodedLocation);
-                
-                setTimeout(() => {
-                  try {
-                    console.log("Khởi tạo bản đồ với tọa độ từ geocoding:", geocodedLocation);
-                    initMap(geocodedLocation);
-                  } catch (err) {
-                    console.error("Lỗi khi khởi tạo bản đồ với tọa độ từ geocoding:", err);
-                    setMapError(true);
-                  }
-                }, 500);
-              } else {
-                console.error("Không thể lấy tọa độ từ địa chỉ:", fullAddress);
-                // Sử dụng tọa độ mặc định (Ninh Kiều, Cần Thơ)
-                const defaultLocation = {
-                  lng: 105.7731, 
-                  lat: 10.0341,
-                  address: fullAddress,
-                  pending: false,
-                  initialized: true
-                };
-                
-                setCustomerLocation(defaultLocation);
-                
-                setTimeout(() => {
-                  try {
-                    console.log("Khởi tạo bản đồ với tọa độ mặc định:", defaultLocation);
-                    initMap(defaultLocation);
-                  } catch (err) {
-                    console.error("Lỗi khi khởi tạo bản đồ với tọa độ mặc định:", err);
-                    setMapError(true);
-                  }
-                }, 500);
-              }
-            })
-            .catch(err => {
-              console.error("Lỗi khi thực hiện geocoding:", err);
-              // Sử dụng tọa độ mặc định khi có lỗi
-              const defaultLocation = {
-                lng: 105.7731, 
-                lat: 10.0341,
-                address: fullAddress,
-                pending: false,
-                initialized: true
-              };
-              
-              setCustomerLocation(defaultLocation);
-              
-              setTimeout(() => {
-                try {
-                  console.log("Khởi tạo bản đồ với tọa độ mặc định (sau lỗi):", defaultLocation);
-                  initMap(defaultLocation);
-                } catch (err) {
-                  console.error("Lỗi khi khởi tạo bản đồ với tọa độ mặc định:", err);
-                  setMapError(true);
-                }
-              }, 500);
-            });
+        // Khởi tạo customer location với địa chỉ đầy đủ, pending=true để trigger geocoding
+        const pendingLocation = {
+          address: fullAddress,
+          pending: true,
+          initialized: false
+        };
+        
+        setCustomerLocation(pendingLocation);
+        
+        // Thực hiện geocoding ngay lập tức nếu có thể
+        if (mapLoaded) {
+          console.log("Map đã sẵn sàng, thực hiện geocoding ngay lập tức");
+          performGeocoding(fullAddress);
         }
       }
     }
-  }, [order, customerLocation?.initialized, initMap]);
+  }, [order, customerLocation?.initialized, initMap, mapLoaded]);
   
   // Mover aquí la definición de setDefaultLocation
   // Hàm sử dụng vị trí mặc định (tránh lặp lại code)
@@ -714,7 +649,11 @@ export default function OrderDetail() {
     }, 300);
   }, [initMap]);
   
-  // Tạo function tham chiếu cho performFallbackGeocoding
+  // Thêm các useRef để lưu trữ tham chiếu đến các hàm
+  const geocodingFnRef = useRef(null);
+  const fallbackGeocodingFnRef = useRef(null);
+  
+  // Định nghĩa performFallbackGeocoding trước, nhưng sử dụng useRef
   const performFallbackGeocoding = useCallback((address, specialLocation = null) => {
     // Tạo cache key dựa trên địa chỉ
     const cacheKey = `geocode_fallback_${address.trim().toLowerCase().replace(/\s+/g, '_')}`;
@@ -893,11 +832,42 @@ export default function OrderDetail() {
     tryNextAddress(0);
   }, [initMap, MAPBOX_ACCESS_TOKEN, setDefaultLocation]);
   
-  // Chuyển địa chỉ thành tọa độ - đảm bảo không có circular reference
+  // Lưu tham chiếu fallbackGeocoding
+  fallbackGeocodingFnRef.current = performFallbackGeocoding;
+  
+  // Chuyển địa chỉ thành tọa độ
   const performGeocoding = useCallback((address) => {
     if (!address) {
       console.error("Không có địa chỉ để thực hiện geocoding");
       setMapError(true);
+      return;
+    }
+
+    // Kiểm tra nếu là địa chỉ tại Mỹ Tú, Sóc Trăng và sử dụng tọa độ chính xác
+    if (address.toLowerCase().includes("mỹ tú") && address.toLowerCase().includes("sóc trăng")) {
+      console.log("Phát hiện địa chỉ Mỹ Tú, Sóc Trăng - sử dụng tọa độ cụ thể");
+      // Tọa độ chính xác cho Mỹ Tú, Sóc Trăng
+      const myTuLocation = {
+        lng: 105.77588,
+        lat: 9.70391,
+        address: address,
+        pending: false,
+        initialized: true,
+        geocoded: true
+      };
+      
+      setCustomerLocation(myTuLocation);
+      
+      setTimeout(() => {
+        try {
+          console.log("Khởi tạo bản đồ với tọa độ Mỹ Tú:", myTuLocation);
+          initMap(myTuLocation);
+        } catch (err) {
+          console.error("Lỗi khi khởi tạo bản đồ với tọa độ Mỹ Tú:", err);
+          setMapError(true);
+        }
+      }, 300);
+      
       return;
     }
 
@@ -930,31 +900,32 @@ export default function OrderDetail() {
       
       // Phân tích địa chỉ để tìm kiếm chính xác hơn
       const parts = address.split(',').map(part => part.trim());
-      let district = '';
-      let province = '';
       
-      // Trích xuất quận/huyện và tỉnh/thành phố từ địa chỉ
-      if (parts.length >= 2) {
-        for (let i = parts.length - 1; i >= 0; i--) {
-          const part = parts[i].toLowerCase();
-          if (part.includes('tỉnh') || part.includes('thành phố') || 
-              part.includes('tp') || part.includes('t.p')) {
-            province = parts[i];
-          } else if (part.includes('quận') || part.includes('huyện') || 
-                    part.includes('thị xã') || part.includes('tx')) {
-            district = parts[i];
+      // Các tỉnh/thành phố lớn ở Việt Nam để nhận diện
+      const majorCities = [
+        'hồ chí minh', 'hà nội', 'đà nẵng', 'cần thơ', 'hải phòng', 
+        'sóc trăng', 'vĩnh long', 'kiên giang', 'bạc liêu', 'cà mau'
+      ];
+      
+      // Kiểm tra xem phần cuối của địa chỉ có phải là tỉnh/thành phố không
+      let hasProvince = false;
+      if (parts.length > 0) {
+        const lastPart = parts[parts.length - 1].toLowerCase();
+        for (const city of majorCities) {
+          if (lastPart.includes(city)) {
+            hasProvince = true;
+            break;
           }
         }
       }
       
-      // Tạo địa chỉ cấu trúc cho API geocoding
-      if (district && province) {
-        structuredAddress = `${district}, ${province}, Việt Nam`;
-      }
-      
-      // Thêm "Việt Nam" vào cuối nếu chưa có
-      if (!structuredAddress.toLowerCase().includes("việt nam")) {
+      // Thêm "Việt Nam" vào cuối nếu chưa có và không đề cập đến tỉnh/thành phố
+      if (!structuredAddress.toLowerCase().includes("việt nam") && !hasProvince) {
+        if (parts.length > 0 && parts[parts.length - 1].trim() !== '') {
         structuredAddress += ", Việt Nam";
+        } else {
+          structuredAddress += "Việt Nam";
+        }
       }
       
       console.log("Địa chỉ cấu trúc cho geocoding:", structuredAddress);
@@ -971,10 +942,18 @@ export default function OrderDetail() {
       
       const encodedAddress = encodeURIComponent(structuredAddress);
       
-      // Sử dụng tọa độ chung cho Việt Nam
-      const proximity = "105.77,10.03"; // Mặc định là Cần Thơ
+      // Độ ưu tiên dựa trên tỉnh thành phố (Sóc Trăng)
+      let proximity = "105.85,21.0245"; // Mặc định là tọa độ trung tâm Việt Nam (Hà Nội)
       
-      const geocodingUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${MAPBOX_ACCESS_TOKEN}&country=vn&proximity=${proximity}&limit=1&language=vi`;
+      // Xác định tọa độ trung tâm tỉnh/thành phố từ địa chỉ
+      if (structuredAddress.toLowerCase().includes("sóc trăng")) {
+        proximity = "105.9722,9.6031"; // Tọa độ trung tâm Sóc Trăng
+      } else if (structuredAddress.toLowerCase().includes("cần thơ")) {
+        proximity = "105.7731,10.0341"; // Tọa độ trung tâm Cần Thơ
+      }
+      
+      // Thêm các tham số để cải thiện kết quả geocoding
+      const geocodingUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${MAPBOX_ACCESS_TOKEN}&country=vn&proximity=${proximity}&limit=1&language=vi&types=address,place,locality,neighborhood,district,postcode`;
       
       console.log("Gọi API geocoding với địa chỉ đã chuẩn hóa:", structuredAddress);
       
@@ -1004,7 +983,7 @@ export default function OrderDetail() {
             const customerLocationData = {
               lng: lng,
               lat: lat,
-              address: placeName || address, // Sử dụng tên địa điểm tìm thấy
+              address: address, // Giữ nguyên địa chỉ gốc để hiển thị
               pending: false,
               initialized: true,
               geocoded: true
@@ -1026,12 +1005,10 @@ export default function OrderDetail() {
             }, 300);
           } else {
             console.warn("Không tìm thấy kết quả geocoding, thử tìm kiếm với phương pháp khác");
-            // Thử tìm kiếm với từng phần của địa chỉ - KHÔNG DÙNG TRỰC TIẾP PERFORMFALLBACKGEOCODING
-            // để tránh circular reference
-            // Đặt một global function để thực hiện geocoding dự phòng
-            window._performFallbackGeocoding = performFallbackGeocoding;
-            // Gọi thông qua window để tránh circular reference
-            window._performFallbackGeocoding(address);
+            // Sử dụng tham chiếu từ useRef để tránh circular dependency
+            if (fallbackGeocodingFnRef.current) {
+              fallbackGeocodingFnRef.current(address);
+            }
           }
         })
         .catch(error => {
@@ -1039,16 +1016,86 @@ export default function OrderDetail() {
           window._geocoding_in_progress = window._geocoding_in_progress.filter(a => a !== structuredAddress);
         
           console.error("Không thể chuyển đổi địa chỉ thành tọa độ:", error);
-          // Thực hiện fallback thông qua global function
-          window._performFallbackGeocoding = performFallbackGeocoding;
-          window._performFallbackGeocoding(address);
+          // Sử dụng tham chiếu từ useRef để tránh circular dependency
+          if (fallbackGeocodingFnRef.current) {
+            fallbackGeocodingFnRef.current(address);
+          }
         });
     } catch (error) {
       console.error("Lỗi khi thực hiện geocoding:", error);
       setMapError(true);
       setDefaultLocation(address);
     }
-  }, [initMap, MAPBOX_ACCESS_TOKEN, setDefaultLocation, performFallbackGeocoding]);
+  }, [initMap, MAPBOX_ACCESS_TOKEN, setDefaultLocation]);
+  
+  // Lưu tham chiếu đến performGeocoding
+  geocodingFnRef.current = performGeocoding;
+  
+  // Thêm useEffect để xử lý khi order được tải để trích xuất vị trí khách hàng
+  useEffect(() => {
+    if (order && order.userId && !customerLocation?.initialized) {
+      console.log("Đang xử lý thông tin vị trí giao hàng từ order:", order);
+      
+      // Lấy thông tin địa chỉ đầy đủ khách hàng để hiển thị trên bản đồ
+      // Đảm bảo thêm đầy đủ chi tiết: số nhà, ấp, xã, huyện, tỉnh
+      const addressComponents = [];
+      if (order.userId.houseNumber) addressComponents.push(order.userId.houseNumber);
+      if (order.userId.address) addressComponents.push(order.userId.address);
+      if (order.userId.hamlet) addressComponents.push(order.userId.hamlet);
+      if (order.userId.ward) addressComponents.push(order.userId.ward);
+      if (order.userId.district) addressComponents.push(order.userId.district);
+      if (order.userId.province) addressComponents.push(order.userId.province);
+      
+      // Nối tất cả thành phần lại với nhau
+      const fullAddress = addressComponents.filter(Boolean).join(", ");
+      
+      console.log("Địa chỉ đầy đủ chi tiết khách hàng:", fullAddress);
+      
+      // Ưu tiên sử dụng tọa độ từ DB nếu có
+      if (order.deliveryCoordinates && order.deliveryCoordinates.lat && order.deliveryCoordinates.lng) {
+        console.log("Sử dụng tọa độ từ database:", order.deliveryCoordinates);
+        
+        const customerLocationData = {
+          lng: parseFloat(order.deliveryCoordinates.lng),
+          lat: parseFloat(order.deliveryCoordinates.lat),
+          address: fullAddress,
+          pending: false,
+          initialized: true
+        };
+        
+        setCustomerLocation(customerLocationData);
+        
+        // Khởi tạo bản đồ sau một khoảng thời gian ngắn để đảm bảo DOM đã sẵn sàng
+        setTimeout(() => {
+          try {
+            console.log("Khởi tạo bản đồ với tọa độ từ database:", customerLocationData);
+            initMap(customerLocationData);
+          } catch (err) {
+            console.error("Lỗi khi khởi tạo bản đồ với tọa độ từ database:", err);
+            setMapError(true);
+          }
+        }, 500);
+      } else {
+        // Nếu không có tọa độ từ database, thực hiện geocoding để lấy tọa độ từ địa chỉ
+        console.log("Không có tọa độ từ database, thực hiện geocoding cho địa chỉ:", fullAddress);
+        
+        // Khởi tạo customer location với địa chỉ đầy đủ, pending=true để trigger geocoding
+        const pendingLocation = {
+          address: fullAddress,
+          pending: true,
+          initialized: false
+        };
+        
+        setCustomerLocation(pendingLocation);
+        
+        // Thực hiện geocoding ngay lập tức nếu có thể
+        if (mapLoaded && geocodingFnRef.current) {
+          console.log("Map đã sẵn sàng, thực hiện geocoding ngay lập tức");
+          geocodingFnRef.current(fullAddress);
+        }
+      }
+    }
+  }, [order, customerLocation?.initialized, initMap, mapLoaded]);
   
   // Theo dõi khi mapLoaded thay đổi để thực hiện geocoding
   useEffect(() => {
@@ -1060,7 +1107,9 @@ export default function OrderDetail() {
         window._geocoding_requested = true;
         // Đánh dấu đã thực hiện geocoding
         setCustomerLocation(prev => ({...prev, geocoded: true}));
-        performGeocoding(customerLocation.address);
+        if (geocodingFnRef.current) {
+          geocodingFnRef.current(customerLocation.address);
+        }
       } catch (geocodingError) {
         console.error("Lỗi khi thực hiện geocoding:", geocodingError);
         setMapError(true);
@@ -1070,7 +1119,7 @@ export default function OrderDetail() {
         }
       }
     }
-  }, [mapLoaded, customerLocation, performGeocoding, setDefaultLocation]);
+  }, [mapLoaded, customerLocation, setDefaultLocation]);
   
   // Đặt lỗi bản đồ nếu có lỗi tải API
   useEffect(() => {
@@ -1288,8 +1337,8 @@ export default function OrderDetail() {
       );
     }
     
-    // Xác định địa chỉ hiển thị cho khách hàng - sử dụng địa chỉ thực tế từ customerLocation
-    const displayAddress = customerLocation.address;
+    // Xóa dòng này - biến không sử dụng
+    // const displayAddress = customerLocation.address;
     
     // Crear la URL para el mapa estático de Mapbox
     const path = getEncodedPath();
@@ -1313,8 +1362,8 @@ export default function OrderDetail() {
       customerLocation.lat, customerLocation.lng
     );
     
-    // Estimar el tiempo de entrega (40 km/h)
-    const estimatedTime = Math.ceil(distance / 40 * 60);
+    // Estimar el tiempo de entrega (30 km/h cho đường dài giữa các tỉnh)
+    const estimatedTime = Math.ceil(distance / 30 * 60);
     
     return (
       <div className="w-full rounded-lg overflow-hidden border border-gray-200">
@@ -1358,8 +1407,8 @@ export default function OrderDetail() {
   const renderMap = useCallback(() => {
     // Kiểm tra nếu đã hiển thị bản đồ tương tác thành công, không hiển thị static map
     if (mapLoaded && !mapError) {
-      // Xác định địa chỉ hiển thị cho khách hàng - sử dụng địa chỉ thực tế
-      const displayAddress = customerLocation?.address || "Địa chỉ giao hàng";
+      // Xóa dòng này - biến không sử dụng
+      // const displayAddress = customerLocation?.address || "Địa chỉ giao hàng";
       
       return (
         <div className="w-full relative rounded-lg overflow-hidden border border-gray-200">
@@ -1376,7 +1425,7 @@ export default function OrderDetail() {
               className="absolute bottom-12 right-3 bg-white rounded-md shadow-md px-3 py-1.5 text-blue-600 text-xs font-medium hover:bg-blue-50 transition border border-gray-200 flex items-center gap-1"
             >
               <FaDirections className="text-blue-600" size={14} />
-              Xem chỉ đường tới {displayAddress}
+              Xem chỉ đường tới địa điểm nhận hàng
             </a>
           )}
         </div>
@@ -1865,12 +1914,14 @@ export default function OrderDetail() {
               <div className="flex flex-col gap-1 sm:gap-2">
                 <div className="text-xs sm:text-sm text-gray-600">Địa chỉ giao hàng:</div>
                 <div className="font-medium">
-                  {order.userId?.address ? (
+                  {order.userId ? (
                     <span className="text-xs sm:text-sm">
-                      {order.userId.address}, 
-                      {order.userId.ward && ` ${order.userId.ward},`}
-                      {order.userId.district && ` ${order.userId.district},`}
-                      {order.userId.province && ` ${order.userId.province}`}
+                      {order.userId.houseNumber && `${order.userId.houseNumber}, `}
+                      {order.userId.address && `${order.userId.address}, `}
+                      {order.userId.hamlet && `${order.userId.hamlet}, `}
+                      {order.userId.ward && `${order.userId.ward}, `}
+                      {order.userId.district && `${order.userId.district}, `}
+                      {order.userId.province && `${order.userId.province}`}
                     </span>
                   ) : (
                     "Không có thông tin địa chỉ"

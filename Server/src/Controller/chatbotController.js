@@ -23,6 +23,64 @@ const conversationContext = new Map();
 const CONTEXT_EXPIRY_TIME = 15 * 60 * 1000;
 
 /**
+ * Trích xuất nguyên liệu từ câu trả lời công thức nấu ăn
+ * @param {string} recipeResponse - Câu trả lời công thức nấu ăn
+ * @returns {string[]} - Danh sách nguyên liệu đã trích xuất
+ */
+const extractIngredientsFromRecipe = (recipeResponse) => {
+  if (!recipeResponse) return [];
+  
+  // Danh sách nguyên liệu phổ biến để tìm kiếm
+  const commonIngredients = [
+    'thịt', 'cá', 'hải sản', 'gà', 'bò', 'heo', 'vịt', 'trứng', 'hột vịt', 'hột gà',
+    'rau', 'củ', 'quả', 'cà chua', 'cà rốt', 'bắp cải', 'xà lách', 'hành', 'tỏi', 'gừng',
+    'ớt', 'tiêu', 'muối', 'đường', 'nước mắm', 'dầu ăn', 'dầu hào', 'nước tương', 
+    'mì', 'bún', 'phở', 'miến', 'gạo', 'bột', 'bánh', 'kẹo',
+    'nước dừa', 'sữa', 'nước', 'bia', 'rượu'
+  ];
+  
+  // Tạo pattern để tìm nguyên liệu từ danh sách đánh số
+  const ingredientListPattern = /\d+\.\s+([^\d]+?)(?=\n|$)/g;
+  let ingredients = [];
+  
+  // Tìm kiếm danh sách đánh số
+  let match;
+  while ((match = ingredientListPattern.exec(recipeResponse)) !== null) {
+    const ingredient = match[1].trim().toLowerCase();
+    ingredients.push(ingredient);
+  }
+  
+  // Nếu không tìm thấy danh sách đánh số, tìm kiếm các nguyên liệu phổ biến
+  if (ingredients.length === 0) {
+    const lowerResponse = recipeResponse.toLowerCase();
+    
+    for (const ingredient of commonIngredients) {
+      if (lowerResponse.includes(ingredient)) {
+        // Trích xuất nguyên liệu và ngữ cảnh xung quanh
+        const regex = new RegExp(`\\b${ingredient}\\b([^,.;]+)?`, 'g');
+        let ingredientMatch;
+        
+        while ((ingredientMatch = regex.exec(lowerResponse)) !== null) {
+          const fullMatch = ingredientMatch[0].trim();
+          ingredients.push(fullMatch);
+        }
+      }
+    }
+  }
+  
+  // Loại bỏ trùng lặp và tinh chỉnh
+  ingredients = [...new Set(ingredients)].map(ing => {
+    // Loại bỏ số lượng và đơn vị
+    return ing.replace(/\(\d+.*?\)/g, '')
+              .replace(/\d+\s*(g|kg|ml|l|muỗng|tép|củ|quả)/gi, '')
+              .replace(/khoảng/gi, '')
+              .trim();
+  }).filter(ing => ing.length > 1); // Loại bỏ các mục quá ngắn
+  
+  return ingredients;
+};
+
+/**
  * Lưu ngữ cảnh cuộc hội thoại
  * @param {string} userId - ID người dùng
  * @param {object} context - Dữ liệu ngữ cảnh
@@ -79,6 +137,128 @@ export const handleMessage = async (req, res) => {
     
     console.log(`Nhận tin nhắn từ user ${userId || 'anonymous'}: "${message}"`);
     console.log("Thông tin sản phẩm đang xem (productId):", productId);
+    
+    // Kiểm tra xem có phải yêu cầu về nguyên liệu từ công thức trước đó
+    const isIngredientRequest = /tìm (các )?nguyên liệu|nguyên liệu (ở )?trên|chỗ nào (có )?bán|mua (ở )?đâu/i.test(message);
+    if (isIngredientRequest && userId) {
+      const context = getContext(userId);
+      
+      if (context && context.lastRecipe) {
+        console.log("Phát hiện yêu cầu tìm nguyên liệu từ công thức trước:", context.lastRecipe.substring(0, 50) + "...");
+        
+        // Trích xuất nguyên liệu từ công thức
+        const ingredients = extractIngredientsFromRecipe(context.lastRecipe);
+        console.log("Các nguyên liệu được trích xuất:", ingredients);
+        
+        if (ingredients.length > 0) {
+          // Tìm kiếm sản phẩm theo từng nguyên liệu
+          const multiResults = await handleMultiProductSearch(ingredients);
+          
+          if (multiResults.length > 0) {
+            // Đếm tổng số sản phẩm tìm được
+            const totalProducts = multiResults.reduce((total, result) => total + (result.products ? result.products.length : 0), 0);
+            
+            // Đếm số lượng queries có kết quả
+            const queriesWithResults = multiResults.filter(result => result.products && result.products.length > 0).length;
+            
+            // Tạo thông báo phù hợp
+            let responseMessage = "";
+            
+            if (queriesWithResults === ingredients.length) {
+              responseMessage = `Tôi đã tìm thấy ${totalProducts} sản phẩm phù hợp với ${ingredients.length} nguyên liệu từ công thức:`;
+            } else if (queriesWithResults > 0) {
+              responseMessage = `Tôi tìm thấy sản phẩm phù hợp với ${queriesWithResults}/${ingredients.length} nguyên liệu từ công thức:`;
+            } else {
+              responseMessage = "Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với các nguyên liệu từ công thức. Bạn có thể thử lại với từ khóa khác không?";
+            }
+            
+            // Lưu kết quả tìm kiếm vào ngữ cảnh
+            const lastProducts = multiResults.flatMap(result => result.products || []);
+            saveContext(userId, { 
+              multiSearchResults: multiResults,
+              lastProducts: lastProducts.length > 0 ? lastProducts : null,
+              lastProduct: lastProducts.length > 0 ? lastProducts[0] : null,
+              lastQuery: message 
+            });
+            
+            return res.status(200).json({
+              success: true,
+              type: 'multiProductSearch',
+              message: responseMessage,
+              data: multiResults,
+              totalResults: totalProducts
+            });
+          } else {
+            return res.status(200).json({
+              success: true,
+              type: 'text',
+              message: "Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với các nguyên liệu từ công thức. Bạn có thể tìm kiếm trực tiếp bằng từng nguyên liệu cụ thể."
+            });
+          }
+        } else {
+          return res.status(200).json({
+            success: true,
+            type: 'text',
+            message: "Tôi không thể trích xuất được nguyên liệu từ công thức trước đó. Bạn có thể cho tôi biết cụ thể nguyên liệu bạn đang tìm kiếm không?"
+          });
+        }
+      }
+    }
+    
+    // Kiểm tra xem có phải yêu cầu tìm nhiều sản phẩm cùng lúc không
+    const multiProductQueries = detectMultiProductSearch(message);
+    if (multiProductQueries) {
+      console.log("Phát hiện yêu cầu tìm nhiều sản phẩm cùng lúc:", multiProductQueries);
+      
+      const multiResults = await handleMultiProductSearch(multiProductQueries);
+      
+      if (multiResults.length > 0) {
+        // Đếm tổng số sản phẩm tìm được
+        const totalProducts = multiResults.reduce((total, result) => total + (result.products ? result.products.length : 0), 0);
+        
+        // Đếm số lượng queries có kết quả
+        const queriesWithResults = multiResults.filter(result => result.products && result.products.length > 0).length;
+        
+        // Tạo thông báo phù hợp
+        let responseMessage = "";
+        
+        if (queriesWithResults === multiProductQueries.length) {
+          // Tìm thấy kết quả cho tất cả các truy vấn
+          responseMessage = `Tôi đã tìm thấy ${totalProducts} sản phẩm phù hợp với ${multiProductQueries.length} loại bạn yêu cầu:`;
+        } else if (queriesWithResults > 0) {
+          // Chỉ tìm thấy kết quả cho một số truy vấn
+          responseMessage = `Tôi tìm thấy sản phẩm phù hợp với ${queriesWithResults}/${multiProductQueries.length} loại bạn yêu cầu:`;
+        } else {
+          // Không tìm thấy kết quả nào
+          responseMessage = "Tôi không tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Bạn có thể thử lại với từ khóa khác không?";
+        }
+        
+        // Lưu kết quả tìm kiếm vào ngữ cảnh nếu có userId
+        if (userId) {
+          const lastProducts = multiResults.flatMap(result => result.products || []);
+          saveContext(userId, { 
+            multiSearchResults: multiResults,
+            lastProducts: lastProducts.length > 0 ? lastProducts : null,
+            lastProduct: lastProducts.length > 0 ? lastProducts[0] : null,
+            lastQuery: message 
+          });
+        }
+        
+        return res.status(200).json({
+          success: true,
+          type: 'multiProductSearch',
+          message: responseMessage,
+          data: multiResults,
+          totalResults: totalProducts
+        });
+      } else {
+        return res.status(200).json({
+          success: true,
+          type: 'text',
+          message: "Rất tiếc, tôi không tìm thấy sản phẩm nào phù hợp với các tiêu chí tìm kiếm của bạn. Bạn có thể thử lại với các từ khóa khác không?"
+        });
+      }
+    }
     
     // Xử lý câu hỏi về sản phẩm hiện tại nếu có productId
     if (productId) {
@@ -193,6 +373,11 @@ export const handleMessage = async (req, res) => {
           // Gọi API Python backend để lấy công thức nấu ăn
           const pyRes = await axios.post('http://localhost:5000/api/chatbot/ask', { question: message });
           if (pyRes.data && pyRes.data.answer) {
+            // Lưu công thức vào ngữ cảnh để sử dụng sau này
+            if (userId) {
+              saveContext(userId, { lastRecipe: pyRes.data.answer, lastQuery: message });
+            }
+            
             return res.status(200).json({
               success: true,
               type: 'text',
@@ -1004,3 +1189,353 @@ const isCookingQuestion = (message) => {
   const cookingKeywords = ["nấu", "công thức", "nguyên liệu", "cách làm"];
   return cookingKeywords.some(kw => message.toLowerCase().includes(kw));
 };
+
+/**
+ * Detects if the user is trying to search for multiple products in one message
+ * @param {string} message - User's message
+ * @returns {string[]|null} - Array of product queries or null if not a multi-product search
+ */
+const detectMultiProductSearch = (message) => {
+  if (!message) return null;
+  
+  const lowerMessage = message.toLowerCase().trim();
+  
+  // Danh sách các từ khoá sản phẩm phổ biến để kiểm tra
+  const commonProductKeywords = [
+    'nước giặt', 'nước rửa', 'nước ngọt', 'nước giải khát', 'pepsi', 'coca', 
+    'thịt', 'cá', 'rau', 'củ', 'quả', 'bánh', 'kẹo', 'mì', 'bún', 
+    'gia vị', 'dầu ăn', 'nước mắm', 'nước tương', 'sữa', 'trà', 'cà phê'
+  ];
+  
+  // Kiểm tra xem tin nhắn có chứa ít nhất 2 từ khoá sản phẩm không
+  let productKeywordsFound = [];
+  for (const keyword of commonProductKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      productKeywordsFound.push(keyword);
+    }
+  }
+  
+  // Nếu tìm thấy ít nhất 2 từ khoá sản phẩm, coi là tìm kiếm nhiều sản phẩm
+  const hasMultipleProductKeywords = productKeywordsFound.length >= 2;
+  
+  // Check for multi-product search indicators
+  const hasMultiSearchIndicator = 
+    lowerMessage.includes('nhiều sản phẩm') || 
+    lowerMessage.includes('nhiều loại') ||
+    lowerMessage.includes('tìm nhiều') ||
+    lowerMessage.includes('cùng lúc') ||
+    lowerMessage.includes('so sánh') ||
+    lowerMessage.includes('đối chiếu') ||
+    lowerMessage.includes('các loại') ||
+    lowerMessage.includes('các sản phẩm') ||
+    lowerMessage.match(/tìm.+và.+/) !== null ||
+    // Thêm nhận diện khi tin nhắn chứa "tìm" và dấu phẩy
+    lowerMessage.match(/tìm.+,.+/) !== null ||
+    // Hoặc khi chứa từ tìm kiếm và chứa ít nhất 2 từ khoá sản phẩm
+    (lowerMessage.includes('tìm') && hasMultipleProductKeywords);
+  
+  // Nếu không có dấu hiệu tìm nhiều sản phẩm, kiểm tra thêm các trường hợp đặc biệt
+  if (!hasMultiSearchIndicator) {
+    // Kiểm tra xem có phải tin nhắn chỉ liệt kê các sản phẩm không, ví dụ: "nước giặt nước rửa chén"
+    if (hasMultipleProductKeywords) {
+      // Nếu có chứa ít nhất 2 từ khoá sản phẩm mà không có từ khoá tìm kiếm,
+      // giả định là người dùng đang muốn tìm nhiều sản phẩm
+      console.log("Phát hiện yêu cầu tìm nhiều sản phẩm từ danh sách từ khoá:", productKeywordsFound);
+    } else {
+      // Không phải tin nhắn tìm nhiều sản phẩm
+      return null;
+    }
+  }
+  
+  // Common separators in Vietnamese queries
+  const separators = [',', 'và', 'với', 'cùng với', ';', '+', 'so với', 'so sánh với'];
+  
+  // Try to split by common separators
+  let parts = [];
+  
+  // Special handling for comparison queries
+  if (lowerMessage.includes('so sánh') || lowerMessage.includes('đối chiếu')) {
+    const comparisonTerms = ['so sánh', 'đối chiếu', 'so với', 'đối với', 'so', 'hơn', 'kém', 'thua'];
+    
+    // Extract the part after comparison keywords
+    let cleanMessage = lowerMessage;
+    for (const term of comparisonTerms) {
+      if (lowerMessage.includes(term)) {
+        cleanMessage = lowerMessage.split(term)[1]?.trim() || lowerMessage;
+        break;
+      }
+    }
+    
+    // If we have a cleaner message after comparison terms, try to split it
+    if (cleanMessage !== lowerMessage) {
+      for (const separator of separators) {
+        if (cleanMessage.includes(separator)) {
+          if (separator === 'và') {
+            parts = cleanMessage.split(/\s+và\s+/i).filter(p => p.trim().length > 0);
+          } else if (separator === 'với' || separator === 'so với' || separator === 'so sánh với') {
+            // Special handling for 'với' as it can be part of other phrases
+            parts = cleanMessage.split(/\s+(với|so với|so sánh với)\s+/i).filter(p => p.trim().length > 0);
+          } else {
+            parts = cleanMessage.split(separator).filter(p => p.trim().length > 0);
+          }
+          break;
+        }
+      }
+    }
+  } else {
+    // Regular non-comparison multi-product search
+    for (const separator of separators) {
+      // If we already have multiple parts, break
+      if (parts.length > 1) break;
+      
+      // Try splitting by this separator
+      if (message.toLowerCase().includes(separator)) {
+        // Handle "và" specially to avoid splitting phrases like "rau và củ" that should stay together
+        if (separator === 'và') {
+          parts = message.split(/\s+và\s+/i).filter(p => p.trim().length > 0);
+        } else if (separator === 'với' || separator === 'so với' || separator === 'so sánh với') {
+          // Special handling for 'với' as it can be part of other phrases
+          parts = message.split(/\s+(với|so với|so sánh với)\s+/i).filter(p => p.trim().length > 0);
+        } else {
+          parts = message.split(separator).filter(p => p.trim().length > 0);
+        }
+      }
+    }
+  }
+  
+  // Nếu không tách được và có nhiều từ khoá sản phẩm, tạo ra các phần từ các từ khoá đó
+  if (parts.length <= 1 && productKeywordsFound.length >= 2) {
+    console.log("Tạo các phần tìm kiếm từ các từ khoá sản phẩm phát hiện được");
+    
+    // Loại bỏ "tìm", "tìm kiếm" từ tin nhắn
+    let cleanMessage = lowerMessage
+      .replace(/tìm kiếm/i, '')
+      .replace(/tìm/i, '')
+      .trim();
+    
+    // Thử phát hiện các sản phẩm dựa trên các từ khoá phổ biến
+    parts = [];
+    for (const keyword of productKeywordsFound) {
+      // Tạo regex để lấy context xung quanh từ khoá
+      const regex = new RegExp(`(\\w+\\s+)?(\\w+\\s+)?${keyword}(\\s+\\w+)?(\\s+\\w+)?`, 'i');
+      const match = cleanMessage.match(regex);
+      if (match) {
+        parts.push(match[0].trim());
+      } else {
+        parts.push(keyword);  // Nếu không lấy được context, dùng chính từ khoá
+      }
+    }
+  }
+  
+  // If we couldn't split by separators but has multi-search indicator,
+  // try to extract product names using NLP-like approach
+  if (parts.length <= 1) {
+    // Extract product names after removing common prefixes
+    const cleanMessage = lowerMessage
+      .replace(/so sánh (giữa|của|về|giá|chất lượng|ưu điểm|nhược điểm) /i, '')
+      .replace(/so sánh/i, '')
+      .replace(/đối chiếu/i, '')
+      .replace(/tìm nhiều (sản phẩm|loại|thứ) (như|là|gồm|bao gồm|có)/i, '')
+      .replace(/tìm (các|những) (sản phẩm|loại|thứ) (như|là|gồm|bao gồm|có)/i, '')
+      .replace(/tìm (các|những|nhiều)/i, '')
+      .replace(/các loại/i, '')
+      .replace(/các sản phẩm/i, '')
+      .trim();
+    
+    // Re-attempt to split after cleaning
+    for (const separator of separators) {
+      if (cleanMessage.includes(separator)) {
+        if (separator === 'và') {
+          parts = cleanMessage.split(/\s+và\s+/i).filter(p => p.trim().length > 0);
+        } else if (separator === 'với' || separator === 'so với' || separator === 'so sánh với') {
+          parts = cleanMessage.split(/\s+(với|so với|so sánh với)\s+/i).filter(p => p.trim().length > 0);
+        } else {
+          parts = cleanMessage.split(separator).filter(p => p.trim().length > 0);
+        }
+        break;
+      }
+    }
+    
+    // If we still couldn't split it, try looking for product categories or common products
+    if (parts.length <= 1) {
+      const commonCategories = [
+        'rau', 'củ', 'quả', 'thịt', 'cá', 'hải sản', 'đồ uống', 'nước ngọt', 
+        'bia', 'rượu', 'bánh', 'kẹo', 'gia vị', 'dầu ăn', 'nước mắm', 'mì', 'bún',
+        'nước giặt', 'nước rửa', 'nước tẩy'
+      ];
+      
+      // Try to identify categories in the message
+      const categories = [];
+      for (const category of commonCategories) {
+        if (cleanMessage.includes(category)) {
+          // Extract surrounding context (up to 2 words before and after)
+          const regex = new RegExp(`(\\w+\\s+)?(\\w+\\s+)?${category}(\\s+\\w+)?(\\s+\\w+)?`, 'i');
+          const match = cleanMessage.match(regex);
+          if (match) {
+            categories.push(match[0].trim());
+          }
+        }
+      }
+      
+      // If we found at least 2 categories, use them as parts
+      if (categories.length >= 2) {
+        parts = categories;
+      }
+    }
+  }
+  
+  // Xử lý trường hợp đầu vào như "nước giặt nước rửa chén" (không có dấu phân cách)
+  if (parts.length <= 1 && hasMultipleProductKeywords) {
+    // Thử tách dựa vào từ khoá phổ biến
+    let remainingText = lowerMessage;
+    parts = [];
+    
+    // Sắp xếp các từ khoá theo độ dài giảm dần để đảm bảo tìm thấy từ dài nhất trước
+    const sortedKeywords = [...commonProductKeywords].sort((a, b) => b.length - a.length);
+    
+    while (remainingText.length > 0) {
+      let found = false;
+      
+      for (const keyword of sortedKeywords) {
+        if (remainingText.includes(keyword)) {
+          const index = remainingText.indexOf(keyword);
+          
+          // Nếu có nội dung trước từ khoá và nó không chỉ là khoảng trắng
+          if (index > 0) {
+            const beforeText = remainingText.substring(0, index).trim();
+            if (beforeText.length > 0) {
+              parts.push(beforeText);
+            }
+          }
+          
+          // Thêm cụm từ khoá và context xung quanh
+          const regex = new RegExp(`(\\w+\\s+)?(\\w+\\s+)?${keyword}(\\s+\\w+)?(\\s+\\w+)?`, 'i');
+          const match = remainingText.match(regex);
+          if (match) {
+            parts.push(match[0].trim());
+            remainingText = remainingText.substring(index + keyword.length).trim();
+          } else {
+            parts.push(keyword);
+            remainingText = remainingText.substring(index + keyword.length).trim();
+          }
+          
+          found = true;
+          break;
+        }
+      }
+      
+      // Nếu không tìm thấy từ khoá nào nữa, thêm phần còn lại vào parts nếu còn
+      if (!found) {
+        if (remainingText.trim().length > 0) {
+          parts.push(remainingText.trim());
+        }
+        break;
+      }
+    }
+  }
+  
+  // Loại bỏ các phần trùng lặp
+  parts = [...new Set(parts)];
+  
+  // Loại bỏ các phần quá ngắn (ít hơn 2 ký tự)
+  parts = parts.filter(p => p.length >= 2);
+  
+  // Only consider it a multi-product search if we have at least 2 parts
+  if (parts.length >= 2) {
+    console.log("Tìm kiếm nhiều sản phẩm được phát hiện:", parts);
+    return parts.map(p => p.trim());
+  }
+  
+  // Nếu vẫn không tìm được nhiều sản phẩm dù đã phát hiện dấu hiệu, 
+  // cố gắng phân tích câu một cách thông minh hơn
+  if (hasMultiSearchIndicator || hasMultipleProductKeywords) {
+    console.log("Cố gắng phân tích câu thông minh hơn - lowerMessage:", lowerMessage);
+    
+    // Tạo danh sách từ khoá với các tiền tố phổ biến
+    const expandedKeywords = [];
+    for (const keyword of commonProductKeywords) {
+      expandedKeywords.push(keyword);
+      expandedKeywords.push(`sản phẩm ${keyword}`);
+      expandedKeywords.push(`loại ${keyword}`);
+    }
+    
+    // Tìm tất cả các từ khoá phổ biến trong tin nhắn
+    const detectedProducts = [];
+    for (const keyword of expandedKeywords) {
+      if (lowerMessage.includes(keyword)) {
+        // Trích xuất từ khoá và ngữ cảnh xung quanh
+        const regex = new RegExp(`(\\w+\\s+)?(\\w+\\s+)?${keyword}(\\s+\\w+)?(\\s+\\w+)?`, 'i');
+        const match = lowerMessage.match(regex);
+        if (match) {
+          detectedProducts.push(match[0].trim());
+        }
+      }
+    }
+    
+    // Nếu phát hiện được từ 2 sản phẩm trở lên
+    if (detectedProducts.length >= 2) {
+      console.log("Phát hiện sản phẩm từ phân tích thông minh:", detectedProducts);
+      return detectedProducts.map(p => p.trim());
+    }
+  }
+  
+  return null;
+};
+
+/**
+ * Handles search for multiple products
+ * @param {string[]} queries - Array of search queries
+ * @returns {Promise<Array>} - Search results for each query
+ */
+const handleMultiProductSearch = async (queries) => {
+  const results = [];
+  
+  // Danh sách các từ cần loại bỏ khi tìm kiếm
+  const stopWords = ['tìm', 'kiếm', 'tìm kiếm', 'sản phẩm', 'loại', 'như', 'các', 'những', 'nhiều', 'cho', 'tôi'];
+  
+  for (const query of queries) {
+    try {
+      // Chuẩn hoá query dựa vào từ khoá
+      let cleanQuery = query.toLowerCase().trim();
+      
+      // Loại bỏ các stopwords để tập trung vào tên sản phẩm
+      for (const word of stopWords) {
+        // Chỉ loại bỏ nếu từ đứng độc lập, không phải một phần của từ khác
+        cleanQuery = cleanQuery.replace(new RegExp(`\\b${word}\\b`, 'gi'), '');
+      }
+      
+      cleanQuery = cleanQuery.trim();
+      
+      console.log(`Tìm kiếm sản phẩm "${query}" (đã chuẩn hoá: "${cleanQuery}")`);
+      
+      // Sử dụng query đã chuẩn hoá để tìm kiếm
+      const products = await searchProductsMongoDB(cleanQuery);
+      
+      if (products && products.length > 0) {
+        results.push({
+          query: query, // Giữ lại query gốc để hiển thị cho người dùng
+          cleanQuery: cleanQuery, // Thêm query đã chuẩn hoá để debug
+          products: products.slice(0, 5)  // Limit to top 5 products per query
+        });
+      } else {
+        // Thử lại với query gốc nếu query đã chuẩn hoá không có kết quả
+        console.log(`Không tìm thấy kết quả với query đã chuẩn hoá, thử lại với query gốc: "${query}"`);
+        const originalProducts = await searchProductsMongoDB(query);
+        
+        if (originalProducts && originalProducts.length > 0) {
+          results.push({
+            query: query,
+            cleanQuery: null, // Đánh dấu là không sử dụng query đã chuẩn hoá
+            products: originalProducts.slice(0, 5)
+          });
+        }
+      }
+    } catch (error) {
+      console.error(`Lỗi khi tìm kiếm sản phẩm "${query}":`, error);
+    }
+  }
+  
+  return results;
+};
+
+
