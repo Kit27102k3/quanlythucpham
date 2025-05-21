@@ -5,7 +5,7 @@ import { formatCurrency } from "../../../utils/formatCurrency";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCartShopping } from "@fortawesome/free-solid-svg-icons";
 import useCartAndNavigation from "../../Until/useCartAndNavigation";
-import {API_URLS} from "../../../config/apiConfig";
+import { API_URLS } from "../../../config/apiConfig";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -27,6 +27,7 @@ const itemVariants = {
 function BestSelling() {
   const [bestSellers, setBestSellers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const { handleAddToCart, handleClick } = useCartAndNavigation();
   const [isMobile, setIsMobile] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
@@ -54,37 +55,88 @@ function BestSelling() {
     const fetchBestSellers = async () => {
       try {
         setLoading(true);
-        let products = [];
+        setHasError(false);
         
+        // Cố gắng lấy sản phẩm bán chạy nhất từ API
         try {
+          console.log("Đang gọi API best-sellers:", `${API_URLS.PRODUCTS}/best-sellers`);
           const response = await axios.get(`${API_URLS.PRODUCTS}/best-sellers?limit=4`);
           
-          // Check if the response has a data property structure used by the server
-          if (response.data && response.data.success && response.data.data) {
-            products = response.data.data;
+          if (response.data && response.data.success && Array.isArray(response.data.data)) {
+            console.log("Lấy dữ liệu best-sellers thành công:", response.data.data.length, "sản phẩm");
+            setBestSellers(response.data.data);
+            setLoading(false);
+            return;
+          } else if (Array.isArray(response.data)) {
+            console.log("Lấy dữ liệu best-sellers dạng mảng thành công:", response.data.length, "sản phẩm");
+            setBestSellers(response.data);
+            setLoading(false);
+            return;
           } else {
-            // If not, assume the response is the direct array of products
-            products = response.data;
+            console.error("Dữ liệu không đúng định dạng:", response.data);
+            throw new Error('Dữ liệu không đúng định dạng');
           }
-        } catch (error) {
-          console.error('Error fetching best selling products:', error);
+        } catch (bestSellersError) {
+          console.error('Lỗi khi lấy sản phẩm bán chạy:', bestSellersError);
           
-          // If API fails, try a fallback to get regular products
+          // Nếu không thành công, thử lấy các sản phẩm thông thường
           try {
-            const fallbackResponse = await axios.get('/api/products?limit=4');
-            if (fallbackResponse.data && Array.isArray(fallbackResponse.data)) {
-              products = fallbackResponse.data;
+            console.log("Đang gọi API sản phẩm thông thường:", `${API_URLS.PRODUCTS}`);
+            const fallbackResponse = await axios.get(`${API_URLS.PRODUCTS}?limit=4`);
+            
+            if (fallbackResponse.data && fallbackResponse.data.success && Array.isArray(fallbackResponse.data.data)) {
+              console.log("Lấy danh sách sản phẩm thông thường thành công:", fallbackResponse.data.data.length, "sản phẩm");
+              setBestSellers(fallbackResponse.data.data);
+              setLoading(false);
+              return;
+            } else if (Array.isArray(fallbackResponse.data)) {
+              console.log("Lấy danh sách sản phẩm dạng mảng thành công:", fallbackResponse.data.length, "sản phẩm");
+              setBestSellers(fallbackResponse.data);
+              setLoading(false);
+              return;
+            } else {
+              console.error("Dữ liệu sản phẩm không đúng định dạng:", fallbackResponse.data);
+              throw new Error('Dữ liệu fallback không đúng định dạng');
             }
           } catch (fallbackError) {
-            console.error('Fallback fetch also failed:', fallbackError);
+            console.error('Lỗi khi lấy sản phẩm thông thường:', fallbackError);
+            setHasError(true);
+            
+            // Nếu cả hai cách đều không thành công, báo lỗi nhưng vẫn giữ giao diện
+            console.warn("Không thể lấy dữ liệu từ server, sử dụng dữ liệu mẫu tạm thời");
+            const sampleProducts = Array(4).fill().map((_, i) => ({
+              _id: 'sample-' + Date.now() + i,
+              productName: 'Sản phẩm ' + (i + 1),
+              productCategory: 'Danh mục mẫu',
+              productPrice: 100000 + (i * 50000),
+              productDiscount: i % 2 === 0 ? 10 : 0,
+              productImages: ['https://via.placeholder.com/272?text=Loading...'],
+              productStock: 10,
+              productStatus: 'Còn hàng'
+            }));
+            
+            setBestSellers(sampleProducts);
+            setLoading(false);
           }
         }
-        
-        setBestSellers(products);
-        setLoading(false);
       } catch (mainError) {
-        console.error('Could not fetch any products:', mainError);
+        console.error('Lỗi nghiêm trọng khi lấy sản phẩm:', mainError);
+        setHasError(true);
         setLoading(false);
+        
+        // Dữ liệu mẫu chỉ khi có lỗi nghiêm trọng
+        const sampleProducts = Array(4).fill().map((_, i) => ({
+          _id: 'sample-' + Date.now() + i,
+          productName: 'Sản phẩm ' + (i + 1),
+          productCategory: 'Danh mục mẫu',
+          productPrice: 100000 + (i * 50000),
+          productDiscount: i % 2 === 0 ? 10 : 0,
+          productImages: ['https://via.placeholder.com/272?text=Server+Error'],
+          productStock: 10,
+          productStatus: 'Còn hàng'
+        }));
+        
+        setBestSellers(sampleProducts);
       }
     };
 
@@ -194,11 +246,6 @@ function BestSelling() {
     );
   }
 
-  // Return null if no best sellers found
-  if (!bestSellers || bestSellers.length === 0) {
-    return null;
-  }
-
   return (
     <div className="mt-10 mb-12">
       <div className=" mb-6 text-center lg:text-left">
@@ -209,6 +256,11 @@ function BestSelling() {
         <p className="text-gray-500 text-[13px] lg:text-[16px]">
           Những sản phẩm được khách hàng tin dùng và mua nhiều nhất
         </p>
+        {hasError && (
+          <p className="text-yellow-600 text-[12px] mt-2 lg:text-[14px]">
+            Đang cập nhật dữ liệu từ máy chủ...
+          </p>
+        )}
       </div>
       
       {/* Mobile Banner */}
@@ -283,17 +335,21 @@ function BestSelling() {
               
               return (
                 <motion.div
-                  key={`${productData._id}-${index}`}
+                  key={`${productData._id || index}-${index}`}
                   variants={itemVariants}
                   onClick={() => handleClick(productData)}
                   className="items-center justify-center bg-white rounded-md overflow-hidden shadow-lg hover:shadow-md transition-shadow duration-300 relative"
                 >
                   <div className="relative">
                     <img
-                      src={`${productData.productImages?.[0]}`}
+                      src={productData.productImages?.[0] || 'https://via.placeholder.com/272?text=No+Image'}
                       alt={productData.productName}
                       className="w-full mx-auto h-[197px] object-cover hover-scale-up lg:w-[272px] lg:h-[272px]"
                       loading="lazy"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://via.placeholder.com/272?text=Image+Error';
+                      }}
                     />
                     {(productData.productStock === 0 || productData.productStatus === "Hết hàng") && (
                       <div className="absolute top-0 right-0 bg-red-600 text-white px-2 py-1 text-xs font-semibold">
@@ -303,7 +359,7 @@ function BestSelling() {
                   </div>
                   <div className="flex flex-col mt-auto p-4 gap-2">
                     <p className="text-gray-400 text-[10px] lg:text-[14px]">
-                      {product.productCategory || productData.productCategory}
+                      {product.productCategory || productData.productCategory || 'Danh mục'}
                     </p>
                     <p className="font-medium text-[10px] hover:text-[#51aa1b] line-clamp-1 lg:text-[14px] transition-colors duration-300">
                       {productData.productName}
@@ -336,7 +392,7 @@ function BestSelling() {
                     ) : (
                       <div className="flex items-center gap-2 justify-between mt-4">
                         <p className="text-[#51aa1b] text-[10px] mt-1 lg:text-[16px]">
-                          {formatCurrency(getPrice(productData))}đ
+                          {formatCurrency(getPrice(productData))}
                         </p>
                         <FontAwesomeIcon
                           onClick={(e) => {

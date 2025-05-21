@@ -54,7 +54,7 @@ var verifyToken = exports.verifyToken = /*#__PURE__*/function () {
           }));
         case 9:
           token = authHeader.split(' ')[1];
-          console.log("Received token:", token);
+         
 
           // Kiểm tra xem có phải là token đặc biệt cho admin không
           if (!(token === ADMIN_SECRET_TOKEN)) {
@@ -72,7 +72,7 @@ var verifyToken = exports.verifyToken = /*#__PURE__*/function () {
         case 14:
           // Xác thực JWT token thông thường
           decoded = _jsonwebtoken["default"].verify(token, JWT_SECRET);
-          console.log("Decoded token:", decoded);
+        
           req.user = decoded;
           next();
           _context.next = 26;

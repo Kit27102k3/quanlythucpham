@@ -606,7 +606,7 @@ export const replyToReview = async (req, res) => {
     let decodedToken;
     try {
       decodedToken = jwt.verify(token, JWT_SECRET);
-      console.log("Decoded token:", decodedToken);
+      
       
       if (!decodedToken.id) {
         return res.status(401).json({ 

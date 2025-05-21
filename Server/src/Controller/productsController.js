@@ -628,18 +628,57 @@ export const getBestSellingProducts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 4;
     const period = req.query.period || "all";
 
-    const bestSellingProducts = await BestSellingProduct.find()
-      .sort({ totalSold: -1 })
-      .limit(limit)
-      .populate("productId");
-
-    const activeProducts = bestSellingProducts.filter(
-      (item) => item.productId && item.productId.isActive
+    // Sử dụng phương thức getBestSellers từ model BestSellingProduct
+    const bestSellingProducts = await BestSellingProduct.getBestSellers(
+      limit,
+      period
     );
 
-    res.status(200).json(activeProducts);
+    // Nếu không có sản phẩm bán chạy, lấy sản phẩm thông thường
+    if (!bestSellingProducts || bestSellingProducts.length === 0) {
+      
+      const normalProducts = await Product.find({
+        productStatus: { $ne: "Hết hàng" },
+        productStock: { $gt: 0 },
+      })
+        .sort({ createdAt: -1 })
+        .limit(limit);
+
+      return res.status(200).json({
+        success: true,
+        message: "Trả về sản phẩm thông thường thay thế",
+        data: normalProducts,
+      });
+    }
+
+    // Format dữ liệu trả về
+    const formattedProducts = bestSellingProducts.map((item) => {
+      // Nếu sản phẩm đã được populate đầy đủ
+      if (item.productId && typeof item.productId === "object") {
+        return {
+          ...item.productId.toObject(),
+          soldCount: item.soldCount,
+          totalRevenue: item.totalRevenue,
+        };
+      }
+      // Trường hợp productId chỉ là id, không được populate
+      return item;
+    });
+
+    
+
+    return res.status(200).json({
+      success: true,
+      message: "Lấy danh sách sản phẩm bán chạy thành công",
+      data: formattedProducts,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("[getBestSellingProducts] Lỗi:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy sản phẩm bán chạy",
+      error: error.message,
+    });
   }
 };
 

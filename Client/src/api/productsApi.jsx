@@ -136,21 +136,6 @@ const productsApi = {
     }
   },
 
-  deleteProduct: async (id) => {
-    try {
-      const token = localStorage.getItem("accessToken");
-      const headers = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      const response = await axios.delete(`${API_URL}/${id}`, { headers });
-      return response.data;
-    } catch (error) {
-      console.error("Lỗi khi xóa sản phẩm:", error);
-      throw error;
-    }
-  },
-
   getProductById: async (id) => {
     try {
       const response = await axios.get(`${API_URL}/${id}`);

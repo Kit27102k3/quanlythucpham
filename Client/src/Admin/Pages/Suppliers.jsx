@@ -461,17 +461,17 @@ const Suppliers = () => {
         onHide={() => setVisible(false)}
         className="w-[95vw] md:w-[80vw] lg:w-[70vw]"
         footer={
-          <div className="flex justify-end space-x-2 p-3 bg-gray-50">
+          <div className="flex justify-end gap-4 space-x-2 p-3 bg-gray-50">
             <Button
               label="Hủy"
               icon="pi pi-times"
-              className="p-button-text text-gray-600 hover:bg-gray-100"
+              className="bg-red-600 text-white rounded p-2 px-4"
               onClick={() => setVisible(false)}
             />
             <Button
               label="Lưu"
               icon="pi pi-check"
-              className="bg-green-500 hover:bg-green-600 text-white border-none"
+              className="bg-[#51bb1a] text-white rounded p-2 px-4"
               onClick={handleAddSupplier}
             />
           </div>
@@ -487,17 +487,17 @@ const Suppliers = () => {
         onHide={() => setEditVisible(false)}
         className="w-[95vw] md:w-[80vw] lg:w-[70vw]"
         footer={
-          <div className="flex justify-end space-x-2 p-3 bg-gray-50">
+          <div className="flex justify-end gap-4 space-x-2 p-3 bg-gray-50">
             <Button
               label="Hủy"
               icon="pi pi-times"
-              className="p-button-text text-gray-600 hover:bg-gray-100"
+              className="bg-red-600 text-white rounded p-2 px-4"
               onClick={() => setEditVisible(false)}
             />
             <Button
               label="Cập Nhật"
               icon="pi pi-check"
-              className="bg-blue-500 hover:bg-blue-600 text-white border-none"
+              className="bg-[#51bb1a] text-white rounded p-2"
               onClick={handleUpdateSupplier}
             />
           </div>

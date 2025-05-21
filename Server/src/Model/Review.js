@@ -106,18 +106,52 @@ ReviewSchema.statics.calculateAverageRating = async function (productId) {
         numOfReviews: 0
       });
     }
+    
+    // Cập nhật thống kê chi tiết trong ReviewStats
+    // Sử dụng setTimeout để đảm bảo mô hình ReviewStats đã được đăng ký
+    setTimeout(async () => {
+      try {
+        const ReviewStats = mongoose.model("ReviewStats");
+        await ReviewStats.recalculateStats(productId);
+      } catch (err) {
+        console.error("Không thể cập nhật ReviewStats:", err.message);
+      }
+    }, 0);
   } catch (error) {
     console.error("Lỗi khi cập nhật đánh giá trung bình:", error);
   }
 };
 
-// Middleware để tự động tính lại điểm đánh giá sau khi lưu/xóa review
+// Middleware để tự động tính lại điểm đánh giá sau khi lưu review
 ReviewSchema.post("save", function() {
   this.constructor.calculateAverageRating(this.productId);
 });
 
+// Middleware để tự động tính lại điểm đánh giá sau khi xóa review
 ReviewSchema.post("remove", function() {
   this.constructor.calculateAverageRating(this.productId);
+});
+
+// Middleware để tự động tính lại điểm đánh giá sau khi cập nhật review
+ReviewSchema.post("findOneAndUpdate", async function(doc) {
+  if (doc) {
+    await mongoose.model("Review").calculateAverageRating(doc.productId);
+  }
+});
+
+// Middleware để tự động tính lại điểm đánh giá sau khi thay đổi trạng thái public/private
+ReviewSchema.pre("updateOne", async function() {
+  const docToUpdate = await this.model.findOne(this.getQuery());
+  if (docToUpdate) {
+    // Lưu lại productId để sử dụng sau khi cập nhật
+    this._productId = docToUpdate.productId;
+  }
+});
+
+ReviewSchema.post("updateOne", async function() {
+  if (this._productId) {
+    await mongoose.model("Review").calculateAverageRating(this._productId);
+  }
 });
 
 const Review = mongoose.model("Review", ReviewSchema);

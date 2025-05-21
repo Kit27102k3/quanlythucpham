@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-undef */
 import jwt from "jsonwebtoken";
 
 export const verifyToken = (req, res, next) => {

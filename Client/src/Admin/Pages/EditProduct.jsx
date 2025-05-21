@@ -12,6 +12,21 @@ import { Calendar } from "primereact/calendar";
 import { toast } from "sonner";
 import categoriesApi from "../../api/categoriesApi";
 import productsApi from "../../api/productsApi";
+import * as brandsApi from "../../api/brandsApi";
+import suppliersApi from "../../api/suppliersApi";
+
+// Danh sách đơn vị đo lường
+const MEASUREMENT_UNITS = [
+  { label: "Gram (g)", value: "gram" },
+  { label: "Kilogram (kg)", value: "kg" },
+  { label: "Mililít (ml)", value: "ml" },
+  { label: "Lít (l)", value: "l" },
+  { label: "Cái", value: "cái" },
+  { label: "Hộp", value: "hộp" },
+  { label: "Chai", value: "chai" },
+  { label: "Gói", value: "gói" },
+  { label: "Lon", value: "lon" },
+];
 
 const EditProduct = ({
   product,
@@ -20,6 +35,8 @@ const EditProduct = ({
   setProducts,
 }) => {
   const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [editedProduct, setEditedProduct] = useState({
     ...product,
     productDescription: product.productDescription
@@ -28,6 +45,8 @@ const EditProduct = ({
     discountStartDate: product.discountStartDate ? new Date(product.discountStartDate) : null,
     discountEndDate: product.discountEndDate ? new Date(product.discountEndDate) : null,
     expiryDate: product.expiryDate ? new Date(product.expiryDate) : null,
+    productBrandId: product.productBrandId || null,
+    productSupplierId: product.productSupplierId || null,
   });
 
   const [imagePreviews, setImagePreviews] = useState(
@@ -67,7 +86,42 @@ const EditProduct = ({
         console.error("Lỗi khi lấy danh mục:", error);
       }
     };
+    
+    const fetchBrands = async () => {
+      try {
+        const response = await brandsApi.getAllBrands();
+        if (Array.isArray(response)) {
+          setBrands(response);
+        } else {
+          console.error("Dữ liệu thương hiệu không hợp lệ:", response);
+          toast.error("Không thể tải danh sách thương hiệu");
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy thương hiệu:", error);
+        toast.error("Không thể tải danh sách thương hiệu");
+      }
+    };
+    
+    const fetchSuppliers = async () => {
+      try {
+        const response = await suppliersApi.getAllSuppliers();
+        if (Array.isArray(response)) {
+          setSuppliers(response);
+        } else if (response && Array.isArray(response.suppliers)) {
+          setSuppliers(response.suppliers);
+        } else {
+          console.error("Dữ liệu nhà cung cấp không hợp lệ:", response);
+          toast.error("Không thể tải danh sách nhà cung cấp");
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy nhà cung cấp:", error);
+        toast.error("Không thể tải danh sách nhà cung cấp");
+      }
+    };
+    
     fetchCategories();
+    fetchBrands();
+    fetchSuppliers();
   }, [product.productCategory]);
 
   const generateProductCode = (categoryId) => {
@@ -234,6 +288,29 @@ const EditProduct = ({
         console.error("Category not found for ID:", categoryId);
         toast.error("Không tìm thấy danh mục đã chọn. Vui lòng thử lại.");
       }
+    } else if (name === 'productBrand') {
+      const brandId = e.value;
+      const selectedBrand = brands.find(brand => brand._id === brandId);
+      
+      setEditedProduct(prev => ({
+        ...prev,
+        productBrand: selectedBrand ? selectedBrand.name : "",
+        productBrandId: brandId
+      }));
+    } else if (name === 'productSupplier') {
+      const supplierId = e.value;
+      const selectedSupplier = suppliers.find(supplier => supplier._id === supplierId);
+      
+      setEditedProduct(prev => ({
+        ...prev,
+        productSupplier: selectedSupplier ? selectedSupplier.name : "",
+        productSupplierId: supplierId
+      }));
+    } else if (name === 'productUnit') {
+      setEditedProduct(prev => ({
+        ...prev,
+        productUnit: e.value
+      }));
     } else {
       setEditedProduct((prev) => ({
         ...prev,
@@ -304,6 +381,8 @@ const EditProduct = ({
         productCategory: category.nameCategory,
         productTypeName: category.nameCategory,
         productDescription: JSON.stringify(descriptions),
+        productBrandId: editedProduct.productBrandId,
+        productSupplierId: editedProduct.productSupplierId,
         keepImages: keepImages,
         newImageUrls: newImages,
       };
@@ -546,16 +625,101 @@ const EditProduct = ({
                 >
                   Thương hiệu
                 </label>
-                <InputText
+                <Dropdown
                   id="productBrand"
-                  name="productBrand"
-                  value={editedProduct.productBrand ?? ""}
-                  onChange={handleInputChange}
-                  className="w-full h-10 px-3 border border-gray-300 rounded-md"
-                  placeholder="Nhập thương hiệu"
+                  value={editedProduct.productBrandId}
+                  onChange={(e) => handleDropdownChange(e, 'productBrand')}
+                  options={brands.map(brand => ({ 
+                    label: brand.name, 
+                    value: brand._id 
+                  }))}
+                  optionLabel="label"
+                  filter
+                  className="w-full border border-gray-300 rounded-md"
+                  placeholder="Chọn thương hiệu"
+                  emptyMessage="Không tìm thấy thương hiệu"
+                  emptyFilterMessage="Không tìm thấy kết quả"
+                  appendTo="self"
+                  style={{ height: '2.5rem' }}
+                  panelClassName="z-50"
+                  itemTemplate={(option) => (
+                    <div className="px-3 py-2 hover:bg-gray-100">{option.label}</div>
+                  )}
+                  filterPlaceholder="Tìm thương hiệu..."
+                  dropdownIcon="pi pi-chevron-down"
+                  showFilterClear={false}
+                  filterIcon=""
+                  filterTemplate={(options) => (
+                    <div className="p-dropdown-filter-container">
+                      <input
+                        type="text" 
+                        value={options.filterValue || ''} 
+                        onChange={(e) => options.filterCallback(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-sm w-full mb-2"
+                        style={{ height: '36px' }}
+                        autoFocus 
+                        placeholder="Tìm thương hiệu..." 
+                      />
+                    </div>
+                  )}
+                  pt={{ 
+                    input: { className: 'py-2 px-3' },
+                    trigger: { className: 'py-2' }
+                  }}
                 />
               </div>
-
+              
+              <div className="field">
+                <label
+                  htmlFor="productSupplier"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Nhà cung cấp
+                </label>
+                <Dropdown
+                  id="productSupplier"
+                  value={editedProduct.productSupplierId}
+                  onChange={(e) => handleDropdownChange(e, 'productSupplier')}
+                  options={suppliers.map(supplier => ({ 
+                    label: supplier.name, 
+                    value: supplier._id 
+                  }))}
+                  optionLabel="label"
+                  filter
+                  className="w-full border border-gray-300 rounded-md"
+                  placeholder="Chọn nhà cung cấp"
+                  emptyMessage="Không tìm thấy nhà cung cấp"
+                  emptyFilterMessage="Không tìm thấy kết quả"
+                  appendTo="self"
+                  style={{ height: '2.5rem' }}
+                  panelClassName="z-50"
+                  itemTemplate={(option) => (
+                    <div className="px-3 py-2 hover:bg-gray-100">{option.label}</div>
+                  )}
+                  filterPlaceholder="Tìm nhà cung cấp..."
+                  dropdownIcon="pi pi-chevron-down"
+                  showFilterClear={false}
+                  filterIcon=""
+                  filterTemplate={(options) => (
+                    <div className="p-dropdown-filter-container">
+                      <input
+                        type="text" 
+                        value={options.filterValue || ''} 
+                        onChange={(e) => options.filterCallback(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-sm w-full mb-2"
+                        style={{ height: '36px' }}
+                        autoFocus 
+                        placeholder="Tìm nhà cung cấp..." 
+                      />
+                    </div>
+                  )}
+                  pt={{ 
+                    input: { className: 'py-2 px-3' },
+                    trigger: { className: 'py-2' }
+                  }}
+                />
+              </div>
+              
               <div className="field">
                 <label
                   htmlFor="productOrigin"
@@ -751,18 +915,37 @@ const EditProduct = ({
                   htmlFor="productWeight"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Trọng lượng (gram)
+                  Khối lượng/Thể tích
                 </label>
-                <InputNumber
-                  id="productWeight"
-                  value={parseInt(editedProduct.productWeight) || 0}
-                  onValueChange={(e) => handleNumberChange(e, "productWeight")}
-                  suffix=" g"
-                  className="w-full h-10 flex items-center"
-                  placeholder="0 g"
-                  min={0}
-                  inputClassName="h-10 px-3 border border-gray-300 rounded-md"
-                />
+                <div className="flex items-center gap-2">
+                  <InputNumber
+                    id="productWeight"
+                    value={parseInt(editedProduct.productWeight) || 0}
+                    onValueChange={(e) => handleNumberChange(e, "productWeight")}
+                    className="w-2/3 h-10 flex items-center"
+                    placeholder="0"
+                    min={0}
+                    inputClassName="h-10 px-3 border border-gray-300 rounded-md"
+                  />
+                  <Dropdown
+                    id="productUnit"
+                    value={editedProduct.productUnit || 'gram'}
+                    options={MEASUREMENT_UNITS}
+                    onChange={(e) => handleDropdownChange(e, 'productUnit')}
+                    className="w-1/3 border border-gray-300 rounded-md"
+                    optionLabel="label"
+                    optionValue="value"
+                    placeholder="Đơn vị"
+                    appendTo="self"
+                    panelClassName="z-50"
+                    itemTemplate={(option) => (
+                      <div className="px-3 py-2 hover:bg-gray-100">{option.label}</div>
+                    )}
+                  />
+                </div>
+                <small className="text-gray-500 mt-1 block">
+                  Chọn đơn vị phù hợp: gram (g), kilogram (kg), milliliter (ml), lít (l), cái, hộp, chai...
+                </small>
               </div>
             </div>
           </Card>

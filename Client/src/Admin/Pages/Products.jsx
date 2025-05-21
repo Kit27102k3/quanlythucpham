@@ -70,21 +70,6 @@ const Products = () => {
     }
   };
 
-  const handleDeleteProduct = async (_id) => {
-    try {
-      await productsApi.deleteProduct(_id);
-      setProducts(products.filter((product) => product._id !== _id));
-      toast.success("Xóa sản phẩm thành công!");
-    } catch (error) {
-      console.error("Failed to delete product:", error);
-      toast.error("Xóa sản phẩm thất bại.");
-    }
-  };
-
-  const handleProductChange = (e) => {
-    setSelectedProduct(e.value);
-  };
-
   const handleEditProduct = (product) => {
     setEditingProduct(product);
     setEditVisible(true);
@@ -141,7 +126,7 @@ const Products = () => {
                   }))
                 : []
             }
-            onChange={handleProductChange}
+            onChange={setSelectedProduct}
             placeholder="Tất cả"
             className="w-full"
             pt={{
@@ -173,7 +158,7 @@ const Products = () => {
               <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Tình trạng</th>
               <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Giảm giá</th>
               <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Số lượng tồn kho</th>
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Mã Loại</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Thương hiệu</th>
               <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Xuất xứ</th>
               <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm w-[100px] md:w-[120px]">Chức Năng</th>
             </tr>
@@ -214,11 +199,6 @@ const Products = () => {
                       icon="pi pi-pencil"
                       className="p-button-warning p-button-sm text-[10px] md:text-xs p-1 md:p-2"
                       onClick={() => handleEditProduct(product)}
-                    />
-                    <Button
-                      icon="pi pi-trash"
-                      className="p-button-danger p-button-sm text-[10px] md:text-xs p-1 md:p-2"
-                      onClick={() => handleDeleteProduct(product?._id)}
                     />
                   </div>
                 </td>

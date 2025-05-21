@@ -17,6 +17,10 @@ import reportsController from "./Controller/reportsController.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Import models before routes
+import './Model/Review.js';
+import './Model/ReviewStats.js';
+
 import authRoutes from "./routes/authRoutes.js";
 import scraperRoutes from "./routes/scraperRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";

@@ -753,7 +753,7 @@ var replyToReview = exports.replyToReview = /*#__PURE__*/function () {
         case 25:
           _context7.prev = 25;
           decodedToken = _jsonwebtoken["default"].verify(token, JWT_SECRET);
-          console.log("Decoded token:", decodedToken);
+         
           if (decodedToken.id) {
             _context7.next = 30;
             break;
