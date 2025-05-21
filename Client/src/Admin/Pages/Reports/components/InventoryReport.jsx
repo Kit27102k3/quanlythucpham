@@ -177,7 +177,7 @@ const InventoryReport = ({
             <option value="all">Tất cả</option>
             <option value="out">Hết hàng</option>
             <option value="low">Dưới 20 sản phẩm</option>
-            <option value="available">Còn hàng (>20)</option>
+            <option value="available">Còn hàng (trên 20 sản phẩm)</option>
           </select>
         </div>
         

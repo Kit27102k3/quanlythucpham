@@ -14,7 +14,7 @@ const Suppliers = () => {
   const [filteredSuppliers, setFilteredSuppliers] = useState([]);
   const [editVisible, setEditVisible] = useState(false);
   const [currentSupplier, setCurrentSupplier] = useState(null);
-  
+
   // Form states
   const [formData, setFormData] = useState({
     name: "",
@@ -25,7 +25,7 @@ const Suppliers = () => {
     address: "",
     taxCode: "",
     notes: "",
-    status: "active"
+    status: "active",
   });
 
   // Pagination states
@@ -36,17 +36,19 @@ const Suppliers = () => {
   useEffect(() => {
     fetchSuppliers();
   }, []);
-  
+
   useEffect(() => {
     // Filter suppliers based on search term
     const filtered = suppliers.filter((supplier) =>
       searchTerm
         ? supplier?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           supplier?.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          supplier?.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase())
+          supplier?.contactPerson
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase())
         : true
     );
-    
+
     setFilteredSuppliers(filtered);
     setTotalRecords(filtered.length);
     // Reset to first page when filter changes
@@ -74,7 +76,7 @@ const Suppliers = () => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: value
+      [name]: value,
     });
   };
 
@@ -83,7 +85,7 @@ const Suppliers = () => {
     const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
     setFormData({
       ...formData,
-      code: randomCode
+      code: randomCode,
     });
   };
 
@@ -97,7 +99,7 @@ const Suppliers = () => {
       address: "",
       taxCode: "",
       notes: "",
-      status: "active"
+      status: "active",
     });
   };
 
@@ -107,20 +109,20 @@ const Suppliers = () => {
       toast.error("Vui lòng điền đầy đủ tên và số điện thoại!");
       return;
     }
-    
+
     // Nếu không có mã, tự động tạo mã
     if (!formData.code) {
       const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
       formData.code = randomCode;
     }
-    
+
     try {
       // Log dữ liệu để debug
       console.log("Đang gửi dữ liệu:", formData);
-      
+
       const response = await suppliersApi.createSupplier(formData);
       console.log("Kết quả trả về:", response);
-      
+
       resetForm();
       setVisible(false);
       fetchSuppliers();
@@ -146,7 +148,7 @@ const Suppliers = () => {
       address: supplier.address || "",
       taxCode: supplier.taxCode || "",
       notes: supplier.notes || "",
-      status: supplier.status || "active"
+      status: supplier.status || "active",
     });
     setEditVisible(true);
   };
@@ -157,53 +159,49 @@ const Suppliers = () => {
       toast.error("Vui lòng điền đầy đủ tên và số điện thoại!");
       return;
     }
-    
+
     // Nếu không có mã, tự động tạo mã
     if (!formData.code) {
       const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
       formData.code = randomCode;
     }
-    
+
     try {
       // Log dữ liệu để debug
       console.log("Đang cập nhật dữ liệu:", formData);
-      
-      const response = await suppliersApi.updateSupplier(currentSupplier._id, formData);
+
+      const response = await suppliersApi.updateSupplier(
+        currentSupplier._id,
+        formData
+      );
       console.log("Kết quả trả về:", response);
-      
+
       setEditVisible(false);
       resetForm();
       fetchSuppliers();
       toast.success("Cập nhật nhà cung cấp thành công!");
     } catch (error) {
       console.error("Lỗi khi cập nhật nhà cung cấp:", error);
-      if (error.response && error.response.data && error.response.data.message) {
-        toast.error(`Cập nhật nhà cung cấp thất bại: ${error.response.data.message}`);
+      if (
+        error.response &&
+        error.response.data &&
+        error.response.data.message
+      ) {
+        toast.error(
+          `Cập nhật nhà cung cấp thất bại: ${error.response.data.message}`
+        );
       } else {
         toast.error("Cập nhật nhà cung cấp thất bại!");
       }
     }
   };
 
-  const handleDeleteSupplier = async (id) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa nhà cung cấp này?")) {
-      try {
-        await suppliersApi.deleteSupplier(id);
-        fetchSuppliers();
-        toast.success("Xóa nhà cung cấp thành công!");
-      } catch (error) {
-        console.error("Failed to delete supplier:", error);
-        toast.error("Xóa nhà cung cấp thất bại!");
-      }
-    }
-  };
-  
   // Handle pagination change
   const onPageChange = (event) => {
     setFirst(event.first);
     setRows(event.rows);
   };
-  
+
   // Get current page suppliers
   const getCurrentPageSuppliers = () => {
     return filteredSuppliers.slice(first, first + rows);
@@ -213,7 +211,10 @@ const Suppliers = () => {
     <div className="p-6 bg-gradient-to-b from-white to-blue-50 rounded-lg">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="name"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Tên nhà cung cấp <span className="text-red-500">*</span>
           </label>
           <InputText
@@ -226,8 +227,12 @@ const Suppliers = () => {
           />
         </div>
         <div>
-          <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-1">
-            Mã nhà cung cấp <span className="text-gray-400 text-xs">(6 chữ số)</span>
+          <label
+            htmlFor="code"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Mã nhà cung cấp{" "}
+            <span className="text-gray-400 text-xs">(6 chữ số)</span>
           </label>
           <div className="flex gap-2">
             <InputText
@@ -247,7 +252,10 @@ const Suppliers = () => {
           </div>
         </div>
         <div>
-          <label htmlFor="contactPerson" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="contactPerson"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Người liên hệ
           </label>
           <InputText
@@ -259,7 +267,10 @@ const Suppliers = () => {
           />
         </div>
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="phone"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Số điện thoại <span className="text-red-500">*</span>
           </label>
           <InputText
@@ -272,7 +283,10 @@ const Suppliers = () => {
           />
         </div>
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Email
           </label>
           <InputText
@@ -284,7 +298,10 @@ const Suppliers = () => {
           />
         </div>
         <div>
-          <label htmlFor="taxCode" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="taxCode"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Mã số thuế <span className="text-gray-400 text-xs">(tùy chọn)</span>
           </label>
           <InputText
@@ -296,7 +313,10 @@ const Suppliers = () => {
           />
         </div>
         <div className="md:col-span-2">
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="address"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Địa chỉ
           </label>
           <InputText
@@ -308,7 +328,10 @@ const Suppliers = () => {
           />
         </div>
         <div className="md:col-span-2">
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="notes"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Ghi chú
           </label>
           <textarea
@@ -321,7 +344,10 @@ const Suppliers = () => {
           />
         </div>
         <div className="col-span-1">
-          <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="status"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Trạng thái
           </label>
           <select
@@ -342,7 +368,9 @@ const Suppliers = () => {
   return (
     <div className="p-2 md:p-4">
       <ToastContainer />
-      <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">Quản Lý Nhà Cung Cấp</h1>
+      <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">
+        Quản Lý Nhà Cung Cấp
+      </h1>
       <div className="flex flex-col md:flex-row gap-2 mb-3 md:mb-5">
         <div className="w-full md:w-2/3">
           <IconField iconPosition="left" className="w-full">
@@ -373,21 +401,39 @@ const Suppliers = () => {
         <table className="w-full min-w-[800px] border-collapse bg-white">
           <thead>
             <tr className="bg-gradient-to-r from-blue-500 to-green-500 text-white">
-              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">Mã NCC</th>
-              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">Tên nhà cung cấp</th>
-              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">Người liên hệ</th>
-              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">Số điện thoại</th>
-              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">Email</th>
-              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">Địa chỉ</th>
-              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">Trạng thái</th>
-              <th className="border border-blue-300 p-3 text-sm font-semibold text-center w-[100px] md:w-[120px]">Chức năng</th>
+              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">
+                Mã NCC
+              </th>
+              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">
+                Tên nhà cung cấp
+              </th>
+              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">
+                Người liên hệ
+              </th>
+              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">
+                Số điện thoại
+              </th>
+              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">
+                Email
+              </th>
+              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">
+                Địa chỉ
+              </th>
+              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">
+                Trạng thái
+              </th>
+              <th className="border border-blue-300 p-3 text-sm font-semibold text-center w-[100px] md:w-[120px]">
+                Chức năng
+              </th>
             </tr>
           </thead>
           <tbody>
             {getCurrentPageSuppliers().map((supplier, index) => (
-              <tr 
-                key={supplier?._id} 
-                className={`border-b hover:bg-blue-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+              <tr
+                key={supplier?._id}
+                className={`border-b hover:bg-blue-50 transition-colors ${
+                  index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                }`}
               >
                 <td className="border border-gray-200 p-3 text-sm font-medium text-center">
                   {supplier?.code}
@@ -408,8 +454,16 @@ const Suppliers = () => {
                   {supplier?.address}
                 </td>
                 <td className="border border-gray-200 p-3 text-sm text-center">
-                  <span className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-white text-xs font-medium ${supplier?.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}>
-                    {supplier?.status === 'active' ? 'Đang hoạt động' : 'Không hoạt động'}
+                  <span
+                    className={`inline-flex items-center justify-center px-3 py-1 rounded-full text-white text-xs font-medium ${
+                      supplier?.status === "active"
+                        ? "bg-green-500"
+                        : "bg-red-500"
+                    }`}
+                  >
+                    {supplier?.status === "active"
+                      ? "Đang hoạt động"
+                      : "Không hoạt động"}
                   </span>
                 </td>
                 <td className="border border-gray-200 p-3 text-sm">
@@ -418,15 +472,8 @@ const Suppliers = () => {
                       icon="pi pi-pencil"
                       className="p-button-warning p-button-rounded p-button-sm"
                       tooltip="Chỉnh sửa"
-                      tooltipOptions={{ position: 'top' }}
+                      tooltipOptions={{ position: "top" }}
                       onClick={() => handleEditSupplier(supplier)}
-                    />
-                    <Button
-                      icon="pi pi-trash"
-                      className="p-button-danger p-button-rounded p-button-sm"
-                      tooltip="Xóa"
-                      tooltipOptions={{ position: 'top' }}
-                      onClick={() => handleDeleteSupplier(supplier?._id)}
                     />
                   </div>
                 </td>
@@ -456,7 +503,11 @@ const Suppliers = () => {
 
       {/* Add Supplier Dialog */}
       <Dialog
-        header={<div className="text-xl font-bold text-blue-800 p-2">Thêm Nhà Cung Cấp Mới</div>}
+        header={
+          <div className="text-xl font-bold text-blue-800 p-2">
+            Thêm Nhà Cung Cấp Mới
+          </div>
+        }
         visible={visible}
         onHide={() => setVisible(false)}
         className="w-[95vw] md:w-[80vw] lg:w-[70vw]"
@@ -482,7 +533,11 @@ const Suppliers = () => {
 
       {/* Edit Supplier Dialog */}
       <Dialog
-        header={<div className="text-xl font-bold text-blue-800 p-2">Chỉnh Sửa Nhà Cung Cấp</div>}
+        header={
+          <div className="text-xl font-bold text-blue-800 p-2">
+            Chỉnh Sửa Nhà Cung Cấp
+          </div>
+        }
         visible={editVisible}
         onHide={() => setEditVisible(false)}
         className="w-[95vw] md:w-[80vw] lg:w-[70vw]"
@@ -509,4 +564,4 @@ const Suppliers = () => {
   );
 };
 
-export default Suppliers; 
+export default Suppliers;
