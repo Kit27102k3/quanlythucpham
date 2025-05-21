@@ -46,11 +46,35 @@ export const sendPushNotification = async (userId, subscription, payload) => {
     });
     await notification.save();
 
-    // Gửi thông báo
+    // Tạo payload với định dạng chi tiết hơn cho Web Push
+    const webPushPayload = {
+      notification: {
+        title: payload.title,
+        body: payload.body,
+        icon: payload.data?.icon || '/logo192.png',
+        badge: '/badge-icon.png',
+        vibrate: [100, 50, 100],
+        tag: payload.data?.type || 'general',
+        actions: payload.data?.actions || [
+          {
+            action: 'view',
+            title: 'Xem ngay'
+          }
+        ],
+        data: {
+          ...payload.data,
+          dateOfArrival: Date.now(),
+          requireInteraction: true,
+          renotify: true
+        }
+      }
+    };
+
+    // Gửi thông báo với payload đã tăng cường
     const webpush = await import('web-push');
     const result = await webpush.sendNotification(
       subscription, 
-      JSON.stringify(payload)
+      JSON.stringify(webPushPayload)
     );
     
     // Cập nhật trạng thái sau khi gửi
@@ -205,95 +229,97 @@ export const sendNewCouponNotification = async (coupon) => {
 };
 
 // Gửi thông báo khi có phản hồi đánh giá
-export const sendReviewReplyNotification = async (review) => {
+export const sendReviewReplyNotification = async (userId, review, replyText) => {
   try {
-    if (!review.userId || typeof review.userId !== 'string') {
-      console.log('Invalid userId in review:', review);
-      return false;
-    }
-
-    const title = 'Phản hồi đánh giá';
-    const body = `Admin đã phản hồi đánh giá của bạn về sản phẩm "${review.productName || 'Sản phẩm'}"`;
+    console.log(`[sendReviewReplyNotification] Gửi thông báo phản hồi đánh giá cho user ${userId}`);
+    const title = `Phản hồi đánh giá sản phẩm`;
+    const body = `Admin: "${replyText.substring(0, 120)}${replyText.length > 120 ? '...' : ''}"`;
     
-    return await sendNotificationToUser(review.userId, {
+    // Thêm chi tiết trong payload
+    return await sendNotificationToUser(userId, {
       title: title,
       body: body,
       data: {
         url: `/product/${review.productId}`,
         reviewId: review._id,
-        type: 'review_reply'
+        type: 'review_reply',
+        productName: review.productName,
+        replyContent: replyText,
+        icon: '/review-icon.png'
       }
     });
   } catch (error) {
-    console.error('Error sending review reply notification:', error);
-    return false;
+    console.error('[sendReviewReplyNotification] Lỗi:', error);
+    return { success: false, error: error.message };
   }
 };
 
 // Gửi thông báo cập nhật trạng thái đơn hàng
-export const sendOrderStatusNotification = async (order) => {
+export const sendOrderStatusNotification = async (userId, order, statusText) => {
   try {
-    if (!order.userId) {
-      console.log('Order has no userId:', order._id);
-      return false;
+    console.log(`[sendOrderStatusNotification] Gửi thông báo đơn hàng ${order._id} cho user ${userId}`);
+    const title = `Cập nhật đơn hàng #${order.orderNumber || order._id.toString().substring(0, 8)}`;
+    let body = `Đơn hàng của bạn ${statusText}`;
+    
+    if (order.totalAmount) {
+      body += ` - Giá trị: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(order.totalAmount)}`;
     }
-
-    let title = 'Cập nhật đơn hàng';
-    let body = 'Đơn hàng của bạn đã được cập nhật';
-
-    // Tùy chỉnh thông báo dựa trên trạng thái
-    switch (order.status) {
-      case 'confirmed':
-        body = 'Đơn hàng của bạn đã được xác nhận';
-        break;
-      case 'preparing':
-        body = 'Đơn hàng của bạn đang được chuẩn bị';
-        break;
-      case 'shipping':
-      case 'delivering':
-        body = 'Đơn hàng của bạn đang được giao đến bạn';
-        break;
-      case 'completed':
-        title = 'Đơn hàng hoàn thành';
-        body = 'Đơn hàng của bạn đã được giao thành công';
-        break;
-      case 'cancelled':
-        title = 'Đơn hàng đã hủy';
-        body = 'Đơn hàng của bạn đã bị hủy';
-        break;
-    }
-
-    return await sendNotificationToUser(order.userId, {
+    
+    // Thêm chi tiết trong payload
+    return await sendNotificationToUser(userId, {
       title: title,
       body: body,
       data: {
         url: `/tai-khoan/don-hang/${order._id}`,
         orderId: order._id,
-        type: 'order_update'
+        type: 'order_update',
+        status: order.status,
+        orderItems: order.items?.map(item => ({
+          name: item.productName,
+          quantity: item.quantity
+        })),
+        icon: '/order-icon.png'
       }
     });
   } catch (error) {
-    console.error('Error sending order status notification:', error);
-    return false;
+    console.error('[sendOrderStatusNotification] Lỗi:', error);
+    return { success: false, error: error.message };
   }
 };
 
 // Gửi thông báo khi có tin nhắn mới
-export const sendNewMessageNotification = async (userId, senderName, messageText) => {
+export const sendMessageNotification = async (userId, senderName, messageText) => {
   try {
-    const title = 'Tin nhắn mới';
-    const body = `${senderName}: ${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`;
+    console.log(`[sendMessageNotification] Gửi thông báo tin nhắn từ ${senderName} đến user ${userId}`);
+    const title = `Tin nhắn mới từ ${senderName}`;
+    const body = messageText.length > 100 
+      ? `${messageText.substring(0, 100)}...` 
+      : messageText;
     
+    // Thêm chi tiết trong payload
     return await sendNotificationToUser(userId, {
       title: title,
       body: body,
       data: {
         url: '/tai-khoan/tin-nhan',
-        type: 'new_message'
+        type: 'new_message',
+        senderId: senderName,
+        messageContent: messageText,
+        icon: '/chat-icon.png',
+        actions: [
+          {
+            action: 'reply',
+            title: 'Trả lời'
+          },
+          {
+            action: 'view',
+            title: 'Xem tất cả'
+          }
+        ]
       }
     });
   } catch (error) {
-    console.error('Error sending new message notification:', error);
-    return false;
+    console.error('[sendMessageNotification] Lỗi:', error);
+    return { success: false, error: error.message };
   }
 }; 

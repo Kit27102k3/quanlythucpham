@@ -579,14 +579,7 @@ export const replyToReview = async (req, res) => {
       // Gửi thông báo khi admin phản hồi đánh giá của người dùng
       if (reply.isAdmin && review.userId) {
         try {
-          // Tìm thêm thông tin sản phẩm để hiển thị tên
-          const product = await Product.findById(review.productId);
-          const reviewWithProductInfo = {
-            ...review.toObject(),
-            productName: product ? product.productName : 'Sản phẩm'
-          };
-          
-          await sendReviewReplyNotification(reviewWithProductInfo)
+          await sendReviewReplyNotification(review.userId, review, text)
             .catch(error => console.error('Error sending review reply notification:', error));
           
           console.log(`Đã gửi thông báo phản hồi đánh giá đến user ${review.userId}`);
@@ -678,14 +671,7 @@ export const replyToReview = async (req, res) => {
     // Gửi thông báo khi admin phản hồi đánh giá của người dùng
     if (isAdmin && review.userId) {
       try {
-        // Tìm thêm thông tin sản phẩm để hiển thị tên
-        const product = await Product.findById(review.productId);
-        const reviewWithProductInfo = {
-          ...review.toObject(),
-          productName: product ? product.productName : 'Sản phẩm'
-        };
-        
-        await sendReviewReplyNotification(reviewWithProductInfo)
+        await sendReviewReplyNotification(review.userId, review, text)
           .catch(error => console.error('Error sending review reply notification:', error));
         
         console.log(`Đã gửi thông báo phản hồi đánh giá đến user ${review.userId}`);

@@ -3,7 +3,7 @@ import User from "../Model/Register.js";
 import Admin from "../Model/Admin.js";
 import { getAdminId } from "../config/admin.js";
 import dotenv from 'dotenv';
-import { sendNewMessageNotification } from "../Services/notificationService.js";
+import { sendMessageNotification } from '../Services/notificationService.js';
 
 // Cấu hình dotenv
 dotenv.config();
@@ -186,7 +186,7 @@ export const sendMessage = async (req, res) => {
           textPreview: text.substring(0, 20) + (text.length > 20 ? '...' : '')
         });
         
-        const notificationResult = await sendNewMessageNotification(userId, senderName, text)
+        const notificationResult = await sendMessageNotification(userId, senderName, text)
           .catch(error => {
             console.error('Error sending message notification:', error);
             return false;
