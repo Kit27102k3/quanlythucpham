@@ -14,30 +14,33 @@ const JWT_SECRET =
 const ADMIN_SECRET_TOKEN = "admin-token-for-TKhiem";
 /* eslint-enable no-undef */
 
-export const verifyToken = async (req, res, next) => {
+export const verifyToken = (req, res, next) => {
+  // Kiểm tra nếu là một route không yêu cầu xác thực
+  const publicRoutes = [
+    '/api/products/best-sellers',
+    '/api/products',
+    '/api/categories'
+  ];
+  
+  // Kiểm tra nếu đây là route công khai
+  if (publicRoutes.some(route => req.originalUrl.includes(route) && req.method === 'GET')) {
+    console.log(`[verifyToken] Bỏ qua xác thực cho route công khai: ${req.originalUrl}`);
+    return next();
+  }
+  
   try {
-    // Kiểm tra admin-token header trước
-    const adminToken = req.headers["admin-token"];
-    if (adminToken === ADMIN_SECRET_TOKEN) {
-      // Cho phép đặc biệt cho admin
-      req.user = {
-        id: "65f62e09ac3ea4ad23023293", // ID của admin
-        role: "admin",
-        username: "Admin",
-      };
-      return next();
-    }
-
-    // Tiếp tục với xác thực Bearer token tiêu chuẩn
+    // Lấy token từ header hoặc cookie
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("No token provided in header");
-      return res
-        .status(401)
-        .json({ message: "Access Denied - No token provided" });
-    }
+    const token = authHeader && authHeader.startsWith('Bearer ') 
+      ? authHeader.substring(7) 
+      : req.cookies?.AccessToken;
 
-    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return res.status(401).json({ 
+        success: false,
+        message: "Không tìm thấy token xác thực"
+      });
+    }
 
     // Kiểm tra xem có phải là token đặc biệt cho admin không
     if (token === ADMIN_SECRET_TOKEN) {
@@ -50,17 +53,38 @@ export const verifyToken = async (req, res, next) => {
       return next();
     }
 
-    // Xác thực JWT token thông thường
-    const decoded = jwt.verify(token, JWT_SECRET);
-
-    req.user = decoded;
-    next();
-  } catch (error) {
-    console.error("Token verification error:", error);
-    if (error.name === "TokenExpiredError") {
-      return res.status(401).json({ message: "Token has expired" });
+    // Verify token
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      req.user = decoded;
+      
+      // Thêm token vào request để sử dụng trong các middleware khác
+      req.token = token;
+      
+      next();
+    } catch (jwtError) {
+      console.log(`[verifyToken] Lỗi verify token: ${jwtError.message}`);
+      
+      if (jwtError.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false, 
+          message: "Token đã hết hạn, vui lòng đăng nhập lại",
+          error: "TOKEN_EXPIRED"
+        });
+      }
+      
+      return res.status(401).json({ 
+        success: false,
+        message: "Token không hợp lệ hoặc đã hết hạn",
+        error: jwtError.message
+      });
     }
-    return res.status(401).json({ message: "Invalid Token" });
+  } catch (error) {
+    console.error('[verifyToken] Lỗi:', error);
+    res.status(500).json({ 
+      success: false,
+      message: "Lỗi máy chủ khi xác thực token" 
+    });
   }
 };
 

@@ -628,56 +628,82 @@ export const getBestSellingProducts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 4;
     const period = req.query.period || "all";
 
-    // Sử dụng phương thức getBestSellers từ model BestSellingProduct
-    const bestSellingProducts = await BestSellingProduct.getBestSellers(
-      limit,
-      period
-    );
+    
 
+    // Tự xử lý lấy sản phẩm thường thay vì dùng Model.getBestSellers
+    let bestSellingProducts = [];
+    
+    try {
+      bestSellingProducts = await BestSellingProduct.find()
+        .sort({ soldCount: -1 })
+        .limit(limit)
+        .populate({
+          path: 'productId',
+          select: 'productName productPrice productStatus productImages productDiscount productStock productCategory'
+        });
+      
+     
+    } catch (modelError) {
+      console.error("[getBestSellingProducts] Lỗi khi truy vấn model BestSellingProduct:", modelError);
+    }
+    
     // Nếu không có sản phẩm bán chạy, lấy sản phẩm thông thường
     if (!bestSellingProducts || bestSellingProducts.length === 0) {
+      console.log('[getBestSellingProducts] Không có dữ liệu sản phẩm bán chạy, lấy sản phẩm thông thường...');
       
-      const normalProducts = await Product.find({
-        productStatus: { $ne: "Hết hàng" },
-        productStock: { $gt: 0 },
-      })
+      try {
+        const normalProducts = await Product.find({
+          productStatus: { $ne: 'Hết hàng' },
+          productStock: { $gt: 0 }
+        })
         .sort({ createdAt: -1 })
         .limit(limit);
-
-      return res.status(200).json({
-        success: true,
-        message: "Trả về sản phẩm thông thường thay thế",
-        data: normalProducts,
-      });
+        
+        console.log(`[getBestSellingProducts] Tìm thấy ${normalProducts.length} sản phẩm thông thường để thay thế`);
+        
+        return res.status(200).json({
+          success: true,
+          message: "Trả về sản phẩm thông thường thay thế",
+          data: normalProducts
+        });
+      } catch (productError) {
+        console.error("[getBestSellingProducts] Lỗi khi lấy sản phẩm thông thường:", productError);
+        return res.status(200).json({
+          success: true,
+          message: "Không tìm thấy sản phẩm nào",
+          data: []
+        });
+      }
     }
 
     // Format dữ liệu trả về
-    const formattedProducts = bestSellingProducts.map((item) => {
+    const formattedProducts = bestSellingProducts.map(item => {
       // Nếu sản phẩm đã được populate đầy đủ
-      if (item.productId && typeof item.productId === "object") {
-        return {
+      if (item.productId && typeof item.productId === 'object') {
+        const product = {
           ...item.productId.toObject(),
           soldCount: item.soldCount,
-          totalRevenue: item.totalRevenue,
+          totalRevenue: item.totalRevenue
         };
-      }
+        return product;
+      } 
       // Trường hợp productId chỉ là id, không được populate
       return item;
-    });
+    }).filter(item => item !== null && item !== undefined);
 
+    console.log(`[getBestSellingProducts] Trả về ${formattedProducts.length} sản phẩm bán chạy đã định dạng`);
     
-
     return res.status(200).json({
       success: true,
       message: "Lấy danh sách sản phẩm bán chạy thành công",
-      data: formattedProducts,
+      data: formattedProducts
     });
   } catch (error) {
-    console.error("[getBestSellingProducts] Lỗi:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "Lỗi khi lấy sản phẩm bán chạy",
-      error: error.message,
+    console.error('[getBestSellingProducts] Lỗi:', error.message);
+    return res.status(200).json({ 
+      success: true,
+      message: "Đã xảy ra lỗi khi lấy sản phẩm bán chạy",
+      data: [] // Trả về mảng rỗng thay vì lỗi 500
     });
   }
 };

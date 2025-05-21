@@ -3,6 +3,7 @@ import webpush from 'web-push';
 import dotenv from 'dotenv';
 import User from '../Model/Register.js'; // Import User model
 // import Admin from '../Model/adminModel.js'; // Import Admin model - commented out as not used yet
+import Notification from '../Model/notificationModel.js'; // Import Notification model
 
 // Cấu hình dotenv
 dotenv.config();
@@ -30,119 +31,102 @@ webpush.setVapidDetails(
 // Function to send a push notification to a single subscription
 export const sendPushNotification = async (userId, subscription, payload) => {
   try {
-    console.log('[sendPushNotification] Bắt đầu gửi notification cho user:', userId);
-    console.log('[sendPushNotification] Subscription endpoint:', subscription.endpoint.substring(0, 30) + '...');
-    
-    // Kiểm tra subscription hợp lệ
-    if (!subscription || !subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
-      console.error('[sendPushNotification] Invalid subscription object for user:', userId);
-      return false;
+    if (!subscription || !subscription.endpoint) {
+      console.log(`Subscription không hợp lệ cho user ${userId}`);
+      return { success: false, message: 'Subscription không hợp lệ' };
     }
-    
-    // Chuyển payload thành chuỗi JSON
-    const payloadString = JSON.stringify(payload);
-    console.log('[sendPushNotification] Payload size:', payloadString.length, 'bytes');
-    
-    // Gửi notification
-    await webpush.sendNotification(subscription, payloadString);
-    console.log('[sendPushNotification] Push notification sent successfully for user:', userId);
-    return true;
-  } catch (error) {
-    console.error('[sendPushNotification] Error sending push notification for user:', userId, ':', error.message);
-    console.error('[sendPushNotification] Error status code:', error.statusCode);
-    console.error('[sendPushNotification] Error stack:', error.stack);
 
-    // Handle cases where the subscription is no longer valid
-    if (error.statusCode === 404 || error.statusCode === 410) {
-      console.log('[sendPushNotification] Subscription expired or no longer valid for user:', userId, '. Removing...');
-      // Implement logic to remove the expired/invalid subscription from the database
-      try {
-        const result = await User.findByIdAndUpdate(
-          userId,
-          { $pull: { pushSubscriptions: { endpoint: subscription.endpoint } } },
-          { new: true }
-        );
-        console.log('[sendPushNotification] Removed invalid subscription for user:', userId, ':', subscription.endpoint);
-        console.log('[sendPushNotification] User now has', result.pushSubscriptions.length, 'subscriptions');
-      } catch (dbError) {
-        console.error('[sendPushNotification] Error removing invalid subscription from database for user:', userId, ':', dbError);
-      }
-    } else if (error.statusCode === 400) {
-      console.error('[sendPushNotification] Bad request error. Payload may be too large or subscription is invalid.');
-    } else if (error.statusCode === 401 || error.statusCode === 403) {
-      console.error('[sendPushNotification] Authentication error. VAPID details may be incorrect.');
-    } else {
-      // Handle other errors
-      console.error('[sendPushNotification] Unknown error sending push notification for user:', userId, ':', error);
+    // Lưu thông báo vào DB trước khi gửi
+    const notification = new Notification({
+      userId,
+      title: payload.title,
+      body: payload.body,
+      data: payload.data,
+      status: 'pending',
+    });
+    await notification.save();
+
+    // Gửi thông báo
+    const webpush = await import('web-push');
+    const result = await webpush.sendNotification(
+      subscription, 
+      JSON.stringify(payload)
+    );
+    
+    // Cập nhật trạng thái sau khi gửi
+    notification.status = 'sent';
+    await notification.save();
+    
+    return { success: true, result };
+  } catch (error) {
+    console.error(`Lỗi khi gửi push notification cho user ${userId}:`, error.message);
+    
+    // Cập nhật thông báo là thất bại nhưng không dừng luồng xử lý
+    try {
+      await Notification.findOneAndUpdate(
+        { userId, title: payload.title, body: payload.body, status: 'pending' },
+        { status: 'failed', error: error.message }
+      );
+    } catch (dbError) {
+      console.error('Lỗi khi cập nhật trạng thái thông báo:', dbError);
     }
     
-    return false;
+    return { success: false, error: error.message };
   }
 };
 
 // Gửi thông báo cho một người dùng cụ thể (tất cả các thiết bị đã đăng ký)
-export const sendNotificationToUser = async (userId, title, body, data = {}) => {
+export const sendNotificationToUser = async (userId, payload) => {
   try {
     console.log(`[sendNotificationToUser] Bắt đầu gửi thông báo cho user: ${userId}`);
-    console.log(`[sendNotificationToUser] Tham số:`, { title, body, data });
+    console.log(`[sendNotificationToUser] Tham số:`, payload);
 
-    // Tìm user theo ID
     const user = await User.findById(userId);
-    
     if (!user) {
-      console.log(`[sendNotificationToUser] Không tìm thấy user: ${userId}`);
-      return false;
+      console.log(`[sendNotificationToUser] Không tìm thấy user với ID: ${userId}`);
+      return { success: false, message: 'User không tồn tại' };
     }
-    
+
     if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) {
       console.log(`[sendNotificationToUser] User ${userId} không có đăng ký push subscriptions nào`);
-      return false;
-    }
-    
-    console.log(`[sendNotificationToUser] Tìm thấy user ${userId} với ${user.pushSubscriptions.length} subscription`);
-
-    const payload = {
-      notification: {
-        title: title,
-        body: body,
-        icon: "/android-chrome-192x192.png", // Đúng tên file, đúng chữ hoa
-        badge: "/android-chrome-192x192.png",
-        vibrate: [100, 50, 100],
-        data: {
-          dateOfArrival: Date.now(),
-          primaryKey: 1,
-          ...data
-        },
-        actions: [
-          {
-            action: 'explore',
-            title: 'Xem ngay'
-          }
-        ]
+      
+      // Vẫn lưu thông báo vào DB để hiển thị trong ứng dụng
+      try {
+        const notification = new Notification({
+          userId,
+          title: payload.title,
+          body: payload.body,
+          data: payload.data,
+          status: 'pending_view', // Trạng thái chờ xem trong ứng dụng
+        });
+        await notification.save();
+      } catch (notifError) {
+        console.error('Lỗi khi lưu thông báo:', notifError);
       }
+      
+      return { success: true, message: 'Đã lưu thông báo để hiển thị trong ứng dụng' };
+    }
+
+    // Gửi đến tất cả subscriptions của user
+    const results = await Promise.all(
+      user.pushSubscriptions.map(async (subscription) => {
+        try {
+          return await sendPushNotification(userId, subscription, payload);
+        } catch (subError) {
+          console.error(`Lỗi khi gửi đến subscription cụ thể:`, subError);
+          return { success: false, error: subError.message };
+        }
+      })
+    );
+
+    const successCount = results.filter(r => r.success).length;
+    return { 
+      success: successCount > 0,
+      message: `Đã gửi thành công đến ${successCount}/${user.pushSubscriptions.length} thiết bị`
     };
-
-    console.log(`[sendNotificationToUser] Payload được tạo:`, JSON.stringify(payload, null, 2));
-
-    // Gửi thông báo đến tất cả các subscription của user
-    console.log(`[sendNotificationToUser] Bắt đầu gửi đến ${user.pushSubscriptions.length} subscription`);
-    
-    const sendPromises = user.pushSubscriptions.map(subscription => {
-      console.log(`[sendNotificationToUser] Gửi đến endpoint: ${subscription.endpoint.substring(0, 30)}...`);
-      return sendPushNotification(userId, subscription, payload);
-    });
-
-    const results = await Promise.allSettled(sendPromises);
-    
-    const successCount = results.filter(r => r.status === 'fulfilled').length;
-    const failCount = results.filter(r => r.status === 'rejected').length;
-    
-    console.log(`[sendNotificationToUser] Kết quả gửi: ${successCount} thành công, ${failCount} thất bại`);
-    
-    return successCount > 0;
   } catch (error) {
-    console.error('[sendNotificationToUser] Error sending notification to user:', userId, error);
-    return false;
+    console.error(`[sendNotificationToUser] Lỗi tổng thể:`, error);
+    return { success: false, error: error.message };
   }
 };
 
@@ -163,10 +147,14 @@ export const sendNewProductNotification = async (product) => {
     const body = `${product.productName} đã được thêm vào cửa hàng. Giá: ${product.productPrice}đ`;
     
     const notificationPromises = users.map(user => 
-      sendNotificationToUser(user._id, title, body, { 
-        url: `/san-pham/${product._id}`,
-        productId: product._id,
-        type: 'new_product'
+      sendNotificationToUser(user._id, {
+        title: title,
+        body: body,
+        data: {
+          url: `/san-pham/${product._id}`,
+          productId: product._id,
+          type: 'new_product'
+        }
       })
     );
 
@@ -196,10 +184,14 @@ export const sendNewCouponNotification = async (coupon) => {
     const body = `Sử dụng mã ${coupon.code} để được giảm ${coupon.type === 'percentage' ? `${coupon.value}%` : `${coupon.value}đ`}`;
     
     const notificationPromises = users.map(user => 
-      sendNotificationToUser(user._id, title, body, { 
-        url: `/voucher`,
-        couponCode: coupon.code,
-        type: 'new_coupon'
+      sendNotificationToUser(user._id, {
+        title: title,
+        body: body,
+        data: {
+          url: `/voucher`,
+          couponCode: coupon.code,
+          type: 'new_coupon'
+        }
       })
     );
 
@@ -223,10 +215,14 @@ export const sendReviewReplyNotification = async (review) => {
     const title = 'Phản hồi đánh giá';
     const body = `Admin đã phản hồi đánh giá của bạn về sản phẩm "${review.productName || 'Sản phẩm'}"`;
     
-    return await sendNotificationToUser(review.userId, title, body, {
-      url: `/product/${review.productId}`,
-      reviewId: review._id,
-      type: 'review_reply'
+    return await sendNotificationToUser(review.userId, {
+      title: title,
+      body: body,
+      data: {
+        url: `/product/${review.productId}`,
+        reviewId: review._id,
+        type: 'review_reply'
+      }
     });
   } catch (error) {
     console.error('Error sending review reply notification:', error);
@@ -267,10 +263,14 @@ export const sendOrderStatusNotification = async (order) => {
         break;
     }
 
-    return await sendNotificationToUser(order.userId, title, body, {
-      url: `/tai-khoan/don-hang/${order._id}`,
-      orderId: order._id,
-      type: 'order_update'
+    return await sendNotificationToUser(order.userId, {
+      title: title,
+      body: body,
+      data: {
+        url: `/tai-khoan/don-hang/${order._id}`,
+        orderId: order._id,
+        type: 'order_update'
+      }
     });
   } catch (error) {
     console.error('Error sending order status notification:', error);
@@ -284,9 +284,13 @@ export const sendNewMessageNotification = async (userId, senderName, messageText
     const title = 'Tin nhắn mới';
     const body = `${senderName}: ${messageText.substring(0, 100)}${messageText.length > 100 ? '...' : ''}`;
     
-    return await sendNotificationToUser(userId, title, body, {
-      url: '/tai-khoan/tin-nhan',
-      type: 'new_message'
+    return await sendNotificationToUser(userId, {
+      title: title,
+      body: body,
+      data: {
+        url: '/tai-khoan/tin-nhan',
+        type: 'new_message'
+      }
     });
   } catch (error) {
     console.error('Error sending new message notification:', error);
