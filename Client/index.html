@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/Logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="description" content="DNC FOOD - Nông Trại Hữu Cơ Cung Cấp Thực Phẩm Sạch" />
     <meta name="theme-color" content="#51bb1a" />
     <link rel="manifest" href="/manifest.json" />
@@ -40,7 +40,18 @@
       @keyframes spin {
         to { transform: rotate(360deg); }
       }
+      /* Mobile-specific styles */
+      @media (max-width: 768px) {
+        html, body {
+          overflow-x: hidden;
+          position: relative;
+          width: 100%;
+        }
+      }
     </style>
+    
+    <!-- Mobile support script -->
+    <script src="/index.js"></script>
     
     <!-- Rest of CSS (non-critical) -->
     <link rel="stylesheet" href="/src/App.css" type="text/css" />
