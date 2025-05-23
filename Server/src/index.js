@@ -274,7 +274,9 @@ const webhookHandler = async (req, res) => {
 app.use((err, req, res) => {
   console.error("Global error:", err);
 
-  if (req.path.includes("webhook") || req.path.includes("/api/payments/")) {
+  // Kiểm tra req.path tồn tại trước khi sử dụng
+  const path = req?.path || '';
+  if (path.includes("webhook") || path.includes("/api/payments/")) {
     return res.status(200).json({
       success: true,
       code: "00",
