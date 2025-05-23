@@ -14,214 +14,239 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
   const [error, setError] = useState(false);
   const [mapInitialized, setMapInitialized] = useState(false);
   const markersRef = useRef({ shop: null, customer: null });
+  const [loading, setLoading] = useState(true);
 
   // Initialize map
   useEffect(() => {
     if (mapInitialized) return;
 
-    // Kiểm tra container
-    if (!mapContainer.current) {
+    const initializeMapContainer = () => {
+      // First try to find existing container
       const existingContainer = document.getElementById("order-tracking-map");
       if (existingContainer) {
         mapContainer.current = existingContainer;
-      } else {
-        const parentContainer = document.getElementById("map-container");
-        if (parentContainer) {
-          const newContainer = document.createElement("div");
-          newContainer.id = "order-tracking-map";
-          newContainer.className = "absolute inset-0 w-full h-full";
-          parentContainer.appendChild(newContainer);
-          mapContainer.current = newContainer;
+        return true;
+      }
+
+      // If not found, try to find or create parent container
+      let parentContainer = document.getElementById("map-container");
+      if (!parentContainer) {
+        // Create parent container if it doesn't exist
+        parentContainer = document.createElement("div");
+        parentContainer.id = "map-container";
+        parentContainer.className = "relative w-full h-full min-h-[300px]";
+        
+        // Find a suitable place to insert the container
+        const mapSection = document.getElementById("order-map-section");
+        if (mapSection) {
+          mapSection.appendChild(parentContainer);
         } else {
-          console.error("Map container not found");
-          setError(true);
-          return;
+          // If no section found, create one
+          const newSection = document.createElement("div");
+          newSection.id = "order-map-section";
+          newSection.className = "w-full h-full";
+          newSection.appendChild(parentContainer);
+          document.body.appendChild(newSection);
         }
       }
-    }
 
-    // Check required data
-    if (
-      !shopLocation?.lat ||
-      !shopLocation?.lng ||
-      !customerLocation?.lat ||
-      !customerLocation?.lng
-    ) {
-      console.error("Missing location data:", {
-        shopLocation,
-        customerLocation,
-      });
-      setError(true);
-      return;
-    }
+      // Create map container
+      const newContainer = document.createElement("div");
+      newContainer.id = "order-tracking-map";
+      newContainer.className = "absolute inset-0 w-full h-full";
+      parentContainer.appendChild(newContainer);
+      mapContainer.current = newContainer;
 
-    console.log("Initializing map with locations:", {
-      shop: [shopLocation.lng, shopLocation.lat],
-      customer: [customerLocation.lng, customerLocation.lat],
-      container: mapContainer.current?.id || "unknown",
-    });
+      return true;
+    };
 
-    try {
-      // Calculate center point between shop and customer
-      const centerLng = (shopLocation.lng + customerLocation.lng) / 2;
-      const centerLat = (shopLocation.lat + customerLocation.lat) / 2;
-
-      // Create the map
-      const newMap = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: "mapbox://styles/mapbox/streets-v12",
-        center: [105.77, 9.85], // Center between shop and customer
-        zoom: 8.5,
-        attributionControl: false,
-        logoPosition: "bottom-right",
-      });
-
-      // Log when the map style is fully loaded
-      newMap.on("style.load", () => {
-        console.log("Map style loaded - adding markers");
-
-        try {
-          // Sử dụng tọa độ từ props
-          const shopCoords = [shopLocation.lng, shopLocation.lat];
-          const customerCoords = [customerLocation.lng, customerLocation.lat];
-
-          // Tạo marker element đơn giản
-          const createMarkerElement = (color, text) => {
-            const el = document.createElement("div");
-            el.style.width = "30px";
-            el.style.height = "30px";
-            el.style.borderRadius = "50%";
-            el.style.backgroundColor = color;
-            el.style.border = "3px solid white";
-            el.style.boxShadow = "0 3px 6px rgba(0,0,0,0.5)";
-            el.style.color = "white";
-            el.style.fontSize = "12px";
-            el.style.fontWeight = "bold";
-            el.style.display = "flex";
-            el.style.alignItems = "center";
-            el.style.justifyContent = "center";
-            el.style.zIndex = "999";
-            el.innerText = text;
-            return el;
-          };
-
-          // Thêm marker cửa hàng (màu đỏ)
-          const shopMarker = new mapboxgl.Marker(
-            createMarkerElement("#e74c3c", "SHOP")
-          )
-            .setLngLat(shopCoords)
-            .addTo(newMap);
-
-          markersRef.current.shop = shopMarker;
-
-          // Thêm marker khách hàng (màu xanh)
-          const customerMarker = new mapboxgl.Marker(
-            createMarkerElement("#3498db", "NHẬN")
-          )
-            .setLngLat(customerCoords)
-            .addTo(newMap);
-
-          markersRef.current.customer = customerMarker;
-
-          // Fit bounds để hiển thị cả 2 điểm
-          const bounds = new mapboxgl.LngLatBounds()
-            .extend(shopCoords)
-            .extend(customerCoords);
-
-          newMap.fitBounds(bounds, { padding: 100 });
-
-          // Thêm đường đi giữa 2 điểm
-          newMap.addSource("route", {
-            type: "geojson",
-            data: {
-              type: "Feature",
-              properties: {},
-              geometry: {
-                type: "LineString",
-                coordinates: [shopCoords, customerCoords],
-              },
-            },
-          });
-
-          newMap.addLayer({
-            id: "route",
-            type: "line",
-            source: "route",
-            layout: {
-              "line-join": "round",
-              "line-cap": "round",
-            },
-            paint: {
-              "line-color": "#2ecc71",
-              "line-width": 4,
-            },
-          });
-
-          console.log("Markers and route added successfully");
-        } catch (err) {
-          console.error("Error adding markers:", err);
-        }
-      });
-
-      // Log when the map's initial style batch is loaded (partial rendering)
-      newMap.on("styledata", () => {
-        console.log("Map style data event - partial style loaded");
-      });
-
-      // Log when the map is idle (all resources loaded)
-      newMap.on("idle", () => {
-        console.log("Map is idle - all resources loaded");
-      });
-
-      // Store the map in the window object for debugging
-      window.orderTrackingMap = newMap;
-
-      // Add navigation controls
-      newMap.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-      // Store map reference
-      map.current = newMap;
-
-      // When map loads
-      newMap.on("load", () => {
-        console.log("Map loaded successfully");
-
-        // Display distance and delivery time
-        updateMapInfo();
-
-        // Mark as initialized
-        setMapInitialized(true);
-      });
-
-      // Handle map error
-      newMap.on("error", (e) => {
-        console.error("Map error:", e);
+    // Try to initialize container with retries
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const attemptInitialization = () => {
+      if (retryCount >= maxRetries) {
+        console.error("Failed to initialize map container after", maxRetries, "attempts");
         setError(true);
-      });
-    } catch (err) {
-      console.error("Error initializing map:", err);
-      setError(true);
-    }
+        setLoading(false);
+        return;
+      }
+
+      if (!initializeMapContainer()) {
+        retryCount++;
+        setTimeout(attemptInitialization, 500 * retryCount);
+        return;
+      }
+
+      // Check required data
+      if (!shopLocation?.lat || !shopLocation?.lng || !customerLocation?.lat || !customerLocation?.lng) {
+        console.error("Missing location data:", { shopLocation, customerLocation });
+        setError(true);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Calculate center point between shop and customer
+        const centerLng = (shopLocation.lng + customerLocation.lng) / 2;
+        const centerLat = (shopLocation.lat + customerLocation.lat) / 2;
+
+        // Create the map
+        const newMap = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: "mapbox://styles/mapbox/streets-v12",
+          center: [centerLng, centerLat],
+          zoom: 8.5,
+          attributionControl: false,
+          logoPosition: "bottom-right",
+        });
+
+        // Add loading indicator
+        const loadingEl = document.createElement("div");
+        loadingEl.className = "map-loading-indicator";
+        loadingEl.style.position = "absolute";
+        loadingEl.style.top = "50%";
+        loadingEl.style.left = "50%";
+        loadingEl.style.transform = "translate(-50%, -50%)";
+        loadingEl.style.backgroundColor = "rgba(255,255,255,0.8)";
+        loadingEl.style.padding = "10px 15px";
+        loadingEl.style.borderRadius = "8px";
+        loadingEl.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
+        loadingEl.style.zIndex = "500";
+        loadingEl.innerHTML = "<div>Đang tải bản đồ...</div>";
+        mapContainer.current.appendChild(loadingEl);
+
+        // Log when the map style is fully loaded
+        newMap.on("style.load", () => {
+          console.log("Map style loaded - adding markers");
+          try {
+            // Add markers and route
+            addMarkersAndRoute(newMap);
+            // Remove loading indicator
+            loadingEl.remove();
+            setLoading(false);
+          } catch (err) {
+            console.error("Error adding markers:", err);
+            setError(true);
+            setLoading(false);
+          }
+        });
+
+        // Store map reference
+        map.current = newMap;
+        window.orderTrackingMap = newMap;
+
+        // Add navigation controls
+        newMap.addControl(new mapboxgl.NavigationControl(), "top-right");
+
+        // When map loads
+        newMap.on("load", () => {
+          console.log("Map loaded successfully");
+          setMapInitialized(true);
+        });
+
+        // Handle map error
+        newMap.on("error", (e) => {
+          console.error("Map error:", e);
+          setError(true);
+          setLoading(false);
+        });
+
+      } catch (err) {
+        console.error("Error initializing map:", err);
+        setError(true);
+        setLoading(false);
+      }
+    };
+
+    attemptInitialization();
 
     // Cleanup function
     return () => {
-      try {
-        if (markersRef.current.shop) {
-          markersRef.current.shop.remove();
-        }
-        if (markersRef.current.customer) {
-          markersRef.current.customer.remove();
-        }
-        if (map.current) {
-          map.current.remove();
-          map.current = null;
-        }
-        setMapInitialized(false);
-      } catch (err) {
-        console.error("Error cleaning up map:", err);
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
       }
+      if (markersRef.current.shop) {
+        markersRef.current.shop.remove();
+      }
+      if (markersRef.current.customer) {
+        markersRef.current.customer.remove();
+      }
+      setMapInitialized(false);
     };
   }, [shopLocation, customerLocation, mapInitialized]);
+
+  // Helper function to add markers and route
+  const addMarkersAndRoute = (map) => {
+    const shopCoords = [shopLocation.lng, shopLocation.lat];
+    const customerCoords = [customerLocation.lng, customerLocation.lat];
+
+    // Create marker element
+    const createMarkerElement = (color, text) => {
+      const el = document.createElement("div");
+      el.style.width = "30px";
+      el.style.height = "30px";
+      el.style.borderRadius = "50%";
+      el.style.backgroundColor = color;
+      el.style.border = "3px solid white";
+      el.style.boxShadow = "0 3px 6px rgba(0,0,0,0.5)";
+      el.style.color = "white";
+      el.style.fontSize = "12px";
+      el.style.fontWeight = "bold";
+      el.style.display = "flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.zIndex = "999";
+      el.innerText = text;
+      return el;
+    };
+
+    // Add shop marker
+    const shopMarker = new mapboxgl.Marker(createMarkerElement("#e74c3c", "SHOP"))
+      .setLngLat(shopCoords)
+      .addTo(map);
+    markersRef.current.shop = shopMarker;
+
+    // Add customer marker
+    const customerMarker = new mapboxgl.Marker(createMarkerElement("#3498db", "NHẬN"))
+      .setLngLat(customerCoords)
+      .addTo(map);
+    markersRef.current.customer = customerMarker;
+
+    // Fit bounds to show both markers
+    const bounds = new mapboxgl.LngLatBounds()
+      .extend(shopCoords)
+      .extend(customerCoords);
+    map.fitBounds(bounds, { padding: 100 });
+
+    // Add route line
+    map.addSource("route", {
+      type: "geojson",
+      data: {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "LineString",
+          coordinates: [shopCoords, customerCoords],
+        },
+      },
+    });
+
+    map.addLayer({
+      id: "route",
+      type: "line",
+      source: "route",
+      layout: {
+        "line-join": "round",
+        "line-cap": "round",
+      },
+      paint: {
+        "line-color": "#2ecc71",
+        "line-width": 4,
+      },
+    });
+  };
 
   // Add a retry mechanism for markers that might not appear initially
   useEffect(() => {

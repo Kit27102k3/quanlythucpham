@@ -1,8 +1,8 @@
 // src/utils/MapUtils.js
 import axios from "axios";
 
-const MAPBOX_API_KEY =
-  "pk.eyJ1Ijoia2l0MjcxMCIsImEiOiJjbWF4bWh5YWQwc2N0MmtxM2p1M2Z5azZkIn0.navJSR4rbpRHVV3TEXelQg";
+// Get Mapbox API key from environment variable
+const MAPBOX_API_KEY = "pk.eyJ1Ijoia2l0MjcxMCIsImEiOiJjbWF4bWh5YWQwc2N0MmtxM2p1M2Z5azZkIn0.navJSR4rbpRHVV3TEXelQg";
 
 // 🧠 Rút gọn địa chỉ Việt Nam
 function simplifyVietnameseAddress(address) {
@@ -56,6 +56,11 @@ function simplifyVietnameseAddress(address) {
 
 // 🗺️ Geocoding với Mapbox
 export async function geocodeWithMapbox(address) {
+  if (!MAPBOX_API_KEY) {
+    console.error("Cannot use Mapbox geocoding: API key is missing");
+    return null;
+  }
+
   try {
     const simplified = simplifyVietnameseAddress(address);
     const encoded = encodeURIComponent(simplified);
@@ -85,31 +90,71 @@ export async function geocodeWithMapbox(address) {
       source: "mapbox",
     };
   } catch (err) {
-    console.error("Lỗi Mapbox:", err?.response?.data || err.message);
+    if (err.response?.status === 401) {
+      console.error("Mapbox API key is invalid or expired. Please check your VITE_MAPBOX_API_KEY");
+    } else {
+      console.error("Lỗi Mapbox:", err?.response?.data || err.message);
+    }
     return null;
   }
 }
 
 // 🗺️ Geocoding với OpenStreetMap
 export async function geocodeWithOSM(address) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-    address
-  )}&format=json&addressdetails=1&limit=1`;
   try {
+    // Simplify the address first
+    const simplified = simplifyVietnameseAddress(address);
+
+    // Add Vietnam to the address if not present
+    const addressWithCountry = simplified.includes("Việt Nam")
+      ? simplified
+      : `${simplified}, Việt Nam`;
+
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+      addressWithCountry
+    )}&format=json&addressdetails=1&limit=1&countrycodes=vn`;
+
     const response = await fetch(url, {
       headers: {
         "User-Agent": "kit10012003@gmail.com",
+        "Accept-Language": "vi,en",
       },
     });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const data = await response.json();
+
     if (data?.[0]) {
-      return {
+      const result = {
         lat: parseFloat(data[0].lat),
         lng: parseFloat(data[0].lon),
         fullAddress: data[0].display_name,
         source: "osm",
       };
+
+      // Validate coordinates
+      if (isNaN(result.lat) || isNaN(result.lng)) {
+        console.warn("OSM returned invalid coordinates");
+        return null;
+      }
+
+      // Validate that coordinates are within Vietnam's bounds
+      if (
+        result.lat < 8.18 ||
+        result.lat > 23.39 ||
+        result.lng < 102.14 ||
+        result.lng > 109.46
+      ) {
+        console.warn("OSM coordinates outside Vietnam bounds");
+        return null;
+      }
+
+      return result;
     }
+
     console.warn("OSM không tìm thấy địa chỉ.");
     return null;
   } catch (err) {
@@ -141,8 +186,10 @@ export const geocodeAddressDebounced = (() => {
 
         // 1️⃣ Thử với OSM trước
         let result = await geocodeWithOSM(address);
+
+        // 2️⃣ Nếu OSM fail, dùng Mapbox
         if (!result) {
-          // 2️⃣ Nếu OSM fail, dùng Mapbox
+          console.log("OSM failed, trying Mapbox...");
           result = await geocodeWithMapbox(address);
         }
 
@@ -152,7 +199,7 @@ export const geocodeAddressDebounced = (() => {
         } else {
           callback?.(null, "Không tìm thấy tọa độ");
         }
-        
+
         return result;
       } catch (err) {
         console.error("Lỗi geocode:", err);
