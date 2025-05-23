@@ -22,6 +22,7 @@ const __dirname = dirname(__filename);
 import './Model/Review.js';
 import './Model/ReviewStats.js';
 
+// Import routes
 import authRoutes from "./routes/authRoutes.js";
 import scraperRoutes from "./routes/scraperRoutes.js";
 import categoryRoutes from "./routes/categoryRoutes.js";
@@ -44,49 +45,51 @@ import systemRoutes from "./routes/systemRoutes.js";
 import supplierRoutes from "./routes/supplierRoutes.js";
 import brandRoutes from "./routes/brandRoutes.js";
 
-// Import specific controller for direct endpoint handling
-import { getBestSellingProducts } from './Controller/productsController.js';
-import { updateProductExpirations } from "./Controller/productsController.js";
-import { log } from "console";
+// Import controllers
+import { getBestSellingProducts, updateProductExpirations } from './Controller/productsController.js';
 
 dotenv.config({ path: ".env" });
 const app = express();
 
-// Xóa model cache để tránh lỗi OverwriteModelError
+// Clear model cache to avoid OverwriteModelError
 Object.keys(mongoose.models).forEach(modelName => {
   if (modelName === 'Messages' || modelName === 'Conversation') {
     delete mongoose.models[modelName];
   }
 });
 
-app.use(
-  cors({
-    origin: [
-      "http://localhost:3000", 
-      "https://quanlythucpham.vercel.app", 
-      "https://quanlythucpham-vercel.app",
-      "https://quanlythucpham-git-main-kits-projects.vercel.app",
-      process.env.NODE_ENV !== 'production' ? '*' : null
-    ].filter(Boolean),
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    maxAge: 3600,
-  })
-);
+// CORS configuration
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://quanlythucpham.vercel.app",
+  "https://quanlythucpham-vercel.app",
+  "https://quanlythucpham-git-main-kits-projects.vercel.app"
+];
 
-// Add a CORS preflight handler for OPTIONS requests
-app.options('*', cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  maxAge: 3600,
+}));
 
+// Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(cookieParser());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-// Middleware kiểm tra token và trích xuất thông tin người dùng
+// Authentication middleware
 app.use((req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       const jwt = require('jsonwebtoken');
       const secretKey = process.env.JWT_SECRET || 'your-secret-key';
@@ -95,28 +98,44 @@ app.use((req, res, next) => {
         const decoded = jwt.verify(token, secretKey);
         req.user = decoded;
       } catch (error) {
-        // Xử lý token không hợp lệ
+        console.error('Token verification failed:', error.message);
       }
     }
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
     next();
   }
 });
 
-const URI = process.env.MONGOOSE_URI;
+// MongoDB connection
+const URI = process.env.MONGODB_URI || process.env.MONGOOSE_URI;
 mongoose
-  .connect(URI)
-  .then(() => {
-    // Removed console.log for MongoDB connection success
+  .connect(URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 30000,
+    socketTimeoutMS: 60000,
+    connectTimeoutMS: 30000,
+    retryWrites: true,
+    retryReads: true,
+    maxPoolSize: 50,
+    minPoolSize: 10,
+    maxIdleTimeMS: 60000,
+    waitQueueTimeoutMS: 30000,
+    heartbeatFrequencyMS: 10000,
   })
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .then(() => console.log("MongoDB Connected Successfully"))
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+    process.exit(1);
+  });
 
+// API Routes
 app.use("/auth", authRoutes);
 app.use("/admin/auth", adminAuthRoutes);
 app.use("/api", adminRoutes);
 app.use("/api/categories", categoryRoutes);
-app.use("/logout", authRoutes);
 app.use("/api", scraperRoutes);
 app.use("/api", productsRoutes);
 app.use("/api/cart", cartRoutes);
@@ -135,122 +154,85 @@ app.use("/api/system", systemRoutes);
 app.use("/api/suppliers", supplierRoutes);
 app.use("/api/brands", brandRoutes);
 
-// Handle best-sellers endpoint directly to avoid route conflicts
+// Direct endpoints
 app.get('/api/products/best-sellers', getBestSellingProducts);
 
-// Add reports direct endpoints
-// Reports API routes for traditional endpoints (no authentication required)
-app.get('/api/dashboard/stats', reportsController.getDashboardStats);
-app.get('/api/analytics/revenue', reportsController.getRevenueData);
-app.get('/api/analytics/top-products', reportsController.getTopProducts);
-app.get('/api/products/inventory', reportsController.getInventoryData);
-app.get('/api/users/stats', reportsController.getUserData);
-app.get('/api/orders/stats', reportsController.getOrderData);
-app.get('/api/coupons/stats', reportsController.getPromotionData);
-app.get('/api/admin/activity-logs', reportsController.getSystemActivityData);
-app.get('/api/orders/delivery-stats', reportsController.getDeliveryData);
-app.get('/api/reviews/stats', reportsController.getFeedbackData);
+// Reports endpoints
+const reportEndpoints = {
+  '/api/dashboard/stats': reportsController.getDashboardStats,
+  '/api/analytics/revenue': reportsController.getRevenueData,
+  '/api/analytics/top-products': reportsController.getTopProducts,
+  '/api/products/inventory': reportsController.getInventoryData,
+  '/api/users/stats': reportsController.getUserData,
+  '/api/orders/stats': reportsController.getOrderData,
+  '/api/coupons/stats': reportsController.getPromotionData,
+  '/api/admin/activity-logs': reportsController.getSystemActivityData,
+  '/api/orders/delivery-stats': reportsController.getDeliveryData,
+  '/api/reviews/stats': reportsController.getFeedbackData
+};
 
-// Reports API routes for Edge API (no authentication required)
-app.get('/api/reports/dashboard', (req, res) => {
-  reportsController.getDashboardStats(req, res);
-});
-app.get('/api/reports/revenue', (req, res) => {
-  reportsController.getRevenueData(req, res);
-});
-app.get('/api/reports/top-products', (req, res) => {
-  reportsController.getTopProducts(req, res);
-});
-app.get('/api/reports/inventory', (req, res) => {
-  reportsController.getInventoryData(req, res);
-});
-app.get('/api/reports/users', (req, res) => {
-  reportsController.getUserData(req, res);
-});
-app.get('/api/reports/orders', (req, res) => {
-  reportsController.getOrderData(req, res);
-});
-app.get('/api/reports/promotions', (req, res) => {
-  reportsController.getPromotionData(req, res);
-});
-app.get('/api/reports/system-activity', (req, res) => {
-  reportsController.getSystemActivityData(req, res);
-});
-app.get('/api/reports/delivery', (req, res) => {
-  reportsController.getDeliveryData(req, res);
-});
-app.get('/api/reports/feedback', (req, res) => {
-  reportsController.getFeedbackData(req, res);
+Object.entries(reportEndpoints).forEach(([path, handler]) => {
+  app.get(path, handler);
+  app.get(`/api/reports${path.split('/api')[1]}`, handler);
 });
 
-// Dọn dẹp các webhook handler trùng lặp
-// Đây là danh sách các đường dẫn webhook cần hỗ trợ
-const webhookPaths = [
+// Webhook handler
+const webhookHandler = async (req, res) => {
+  try {
+    if (req.body.gateway === 'MBBank' || req.body.transferAmount) {
+      await handleBankWebhook(req, res);
+    } else {
+      await handleSepayCallback(req, res);
+    }
+
+    if (!res.headersSent) {
+      res.status(200).json({
+        success: true,
+        code: "00",
+        message: "Webhook processed successfully",
+      });
+    }
+  } catch (error) {
+    console.error('Webhook error:', error);
+    if (!res.headersSent) {
+      res.status(200).json({
+        success: true,
+        code: "00",
+        message: "Webhook received with error",
+        error: error.message
+      });
+    }
+  }
+};
+
+// Register webhook routes
+[
   '/webhook',
   '/api/webhook',
   '/api/webhook/bank',
   '/api/payments/webhook',
   '/api/payments/webhook/bank',
   '/api/payments/sepay/webhook'
-];
+].forEach(path => app.post(path, webhookHandler));
 
-// Đăng ký tất cả các route webhook với một handler duy nhất
-webhookPaths.forEach(path => {
-  app.post(path, async (req, res) => {
-    try {
-      // Removed console.log for webhook received
-      
-      // Xử lý webhook đồng bộ trước khi trả về response
-      if (req.body.gateway === 'MBBank' || req.body.transferAmount) {
-        await handleBankWebhook(req, res);
-      } else {
-        await handleSepayCallback(req, res);
-      }
-
-      // Chỉ trả về response nếu chưa được trả về từ các handler
-      if (!res.headersSent) {
-        res.status(200).json({
-          success: true,
-          code: "00",
-          message: "Webhook processed successfully",
-        });
-      }
-    } catch (error) {
-      console.error(`Error handling webhook at ${path}:`, error);
-      if (!res.headersSent) {
-        res.status(200).json({
-          success: true,
-          code: "00",
-          message: "Webhook received with error",
-          error: error.message
-        });
-      }
-    }
-  });
-});
-
-// Thêm middleware xử lý lỗi nghiêm trọng
-app.use((req, res, next) => {
-  try {
-    next();
-  } catch (error) {
-    console.error("Uncaught error in request:", error);
-    // Đối với webhook, luôn trả về 200
-    if (req.path.includes('webhook') || req.path.includes('/api/payments/')) {
-      return res.status(200).json({
-        success: true,
-        code: "00",
-        message: "Request received with uncaught error",
-        error: error.message
-      });
-    }
-    // Đối với các request khác, trả về 500
-    return res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: error.message
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Global error:', err);
+  
+  if (req.path.includes('webhook') || req.path.includes('/api/payments/')) {
+    return res.status(200).json({
+      success: true,
+      code: "00",
+      message: "Request received with error",
+      error: err.message
     });
   }
+  
+  return res.status(500).json({
+    success: false,
+    message: "Internal server error",
+    error: err.message
+  });
 });
 
 // Health check endpoint
@@ -262,124 +244,78 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Thêm endpoint trực tiếp cho SePay để debug lỗi 500
-app.get("/webhook", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "SePay webhook endpoint is active",
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-
-// Thêm handler đơn giản cho webhook test
-app.post("/webhook", (req, res) => {
-  console.log("Received direct webhook POST:", req.body);
-  res.status(200).json({
-    success: true,
-    code: "00",
-    message: "Webhook received successfully"
-  });
-});
-
-// Hàm dọn dẹp voucher hết hạn
-const scheduleExpiredVoucherCleanup = () => {
-  try {
-    // Gọi function để xóa các voucher hết hạn
-    deleteExpiredVouchers().then(() => {
-      // Removed console.log for expired voucher cleanup completed
-    });
-  } catch (error) {
-    console.error("Error in scheduled expired voucher cleanup:", error);
-  }
-};
-
-// Bắt đầu lịch xóa voucher hết hạn
-scheduleExpiredVoucherCleanup();
-
-// Hàm kiểm tra sản phẩm hết hạn
-const scheduleProductExpirationCheck = () => {
-  try {
-    // Removed console.log for product expiration check
-    updateProductExpirations().then((result) => {
-      // Removed console.log for product expiration results
-    });
-  } catch (error) {
-    console.error("Error in scheduled product expiration check:", error);
-  }
-};
-
-// Thêm công việc định kỳ để kiểm tra và cập nhật hạn sản phẩm
-// Chạy mỗi 6 giờ
+// Scheduled tasks
 const scheduleIntervalHours = 6;
-const scheduleInterval = scheduleIntervalHours * 60 * 60 * 1000; // Convert hours to milliseconds
+const scheduleInterval = scheduleIntervalHours * 60 * 60 * 1000;
 
-// Khởi động server với cơ chế xử lý lỗi cổng
-const startServer = (port) => {
-  // Đảm bảo port là số và trong phạm vi hợp lệ
-  const portNumber = parseInt(port, 10);
-  if (isNaN(portNumber)) {
-    port = 8080;
-  }
-
+const runScheduledTasks = async () => {
   try {
-    const server = app.listen(port, () => {
-      // Removed console.log for server running
-      
-      // Schedule cleanup of expired vouchers
-      scheduleExpiredVoucherCleanup(); // Run once at startup
-      
-      // Schedule check for product expirations
-      scheduleProductExpirationCheck(); // Run once at startup
-      
-      // Set up interval to run cleanup and checks periodically
-      setInterval(() => {
-        scheduleExpiredVoucherCleanup().catch(err => 
-          console.error("Lỗi khi chạy tác vụ định kỳ dọn dẹp voucher:", err)
-        );
-      }, scheduleInterval);
-      
-      setInterval(() => {
-        scheduleProductExpirationCheck().catch(err => 
-          console.error("Lỗi khi chạy tác vụ định kỳ kiểm tra sản phẩm:", err)
-        );
-      }, scheduleInterval);
-      
-      // Removed console.log for scheduled tasks
-    });
-
-    server.on('error', (error) => {
-      if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${port} is already in use. Please close the applications using this port and try again.`);
-        process.exit(1);
-      } else {
-        console.error('Server error:', error);
-        process.exit(1);
-      }
-    });
+    await Promise.all([
+      deleteExpiredVouchers(),
+      updateProductExpirations()
+    ]);
   } catch (error) {
-    console.error('Error starting server:', error);
-    process.exit(1);
+    console.error('Scheduled task error:', error);
   }
 };
 
-// Khởi động server
-const port = process.env.PORT || 8080;
-startServer(port);
+// Start server
+const startServer = (port) => {
+  const portNumber = parseInt(port, 10) || 8080;
+  
+  const server = app.listen(portNumber, () => {
+    console.log(`Server running on port ${portNumber}`);
+    
+    // Run tasks immediately
+    runScheduledTasks();
+    
+    // Schedule periodic tasks
+    setInterval(runScheduledTasks, scheduleInterval);
+  });
 
-// Google Maps Geocoding API proxy endpoint
+  server.on('error', (error) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`Port ${portNumber} is already in use. Please use a different port.`);
+      process.exit(1);
+    } else {
+      console.error('Server error:', error);
+      process.exit(1);
+    }
+  });
+};
+
+// Google Maps Geocoding API proxy
 app.get('/api/geocode', async (req, res) => {
   try {
-    const address = req.query.address;
-    if (!address) return res.status(400).json({ status: 'ZERO_RESULTS', error_message: 'Missing address' });
+    const { address } = req.query;
+    if (!address) {
+      return res.status(400).json({ 
+        status: 'ZERO_RESULTS', 
+        error_message: 'Missing address' 
+      });
+    }
+
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-    console.log("Key", apiKey);
-    
-    if (!apiKey) return res.status(500).json({ status: 'REQUEST_DENIED', error_message: 'Missing Google Maps API key' });
+    if (!apiKey) {
+      return res.status(500).json({ 
+        status: 'REQUEST_DENIED', 
+        error_message: 'Missing Google Maps API key' 
+      });
+    }
+
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=vn&language=vi&key=${apiKey}`;
     const response = await fetch(url);
     const data = await response.json();
     res.json(data);
   } catch (error) {
-    res.status(500).json({ status: 'ERROR', error_message: error.message });
+    console.error('Geocoding error:', error);
+    res.status(500).json({ 
+      status: 'ERROR', 
+      error_message: error.message 
+    });
   }
 });
+
+// Start the server
+const port = process.env.PORT || 8080;
+startServer(port);
