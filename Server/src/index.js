@@ -59,10 +59,10 @@ const app = express();
 
 // CORS configuration
 const allowedOrigins = [
-  "http://localhost:3000",
-  "https://quanlythucpham.vercel.app",
-  "https://quanlythucpham-vercel.app",
-  "https://quanlythucpham-git-main-kits-projects.vercel.app",
+      "http://localhost:3000", 
+      "https://quanlythucpham.vercel.app", 
+      "https://quanlythucpham-vercel.app",
+      "https://quanlythucpham-git-main-kits-projects.vercel.app",
   "https://quanlythucpham-azf6-cvjbbij6u-kit27102k3s-projects.vercel.app",
   "https://*.vercel.app" // Cho phép tất cả subdomain của vercel.app
 ];
@@ -97,27 +97,27 @@ app.use(cookieParser());
 
 // JWT Authentication middleware
 app.use((req, res, next) => {
-  const authHeader = req.headers.authorization;
+    const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.substring(7);
+      const token = authHeader.substring(7);
     const secretKey = process.env.JWT_SECRET_ACCESS;
 
     if (!secretKey) {
       console.error("JWT_SECRET is not defined in environment variables");
       return next();
     }
-
-    try {
-      const decoded = jwt.verify(token, secretKey);
-      req.user = decoded;
-    } catch (error) {
+      
+      try {
+        const decoded = jwt.verify(token, secretKey);
+        req.user = decoded;
+      } catch (error) {
       // Chỉ log lỗi nếu không phải lỗi token hết hạn
       if (error.name !== 'TokenExpiredError') {
         console.warn("Invalid JWT token:", error.message);
       }
+      }
     }
-  }
-  next();
+    next();
 });
 
 // MongoDB connection
@@ -246,25 +246,25 @@ for (const [path, handler] of Object.entries(reportEndpoints)) {
 const webhookHandler = async (req, res) => {
   try {
     if (req.body.gateway === "MBBank" || req.body.transferAmount) {
-      await handleBankWebhook(req, res);
-    } else {
-      await handleSepayCallback(req, res);
-    }
+        await handleBankWebhook(req, res);
+      } else {
+        await handleSepayCallback(req, res);
+      }
 
-    if (!res.headersSent) {
-      res.status(200).json({
-        success: true,
-        code: "00",
-        message: "Webhook processed successfully",
-      });
-    }
-  } catch (error) {
+      if (!res.headersSent) {
+        res.status(200).json({
+          success: true,
+          code: "00",
+          message: "Webhook processed successfully",
+        });
+      }
+    } catch (error) {
     console.error("Webhook error:", error);
-    if (!res.headersSent) {
-      res.status(200).json({
-        success: true,
-        code: "00",
-        message: "Webhook received with error",
+      if (!res.headersSent) {
+        res.status(200).json({
+          success: true,
+          code: "00",
+          message: "Webhook received with error",
         error: error.message,
       });
     }
@@ -326,8 +326,8 @@ app.use((err, req, res) => {
 
   if (path.includes("webhook") || path.includes("/api/payments/")) {
     return res.status(200).json({
-      success: true,
-      code: "00",
+    success: true,
+    code: "00",
       message: "Request received with error",
       error: err.message,
     });
