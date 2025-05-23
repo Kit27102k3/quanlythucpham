@@ -76,6 +76,7 @@ ReviewSchema.index({ productId: 1, userId: 1 }, { unique: true });
 ReviewSchema.index({ productId: 1, createdAt: -1 });
 ReviewSchema.index({ userId: 1 });
 ReviewSchema.index({ isPublished: 1 });
+ReviewSchema.index({ rating: -1 });
 
 // Static method để tính điểm đánh giá trung bình cho một sản phẩm
 ReviewSchema.statics.calculateAverageRating = async function (productId) {

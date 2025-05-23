@@ -112,8 +112,6 @@ app.use((req, res, next) => {
 const URI = process.env.MONGODB_URI || process.env.MONGOOSE_URI;
 mongoose
   .connect(URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
     serverSelectionTimeoutMS: 30000,
     socketTimeoutMS: 60000,
     connectTimeoutMS: 30000,
@@ -125,11 +123,43 @@ mongoose
     waitQueueTimeoutMS: 30000,
     heartbeatFrequencyMS: 10000,
   })
-  .then(() => console.log("MongoDB Connected Successfully"))
+  .then(() => {
+    console.log("MongoDB Connected Successfully");
+    // Log connection details for debugging
+    console.log("MongoDB Connection Details:", {
+      host: mongoose.connection.host,
+      port: mongoose.connection.port,
+      name: mongoose.connection.name,
+      readyState: mongoose.connection.readyState
+    });
+  })
   .catch((err) => {
     console.error("MongoDB connection error:", err);
+    // Log detailed error information
+    if (err.name === 'MongooseServerSelectionError') {
+      console.error("Connection Details:", {
+        uri: URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'), // Hide credentials
+        error: err.message,
+        reason: err.reason?.message,
+        code: err.code
+      });
+    }
     process.exit(1);
   });
+
+// Add connection error handler
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+});
+
+// Add reconnection handler
+mongoose.connection.on('reconnected', () => {
+  console.log('MongoDB reconnected');
+});
 
 // API Routes
 app.use("/auth", authRoutes);
