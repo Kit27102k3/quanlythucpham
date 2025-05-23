@@ -4,9 +4,6 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-
-import { fileURLToPath } from "url";
-import { dirname } from "path";
 import fetch from "node-fetch";
 import jwt from "jsonwebtoken";
 
@@ -20,10 +17,6 @@ import {
   getBestSellingProducts,
   updateProductExpirations,
 } from "./Controller/productsController.js";
-
-// ES modules compatibility for __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Load env variables
 dotenv.config({ path: ".env" });
@@ -288,12 +281,49 @@ const webhookHandler = async (req, res) => {
   "/api/payments/sepay/webhook",
 ].forEach((path) => app.post(path, webhookHandler));
 
+// Health check endpoint
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || "development",
+  });
+});
+
+// Middleware to catch unhandled requests (404)
+app.use((req, res, next) => {
+  // Chỉ xử lý nếu headersSent = false, tránh lỗi khi response đã được gửi
+  if (!res.headersSent) {
+    res.status(404).json({
+      success: false,
+      message: `Cannot ${req.method} ${req.url}`,
+    });
+  } else {
+    // Nếu headers đã được gửi, chỉ gọi next với lỗi (nếu có)
+    next();
+  }
+});
+
 // Global error handling middleware
 app.use((err, req, res) => {
   console.error("Global error:", err);
 
   // Kiểm tra req.path tồn tại trước khi sử dụng
   const path = req?.path || '';
+
+  // Kiểm tra res là đối tượng response hợp lệ
+  if (!res || typeof res.status !== 'function') {
+    console.error("Invalid Express response object in error handler.");
+    // Tùy chọn: log thêm thông tin debug về req và err
+    // console.log('Request details:', req);
+    // console.log('Error details:', err);
+    // Kết thúc request một cách an toàn nếu có thể, hoặc re-throw lỗi
+    // Để đơn giản, ta sẽ log và có thể để request timeout hoặc trả về lỗi chung tùy cấu hình serverless
+    // Trong môi trường serverless, thường không có server.on('error') như server truyền thống
+    // Lỗi ở đây có thể do context không đúng
+    return; // Thoát khỏi middleware để tránh lỗi thêm
+  }
+
   if (path.includes("webhook") || path.includes("/api/payments/")) {
     return res.status(200).json({
       success: true,
@@ -307,15 +337,6 @@ app.use((err, req, res) => {
     success: false,
     message: "Internal server error",
     error: err.message,
-  });
-});
-
-// Health check endpoint
-app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    env: process.env.NODE_ENV || "development",
   });
 });
 
@@ -371,7 +392,7 @@ app.get("/api/geocode", async (req, res) => {
 const startServer = (port) => {
   const portNumber = Number(port) || 8080;
 
-  const server = app.listen(portNumber, async () => {
+  app.listen(portNumber, async () => {
     console.log(`Server running on port ${portNumber}`);
 
     // Run scheduled tasks immediately on start
@@ -379,18 +400,6 @@ const startServer = (port) => {
 
     // Schedule periodic tasks
     setInterval(runScheduledTasks, scheduleIntervalMs);
-  });
-
-  server.on("error", (error) => {
-    if (error.code === "EADDRINUSE") {
-      console.error(
-        `Port ${portNumber} is already in use. Please use a different port.`
-      );
-      process.exit(1);
-    } else {
-      console.error("Server error:", error);
-      process.exit(1);
-    }
   });
 };
 
