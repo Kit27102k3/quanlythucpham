@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import Category from "./Categories.js";
 
 const productSchema = new mongoose.Schema(
   {

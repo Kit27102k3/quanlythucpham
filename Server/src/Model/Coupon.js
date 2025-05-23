@@ -58,12 +58,6 @@ const couponSchema = new mongoose.Schema(
   }
 );
 
-// Tạo index để tìm kiếm nhanh
-couponSchema.index({ code: 1 }, { unique: true });
-couponSchema.index({ expiresAt: 1, isActive: 1 });
-couponSchema.index({ type: 1, isActive: 1 });
-couponSchema.index({ createdAt: 1 });
-
 const Coupon = mongoose.model("Coupon", couponSchema);
 
 export default Coupon; 

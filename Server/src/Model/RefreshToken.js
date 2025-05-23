@@ -26,9 +26,5 @@ const RefreshTokenSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Add index for faster queries
-RefreshTokenSchema.index({ token: 1 }, { unique: true });
-RefreshTokenSchema.index({ userId: 1 });
-RefreshTokenSchema.index({ expiresAt: 1 });
 
 export default mongoose.model("RefreshToken", RefreshTokenSchema);
