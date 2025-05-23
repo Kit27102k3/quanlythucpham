@@ -4,7 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import path from "path";
+
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import fetch from "node-fetch";
@@ -70,18 +70,24 @@ const allowedOrigins = [
   "https://quanlythucpham.vercel.app",
   "https://quanlythucpham-vercel.app",
   "https://quanlythucpham-git-main-kits-projects.vercel.app",
+  "https://quanlythucpham-azf6-cvjbbij6u-kit27102k3s-projects.vercel.app",
+  "https://*.vercel.app" // Cho phép tất cả subdomain của vercel.app
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (
-        !origin ||
-        allowedOrigins.includes(origin) ||
-        process.env.NODE_ENV !== "production"
-      ) {
+      // Cho phép requests không có origin (như mobile apps)
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      if (allowedOrigins.includes(origin) || 
+          origin.endsWith('.vercel.app') || 
+          process.env.NODE_ENV !== "production") {
         callback(null, true);
       } else {
+        console.log('CORS blocked for origin:', origin);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -101,13 +107,21 @@ app.use((req, res, next) => {
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.substring(7);
-    const secretKey = process.env.JWT_SECRET || "your-secret-key";
+    const secretKey = process.env.JWT_SECRET_ACCESS;
+
+    if (!secretKey) {
+      console.error("JWT_SECRET is not defined in environment variables");
+      return next();
+    }
 
     try {
       const decoded = jwt.verify(token, secretKey);
       req.user = decoded;
     } catch (error) {
-      console.warn("Invalid JWT token:", error.message);
+      // Chỉ log lỗi nếu không phải lỗi token hết hạn
+      if (error.name !== 'TokenExpiredError') {
+        console.warn("Invalid JWT token:", error.message);
+      }
     }
   }
   next();
@@ -126,7 +140,7 @@ const mongooseOptions = {
   maxIdleTimeMS: 60000,
   waitQueueTimeoutMS: 60000,
   heartbeatFrequencyMS: 10000,
-  family: 4,
+  family: 4
 };
 
 // Hàm kết nối MongoDB với retry logic
@@ -135,21 +149,25 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
     try {
       await mongoose.connect(URI, mongooseOptions);
       console.log("MongoDB Connected Successfully");
-
+      console.log("MongoDB Connection Info:", {
+        host: mongoose.connection.host,
+        port: mongoose.connection.port,
+        dbName: mongoose.connection.name,
+        readyState: mongoose.connection.readyState,
+        env: process.env.NODE_ENV
+      });
       return;
     } catch (err) {
       console.error(`MongoDB connection attempt ${i + 1} failed:`, err);
-
+      
       if (err.name === "MongooseServerSelectionError") {
         console.error({
-          uri: URI.replace(/\/\/[^:]+:[^@]+@/, "//***:***@"),
+          uri: URI ? URI.replace(/\/\/[^:]+:[^@]+@/, "//***:***@") : "URI is undefined",
           message: err.message,
           reason: err.reason?.message,
           code: err.code,
+          env: process.env.NODE_ENV
         });
-        console.error(
-          "IP whitelist issue detected. Please check MongoDB Atlas IP whitelist settings."
-        );
       }
 
       if (i === retries - 1) {
@@ -157,8 +175,8 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
         process.exit(1);
       }
 
-      console.log(`Retrying in ${delay / 1000} seconds...`);
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      console.log(`Retrying in ${delay/1000} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 };
