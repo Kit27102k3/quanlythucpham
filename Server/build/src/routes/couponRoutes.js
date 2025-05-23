@@ -23,6 +23,9 @@ router.post("/validate", _couponController.validateCoupon);
 router.get("/code/:code", _couponController.getCouponByCode);
 router.post("/use/:code", _couponController.updateCouponUsage);
 
+// Route to get coupon statistics for reports
+router.get("/stats", _couponController.getCouponStats);
+
 // Public debug route for development
 router.get("/all-for-debug", /*#__PURE__*/function () {
   var _ref = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee(req, res) {

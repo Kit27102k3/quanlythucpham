@@ -3,22 +3,26 @@
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.updateOrderPaymentStatus = exports.updateOrder = exports.orderUpdate = exports.orderGetById = exports.orderGetAll = exports.orderGet = exports.orderDelete = exports.orderCreate = exports.notifyOrderSuccess = exports.markOrderAsPaid = exports.getOrderTracking = exports.cancelOrder = void 0;
+exports.updateOrderPaymentStatus = exports.updateOrder = exports.orderUpdate = exports.orderGetById = exports.orderGetAll = exports.orderGet = exports.orderDelete = exports.orderCreate = exports.notifyOrderSuccess = exports.markOrderAsPaid = exports.getTopOrders = exports.getOrderTracking = exports.getOrderStats = exports.getDeliveryStats = exports.cancelOrder = void 0;
 var _Order = _interopRequireDefault(require("../Model/Order.js"));
 var _Products = _interopRequireDefault(require("../Model/Products.js"));
-var _SavedVoucher = _interopRequireDefault(require("../Model/SavedVoucher.js"));
 var _axios = _interopRequireDefault(require("axios"));
 var _dotenv = _interopRequireDefault(require("dotenv"));
 var _emailService = require("../utils/emailService.js");
 var _BestSellingProduct = _interopRequireDefault(require("../Model/BestSellingProduct.js"));
+var _notificationService = require("../Services/notificationService.js");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
+function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
+function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return r; }; var t, r = {}, e = Object.prototype, n = e.hasOwnProperty, o = "function" == typeof Symbol ? Symbol : {}, i = o.iterator || "@@iterator", a = o.asyncIterator || "@@asyncIterator", u = o.toStringTag || "@@toStringTag"; function c(t, r, e, n) { return Object.defineProperty(t, r, { value: e, enumerable: !n, configurable: !n, writable: !n }); } try { c({}, ""); } catch (t) { c = function c(t, r, e) { return t[r] = e; }; } function h(r, e, n, o) { var i = e && e.prototype instanceof Generator ? e : Generator, a = Object.create(i.prototype); return c(a, "_invoke", function (r, e, n) { var o = 1; return function (i, a) { if (3 === o) throw Error("Generator is already running"); if (4 === o) { if ("throw" === i) throw a; return { value: t, done: !0 }; } for (n.method = i, n.arg = a;;) { var u = n.delegate; if (u) { var c = d(u, n); if (c) { if (c === f) continue; return c; } } if ("next" === n.method) n.sent = n._sent = n.arg;else if ("throw" === n.method) { if (1 === o) throw o = 4, n.arg; n.dispatchException(n.arg); } else "return" === n.method && n.abrupt("return", n.arg); o = 3; var h = s(r, e, n); if ("normal" === h.type) { if (o = n.done ? 4 : 2, h.arg === f) continue; return { value: h.arg, done: n.done }; } "throw" === h.type && (o = 4, n.method = "throw", n.arg = h.arg); } }; }(r, n, new Context(o || [])), !0), a; } function s(t, r, e) { try { return { type: "normal", arg: t.call(r, e) }; } catch (t) { return { type: "throw", arg: t }; } } r.wrap = h; var f = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var l = {}; c(l, i, function () { return this; }); var p = Object.getPrototypeOf, y = p && p(p(x([]))); y && y !== e && n.call(y, i) && (l = y); var v = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(l); function g(t) { ["next", "throw", "return"].forEach(function (r) { c(t, r, function (t) { return this._invoke(r, t); }); }); } function AsyncIterator(t, r) { function e(o, i, a, u) { var c = s(t[o], t, i); if ("throw" !== c.type) { var h = c.arg, f = h.value; return f && "object" == _typeof(f) && n.call(f, "__await") ? r.resolve(f.__await).then(function (t) { e("next", t, a, u); }, function (t) { e("throw", t, a, u); }) : r.resolve(f).then(function (t) { h.value = t, a(h); }, function (t) { return e("throw", t, a, u); }); } u(c.arg); } var o; c(this, "_invoke", function (t, n) { function i() { return new r(function (r, o) { e(t, n, r, o); }); } return o = o ? o.then(i, i) : i(); }, !0); } function d(r, e) { var n = e.method, o = r.i[n]; if (o === t) return e.delegate = null, "throw" === n && r.i["return"] && (e.method = "return", e.arg = t, d(r, e), "throw" === e.method) || "return" !== n && (e.method = "throw", e.arg = new TypeError("The iterator does not provide a '" + n + "' method")), f; var i = s(o, r.i, e.arg); if ("throw" === i.type) return e.method = "throw", e.arg = i.arg, e.delegate = null, f; var a = i.arg; return a ? a.done ? (e[r.r] = a.value, e.next = r.n, "return" !== e.method && (e.method = "next", e.arg = t), e.delegate = null, f) : a : (e.method = "throw", e.arg = new TypeError("iterator result is not an object"), e.delegate = null, f); } function w(t) { this.tryEntries.push(t); } function m(r) { var e = r[4] || {}; e.type = "normal", e.arg = t, r[4] = e; } function Context(t) { this.tryEntries = [[-1]], t.forEach(w, this), this.reset(!0); } function x(r) { if (null != r) { var e = r[i]; if (e) return e.call(r); if ("function" == typeof r.next) return r; if (!isNaN(r.length)) { var o = -1, a = function e() { for (; ++o < r.length;) if (n.call(r, o)) return e.value = r[o], e.done = !1, e; return e.value = t, e.done = !0, e; }; return a.next = a; } } throw new TypeError(_typeof(r) + " is not iterable"); } return GeneratorFunction.prototype = GeneratorFunctionPrototype, c(v, "constructor", GeneratorFunctionPrototype), c(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = c(GeneratorFunctionPrototype, u, "GeneratorFunction"), r.isGeneratorFunction = function (t) { var r = "function" == typeof t && t.constructor; return !!r && (r === GeneratorFunction || "GeneratorFunction" === (r.displayName || r.name)); }, r.mark = function (t) { return Object.setPrototypeOf ? Object.setPrototypeOf(t, GeneratorFunctionPrototype) : (t.__proto__ = GeneratorFunctionPrototype, c(t, u, "GeneratorFunction")), t.prototype = Object.create(v), t; }, r.awrap = function (t) { return { __await: t }; }, g(AsyncIterator.prototype), c(AsyncIterator.prototype, a, function () { return this; }), r.AsyncIterator = AsyncIterator, r.async = function (t, e, n, o, i) { void 0 === i && (i = Promise); var a = new AsyncIterator(h(t, e, n, o), i); return r.isGeneratorFunction(e) ? a : a.next().then(function (t) { return t.done ? t.value : a.next(); }); }, g(v), c(v, u, "Generator"), c(v, i, function () { return this; }), c(v, "toString", function () { return "[object Generator]"; }), r.keys = function (t) { var r = Object(t), e = []; for (var n in r) e.unshift(n); return function t() { for (; e.length;) if ((n = e.pop()) in r) return t.value = n, t.done = !1, t; return t.done = !0, t; }; }, r.values = x, Context.prototype = { constructor: Context, reset: function reset(r) { if (this.prev = this.next = 0, this.sent = this._sent = t, this.done = !1, this.delegate = null, this.method = "next", this.arg = t, this.tryEntries.forEach(m), !r) for (var e in this) "t" === e.charAt(0) && n.call(this, e) && !isNaN(+e.slice(1)) && (this[e] = t); }, stop: function stop() { this.done = !0; var t = this.tryEntries[0][4]; if ("throw" === t.type) throw t.arg; return this.rval; }, dispatchException: function dispatchException(r) { if (this.done) throw r; var e = this; function n(t) { a.type = "throw", a.arg = r, e.next = t; } for (var o = e.tryEntries.length - 1; o >= 0; --o) { var i = this.tryEntries[o], a = i[4], u = this.prev, c = i[1], h = i[2]; if (-1 === i[0]) return n("end"), !1; if (!c && !h) throw Error("try statement without catch or finally"); if (null != i[0] && i[0] <= u) { if (u < c) return this.method = "next", this.arg = t, n(c), !0; if (u < h) return n(h), !1; } } }, abrupt: function abrupt(t, r) { for (var e = this.tryEntries.length - 1; e >= 0; --e) { var n = this.tryEntries[e]; if (n[0] > -1 && n[0] <= this.prev && this.prev < n[2]) { var o = n; break; } } o && ("break" === t || "continue" === t) && o[0] <= r && r <= o[2] && (o = null); var i = o ? o[4] : {}; return i.type = t, i.arg = r, o ? (this.method = "next", this.next = o[2], f) : this.complete(i); }, complete: function complete(t, r) { if ("throw" === t.type) throw t.arg; return "break" === t.type || "continue" === t.type ? this.next = t.arg : "return" === t.type ? (this.rval = this.arg = t.arg, this.method = "return", this.next = "end") : "normal" === t.type && r && (this.next = r), f; }, finish: function finish(t) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var e = this.tryEntries[r]; if (e[2] === t) return this.complete(e[4], e[3]), m(e), f; } }, "catch": function _catch(t) { for (var r = this.tryEntries.length - 1; r >= 0; --r) { var e = this.tryEntries[r]; if (e[0] === t) { var n = e[4]; if ("throw" === n.type) { var o = n.arg; m(e); } return o; } } throw Error("illegal catch attempt"); }, delegateYield: function delegateYield(r, e, n) { return this.delegate = { i: x(r), r: e, n: n }, "next" === this.method && (this.arg = t), f; } }, r; }
 function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e && r && "number" == typeof r.length) { t && (r = t); var _n = 0, F = function F() {}; return { s: F, n: function n() { return _n >= r.length ? { done: !0 } : { done: !1, value: r[_n++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = !0, u = !1; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = !0, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
 function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function asyncGeneratorStep(n, t, e, r, o, a, c) { try { var i = n[a](c), u = i.value; } catch (n) { return void e(n); } i.done ? t(u) : Promise.resolve(u).then(r, o); }
-function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; }
+function _asyncToGenerator(n) { return function () { var t = this, e = arguments; return new Promise(function (r, o) { var a = n.apply(t, e); function _next(n) { asyncGeneratorStep(a, r, o, _next, _throw, "next", n); } function _throw(n) { asyncGeneratorStep(a, r, o, _next, _throw, "throw", n); } _next(void 0); }); }; } /* eslint-disable no-undef */
 _dotenv["default"].config();
 
 // Hàm tạo mã vận đơn ngẫu nhiên
@@ -36,7 +40,7 @@ function updateProductStock(_x) {
   return _updateProductStock.apply(this, arguments);
 }
 function _updateProductStock() {
-  _updateProductStock = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee11(products) {
+  _updateProductStock = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee14(products) {
     var increase,
       updateSoldCount,
       _iterator7,
@@ -44,28 +48,28 @@ function _updateProductStock() {
       item,
       product,
       newStock,
-      _args11 = arguments;
-    return _regeneratorRuntime().wrap(function _callee11$(_context11) {
-      while (1) switch (_context11.prev = _context11.next) {
+      _args14 = arguments;
+    return _regeneratorRuntime().wrap(function _callee14$(_context14) {
+      while (1) switch (_context14.prev = _context14.next) {
         case 0:
-          increase = _args11.length > 1 && _args11[1] !== undefined ? _args11[1] : false;
-          updateSoldCount = _args11.length > 2 && _args11[2] !== undefined ? _args11[2] : false;
-          _context11.prev = 2;
+          increase = _args14.length > 1 && _args14[1] !== undefined ? _args14[1] : false;
+          updateSoldCount = _args14.length > 2 && _args14[2] !== undefined ? _args14[2] : false;
+          _context14.prev = 2;
           _iterator7 = _createForOfIteratorHelper(products);
-          _context11.prev = 4;
+          _context14.prev = 4;
           _iterator7.s();
         case 6:
           if ((_step7 = _iterator7.n()).done) {
-            _context11.next = 20;
+            _context14.next = 20;
             break;
           }
           item = _step7.value;
-          _context11.next = 10;
+          _context14.next = 10;
           return _Products["default"].findById(item.productId);
         case 10:
-          product = _context11.sent;
+          product = _context14.sent;
           if (!product) {
-            _context11.next = 18;
+            _context14.next = 18;
             break;
           }
           // Tăng hoặc giảm số lượng tồn kho dựa vào tham số increase
@@ -86,35 +90,35 @@ function _updateProductStock() {
             // Trừ soldCount khi hủy đơn hàng đã thanh toán
             product.soldCount = Math.max(0, (product.soldCount || 0) - item.quantity);
           }
-          _context11.next = 18;
+          _context14.next = 18;
           return product.save();
         case 18:
-          _context11.next = 6;
+          _context14.next = 6;
           break;
         case 20:
-          _context11.next = 25;
+          _context14.next = 25;
           break;
         case 22:
-          _context11.prev = 22;
-          _context11.t0 = _context11["catch"](4);
-          _iterator7.e(_context11.t0);
+          _context14.prev = 22;
+          _context14.t0 = _context14["catch"](4);
+          _iterator7.e(_context14.t0);
         case 25:
-          _context11.prev = 25;
+          _context14.prev = 25;
           _iterator7.f();
-          return _context11.finish(25);
+          return _context14.finish(25);
         case 28:
-          _context11.next = 34;
+          _context14.next = 34;
           break;
         case 30:
-          _context11.prev = 30;
-          _context11.t1 = _context11["catch"](2);
-          console.error("Lỗi khi cập nhật thông tin sản phẩm:", _context11.t1);
-          throw _context11.t1;
+          _context14.prev = 30;
+          _context14.t1 = _context14["catch"](2);
+          console.error("Lỗi khi cập nhật thông tin sản phẩm:", _context14.t1);
+          throw _context14.t1;
         case 34:
         case "end":
-          return _context11.stop();
+          return _context14.stop();
       }
-    }, _callee11, null, [[2, 30], [4, 22, 25, 28]]);
+    }, _callee14, null, [[2, 30], [4, 22, 25, 28]]);
   }));
   return _updateProductStock.apply(this, arguments);
 }
@@ -126,6 +130,7 @@ var orderCreate = exports.orderCreate = /*#__PURE__*/function () {
         case 0:
           _context.prev = 0;
           // Validate required fields
+          // eslint-disable-next-line no-unused-vars
           _req$body = req.body, userId = _req$body.userId, products = _req$body.products, totalAmount = _req$body.totalAmount, paymentMethod = _req$body.paymentMethod, coupon = _req$body.coupon;
           if (!(!userId || !products || !Array.isArray(products) || products.length === 0 || !totalAmount)) {
             _context.next = 4;
@@ -752,26 +757,42 @@ var updateOrder = exports.updateOrder = /*#__PURE__*/function () {
           _context5.t7 = _context5["catch"](172);
           console.error('Lỗi khi gửi email cập nhật trạng thái đơn hàng:', _context5.t7);
         case 181:
+          if (!(newStatus && newStatus !== previousStatus && updatedOrder.userId)) {
+            _context5.next = 191;
+            break;
+          }
+          _context5.prev = 182;
+          _context5.next = 185;
+          return (0, _notificationService.sendOrderStatusNotification)(updatedOrder.userId, updatedOrder, getStatusText(updatedOrder.status));
+        case 185:
+          console.log("\u0110\xE3 g\u1EEDi th\xF4ng b\xE1o c\u1EADp nh\u1EADt tr\u1EA1ng th\xE1i \u0111\u01A1n h\xE0ng ".concat(updatedOrder.orderCode, " \u0111\u1EBFn user ").concat(updatedOrder.userId));
+          _context5.next = 191;
+          break;
+        case 188:
+          _context5.prev = 188;
+          _context5.t8 = _context5["catch"](182);
+          console.error('Lỗi khi gửi thông báo cập nhật trạng thái đơn hàng:', _context5.t8);
+        case 191:
           return _context5.abrupt("return", res.status(200).json({
             success: true,
             message: "Cập nhật đơn hàng thành công",
             data: updatedOrder
           }));
-        case 184:
-          _context5.prev = 184;
-          _context5.t8 = _context5["catch"](0);
-          console.error("Error in updateOrder:", _context5.t8);
-          console.error(_context5.t8.stack);
+        case 194:
+          _context5.prev = 194;
+          _context5.t9 = _context5["catch"](0);
+          console.error("Error in updateOrder:", _context5.t9);
+          console.error(_context5.t9.stack);
           return _context5.abrupt("return", res.status(500).json({
             success: false,
             message: "Lỗi khi cập nhật đơn hàng",
-            error: _context5.t8.message
+            error: _context5.t9.message
           }));
-        case 189:
+        case 199:
         case "end":
           return _context5.stop();
       }
-    }, _callee5, null, [[0, 184], [63, 87], [68, 79, 82, 85], [94, 109, 112, 115], [115, 139], [120, 131, 134, 137], [152, 165], [172, 178]]);
+    }, _callee5, null, [[0, 194], [63, 87], [68, 79, 82, 85], [94, 109, 112, 115], [115, 139], [120, 131, 134, 137], [152, 165], [172, 178], [182, 188]]);
   }));
   return function updateOrder(_x0, _x1) {
     return _ref5.apply(this, arguments);
@@ -1818,25 +1839,41 @@ var updateOrderPaymentStatus = exports.updateOrderPaymentStatus = /*#__PURE__*/f
           _context1.t2 = _context1["catch"](42);
           console.error("Error updating bestselling products:", _context1.t2);
         case 66:
+          if (!(updatedOrder.userId && (paymentStatus && paymentStatus !== oldPaymentStatus || isPaid !== undefined && isPaid !== oldIsPaid))) {
+            _context1.next = 76;
+            break;
+          }
+          _context1.prev = 67;
+          _context1.next = 70;
+          return (0, _notificationService.sendOrderStatusNotification)(updatedOrder.userId, updatedOrder, getStatusText(updatedOrder.status));
+        case 70:
+          console.log("\u0110\xE3 g\u1EEDi th\xF4ng b\xE1o c\u1EADp nh\u1EADt tr\u1EA1ng th\xE1i thanh to\xE1n \u0111\u01A1n h\xE0ng ".concat(updatedOrder.orderCode, " \u0111\u1EBFn user ").concat(updatedOrder.userId));
+          _context1.next = 76;
+          break;
+        case 73:
+          _context1.prev = 73;
+          _context1.t3 = _context1["catch"](67);
+          console.error('Lỗi khi gửi thông báo cập nhật trạng thái thanh toán:', _context1.t3);
+        case 76:
           return _context1.abrupt("return", res.status(200).json({
             success: true,
-            message: "Payment status updated successfully",
-            order: updatedOrder
+            message: "Order payment status updated successfully",
+            data: updatedOrder
           }));
-        case 69:
-          _context1.prev = 69;
-          _context1.t3 = _context1["catch"](0);
-          console.error("Error updating payment status:", _context1.t3);
+        case 79:
+          _context1.prev = 79;
+          _context1.t4 = _context1["catch"](0);
+          console.error("Error updating payment status:", _context1.t4);
           return _context1.abrupt("return", res.status(500).json({
             success: false,
             message: "Error updating payment status",
-            error: _context1.t3.message
+            error: _context1.t4.message
           }));
-        case 73:
+        case 83:
         case "end":
           return _context1.stop();
       }
-    }, _callee1, null, [[0, 69], [42, 63], [44, 55, 58, 61]]);
+    }, _callee1, null, [[0, 79], [42, 63], [44, 55, 58, 61], [67, 73]]);
   }));
   return function updateOrderPaymentStatus(_x20, _x21) {
     return _ref1.apply(this, arguments);
@@ -1969,5 +2006,628 @@ var notifyOrderSuccess = exports.notifyOrderSuccess = /*#__PURE__*/function () {
   }));
   return function notifyOrderSuccess(_x22, _x23) {
     return _ref10.apply(this, arguments);
+  };
+}();
+
+// Hàm lấy top đơn hàng có giá trị cao nhất
+var getTopOrders = exports.getTopOrders = /*#__PURE__*/function () {
+  var _ref11 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee11(req, res) {
+    var limit, topOrders, formattedOrders;
+    return _regeneratorRuntime().wrap(function _callee11$(_context11) {
+      while (1) switch (_context11.prev = _context11.next) {
+        case 0:
+          _context11.prev = 0;
+          limit = parseInt(req.query.limit) || 10; // Mặc định lấy top 10 đơn hàng
+          // Tìm đơn hàng và sắp xếp theo totalAmount giảm dần
+          _context11.next = 4;
+          return _Order["default"].find().populate("userId", "firstName lastName email userName").sort({
+            totalAmount: -1
+          }).limit(limit);
+        case 4:
+          topOrders = _context11.sent;
+          // Định dạng lại dữ liệu để phù hợp với cấu trúc hiển thị
+          formattedOrders = topOrders.map(function (order) {
+            // Định dạng tên khách hàng
+            var customerName = 'Khách hàng';
+            if (order.userId) {
+              if (order.userId.firstName || order.userId.lastName) {
+                customerName = "".concat(order.userId.firstName || '', " ").concat(order.userId.lastName || '').trim();
+              } else if (order.userId.userName) {
+                customerName = order.userId.userName;
+              } else if (order.userId.email) {
+                customerName = order.userId.email;
+              }
+            }
+
+            // Định dạng ngày đặt hàng
+            var orderDate = order.createdAt ? new Date(order.createdAt) : new Date();
+            var formattedDate = "".concat(orderDate.getDate(), "/").concat(orderDate.getMonth() + 1, "/").concat(orderDate.getFullYear());
+
+            // Chuyển đổi trạng thái sang tiếng Việt
+            var statusText = 'Đang xử lý';
+            switch (order.status) {
+              case 'pending':
+                statusText = 'Đang xử lý';
+                break;
+              case 'confirmed':
+                statusText = 'Đã xác nhận';
+                break;
+              case 'processing':
+                statusText = 'Đang xử lý';
+                break;
+              case 'shipping':
+                statusText = 'Đang vận chuyển';
+                break;
+              case 'delivering':
+                statusText = 'Đang giao hàng';
+                break;
+              case 'delivered':
+                statusText = 'Đã giao hàng';
+                break;
+              case 'completed':
+                statusText = 'Đã hoàn thành';
+                break;
+              case 'cancelled':
+                statusText = 'Đã hủy';
+                break;
+              case 'awaiting_payment':
+                statusText = 'Chờ thanh toán';
+                break;
+              default:
+                statusText = order.status;
+            }
+            return {
+              id: order.orderCode || order._id,
+              customer: customerName,
+              total: order.totalAmount,
+              status: statusText,
+              date: formattedDate
+            };
+          });
+          res.status(200).json(formattedOrders);
+          _context11.next = 13;
+          break;
+        case 9:
+          _context11.prev = 9;
+          _context11.t0 = _context11["catch"](0);
+          console.error('Lỗi khi lấy danh sách đơn hàng giá trị cao nhất:', _context11.t0);
+          res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy danh sách đơn hàng giá trị cao nhất',
+            error: _context11.t0.message
+          });
+        case 13:
+        case "end":
+          return _context11.stop();
+      }
+    }, _callee11, null, [[0, 9]]);
+  }));
+  return function getTopOrders(_x24, _x25) {
+    return _ref11.apply(this, arguments);
+  };
+}();
+
+// Hàm lấy thống kê đơn hàng
+var getOrderStats = exports.getOrderStats = /*#__PURE__*/function () {
+  var _ref12 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee12(req, res) {
+    var period, startDate, endDate, pendingCount, shippingCount, completedCount, cancelledCount, totalOrders, orderStatus, processingTime, completedOrders, totalProcessingTime, totalShippingTime, totalTotalTime, avgProcessingTime, avgShippingTime, avgTotalTime, topOrders, formattedTopOrders;
+    return _regeneratorRuntime().wrap(function _callee12$(_context12) {
+      while (1) switch (_context12.prev = _context12.next) {
+        case 0:
+          _context12.prev = 0;
+          period = req.query.period || 'week'; // Mặc định là tuần
+          startDate = new Date();
+          endDate = new Date(); // Thiết lập khoảng thời gian dựa trên period
+          _context12.t0 = period;
+          _context12.next = _context12.t0 === 'week' ? 7 : _context12.t0 === 'month' ? 9 : _context12.t0 === 'year' ? 11 : 13;
+          break;
+        case 7:
+          startDate.setDate(startDate.getDate() - 7);
+          return _context12.abrupt("break", 14);
+        case 9:
+          startDate.setDate(startDate.getDate() - 30);
+          return _context12.abrupt("break", 14);
+        case 11:
+          startDate.setDate(startDate.getDate() - 365);
+          return _context12.abrupt("break", 14);
+        case 13:
+          startDate.setDate(startDate.getDate() - 7);
+        case 14:
+          _context12.next = 16;
+          return _Order["default"].countDocuments({
+            status: {
+              $in: ['pending', 'processing', 'awaiting_payment']
+            },
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          });
+        case 16:
+          pendingCount = _context12.sent;
+          _context12.next = 19;
+          return _Order["default"].countDocuments({
+            status: {
+              $in: ['shipping', 'delivering']
+            },
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          });
+        case 19:
+          shippingCount = _context12.sent;
+          _context12.next = 22;
+          return _Order["default"].countDocuments({
+            status: 'completed',
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          });
+        case 22:
+          completedCount = _context12.sent;
+          _context12.next = 25;
+          return _Order["default"].countDocuments({
+            status: 'cancelled',
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          });
+        case 25:
+          cancelledCount = _context12.sent;
+          // Tính tổng số đơn hàng
+          totalOrders = pendingCount + shippingCount + completedCount + cancelledCount; // Dữ liệu cho biểu đồ trạng thái đơn hàng
+          orderStatus = [{
+            name: 'Đang xử lý',
+            value: pendingCount
+          }, {
+            name: 'Đang giao',
+            value: shippingCount
+          }, {
+            name: 'Đã giao',
+            value: completedCount
+          }, {
+            name: 'Đã hủy',
+            value: cancelledCount
+          }]; // Tính toán thời gian xử lý trung bình dựa trên dữ liệu thực tế
+          processingTime = [];
+          _context12.prev = 29;
+          _context12.next = 32;
+          return _Order["default"].find({
+            status: 'completed',
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            },
+            completedAt: {
+              $exists: true
+            }
+          });
+        case 32:
+          completedOrders = _context12.sent;
+          if (completedOrders.length > 0) {
+            // Tính tổng thời gian xử lý
+            totalProcessingTime = 0;
+            totalShippingTime = 0;
+            totalTotalTime = 0;
+            completedOrders.forEach(function (order) {
+              // Nếu có tracking logs, sử dụng chúng để tính thời gian chính xác hơn
+              if (order.tracking && Array.isArray(order.tracking.tracking_logs) && order.tracking.tracking_logs.length >= 2) {
+                var logs = order.tracking.tracking_logs;
+                // Sắp xếp logs theo thời gian
+                logs.sort(function (a, b) {
+                  return new Date(a.timestamp) - new Date(b.timestamp);
+                });
+
+                // Tính thời gian từ tạo đơn đến đóng gói
+                var packagingLog = logs.find(function (log) {
+                  return log.status === 'packaging' || log.status_name.includes('đóng gói');
+                });
+                if (packagingLog) {
+                  var packagingTime = (new Date(packagingLog.timestamp) - new Date(order.createdAt)) / (1000 * 60); // Phút
+                  totalProcessingTime += packagingTime;
+                }
+
+                // Tính thời gian từ đóng gói đến giao hàng
+                var shippingLog = logs.find(function (log) {
+                  return log.status === 'shipping' || log.status === 'delivering';
+                });
+                var deliveredLog = logs.find(function (log) {
+                  return log.status === 'delivered' || log.status === 'completed';
+                });
+                if (shippingLog && deliveredLog) {
+                  var deliveryTime = (new Date(deliveredLog.timestamp) - new Date(shippingLog.timestamp)) / (1000 * 60);
+                  totalShippingTime += deliveryTime;
+                }
+
+                // Tính tổng thời gian từ tạo đơn đến hoàn thành
+                totalTotalTime += (new Date(order.completedAt) - new Date(order.createdAt)) / (1000 * 60);
+              } else {
+                // Nếu không có tracking logs, sử dụng createdAt và completedAt
+                var totalTime = (new Date(order.completedAt) - new Date(order.createdAt)) / (1000 * 60);
+                totalTotalTime += totalTime;
+
+                // Giả định tỷ lệ thời gian cho từng giai đoạn
+                totalProcessingTime += totalTime * 0.3; // 30% thời gian cho xử lý
+                totalShippingTime += totalTime * 0.7; // 70% thời gian cho vận chuyển
+              }
+            });
+
+            // Tính thời gian trung bình
+            avgProcessingTime = Math.round(totalProcessingTime / completedOrders.length);
+            avgShippingTime = Math.round(totalShippingTime / completedOrders.length);
+            avgTotalTime = Math.round(totalTotalTime / completedOrders.length);
+            processingTime = [{
+              name: 'Xác nhận & Đóng gói',
+              time: avgProcessingTime || 15
+            }, {
+              name: 'Vận chuyển',
+              time: avgShippingTime || 45
+            }, {
+              name: 'Tổng thời gian',
+              time: avgTotalTime || 60
+            }];
+          } else {
+            // Nếu không có đơn hàng hoàn thành, sử dụng dữ liệu mẫu
+            processingTime = [{
+              name: 'Xác nhận',
+              time: 15
+            }, {
+              name: 'Đóng gói',
+              time: 30
+            }, {
+              name: 'Vận chuyển',
+              time: 45
+            }];
+          }
+          _context12.next = 40;
+          break;
+        case 36:
+          _context12.prev = 36;
+          _context12.t1 = _context12["catch"](29);
+          console.error('Lỗi khi tính toán thời gian xử lý trung bình:', _context12.t1);
+          // Dữ liệu mẫu khi có lỗi
+          processingTime = [{
+            name: 'Xác nhận',
+            time: 15
+          }, {
+            name: 'Đóng gói',
+            time: 30
+          }, {
+            name: 'Vận chuyển',
+            time: 45
+          }];
+        case 40:
+          _context12.next = 42;
+          return _Order["default"].find({
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          }).populate("userId", "firstName lastName email userName").sort({
+            totalAmount: -1
+          }).limit(10);
+        case 42:
+          topOrders = _context12.sent;
+          // Định dạng lại dữ liệu top orders
+          formattedTopOrders = topOrders.map(function (order) {
+            // Định dạng tên khách hàng
+            var customerName = 'Khách hàng';
+            if (order.userId) {
+              if (order.userId.firstName || order.userId.lastName) {
+                customerName = "".concat(order.userId.firstName || '', " ").concat(order.userId.lastName || '').trim();
+              } else if (order.userId.userName) {
+                customerName = order.userId.userName;
+              } else if (order.userId.email) {
+                customerName = order.userId.email;
+              }
+            }
+
+            // Định dạng ngày đặt hàng
+            var orderDate = order.createdAt ? new Date(order.createdAt) : new Date();
+            var formattedDate = "".concat(orderDate.getDate(), "/").concat(orderDate.getMonth() + 1, "/").concat(orderDate.getFullYear());
+
+            // Chuyển đổi trạng thái sang tiếng Việt
+            var statusText = 'Đang xử lý';
+            switch (order.status) {
+              case 'pending':
+                statusText = 'Đang xử lý';
+                break;
+              case 'confirmed':
+                statusText = 'Đã xác nhận';
+                break;
+              case 'processing':
+                statusText = 'Đang xử lý';
+                break;
+              case 'shipping':
+                statusText = 'Đang vận chuyển';
+                break;
+              case 'delivering':
+                statusText = 'Đang giao hàng';
+                break;
+              case 'delivered':
+                statusText = 'Đã giao hàng';
+                break;
+              case 'completed':
+                statusText = 'Đã hoàn thành';
+                break;
+              case 'cancelled':
+                statusText = 'Đã hủy';
+                break;
+              case 'awaiting_payment':
+                statusText = 'Chờ thanh toán';
+                break;
+              default:
+                statusText = order.status;
+            }
+            return {
+              id: order.orderCode || order._id,
+              customer: customerName,
+              total: order.totalAmount,
+              status: statusText,
+              date: formattedDate
+            };
+          }); // Trả về dữ liệu thống kê
+          res.status(200).json({
+            totalOrders: totalOrders,
+            pendingOrders: pendingCount,
+            completedOrders: completedCount,
+            cancelledOrders: cancelledCount,
+            orderStatus: orderStatus,
+            processingTime: processingTime,
+            topOrders: formattedTopOrders
+          });
+          _context12.next = 51;
+          break;
+        case 47:
+          _context12.prev = 47;
+          _context12.t2 = _context12["catch"](0);
+          console.error('Lỗi khi lấy thống kê đơn hàng:', _context12.t2);
+          res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy thống kê đơn hàng',
+            error: _context12.t2.message
+          });
+        case 51:
+        case "end":
+          return _context12.stop();
+      }
+    }, _callee12, null, [[0, 47], [29, 36]]);
+  }));
+  return function getOrderStats(_x26, _x27) {
+    return _ref12.apply(this, arguments);
+  };
+}();
+
+// Hàm lấy thống kê giao hàng
+var getDeliveryStats = exports.getDeliveryStats = /*#__PURE__*/function () {
+  var _ref13 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee13(req, res) {
+    var period, startDate, endDate, completedCount, inProgressCount, delayedCount, totalDeliveries, avgDeliveryTime, completedOrders, totalDeliveryHours, validOrderCount, deliveryPartners, deliveryTimeByRegion, recentOrders, deliveries;
+    return _regeneratorRuntime().wrap(function _callee13$(_context13) {
+      while (1) switch (_context13.prev = _context13.next) {
+        case 0:
+          _context13.prev = 0;
+          period = req.query.period || 'week'; // Mặc định là tuần
+          startDate = new Date();
+          endDate = new Date(); // Thiết lập khoảng thời gian dựa trên period
+          _context13.t0 = period;
+          _context13.next = _context13.t0 === 'week' ? 7 : _context13.t0 === 'month' ? 9 : _context13.t0 === 'year' ? 11 : 13;
+          break;
+        case 7:
+          startDate.setDate(startDate.getDate() - 7);
+          return _context13.abrupt("break", 14);
+        case 9:
+          startDate.setDate(startDate.getDate() - 30);
+          return _context13.abrupt("break", 14);
+        case 11:
+          startDate.setDate(startDate.getDate() - 365);
+          return _context13.abrupt("break", 14);
+        case 13:
+          startDate.setDate(startDate.getDate() - 7);
+        case 14:
+          _context13.next = 16;
+          return _Order["default"].countDocuments({
+            status: {
+              $in: ['completed', 'delivered']
+            },
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          });
+        case 16:
+          completedCount = _context13.sent;
+          _context13.next = 19;
+          return _Order["default"].countDocuments({
+            status: {
+              $in: ['shipping', 'delivering']
+            },
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          });
+        case 19:
+          inProgressCount = _context13.sent;
+          _context13.next = 22;
+          return _Order["default"].countDocuments({
+            status: 'delivery_failed',
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          });
+        case 22:
+          delayedCount = _context13.sent;
+          // Tính tổng số đơn hàng liên quan đến giao hàng
+          totalDeliveries = completedCount + inProgressCount + delayedCount; // Tính thời gian giao hàng trung bình
+          avgDeliveryTime = "N/A";
+          _context13.prev = 25;
+          _context13.next = 28;
+          return _Order["default"].find({
+            status: {
+              $in: ['completed', 'delivered']
+            },
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            },
+            'tracking.tracking_logs': {
+              $exists: true,
+              $ne: []
+            }
+          });
+        case 28:
+          completedOrders = _context13.sent;
+          if (completedOrders.length > 0) {
+            totalDeliveryHours = 0;
+            validOrderCount = 0;
+            completedOrders.forEach(function (order) {
+              if (order.tracking && Array.isArray(order.tracking.tracking_logs) && order.tracking.tracking_logs.length >= 2) {
+                var logs = _toConsumableArray(order.tracking.tracking_logs).sort(function (a, b) {
+                  return new Date(a.timestamp) - new Date(b.timestamp);
+                });
+
+                // Tìm log đầu tiên và log hoàn thành
+                var firstLog = logs[0];
+                var completionLog = logs.find(function (log) {
+                  return log.status === 'completed' || log.status === 'delivered' || log.status_name.includes('hoàn thành') || log.status_name.includes('đã giao');
+                });
+                if (firstLog && completionLog) {
+                  var startTime = new Date(firstLog.timestamp);
+                  var endTime = new Date(completionLog.timestamp);
+                  var deliveryHours = (endTime - startTime) / (1000 * 60 * 60);
+                  if (deliveryHours > 0 && deliveryHours < 240) {
+                    // Loại bỏ giá trị bất thường (> 10 ngày)
+                    totalDeliveryHours += deliveryHours;
+                    validOrderCount++;
+                  }
+                }
+              }
+            });
+            if (validOrderCount > 0) {
+              avgDeliveryTime = "".concat((totalDeliveryHours / validOrderCount).toFixed(1), " gi\u1EDD");
+            }
+          }
+          _context13.next = 35;
+          break;
+        case 32:
+          _context13.prev = 32;
+          _context13.t1 = _context13["catch"](25);
+          console.error('Lỗi khi tính thời gian giao hàng trung bình:', _context13.t1);
+        case 35:
+          // Thống kê đơn hàng theo đối tác giao hàng (mặc định là Giao Hàng Nhanh)
+          deliveryPartners = [{
+            name: 'Giao Hàng Nhanh',
+            value: Math.round(totalDeliveries * 0.75)
+          }, {
+            name: 'Viettel Post',
+            value: Math.round(totalDeliveries * 0.15)
+          }, {
+            name: 'Grab',
+            value: Math.round(totalDeliveries * 0.07)
+          }, {
+            name: 'Khác',
+            value: Math.round(totalDeliveries * 0.03)
+          }]; // Dữ liệu thời gian giao hàng theo khu vực
+          deliveryTimeByRegion = [{
+            region: 'Tp.HCM',
+            time: 12
+          }, {
+            region: 'Hà Nội',
+            time: 24
+          }, {
+            region: 'Đà Nẵng',
+            time: 36
+          }, {
+            region: 'Cần Thơ',
+            time: 48
+          }, {
+            region: 'Tỉnh khác',
+            time: 72
+          }]; // Lấy danh sách đơn hàng gần đây để hiển thị
+          _context13.next = 39;
+          return _Order["default"].find({
+            status: {
+              $nin: ['cancelled', 'failed', 'awaiting_payment']
+            },
+            createdAt: {
+              $gte: startDate,
+              $lte: endDate
+            }
+          }).populate("userId", "firstName lastName email").sort({
+            createdAt: -1
+          }).limit(10);
+        case 39:
+          recentOrders = _context13.sent;
+          // Chuyển đổi đơn hàng thành định dạng hiển thị cho giao hàng
+          deliveries = recentOrders.map(function (order) {
+            // Xác định trạng thái giao hàng
+            var status = 'Đang xử lý';
+            if (order.status === 'completed' || order.status === 'delivered') {
+              status = 'Hoàn thành';
+            } else if (order.status === 'shipping' || order.status === 'delivering') {
+              status = 'Đang giao';
+            } else if (order.status === 'delivery_failed') {
+              status = 'Thất bại';
+            }
+
+            // Định dạng tên khách hàng
+            var customerName = 'Khách hàng';
+            if (order.userId) {
+              if (order.userId.firstName || order.userId.lastName) {
+                customerName = "".concat(order.userId.firstName || '', " ").concat(order.userId.lastName || '').trim();
+              } else if (order.userId.email) {
+                customerName = order.userId.email;
+              }
+            }
+
+            // Xác định đối tác giao hàng (mặc định là GHN)
+            var partner = order.shippingPartner || 'Giao Hàng Nhanh';
+
+            // Định dạng địa chỉ
+            var address = order.shippingInfo && order.shippingInfo.address || order.address || order.userId && order.userId.address || 'Không có thông tin';
+            return {
+              orderId: order.orderCode || order._id,
+              customerName: customerName,
+              address: address,
+              partner: partner,
+              deliveryTime: order.createdAt ? new Date(order.createdAt).toLocaleDateString('vi-VN') : 'N/A',
+              status: status
+            };
+          }); // Trả về dữ liệu thống kê
+          res.status(200).json({
+            statistics: {
+              completed: completedCount,
+              inProgress: inProgressCount,
+              delayed: delayedCount,
+              total: totalDeliveries,
+              avgDeliveryTime: avgDeliveryTime
+            },
+            deliveryPartners: deliveryPartners,
+            deliveryTimeByRegion: deliveryTimeByRegion,
+            deliveries: deliveries
+          });
+          _context13.next = 48;
+          break;
+        case 44:
+          _context13.prev = 44;
+          _context13.t2 = _context13["catch"](0);
+          console.error('Lỗi khi lấy thống kê giao hàng:', _context13.t2);
+          res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy thống kê giao hàng',
+            error: _context13.t2.message
+          });
+        case 48:
+        case "end":
+          return _context13.stop();
+      }
+    }, _callee13, null, [[0, 44], [25, 32]]);
+  }));
+  return function getDeliveryStats(_x28, _x29) {
+    return _ref13.apply(this, arguments);
   };
 }();

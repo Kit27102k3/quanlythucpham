@@ -4,8 +4,9 @@ function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.validateCoupon = exports.updateCouponUsage = exports.updateCoupon = exports.resetCouponUsage = exports.getCouponByCode = exports.getAllCoupons = exports.getActiveCoupons = exports.deleteCoupon = exports.createCoupon = exports.applyCoupon = void 0;
+exports.validateCoupon = exports.updateCouponUsage = exports.updateCoupon = exports.resetCouponUsage = exports.getCouponStats = exports.getCouponByCode = exports.getAllCoupons = exports.getActiveCoupons = exports.deleteCoupon = exports.createCoupon = exports.applyCoupon = void 0;
 var _Coupon = _interopRequireDefault(require("../Model/Coupon.js"));
+var _notificationService = require("../Services/notificationService.js");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
 function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
@@ -53,24 +54,28 @@ var createCoupon = exports.createCoupon = /*#__PURE__*/function () {
           _context.next = 10;
           return newCoupon.save();
         case 10:
+          // Gửi thông báo về mã giảm giá mới đến tất cả người dùng đã đăng ký
+          (0, _notificationService.sendNewCouponNotification)(newCoupon)["catch"](function (error) {
+            return console.error('Error sending coupon notification to users:', error);
+          });
           return _context.abrupt("return", res.status(201).json({
             success: true,
             data: newCoupon,
             message: "Đã tạo mã giảm giá thành công"
           }));
-        case 13:
-          _context.prev = 13;
+        case 14:
+          _context.prev = 14;
           _context.t0 = _context["catch"](0);
           console.error("Error creating coupon:", _context.t0);
           return _context.abrupt("return", res.status(500).json({
             success: false,
             message: "\u0110\xE3 x\u1EA3y ra l\u1ED7i khi t\u1EA1o m\xE3 gi\u1EA3m gi\xE1: ".concat(_context.t0.message)
           }));
-        case 17:
+        case 18:
         case "end":
           return _context.stop();
       }
-    }, _callee, null, [[0, 13]]);
+    }, _callee, null, [[0, 14]]);
   }));
   return function createCoupon(_x, _x2) {
     return _ref.apply(this, arguments);
@@ -595,5 +600,170 @@ var resetCouponUsage = exports.resetCouponUsage = /*#__PURE__*/function () {
   }));
   return function resetCouponUsage(_x17, _x18) {
     return _ref0.apply(this, arguments);
+  };
+}();
+
+// Get coupon statistics for reports
+var getCouponStats = exports.getCouponStats = /*#__PURE__*/function () {
+  var _ref1 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee1(req, res) {
+    var now, allCoupons, activeCoupons, totalUsedCount, typeStats, voucherUsage, usageOverTime, monthNames, currentMonth, i, monthIndex, revenueComparison, _i, _monthIndex, baseRevenue, discountValue, promotionEffectiveness, conversionRate;
+    return _regeneratorRuntime().wrap(function _callee1$(_context1) {
+      while (1) switch (_context1.prev = _context1.next) {
+        case 0:
+          _context1.prev = 0;
+          now = new Date(); // Get all coupons
+          _context1.next = 4;
+          return _Coupon["default"].find();
+        case 4:
+          allCoupons = _context1.sent;
+          _context1.next = 7;
+          return _Coupon["default"].countDocuments({
+            isActive: true,
+            $or: [{
+              expiresAt: {
+                $gt: now
+              }
+            }, {
+              expiresAt: null
+            }]
+          });
+        case 7:
+          activeCoupons = _context1.sent;
+          // Get total used count
+          totalUsedCount = allCoupons.reduce(function (sum, coupon) {
+            return sum + coupon.used;
+          }, 0); // Calculate usage by type
+          typeStats = {
+            percentage: {
+              count: 0,
+              used: 0,
+              totalValue: 0,
+              estimatedRevenue: 0
+            },
+            fixed: {
+              count: 0,
+              used: 0,
+              totalValue: 0,
+              estimatedRevenue: 0
+            }
+          };
+          allCoupons.forEach(function (coupon) {
+            if (coupon.type === 'percentage') {
+              typeStats.percentage.count++;
+              typeStats.percentage.used += coupon.used;
+              typeStats.percentage.totalValue += coupon.value * coupon.used; // Total percentage points
+
+              // Estimate revenue based on minimum order value
+              var estimatedOrderValue = coupon.minOrder * 1.5; // Assume average order is 1.5x minimum
+              typeStats.percentage.estimatedRevenue += coupon.used * estimatedOrderValue;
+            } else {
+              typeStats.fixed.count++;
+              typeStats.fixed.used += coupon.used;
+              typeStats.fixed.totalValue += coupon.value * coupon.used; // Total fixed amount
+
+              // Estimate revenue based on minimum order value
+              var _estimatedOrderValue = coupon.minOrder * 1.5; // Assume average order is 1.5x minimum
+              typeStats.fixed.estimatedRevenue += coupon.used * _estimatedOrderValue;
+            }
+          });
+
+          // Format voucher usage data for table display
+          voucherUsage = allCoupons.sort(function (a, b) {
+            return b.used - a.used;
+          }) // Sort by most used
+          .map(function (coupon) {
+            return {
+              code: coupon.code,
+              discount: coupon.type === 'percentage' ? "".concat(coupon.value, "%") : new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+              }).format(coupon.value),
+              used: coupon.used,
+              limit: coupon.usageLimit || '∞',
+              revenue: coupon.type === 'percentage' ? coupon.value * coupon.used * coupon.minOrder / 100 :
+              // Estimate for percentage type
+              coupon.used * coupon.minOrder,
+              // Estimate for fixed type
+              description: coupon.description
+            };
+          }); // Generate mock data for usage over time (last 6 months)
+          usageOverTime = [];
+          monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+          currentMonth = new Date().getMonth();
+          for (i = 5; i >= 0; i--) {
+            monthIndex = (currentMonth - i + 12) % 12;
+            usageOverTime.push({
+              month: monthNames[monthIndex],
+              'Phần trăm': Math.floor(Math.random() * 30) + 10,
+              'Cố định': Math.floor(Math.random() * 20) + 5
+            });
+          }
+
+          // Revenue comparison: Estimated revenue with coupons vs without coupons (mock data)
+          revenueComparison = [];
+          for (_i = 5; _i >= 0; _i--) {
+            _monthIndex = (currentMonth - _i + 12) % 12;
+            baseRevenue = Math.floor(Math.random() * 50000000) + 20000000;
+            discountValue = Math.floor(Math.random() * 8000000) + 2000000;
+            revenueComparison.push({
+              month: monthNames[_monthIndex],
+              'Doanh thu thực tế': baseRevenue - discountValue,
+              'Doanh thu không có khuyến mãi': baseRevenue,
+              'Tổng giảm giá': discountValue
+            });
+          }
+
+          // Sample data for promotion effectiveness by category
+          promotionEffectiveness = allCoupons.sort(function (a, b) {
+            return b.used - a.used;
+          }).slice(0, 3).map(function (coupon) {
+            return {
+              name: coupon.code,
+              'Rau': Math.floor(Math.random() * 500000) + 300000,
+              'Thịt & Hải sản': Math.floor(Math.random() * 800000) + 600000,
+              'Trứng & Sữa': Math.floor(Math.random() * 400000) + 200000
+            };
+          }); // Sample data for conversion rates - use real codes
+          conversionRate = allCoupons.sort(function (a, b) {
+            return b.used - a.used;
+          }).slice(0, 5).map(function (coupon) {
+            return {
+              name: coupon.code,
+              rate: Math.floor(Math.random() * 40) + 50 // Random rate between 50-90%
+            };
+          }); // Return the statistics
+          res.status(200).json({
+            success: true,
+            data: {
+              totalCoupons: allCoupons.length,
+              activeCoupons: activeCoupons,
+              totalUsedCount: totalUsedCount,
+              typeStats: typeStats,
+              voucherUsage: voucherUsage,
+              usageOverTime: usageOverTime,
+              revenueComparison: revenueComparison,
+              promotionEffectiveness: promotionEffectiveness,
+              conversionRate: conversionRate
+            }
+          });
+          _context1.next = 27;
+          break;
+        case 23:
+          _context1.prev = 23;
+          _context1.t0 = _context1["catch"](0);
+          console.error("Error getting coupon statistics:", _context1.t0);
+          res.status(500).json({
+            success: false,
+            message: "Đã xảy ra lỗi khi lấy thống kê mã giảm giá",
+            error: _context1.t0.message
+          });
+        case 27:
+        case "end":
+          return _context1.stop();
+      }
+    }, _callee1, null, [[0, 23]]);
+  }));
+  return function getCouponStats(_x19, _x20) {
+    return _ref1.apply(this, arguments);
   };
 }();

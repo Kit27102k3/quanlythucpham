@@ -64,11 +64,15 @@ var couponSchema = new _mongoose["default"].Schema({
 // Tạo index để tìm kiếm nhanh
 couponSchema.index({
   code: 1
+}, {
+  unique: true
 });
 couponSchema.index({
-  expiresAt: 1
+  expiresAt: 1,
+  isActive: 1
 });
 couponSchema.index({
+  type: 1,
   isActive: 1
 });
 var Coupon = _mongoose["default"].model("Coupon", couponSchema);

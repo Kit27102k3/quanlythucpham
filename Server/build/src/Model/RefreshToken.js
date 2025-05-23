@@ -35,9 +35,12 @@ var RefreshTokenSchema = new _mongoose["default"].Schema({
 // Add index for faster queries
 RefreshTokenSchema.index({
   token: 1
+}, {
+  unique: true
 });
 RefreshTokenSchema.index({
-  userId: 1
+  userId: 1,
+  userModel: 1
 });
 RefreshTokenSchema.index({
   expiresAt: 1

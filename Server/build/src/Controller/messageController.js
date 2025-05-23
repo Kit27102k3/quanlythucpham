@@ -10,6 +10,7 @@ var _Register = _interopRequireDefault(require("../Model/Register.js"));
 var _Admin = _interopRequireDefault(require("../Model/Admin.js"));
 var _admin = require("../config/admin.js");
 var _dotenv = _interopRequireDefault(require("dotenv"));
+var _notificationService = require("../Services/notificationService.js");
 function _interopRequireDefault(e) { return e && e.__esModule ? e : { "default": e }; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
@@ -189,7 +190,7 @@ var getMessagesByUserId = exports.getMessagesByUserId = /*#__PURE__*/function ()
 // Hàm gửi tin nhắn mới
 var sendMessage = exports.sendMessage = /*#__PURE__*/function () {
   var _ref3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime().mark(function _callee3(req, res) {
-    var _req$body, text, sender, receiverId, requestUserId, userId, adminId, conversation, newMessage, addedMessage;
+    var _req$body, text, sender, receiverId, requestUserId, userId, adminId, conversation, newMessage, addedMessage, _user$pushSubscriptio, _user$pushSubscriptio2, admin, senderName, user, notificationResult;
     return _regeneratorRuntime().wrap(function _callee3$(_context3) {
       while (1) switch (_context3.prev = _context3.next) {
         case 0:
@@ -258,7 +259,49 @@ var sendMessage = exports.sendMessage = /*#__PURE__*/function () {
           return conversation.save();
         case 19:
           // Lấy tin nhắn vừa thêm vào
-          addedMessage = conversation.messages[conversation.messages.length - 1]; // Trả về thông tin tin nhắn đã gửi
+          addedMessage = conversation.messages[conversation.messages.length - 1]; // Gửi thông báo nếu tin nhắn từ admin gửi cho user
+          if (!(sender === 'admin' && userId)) {
+            _context3.next = 40;
+            break;
+          }
+          _context3.prev = 21;
+          _context3.next = 24;
+          return _Admin["default"].findById(adminId);
+        case 24:
+          admin = _context3.sent;
+          senderName = admin ? admin.fullName || "Admin" : "Admin"; // Lấy thông tin user để kiểm tra
+          _context3.next = 28;
+          return _Register["default"].findById(userId);
+        case 28:
+          user = _context3.sent;
+          console.log("Ki\u1EC3m tra user tr\u01B0\u1EDBc khi g\u1EEDi th\xF4ng b\xE1o:", {
+            userId: userId,
+            hasSubscriptions: (user === null || user === void 0 || (_user$pushSubscriptio = user.pushSubscriptions) === null || _user$pushSubscriptio === void 0 ? void 0 : _user$pushSubscriptio.length) > 0,
+            subscriptionsCount: (user === null || user === void 0 || (_user$pushSubscriptio2 = user.pushSubscriptions) === null || _user$pushSubscriptio2 === void 0 ? void 0 : _user$pushSubscriptio2.length) || 0
+          });
+
+          // Gửi thông báo đến người dùng
+          console.log("Chu\u1EA9n b\u1ECB g\u1EEDi th\xF4ng b\xE1o v\u1EDBi c\xE1c tham s\u1ED1:", {
+            userId: userId,
+            senderName: senderName,
+            textPreview: text.substring(0, 20) + (text.length > 20 ? '...' : '')
+          });
+          _context3.next = 33;
+          return (0, _notificationService.sendMessageNotification)(userId, senderName, text)["catch"](function (error) {
+            console.error('Error sending message notification:', error);
+            return false;
+          });
+        case 33:
+          notificationResult = _context3.sent;
+          console.log("K\u1EBFt qu\u1EA3 g\u1EEDi th\xF4ng b\xE1o:", notificationResult ? 'Thành công' : 'Thất bại');
+          _context3.next = 40;
+          break;
+        case 37:
+          _context3.prev = 37;
+          _context3.t0 = _context3["catch"](21);
+          console.error('Lỗi khi gửi thông báo tin nhắn mới:', _context3.t0);
+          // Không ảnh hưởng đến việc trả về response
+        case 40:
           return _context3.abrupt("return", res.status(201).json({
             id: addedMessage._id.toString(),
             text: addedMessage.text,
@@ -266,18 +309,18 @@ var sendMessage = exports.sendMessage = /*#__PURE__*/function () {
             read: addedMessage.read,
             createdAt: addedMessage.timestamp
           }));
-        case 23:
-          _context3.prev = 23;
-          _context3.t0 = _context3["catch"](0);
-          console.error("Lỗi khi gửi tin nhắn:", _context3.t0);
+        case 43:
+          _context3.prev = 43;
+          _context3.t1 = _context3["catch"](0);
+          console.error("Lỗi khi gửi tin nhắn:", _context3.t1);
           return _context3.abrupt("return", res.status(500).json({
-            message: "Lỗi server: " + _context3.t0.message
+            message: "Lỗi server: " + _context3.t1.message
           }));
-        case 27:
+        case 47:
         case "end":
           return _context3.stop();
       }
-    }, _callee3, null, [[0, 23]]);
+    }, _callee3, null, [[0, 43], [21, 37]]);
   }));
   return function sendMessage(_x5, _x6) {
     return _ref3.apply(this, arguments);

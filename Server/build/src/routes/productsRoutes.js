@@ -25,4 +25,7 @@ router.get("/products/:id", _productsController.getProductById);
 router.post("/products", _authMiddleware.verifyToken, _authMiddleware.isAdmin, _productsController.createProduct);
 router.put("/products/:id", _authMiddleware.verifyToken, _authMiddleware.isAdmin, _productsController.updateProduct);
 router["delete"]("/products/:id", _authMiddleware.verifyToken, _authMiddleware.isAdmin, _productsController.deleteProduct);
+
+// Thêm route kiểm tra và cập nhật hạn sử dụng và giảm giá
+router.get("/check-expirations", _authMiddleware.verifyToken, _authMiddleware.isAdmin, _productsController.checkAndUpdateExpirations);
 var _default = exports["default"] = router;

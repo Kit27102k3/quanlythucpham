@@ -34,4 +34,17 @@ router.get("/vapid-public-key", _authController.getVapidPublicKey);
 
 // Route để đăng ký nhận Push Subscription
 router.post("/subscribe", _authMiddleware.verifyToken, _authController.subscribeToPush);
+
+// Add the validation route
+router.post('/validate-subscription', _authController.validateSubscription);
+
+// Các route quản lý địa chỉ
+router.post("/user/:userId/addresses", _authMiddleware.verifyToken, _authController.addUserAddress);
+router.get("/user/:userId/addresses", _authMiddleware.verifyToken, _authController.getUserAddresses);
+router.put("/user/:userId/addresses/:addressId", _authMiddleware.verifyToken, _authController.updateUserAddress);
+router["delete"]("/user/:userId/addresses/:addressId", _authMiddleware.verifyToken, _authController.deleteUserAddress);
+router.put("/user/:userId/addresses/:addressId/default", _authMiddleware.verifyToken, _authController.setDefaultAddress);
+
+// Admin route to migrate all legacy addresses
+router.post("/admin/migrate-addresses", _authMiddleware.verifyToken, _authController.migrateAllLegacyAddresses);
 var _default = exports["default"] = router;

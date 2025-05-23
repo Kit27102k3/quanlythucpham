@@ -24,66 +24,59 @@ router.get('/revenue', _authMiddleware.verifyToken, /*#__PURE__*/function () {
       while (1) switch (_context3.prev = _context3.next) {
         case 0:
           _context3.prev = 0;
-          timeRange = req.query.timeRange;
-          console.log("L\u1EA5y d\u1EEF li\u1EC7u doanh thu v\u1EDBi timeRange=".concat(timeRange));
-
-          // Kiểm tra xem có order nào đã hoàn thành không
-          _context3.next = 5;
+          timeRange = req.query.timeRange; // Kiểm tra xem có order nào đã hoàn thành không
+          _context3.next = 4;
           return _Order["default"].countDocuments({
             status: 'completed'
           });
-        case 5:
+        case 4:
           completedOrderCount = _context3.sent;
-          console.log("S\u1ED1 l\u01B0\u1EE3ng \u0111\u01A1n h\xE0ng \u0111\xE3 ho\xE0n th\xE0nh: ".concat(completedOrderCount));
-
-          // Nếu không có đơn hàng hoàn thành, trả về mảng trống
           if (!(completedOrderCount === 0)) {
-            _context3.next = 10;
+            _context3.next = 7;
             break;
           }
-          console.log("Không có đơn hàng đã hoàn thành để tính doanh thu");
           return _context3.abrupt("return", res.json([]));
-        case 10:
+        case 7:
           currentDate = new Date(); // Xác định khoảng thời gian dựa trên timeRange
           if (!(timeRange === 'week')) {
-            _context3.next = 16;
+            _context3.next = 13;
             break;
           }
           // Lấy dữ liệu 7 ngày gần nhất
           startDate = new Date(currentDate);
           startDate.setDate(currentDate.getDate() - 7);
-          _context3.next = 27;
+          _context3.next = 24;
           break;
-        case 16:
+        case 13:
           if (!(timeRange === 'month')) {
-            _context3.next = 21;
+            _context3.next = 18;
             break;
           }
           // Lấy dữ liệu 30 ngày gần nhất
           startDate = new Date(currentDate);
           startDate.setDate(currentDate.getDate() - 30);
-          _context3.next = 27;
+          _context3.next = 24;
           break;
-        case 21:
+        case 18:
           if (!(timeRange === 'year')) {
-            _context3.next = 26;
+            _context3.next = 23;
             break;
           }
           // Lấy dữ liệu 12 tháng gần nhất
           startDate = new Date(currentDate);
           startDate.setFullYear(currentDate.getFullYear() - 1);
-          _context3.next = 27;
+          _context3.next = 24;
           break;
-        case 26:
+        case 23:
           return _context3.abrupt("return", res.status(400).json({
             message: 'Thông số không hợp lệ'
           }));
-        case 27:
+        case 24:
           if (!(timeRange === 'week')) {
-            _context3.next = 43;
+            _context3.next = 40;
             break;
           }
-          _context3.next = 30;
+          _context3.next = 27;
           return _Order["default"].aggregate([{
             $match: {
               createdAt: {
@@ -114,7 +107,7 @@ router.get('/revenue', _authMiddleware.verifyToken, /*#__PURE__*/function () {
               revenue: 1
             }
           }]);
-        case 30:
+        case 27:
           revenueData = _context3.sent;
           // Chuyển đổi định dạng dữ liệu cho phù hợp với frontend
           daysOfWeek = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7']; // Tạo dữ liệu cho tất cả các ngày trong tuần, kể cả ngày không có doanh thu
@@ -138,26 +131,26 @@ router.get('/revenue', _authMiddleware.verifyToken, /*#__PURE__*/function () {
             }, _loop);
           });
           i = 1;
-        case 35:
+        case 32:
           if (!(i <= 7)) {
-            _context3.next = 40;
+            _context3.next = 37;
             break;
           }
-          return _context3.delegateYield(_loop(i), "t0", 37);
-        case 37:
+          return _context3.delegateYield(_loop(i), "t0", 34);
+        case 34:
           i++;
-          _context3.next = 35;
+          _context3.next = 32;
+          break;
+        case 37:
+          revenueData = completeData;
+          _context3.next = 61;
           break;
         case 40:
-          revenueData = completeData;
-          _context3.next = 64;
-          break;
-        case 43:
           if (!(timeRange === 'month')) {
-            _context3.next = 50;
+            _context3.next = 47;
             break;
           }
-          _context3.next = 46;
+          _context3.next = 43;
           return _Order["default"].aggregate([{
             $match: {
               createdAt: {
@@ -190,7 +183,7 @@ router.get('/revenue', _authMiddleware.verifyToken, /*#__PURE__*/function () {
               revenue: 1
             }
           }]);
-        case 46:
+        case 43:
           revenueData = _context3.sent;
           // Đảm bảo có dữ liệu cho mỗi ngày trong tháng
           if (revenueData.length === 0) {
@@ -203,14 +196,14 @@ router.get('/revenue', _authMiddleware.verifyToken, /*#__PURE__*/function () {
               };
             });
           }
-          _context3.next = 64;
+          _context3.next = 61;
           break;
-        case 50:
+        case 47:
           if (!(timeRange === 'year')) {
-            _context3.next = 64;
+            _context3.next = 61;
             break;
           }
-          _context3.next = 53;
+          _context3.next = 50;
           return _Order["default"].aggregate([{
             $match: {
               createdAt: {
@@ -241,7 +234,7 @@ router.get('/revenue', _authMiddleware.verifyToken, /*#__PURE__*/function () {
               revenue: 1
             }
           }]);
-        case 53:
+        case 50:
           revenueData = _context3.sent;
           // Chuyển đổi định dạng dữ liệu
           months = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12']; // Tạo dữ liệu cho tất cả các tháng, kể cả tháng không có doanh thu
@@ -265,36 +258,33 @@ router.get('/revenue', _authMiddleware.verifyToken, /*#__PURE__*/function () {
             }, _loop2);
           });
           _i = 1;
-        case 58:
+        case 55:
           if (!(_i <= 12)) {
-            _context3.next = 63;
+            _context3.next = 60;
             break;
           }
-          return _context3.delegateYield(_loop2(_i), "t1", 60);
-        case 60:
+          return _context3.delegateYield(_loop2(_i), "t1", 57);
+        case 57:
           _i++;
-          _context3.next = 58;
+          _context3.next = 55;
           break;
-        case 63:
+        case 60:
           revenueData = _completeData;
-        case 64:
-          // Log kết quả trước khi trả về
-          console.log("Revenue data result:", revenueData);
+        case 61:
           res.json(revenueData);
-          _context3.next = 72;
+          _context3.next = 67;
           break;
-        case 68:
-          _context3.prev = 68;
+        case 64:
+          _context3.prev = 64;
           _context3.t2 = _context3["catch"](0);
-          console.error('Lỗi khi lấy dữ liệu doanh thu:', _context3.t2);
           res.status(500).json({
             message: 'Đã xảy ra lỗi khi lấy dữ liệu doanh thu'
           });
-        case 72:
+        case 67:
         case "end":
           return _context3.stop();
       }
-    }, _callee, null, [[0, 68]]);
+    }, _callee, null, [[0, 64]]);
   }));
   return function (_x, _x2) {
     return _ref.apply(this, arguments);
@@ -316,31 +306,28 @@ router.get('/top-products', _authMiddleware.verifyToken, /*#__PURE__*/function (
         case 3:
           orderCount = _context4.sent;
           if (!(orderCount === 0)) {
-            _context4.next = 7;
+            _context4.next = 6;
             break;
           }
-          console.log("Không có đơn hàng đã hoàn thành trong hệ thống");
           return _context4.abrupt("return", res.json([]));
-        case 7:
-          _context4.next = 9;
+        case 6:
+          _context4.next = 8;
           return _Products["default"].countDocuments();
-        case 9:
+        case 8:
           productCount = _context4.sent;
           if (!(productCount === 0)) {
-            _context4.next = 13;
+            _context4.next = 11;
             break;
           }
-          console.log("Không có sản phẩm nào trong hệ thống");
           return _context4.abrupt("return", res.json([]));
-        case 13:
-          _context4.next = 15;
+        case 11:
+          _context4.next = 13;
           return _Order["default"].findOne({
             status: 'completed'
           }).lean();
-        case 15:
+        case 13:
           sampleOrder = _context4.sent;
-          console.log("Sample order structure:", JSON.stringify(sampleOrder, null, 2));
-          _context4.next = 19;
+          _context4.next = 16;
           return _Order["default"].aggregate([{
             $match: {
               status: 'completed'
@@ -394,25 +381,22 @@ router.get('/top-products', _authMiddleware.verifyToken, /*#__PURE__*/function (
               revenue: 1
             }
           }]);
-        case 19:
+        case 16:
           topProducts = _context4.sent;
-          // Log kết quả trước khi trả về
-          console.log("Top products result:", topProducts);
           res.json(topProducts);
-          _context4.next = 28;
+          _context4.next = 23;
           break;
-        case 24:
-          _context4.prev = 24;
+        case 20:
+          _context4.prev = 20;
           _context4.t0 = _context4["catch"](0);
-          console.error('Lỗi khi lấy danh sách sản phẩm bán chạy:', _context4.t0);
           res.status(500).json({
             message: 'Đã xảy ra lỗi khi lấy danh sách sản phẩm bán chạy'
           });
-        case 28:
+        case 23:
         case "end":
           return _context4.stop();
       }
-    }, _callee2, null, [[0, 24]]);
+    }, _callee2, null, [[0, 20]]);
   }));
   return function (_x3, _x4) {
     return _ref2.apply(this, arguments);

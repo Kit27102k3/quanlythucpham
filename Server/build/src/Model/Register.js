@@ -32,11 +32,6 @@ var UserSchema = new _mongoose["default"].Schema({
     type: String,
     required: true
   },
-  address: {
-    type: String,
-    require: false,
-    "default": ""
-  },
   userImage: {
     type: String,
     required: false,
@@ -68,9 +63,58 @@ var UserSchema = new _mongoose["default"].Schema({
   },
   authProvider: {
     type: String,
-    "enum": ['local', 'facebook', 'google'],
-    "default": 'local'
+    "enum": ["local", "facebook", "google"],
+    "default": "local"
   },
+  addresses: [{
+    fullAddress: {
+      type: String,
+      required: true
+    },
+    houseNumber: {
+      type: String,
+      required: false
+    },
+    ward: {
+      type: String,
+      required: false
+    },
+    district: {
+      type: String,
+      required: false
+    },
+    province: {
+      type: String,
+      required: false
+    },
+    coordinates: {
+      lat: {
+        type: Number,
+        required: false
+      },
+      lng: {
+        type: Number,
+        required: false
+      }
+    },
+    isDefault: {
+      type: Boolean,
+      "default": false
+    },
+    label: {
+      type: String,
+      required: false,
+      "default": "Nhà"
+    },
+    receiverName: {
+      type: String,
+      required: false
+    },
+    receiverPhone: {
+      type: String,
+      required: false
+    }
+  }],
   pushSubscriptions: [{
     endpoint: {
       type: String,
