@@ -1254,7 +1254,7 @@ export const getVapidPublicKey = (req, res) => {
 // Controller function to subscribe a user to push notifications
 export const subscribeToPush = async (req, res) => {
   const subscription = req.body;
-  const userId = req.user.id; // Get user ID from the token (assuming verifyToken middleware is used)
+  const userId = req.user.id;
 
   console.log(`[subscribeToPush] Đang xử lý yêu cầu đăng ký thông báo cho user ${userId}`);
   console.log(`[subscribeToPush] Dữ liệu subscription:`, JSON.stringify(subscription, null, 2));
@@ -1265,49 +1265,62 @@ export const subscribeToPush = async (req, res) => {
   }
 
   try {
-    // Find the user by ID
-    const user = await User.findById(userId);
+    // Set timeout for MongoDB operations
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database operation timed out')), 5000)
+    );
+
+    // Find user with timeout
+    const userPromise = User.findById(userId);
+    const user = await Promise.race([userPromise, timeoutPromise]);
 
     if (!user) {
       console.error(`[subscribeToPush] User not found: ${userId}`);
       return res.status(404).json({ message: "User not found." });
     }
 
-    // Kiểm tra đã có pushSubscriptions array chưa
+    // Initialize pushSubscriptions array if not exists
     if (!user.pushSubscriptions) {
       console.log(`[subscribeToPush] Initializing pushSubscriptions array for user: ${userId}`);
       user.pushSubscriptions = [];
     }
 
-    // Kiểm tra xem subscription này đã tồn tại chưa
+    // Check for existing subscription
     const existingSubscription = user.pushSubscriptions.find(
       (sub) => sub.endpoint === subscription.endpoint
     );
 
     if (existingSubscription) {
       console.log(`[subscribeToPush] Subscription already exists for user: ${userId}`);
-      console.log(`[subscribeToPush] Existing subscriptions count: ${user.pushSubscriptions.length}`);
       return res.status(200).json({ 
         message: "Subscription already exists.",
         subscriptionCount: user.pushSubscriptions.length
       });
     }
 
-    // Kiểm tra tính hợp lệ của subscription
+    // Validate subscription
     if (!subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
       console.error(`[subscribeToPush] Invalid subscription object, missing required keys`);
       return res.status(400).json({ message: "Invalid subscription object. Missing required keys." });
     }
 
-    // Add the new subscription to the user's pushSubscriptions array
+    // Add new subscription
     console.log(`[subscribeToPush] Adding new subscription for user: ${userId}`);
     user.pushSubscriptions.push(subscription);
 
-    // Save the updated user document
-    await user.save();
+    // Save with timeout
+    const savePromise = user.save();
+    await Promise.race([savePromise, timeoutPromise]);
+    
     console.log(`[subscribeToPush] Subscription saved successfully. Total subscriptions: ${user.pushSubscriptions.length}`);
 
-    // Send a test notification
+    // Send response immediately after saving
+    res.status(201).json({ 
+      message: "Push subscription saved successfully.",
+      subscriptionCount: user.pushSubscriptions.length
+    });
+
+    // Send test notification asynchronously after response
     try {
       const testPayload = {
         notification: {
@@ -1324,21 +1337,34 @@ export const subscribeToPush = async (req, res) => {
         }
       };
       
-      console.log(`[subscribeToPush] Sending test notification to new subscription`);
-      await webpush.sendNotification(subscription, JSON.stringify(testPayload));
-      console.log(`[subscribeToPush] Test notification sent successfully`);
+      // Add retry logic for sending notification
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          console.log(`[subscribeToPush] Sending test notification to new subscription (attempt ${4-retries}/3)`);
+          await webpush.sendNotification(subscription, JSON.stringify(testPayload));
+          console.log(`[subscribeToPush] Test notification sent successfully`);
+          break;
+        } catch (error) {
+          retries--;
+          if (retries === 0) {
+            console.error(`[subscribeToPush] Failed to send test notification after 3 attempts:`, error);
+          } else {
+            console.log(`[subscribeToPush] Retrying test notification...`);
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+          }
+        }
+      }
     } catch (notificationError) {
-      console.error(`[subscribeToPush] Error sending test notification:`, notificationError);
-      // We don't want to fail the subscription if the test notification fails
+      console.error(`[subscribeToPush] Error in test notification process:`, notificationError);
+      // Don't throw error since we already sent success response
     }
-
-    res.status(201).json({ 
-      message: "Push subscription saved successfully.",
-      subscriptionCount: user.pushSubscriptions.length
-    });
   } catch (error) {
     console.error(`[subscribeToPush] Error saving push subscription:`, error);
-    res.status(500).json({ message: "Internal server error while saving subscription", error: error.message });
+    res.status(500).json({ 
+      message: "Internal server error while saving subscription", 
+      error: error.message 
+    });
   }
 };
 
