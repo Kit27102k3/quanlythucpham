@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "eslint src --ext js --report-unused-disable-directives --max-warnings 0",
     "clean": "npx rimraf build && mkdir build",
-    "build-babel": "npx babel ./src -d ./build/src",
+    "build-babel": "npx @babel/cli ./src -d ./build/src",
     "build": "npm run clean && npm run build-babel",
     "start": "node ./build/src/index.js",
     "dev": "nodemon --exec babel-node ./src/index.js",
@@ -46,10 +46,10 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@babel/cli": "^7.27.2",
     "@babel/core": "^7.26.10",
-    "@babel/cli": "^7.27.0",
-    "@babel/preset-env": "^7.26.9",
     "@babel/node": "^7.26.0",
+    "@babel/preset-env": "^7.26.9",
     "@eslint/js": "^9.19.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
