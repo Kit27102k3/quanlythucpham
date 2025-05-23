@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import useFetchUserProfile from "../../Until/useFetchUserProfile";
 import {authApi} from "../../../api/authApi";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
 
 function Account() {
   const users = useFetchUserProfile();
@@ -11,11 +12,11 @@ function Account() {
     lastName: "",
     email: "",
     phone: "",
-    address: ""
   });
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
   const fileInputRef = useRef(null);
+  const [defaultAddress, setDefaultAddress] = useState(null);
 
   useEffect(() => {
     if (users) {
@@ -24,7 +25,6 @@ function Account() {
         lastName: users.lastName || "",
         email: users.email || "",
         phone: users.phone || "",
-        address: users.address || ""
       });
       
       // Set avatar URL if available
@@ -32,6 +32,24 @@ function Account() {
         setAvatarUrl(users.userImage);
       } else {
         setAvatarUrl("https://www.gravatar.com/avatar/?d=mp");
+      }
+
+      // Tìm địa chỉ mặc định trong danh sách địa chỉ
+      if (users.addresses && users.addresses.length > 0) {
+        const defaultAddr = users.addresses.find(addr => addr.isDefault);
+        if (defaultAddr) {
+          setDefaultAddress(defaultAddr);
+        } else if (users.addresses.length > 0) {
+          // Nếu không có địa chỉ mặc định, sử dụng địa chỉ đầu tiên
+          setDefaultAddress(users.addresses[0]);
+        }
+      } else if (users.address) {
+        // Sử dụng địa chỉ cũ nếu không có mảng địa chỉ mới
+        setDefaultAddress({
+          fullAddress: users.address,
+          receiverName: `${users.firstName || ""} ${users.lastName || ""}`.trim(),
+          receiverPhone: users.phone || ""
+        });
       }
     }
   }, [users]);
@@ -77,7 +95,6 @@ function Account() {
         firstName: formData.firstName,
         lastName: formData.lastName,
         phone: formData.phone,
-        address: formData.address
       };
       
       // Email không được gửi lên để cập nhật
@@ -198,8 +215,25 @@ function Account() {
               <p className="text-sm font-bold">
                 Điện thoại: <span className="font-normal">{users?.phone || "Chưa cập nhật"}</span>
               </p>
-              <p className="text-sm font-bold">
-                Địa chỉ: <span className="font-normal">{users?.address || "Chưa cập nhật"}</span>
+              <p className="text-sm font-bold flex items-start">
+                <span>Địa chỉ mặc định:</span>
+                <span className="font-normal ml-1">
+                  {defaultAddress ? (
+                    <span>
+                      {defaultAddress.fullAddress}
+                      <Link to="/tai-khoan/dia-chi" className="ml-2 text-xs text-blue-500 hover:underline">
+                        (Quản lý địa chỉ)
+                      </Link>
+                    </span>
+                  ) : (
+                    <span>
+                      Chưa cập nhật
+                      <Link to="/tai-khoan/dia-chi" className="ml-2 text-xs text-blue-500 hover:underline">
+                        (Thêm địa chỉ mới)
+                      </Link>
+                    </span>
+                  )}
+                </span>
               </p>
             </div>
           </div>
@@ -288,13 +322,17 @@ function Account() {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Địa chỉ</label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
+            <div className="w-full p-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500">
+              {defaultAddress ? defaultAddress.fullAddress : "Chưa có địa chỉ mặc định"}
+            </div>
+            <div className="flex justify-between mt-1">
+              <p className="text-xs text-gray-500">
+                Địa chỉ được quản lý trong phần Địa chỉ
+              </p>
+              <Link to="/tai-khoan/dia-chi" className="text-xs text-blue-500 hover:underline">
+                Quản lý địa chỉ
+              </Link>
+            </div>
           </div>
           
           <div className="flex justify-end space-x-4 pt-4 gap-4">

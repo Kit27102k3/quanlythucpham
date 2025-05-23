@@ -8,7 +8,6 @@ const UserSchema = new mongoose.Schema(
     lastName: { type: String, required: true },
     userName: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    address: { type: String, require: false, default: "" },
     userImage: { type: String, required: false, default: "" },
     isBlocked: { type: Boolean, default: false },
     resetPasswordToken: { type: String, default: null },
@@ -16,7 +15,28 @@ const UserSchema = new mongoose.Schema(
     lastLogin: { type: Date, default: null },
     facebookId: { type: String, default: null },
     googleId: { type: String, default: null },
-    authProvider: { type: String, enum: ['local', 'facebook', 'google'], default: 'local' },
+    authProvider: {
+      type: String,
+      enum: ["local", "facebook", "google"],
+      default: "local",
+    },
+    addresses: [
+      {
+        fullAddress: { type: String, required: true },
+        houseNumber: { type: String, required: false },
+        ward: { type: String, required: false },
+        district: { type: String, required: false },
+        province: { type: String, required: false },
+        coordinates: {
+          lat: { type: Number, required: false },
+          lng: { type: Number, required: false },
+        },
+        isDefault: { type: Boolean, default: false },
+        label: { type: String, required: false, default: "Nhà" },
+        receiverName: { type: String, required: false },
+        receiverPhone: { type: String, required: false },
+      },
+    ],
     pushSubscriptions: [
       {
         endpoint: { type: String, required: true },

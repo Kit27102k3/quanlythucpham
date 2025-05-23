@@ -17,7 +17,13 @@ import {
   getUserAvatar,
   getVapidPublicKey,
   subscribeToPush,
-  validateSubscription
+  validateSubscription,
+  addUserAddress,
+  getUserAddresses,
+  updateUserAddress,
+  deleteUserAddress,
+  setDefaultAddress,
+  migrateAllLegacyAddresses
 } from "../Controller/authController.js";
 import { verifyToken } from "../Middleware/authMiddleware.js";
 
@@ -51,5 +57,15 @@ router.post("/subscribe", verifyToken, subscribeToPush);
 
 // Add the validation route
 router.post('/validate-subscription', validateSubscription);
+
+// Các route quản lý địa chỉ
+router.post("/user/:userId/addresses", verifyToken, addUserAddress);
+router.get("/user/:userId/addresses", verifyToken, getUserAddresses);
+router.put("/user/:userId/addresses/:addressId", verifyToken, updateUserAddress);
+router.delete("/user/:userId/addresses/:addressId", verifyToken, deleteUserAddress);
+router.put("/user/:userId/addresses/:addressId/default", verifyToken, setDefaultAddress);
+
+// Admin route to migrate all legacy addresses
+router.post("/admin/migrate-addresses", verifyToken, migrateAllLegacyAddresses);
 
 export default router;

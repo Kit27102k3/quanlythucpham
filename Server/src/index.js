@@ -12,6 +12,7 @@ import { dirname } from "path";
 import { deleteExpiredVouchers } from "./Controller/savedVoucherController.js";
 import { handleSepayCallback, handleBankWebhook } from "./Controller/paymentController.js";
 import reportsController from "./Controller/reportsController.js";
+import fetch from 'node-fetch';
 
 // ES modules compatibility
 const __filename = fileURLToPath(import.meta.url);
@@ -46,6 +47,7 @@ import brandRoutes from "./routes/brandRoutes.js";
 // Import specific controller for direct endpoint handling
 import { getBestSellingProducts } from './Controller/productsController.js';
 import { updateProductExpirations } from "./Controller/productsController.js";
+import { log } from "console";
 
 dotenv.config({ path: ".env" });
 const app = express();
@@ -330,8 +332,17 @@ const startServer = (port) => {
       scheduleProductExpirationCheck(); // Run once at startup
       
       // Set up interval to run cleanup and checks periodically
-      setInterval(scheduleExpiredVoucherCleanup, scheduleInterval);
-      setInterval(scheduleProductExpirationCheck, scheduleInterval);
+      setInterval(() => {
+        scheduleExpiredVoucherCleanup().catch(err => 
+          console.error("Lỗi khi chạy tác vụ định kỳ dọn dẹp voucher:", err)
+        );
+      }, scheduleInterval);
+      
+      setInterval(() => {
+        scheduleProductExpirationCheck().catch(err => 
+          console.error("Lỗi khi chạy tác vụ định kỳ kiểm tra sản phẩm:", err)
+        );
+      }, scheduleInterval);
       
       // Removed console.log for scheduled tasks
     });
@@ -354,3 +365,21 @@ const startServer = (port) => {
 // Khởi động server
 const port = process.env.PORT || 8080;
 startServer(port);
+
+// Google Maps Geocoding API proxy endpoint
+app.get('/api/geocode', async (req, res) => {
+  try {
+    const address = req.query.address;
+    if (!address) return res.status(400).json({ status: 'ZERO_RESULTS', error_message: 'Missing address' });
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    console.log("Key", apiKey);
+    
+    if (!apiKey) return res.status(500).json({ status: 'REQUEST_DENIED', error_message: 'Missing Google Maps API key' });
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&region=vn&language=vi&key=${apiKey}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ status: 'ERROR', error_message: error.message });
+  }
+});

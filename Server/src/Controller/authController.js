@@ -286,14 +286,51 @@ export const logout = async (req, res) => {
   }
 };
 
+// Migrate single address to addresses array
+const migrateLegacyAddress = async (user) => {
+  try {
+    // Check if addresses array is empty but legacy address exists
+    if ((!user.addresses || user.addresses.length === 0) && user.address) {
+      console.log(`Migrating legacy address for user: ${user._id}`);
+      
+      // Create new address object from legacy fields
+      const newAddress = {
+        fullAddress: user.fullAddress || user.address,
+        houseNumber: user.houseNumber || '',
+        ward: user.ward || '',
+        district: user.district || '',
+        province: user.province || '',
+        coordinates: user.coordinates || {},
+        isDefault: true,
+        label: "Nhà",
+        receiverName: `${user.firstName} ${user.lastName}`,
+        receiverPhone: user.phone
+      };
+      
+      // Add to addresses array
+      user.addresses = [newAddress];
+      await user.save();
+      console.log(`Legacy address migrated successfully for user: ${user._id}`);
+    }
+    return user;
+  } catch (error) {
+    console.error("Error migrating legacy address:", error);
+    return user;
+  }
+};
+
+// Add the migration logic to getUserProfile
 export const getUserProfile = async (req, res) => {
   try {
     const userId = req.params.id;
-    const user = await User.findById(userId).select("-password");
+    let user = await User.findById(userId).select("-password");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+    
+    // Migrate legacy address if needed
+    user = await migrateLegacyAddress(user);
 
     res.status(200).json(user);
   } catch (error) {
@@ -1376,6 +1413,392 @@ export const validateSubscription = async (req, res) => {
     return res.status(500).json({ 
       success: false,
       message: "Server error while validating subscription" 
+    });
+  }
+};
+
+// Tạo/cập nhật địa chỉ mặc định đơn lẻ từ mảng địa chỉ cho tính tương thích ngược
+const updateDefaultAddressForBackwardCompatibility = async (userId) => {
+  try {
+    console.log(`[updateDefaultAddressForBackwardCompatibility] Updating legacy address for user ${userId}`);
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      console.log(`[updateDefaultAddressForBackwardCompatibility] User not found: ${userId}`);
+      return;
+    }
+    
+    // Tìm địa chỉ mặc định trong mảng
+    const defaultAddress = user.addresses.find(addr => addr.isDefault === true);
+    
+    if (defaultAddress) {
+      console.log(`[updateDefaultAddressForBackwardCompatibility] Found default address: ${defaultAddress.fullAddress}`);
+      
+      // Cập nhật trường address legacy - đảm bảo không phải undefined
+      user.address = defaultAddress.fullAddress || '';
+      
+      // Cập nhật các trường riêng lẻ cho địa chỉ (nếu có)
+      user.houseNumber = defaultAddress.houseNumber || '';
+      user.ward = defaultAddress.ward || '';
+      user.district = defaultAddress.district || '';
+      user.province = defaultAddress.province || '';
+      
+      // Sao chép tọa độ nếu có
+      if (defaultAddress.coordinates && defaultAddress.coordinates.lat && defaultAddress.coordinates.lng) {
+        user.coordinates = {
+          lat: defaultAddress.coordinates.lat,
+          lng: defaultAddress.coordinates.lng
+        };
+      }
+      
+      // Đảm bảo fullAddress được cập nhật
+      user.fullAddress = defaultAddress.fullAddress || '';
+      
+      // Đánh dấu là đã sửa đổi để đảm bảo mongoose cập nhật
+      user.markModified('address');
+      user.markModified('coordinates');
+      
+      await user.save();
+      console.log(`[updateDefaultAddressForBackwardCompatibility] Updated legacy address fields for user ${userId}`);
+    } else {
+      console.log(`[updateDefaultAddressForBackwardCompatibility] No default address found for user ${userId}`);
+    }
+  } catch (error) {
+    console.error(`[updateDefaultAddressForBackwardCompatibility] Error updating legacy address:`, error);
+  }
+};
+
+// Thêm địa chỉ mới
+export const addUserAddress = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const addressData = req.body;
+    
+    if (!addressData.fullAddress) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng cung cấp địa chỉ đầy đủ"
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng"
+      });
+    }
+
+    // Nếu đây là địa chỉ đầu tiên, đặt nó làm mặc định
+    if (!user.addresses || user.addresses.length === 0) {
+      addressData.isDefault = true;
+    } else if (addressData.isDefault) {
+      // Nếu địa chỉ mới là mặc định, cập nhật tất cả các địa chỉ khác thành không mặc định
+      user.addresses.forEach(addr => {
+        addr.isDefault = false;
+      });
+    }
+    
+    // Nếu không có thông tin người nhận, sử dụng thông tin người dùng
+    if (!addressData.receiverName) {
+      addressData.receiverName = `${user.firstName} ${user.lastName}`;
+    }
+    
+    if (!addressData.receiverPhone) {
+      addressData.receiverPhone = user.phone;
+    }
+
+    // Thêm địa chỉ mới vào mảng
+    user.addresses.push(addressData);
+
+    // Nếu đây là địa chỉ mặc định, cập nhật trường address cũ
+    if (addressData.isDefault || user.addresses.length === 1) {
+      await updateDefaultAddressForBackwardCompatibility(userId);
+    }
+
+    // Lưu người dùng đã cập nhật
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Thêm địa chỉ thành công",
+      addresses: user.addresses
+    });
+  } catch (error) {
+    console.error("Lỗi khi thêm địa chỉ:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi thêm địa chỉ",
+      error: error.message
+    });
+  }
+};
+
+// Lấy tất cả địa chỉ của người dùng
+export const getUserAddresses = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    let user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng"
+      });
+    }
+    
+    // Migrate legacy address if needed
+    user = await migrateLegacyAddress(user);
+
+    res.status(200).json({
+      success: true,
+      addresses: user.addresses || []
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách địa chỉ:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi lấy danh sách địa chỉ",
+      error: error.message
+    });
+  }
+};
+
+// Cập nhật địa chỉ
+export const updateUserAddress = async (req, res) => {
+  try {
+    const { userId, addressId } = req.params;
+    const updatedData = req.body;
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng"
+      });
+    }
+
+    // Tìm địa chỉ cần cập nhật
+    const addressIndex = user.addresses.findIndex(
+      addr => addr._id.toString() === addressId
+    );
+
+    if (addressIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy địa chỉ"
+      });
+    }
+
+    // Kiểm tra nếu địa chỉ được cập nhật trở thành mặc định
+    if (updatedData.isDefault) {
+      // Cập nhật tất cả các địa chỉ khác thành không mặc định
+      user.addresses.forEach(addr => {
+        addr.isDefault = false;
+      });
+    }
+
+    // Cập nhật địa chỉ
+    Object.keys(updatedData).forEach(key => {
+      user.addresses[addressIndex][key] = updatedData[key];
+    });
+
+    // Nếu đây là địa chỉ mặc định, cập nhật trường address cũ
+    if (updatedData.isDefault) {
+      await updateDefaultAddressForBackwardCompatibility(userId);
+    }
+
+    // Lưu thay đổi
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Cập nhật địa chỉ thành công",
+      addresses: user.addresses
+    });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật địa chỉ:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi cập nhật địa chỉ",
+      error: error.message
+    });
+  }
+};
+
+// Xóa địa chỉ
+export const deleteUserAddress = async (req, res) => {
+  try {
+    const { userId, addressId } = req.params;
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng"
+      });
+    }
+
+    // Tìm địa chỉ cần xóa
+    const addressIndex = user.addresses.findIndex(
+      addr => addr._id.toString() === addressId
+    );
+
+    if (addressIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy địa chỉ"
+      });
+    }
+
+    // Kiểm tra nếu địa chỉ bị xóa là mặc định
+    const isDefault = user.addresses[addressIndex].isDefault;
+
+    // Xóa địa chỉ khỏi mảng
+    user.addresses.splice(addressIndex, 1);
+
+    // Nếu địa chỉ bị xóa là mặc định và vẫn còn địa chỉ khác, đặt địa chỉ đầu tiên còn lại làm mặc định
+    if (isDefault && user.addresses.length > 0) {
+      user.addresses[0].isDefault = true;
+    }
+
+    // Nếu đã thay đổi địa chỉ mặc định, cập nhật trường address cũ
+    if (isDefault && user.addresses.length > 0) {
+      await updateDefaultAddressForBackwardCompatibility(userId);
+    }
+
+    // Lưu thay đổi
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Xóa địa chỉ thành công",
+      addresses: user.addresses
+    });
+  } catch (error) {
+    console.error("Lỗi khi xóa địa chỉ:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi xóa địa chỉ",
+      error: error.message
+    });
+  }
+};
+
+// Đặt địa chỉ mặc định
+export const setDefaultAddress = async (req, res) => {
+  try {
+    const { userId, addressId } = req.params;
+    
+    console.log(`[setDefaultAddress] Setting address ${addressId} as default for user ${userId}`);
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      console.log(`[setDefaultAddress] User not found: ${userId}`);
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy người dùng"
+      });
+    }
+
+    // Kiểm tra xem địa chỉ có tồn tại không
+    const addressExists = user.addresses.some(addr => addr._id.toString() === addressId);
+    if (!addressExists) {
+      console.log(`[setDefaultAddress] Address not found: ${addressId}`);
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy địa chỉ"
+      });
+    }
+
+    // Đặt tất cả địa chỉ thành không mặc định, sau đó đặt địa chỉ được chọn thành mặc định
+    user.addresses.forEach(addr => {
+      const isSelected = addr._id.toString() === addressId;
+      addr.isDefault = isSelected;
+      
+      if (isSelected) {
+        console.log(`[setDefaultAddress] Setting address as default: ${addr.fullAddress}`);
+      }
+    });
+
+    // Đánh dấu mảng addresses đã được sửa đổi để đảm bảo mongoose cập nhật
+    user.markModified('addresses');
+    
+    // Lưu thay đổi trước khi cập nhật tương thích ngược
+    await user.save();
+    
+    // Cập nhật trường address cũ
+    await updateDefaultAddressForBackwardCompatibility(userId);
+
+    res.status(200).json({
+      success: true,
+      message: "Đặt địa chỉ mặc định thành công",
+      addresses: user.addresses
+    });
+  } catch (error) {
+    console.error(`[setDefaultAddress] Error setting default address:`, error);
+    res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi đặt địa chỉ mặc định",
+      error: error.message
+    });
+  }
+};
+
+// Admin endpoint to migrate all legacy addresses
+export const migrateAllLegacyAddresses = async (req, res) => {
+  try {
+    // Kiểm tra quyền admin (thực tế nên sử dụng middleware)
+    if (!req.user || !req.user.role || req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: "Không có quyền thực hiện chức năng này"
+      });
+    }
+
+    // Lấy tất cả user có địa chỉ cũ
+    const users = await User.find({ 
+      address: { $exists: true, $ne: "" },
+      $or: [
+        { addresses: { $exists: false } },
+        { addresses: { $size: 0 } }
+      ]
+    });
+
+    let migratedCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
+    
+    // Xử lý từng user
+    for (const user of users) {
+      try {
+        // Kiểm tra nếu mảng addresses trống
+        if (!user.addresses || user.addresses.length === 0) {
+          await migrateLegacyAddress(user);
+          migratedCount++;
+        } else {
+          skippedCount++;
+        }
+      } catch (err) {
+        console.error(`Error migrating address for user ${user._id}:`, err);
+        errorCount++;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Đã di chuyển ${migratedCount} địa chỉ, bỏ qua ${skippedCount}, lỗi ${errorCount}`,
+      total: users.length,
+      migrated: migratedCount,
+      skipped: skippedCount,
+      errors: errorCount
+    });
+  } catch (error) {
+    console.error("Lỗi khi di chuyển dữ liệu địa chỉ:", error);
+    res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi di chuyển dữ liệu địa chỉ",
+      error: error.message
     });
   }
 };

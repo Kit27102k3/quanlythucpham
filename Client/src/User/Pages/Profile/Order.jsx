@@ -220,6 +220,39 @@ export default function Order() {
 
   const filteredOrders = getFilteredOrders();
 
+  // Hàm để lấy địa chỉ giao hàng từ đơn hàng - ưu tiên địa chỉ giao hàng theo thứ tự
+  const getOrderShippingAddress = (order) => {
+    if (!order) return "Không có thông tin địa chỉ";
+    
+    if (order.shippingAddress) {
+      return order.shippingAddress;
+    }
+    
+    if (order.shippingInfo && order.shippingInfo.address) {
+      return order.shippingInfo.address;
+    }
+    
+    if (order.shipping && order.shipping.address) {
+      return order.shipping.address;
+    }
+    
+    if (order.userId) {
+      // Xây dựng địa chỉ từ các thành phần của userId
+      const addressParts = [];
+      if (order.userId.houseNumber) addressParts.push(order.userId.houseNumber);
+      if (order.userId.address) addressParts.push(order.userId.address);
+      if (order.userId.hamlet) addressParts.push(order.userId.hamlet);
+      if (order.userId.ward) addressParts.push(order.userId.ward);
+      if (order.userId.district) addressParts.push(order.userId.district);
+      if (order.userId.province) addressParts.push(order.userId.province);
+      
+      const fullUserAddress = addressParts.filter(Boolean).join(", ");
+      return fullUserAddress;
+    }
+    
+    return "Không có thông tin địa chỉ";
+  };
+
   if (loading) return <div className="text-center py-8">Đang tải...</div>;
 
   return (
@@ -329,15 +362,9 @@ export default function Order() {
                         {new Date(order.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-4 text-sm text-gray-500">
-                        {order.userId?.address ? (
-                          <span className="line-clamp-1">
-                            {order.userId.address}
-                            {order.userId.ward && `, ${order.userId.ward}`}
-                            {order.userId.district && `, ${order.userId.district}`}
-                          </span>
-                        ) : (
-                          "Chưa có địa chỉ"
-                        )}
+                        <span className="line-clamp-1">
+                          {getOrderShippingAddress(order)}
+                        </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
                         {formatCurrency(order.totalAmount)}đ

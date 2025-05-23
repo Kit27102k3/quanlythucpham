@@ -15,6 +15,7 @@ import couponApi from "../../../api/couponApi";
 import savedVoucherApi from "../../../api/savedVoucherApi";
 import axios from "axios";
 import { API_URLS } from "../../../config/apiConfig";
+import AddressSelector from "../../Pages/Checkout/AddressSelector";
 
 export default function Payment() {
   const [users, setUsers] = useState(null);
@@ -39,6 +40,8 @@ export default function Payment() {
   const [userSavedVouchers, setUserSavedVouchers] = useState([]);
   const [showVouchersList, setShowVouchersList] = useState(false);
   const [appliedSavedVoucher, setAppliedSavedVoucher] = useState(null);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [selectedAddress, setSelectedAddress] = useState(null);
 
   const calculateShippingFee = () => {
     return selectedPayment === "sepay" ? 0 : 40000;
@@ -90,6 +93,17 @@ export default function Payment() {
 
     fetchPaymentDetails();
   }, [paymentId, navigate]);
+
+  // Thêm useEffect để cập nhật selectedAddress khi selectedAddressId thay đổi
+  useEffect(() => {
+    if (selectedAddressId && users && users.addresses) {
+      const address = users.addresses.find(addr => addr._id === selectedAddressId);
+      if (address) {
+        console.log("Selected address found:", address);
+        setSelectedAddress(address);
+      }
+    }
+  }, [selectedAddressId, users]);
 
   // Hàm lấy danh sách voucher đã lưu của người dùng
   const fetchUserSavedVouchers = async (token) => {
@@ -324,43 +338,85 @@ export default function Payment() {
 
   const handlePlaceOrder = async () => {
     setLoading(true);
-    if (!users) {
-      toast.error("Vui lòng đăng nhập để tiếp tục!");
-      setLoading(false);
-      return;
-    }
-
-    if (!users.address) {
-      toast.error("Vui lòng cập nhật địa chỉ giao hàng!");
-      setLoading(false);
-      return;
-    }
-
+    
     try {
-      const orderId = `${new Date().getTime()}-${Math.floor(
-        Math.random() * 1000
-      )}`;
+      if (!users) {
+        toast.error("Vui lòng đăng nhập để đặt hàng");
+        return;
+      }
+      
+      // Kiểm tra xem đã chọn địa chỉ chưa
+      if (!selectedAddress && !users.address) {
+        toast.error("Vui lòng chọn địa chỉ giao hàng");
+        setLoading(false);
+        return;
+      }
+      
+      // Sử dụng địa chỉ đã chọn hoặc địa chỉ mặc định của người dùng
+      const deliveryAddress = selectedAddress ? selectedAddress.fullAddress : users.address;
+      const receiverName = selectedAddress ? selectedAddress.receiverName : `${users.firstName} ${users.lastName}`;
+      const receiverPhone = selectedAddress ? selectedAddress.receiverPhone : users.phone;
+      
+      if (!receiverPhone) {
+        toast.error("Vui lòng cung cấp số điện thoại");
+        setLoading(false);
+        return;
+      }
+      
+      if (!deliveryAddress) {
+        toast.error("Vui lòng cung cấp địa chỉ giao hàng");
+        setLoading(false);
+        return;
+      }
+      
       const totalAmount = calculateFinalTotal();
-      const orderInfo = `Thanh toán đơn hàng ${orderId}`;
-      const currentShippingFee = calculateShippingFee();
 
+      // Kiểm tra và log dữ liệu sản phẩm để debug
+      console.log("Dữ liệu sản phẩm:", orderDetails.products);
+      
+      // Chuẩn bị dữ liệu sản phẩm đúng định dạng
+      const productItems = orderDetails.products.map((item) => {
+        // Kiểm tra cấu trúc dữ liệu và xử lý tương thích
+        const productId = item.product?._id || item.productId?._id;
+        const price = item.price || item.productId?.productPrice;
+        
+        if (!productId) {
+          console.error("Sản phẩm không có ID:", item);
+          throw new Error("Dữ liệu sản phẩm không hợp lệ");
+        }
+        
+        return {
+          productId: productId,
+          quantity: item.quantity,
+          price: price
+        };
+      });
+      
+      // Tạo dữ liệu đơn hàng
       const orderData = {
         userId: users._id,
-        products: orderDetails.products.map((product) => ({
-          productId: product.productId._id,
-          quantity: product.quantity,
-          price: product.productId.productPrice,
-        })),
+        products: productItems,
+        shippingAddress: deliveryAddress,
+        receiverName: receiverName,
+        receiverPhone: receiverPhone,
         totalAmount: totalAmount,
-        subtotal: calculateSubtotal(),
-        deliveryMethod: selectedMethod,
-        deliveryFee: currentShippingFee,
-        address: users.address,
-        note: note,
+        shippingFee: calculateShippingFee(),
         paymentMethod: selectedPayment,
-        status: "awaiting_payment",
+        note: note,
+        status: "pending",
       };
       
+      // Thêm thông tin giảm giá nếu có
+      if (appliedCoupon) {
+        orderData.discountCode = appliedCoupon.code;
+        orderData.discountAmount = couponDiscount;
+      }
+      
+      // Thêm thông tin voucher đã lưu nếu có
+      if (appliedSavedVoucher) {
+        orderData.savedVoucherId = appliedSavedVoucher._id;
+      }
+
       // Thêm thông tin mã giảm giá nếu có
       if (appliedCoupon) {
         orderData.coupon = {
@@ -374,11 +430,7 @@ export default function Payment() {
           let paymentData = {
             userId: users._id,
             amount: totalAmount,
-            products: orderDetails.products.map((product) => ({
-              productId: product.productId._id,
-              quantity: product.quantity,
-              price: product.productId.productPrice,
-            })),
+            products: productItems,
             paymentMethod: selectedPayment,
             couponDiscount: couponDiscount,
             couponCode: appliedCoupon?.code
@@ -393,7 +445,7 @@ export default function Payment() {
           const sepayResponse = await paymentApi.createSepayPaymentUrl(
             paymentId,
             totalAmount,
-            orderInfo
+            `Thanh toán đơn hàng ${new Date().getTime()}-${Math.floor(Math.random() * 1000)}`
           );
 
           if (sepayResponse) {
@@ -454,22 +506,21 @@ export default function Payment() {
               console.log("========== GỬI EMAIL XÁC NHẬN ĐƠN HÀNG ==========");
               console.log("Đang gửi yêu cầu email xác nhận đến API...");
               console.log(`OrderID: ${orderIdCreated}`);
-              console.log("Thông tin người dùng:", {
+              
+              // Sử dụng địa chỉ đã chọn thay vì địa chỉ mặc định
+              const emailUserInfo = {
                 email: users.email,
-                fullName: `${users.firstName || ''} ${users.lastName || ''}`.trim(),
-                phone: users.phone,
-                address: users.address
-              });
+                fullName: receiverName || `${users.firstName || ''} ${users.lastName || ''}`.trim(),
+                phone: receiverPhone || users.phone,
+                address: deliveryAddress || users.address
+              };
+              
+              console.log("Thông tin người dùng:", emailUserInfo);
               
               // Gửi yêu cầu sau 1 giây để đảm bảo đơn hàng đã được lưu hoàn toàn vào database
               setTimeout(async () => {
                 try {
-                  const emailResponse = await axios.post(`${API_URLS.ORDERS}/notify-order-success/${orderIdCreated}`, {
-                    email: users.email,
-                    fullName: `${users.firstName || ''} ${users.lastName || ''}`.trim(),
-                    phone: users.phone,
-                    address: users.address
-                  }, {
+                  const emailResponse = await axios.post(`${API_URLS.ORDERS}/notify-order-success/${orderIdCreated}`, emailUserInfo, {
                     headers: {
                       'Content-Type': 'application/json',
                       'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
@@ -552,6 +603,7 @@ export default function Payment() {
             throw new Error("Không nhận được phản hồi từ cổng thanh toán");
           }
         } catch (error) {
+          console.error("Lỗi khi xử lý thanh toán SePay:", error);
           toast.error(
             `Không thể kết nối đến cổng thanh toán: ${error.message}`
           );
@@ -603,22 +655,21 @@ export default function Payment() {
             console.log("========== GỬI EMAIL XÁC NHẬN ĐƠN HÀNG ==========");
             console.log("Đang gửi yêu cầu email xác nhận đến API...");
             console.log(`OrderID: ${orderIdCreated}`);
-            console.log("Thông tin người dùng:", {
+            
+            // Sử dụng địa chỉ đã chọn thay vì địa chỉ mặc định
+            const emailUserInfo = {
               email: users.email,
-              fullName: `${users.firstName || ''} ${users.lastName || ''}`.trim(),
-              phone: users.phone,
-              address: users.address
-            });
+              fullName: receiverName || `${users.firstName || ''} ${users.lastName || ''}`.trim(),
+              phone: receiverPhone || users.phone,
+              address: deliveryAddress || users.address
+            };
+            
+            console.log("Thông tin người dùng:", emailUserInfo);
             
             // Gửi yêu cầu sau 1 giây để đảm bảo đơn hàng đã được lưu hoàn toàn vào database
             setTimeout(async () => {
               try {
-                const emailResponse = await axios.post(`${API_URLS.ORDERS}/notify-order-success/${orderIdCreated}`, {
-                  email: users.email,
-                  fullName: `${users.firstName || ''} ${users.lastName || ''}`.trim(),
-                  phone: users.phone,
-                  address: users.address
-                }, {
+                const emailResponse = await axios.post(`${API_URLS.ORDERS}/notify-order-success/${orderIdCreated}`, emailUserInfo, {
                   headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
@@ -651,6 +702,7 @@ export default function Payment() {
         }
       }
     } catch (error) {
+      console.error("Lỗi khi xử lý đặt hàng:", error);
       toast.error("Không thể đặt hàng. Vui lòng thử lại!");
     } finally {
       setLoading(false);
@@ -664,11 +716,9 @@ export default function Payment() {
     }));
   };
 
-  const handleAddressChange = (e) => {
-    setUsers((prev) => ({
-      ...prev,
-      address: e.target.value,
-    }));
+  const handleAddressSelect = (addressId) => {
+    console.log("Selected address ID:", addressId);
+    setSelectedAddressId(addressId);
   };
 
   const handleNoteChange = (e) => {
@@ -839,14 +889,15 @@ export default function Payment() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
-                Địa chỉ
+                Địa chỉ giao hàng
               </label>
-              <input
-                type="text"
-                value={users?.address || ""}
-                onChange={handleAddressChange}
-                className="w-full p-2 border border-gray-300 rounded-md outline-none"
-              />
+              {users && users._id && (
+                <AddressSelector 
+                  userId={users._id}
+                  selectedAddressId={selectedAddressId}
+                  onAddressSelect={handleAddressSelect}
+                />
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
@@ -1017,3 +1068,4 @@ export default function Payment() {
     </div>
   );
 }
+

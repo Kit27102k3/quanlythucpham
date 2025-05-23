@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+/* eslint-disable react-hooks/exhaustive-deps */
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ClipboardListIcon, ChevronLeftIcon, TruckIcon, PackageIcon, XCircleIcon, ClockIcon, MapPinIcon, EyeIcon, ArrowLeftIcon } from "lucide-react";
 import orderApi from "../../../api/orderApi";
@@ -8,40 +9,15 @@ import { toast } from "sonner";
 import { translateStatus } from '../../component/OrderStatusDisplay';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { FaDirections, FaMapMarkerAlt } from 'react-icons/fa';
-
-// Kiểm tra server nào đang hoạt động
-// Removing unused function
-// const checkServerStatus = async () => {
-//   const ports = ["8080", "3000"]; // Các port có thể chạy server
-//   for (const port of ports) {
-//     try {
-//       const url = `http://localhost:${port}/health-check`;
-//       const response = await fetch(url, { 
-//         method: 'HEAD',
-//         timeout: 500,
-//         mode: 'no-cors'
-//       });
-//       if (response) {
-//         console.log(`Server đang chạy ở port ${port}`);
-//         return `http://localhost:${port}`;
-//       }
-//     } catch (error) {
-//       // Bỏ qua lỗi
-//     }
-//   }
-//   return API_BASE_URL; // Sử dụng URL từ cấu hình nếu không tìm thấy server local
-// };
-
-// Thêm constant cho địa chỉ cửa hàng mặc định
-const SHOP_LOCATION = {
-  address: "Trường Đại học Nam Cần Thơ",
-  lat: 10.0079465,
-  lng: 105.7202567
-};
+import { 
+  geocodeAddressDebounced,
+  SHOP_LOCATION
+} from './OrderDetail/MapUtils';
+import { OrderTrackingMap } from './OrderDetail/MapComponents';
+import { BiLoaderAlt } from 'react-icons/bi';
 
 // Mapbox access token
-const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || import.meta.env.VITE_MAPBOX_KEY;
 mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
 // Viết theo phương pháp đơn giản hơn, tạo custom hook useMapbox
@@ -73,14 +49,756 @@ export default function OrderDetail() {
   const [showTracking, setShowTracking] = useState(false);
   const [trackingError, setTrackingError] = useState(false);
   const [customerLocation, setCustomerLocation] = useState(null);
-  const [mapError, setMapError] = useState(null);
+  const [mapError, setMapError] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const { orderId } = useParams();
   const navigate = useNavigate();
   
-  // Sử dụng hook đơn giản để tải Google Maps API
-  const { isLoaded: mapLoaded, loadError } = useMapbox();
+  // Tham chiếu đến hàm geocoding để có thể gọi từ useEffect
+  const geocodingFnRef = useRef(null);
   
-  // Di chuyển định nghĩa fetchTrackingInfo lên trước (trước khi được sử dụng)
+  // Sử dụng hook đơn giản để tải Google Maps API
+  const { isLoaded: mapboxLoaded, loadError } = useMapbox();
+  
+  // Define setDefaultLocation before performGeocoding
+  const setDefaultLocation = useCallback((address) => {
+    if (!address) return;
+    
+    console.log("Using default location fallback for address:", address);
+    
+    // Fallback to default location with error flag
+    setCustomerLocation({
+      lat: 10.0452, // Default to a location in Vietnam
+      lng: 105.7469,
+      displayName: address,
+      error: true,
+      errorMessage: "Không thể tìm tọa độ chính xác cho địa chỉ này",
+      address: address,
+      pending: false,
+      initialized: true
+    });
+    
+    // Show a warning toast
+    toast.warning("Không thể tìm tọa độ chính xác cho địa chỉ giao hàng");
+  }, []);
+  
+  // Implement the missing performGeocoding function
+  const performGeocoding = useCallback((address, callback) => {
+    if (!address) {
+      console.error("Cannot perform geocoding: No address provided");
+      return;
+    }
+    
+    console.log("Performing geocoding for address:", address);
+    
+    // Use geocodeAddressDebounced from MapUtils
+    geocodeAddressDebounced(address, (result) => {
+      if (result && !result.error) {
+        console.log("Geocoding successful:", result);
+        
+        const locationData = {
+          ...result,
+          address: address,
+          pending: false,
+          initialized: true,
+          geocoded: true
+        };
+        
+        setCustomerLocation(locationData);
+        
+        // Call the callback if provided
+        if (typeof callback === 'function') {
+          callback(result);
+        }
+      } else {
+        console.error("Geocoding failed:", result?.errorMessage || "Unknown error");
+        setDefaultLocation(address);
+        
+        // Call the callback with error if provided
+        if (typeof callback === 'function') {
+          callback(result || { error: true, errorMessage: "Geocoding failed" });
+        }
+      }
+    });
+  }, [setCustomerLocation, setDefaultLocation]);
+  
+  // Hàm để lấy địa chỉ giao hàng từ đơn hàng - ưu tiên địa chỉ giao hàng theo thứ tự
+  const getOrderShippingAddress = useCallback((order) => {
+    if (!order) return "Không có thông tin địa chỉ";
+    
+    if (order.shippingAddress) {
+      console.log("Sử dụng shippingAddress:", order.shippingAddress);
+      return order.shippingAddress;
+    }
+    
+    if (order.shippingInfo && order.shippingInfo.address) {
+      console.log("Sử dụng shippingInfo.address:", order.shippingInfo.address);
+      return order.shippingInfo.address;
+    }
+    
+    if (order.shipping && order.shipping.address) {
+      console.log("Sử dụng shipping.address:", order.shipping.address);
+      return order.shipping.address;
+    }
+    
+    if (order.userId) {
+      // Xây dựng địa chỉ từ các thành phần của userId
+      const addressParts = [];
+      if (order.userId.houseNumber) addressParts.push(order.userId.houseNumber);
+      if (order.userId.address) addressParts.push(order.userId.address);
+      if (order.userId.hamlet) addressParts.push(order.userId.hamlet);
+      if (order.userId.ward) addressParts.push(order.userId.ward);
+      if (order.userId.district) addressParts.push(order.userId.district);
+      if (order.userId.province) addressParts.push(order.userId.province);
+      
+      const fullUserAddress = addressParts.filter(Boolean).join(", ");
+      console.log("Sử dụng địa chỉ được tạo từ userId:", fullUserAddress);
+      return fullUserAddress;
+    }
+    
+    return "Không có thông tin địa chỉ";
+  }, []);
+  
+  // Hàm tính khoảng cách giữa 2 điểm địa lý (Haversine formula)
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Bán kính trái đất (km)
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2); 
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+    const distance = R * c;
+    return distance;
+  };
+  
+  // Hàm tạo đường thẳng giữa 2 điểm (fallback)
+  const createStraightLine = useCallback((map, customerCoords, distanceStraightLine) => {
+    console.log("Creating straight line between shop and customer");
+    
+    // Check if layer already exists and remove it
+    if (map.getLayer('route-layer')) {
+      map.removeLayer('route-layer');
+    }
+    
+    if (map.getSource('route')) {
+      map.removeSource('route');
+    }
+    
+    // Thêm đường thẳng giữa 2 điểm
+    map.addSource('route', {
+      'type': 'geojson',
+      'data': {
+        'type': 'Feature',
+        'properties': {},
+        'geometry': {
+          'type': 'LineString',
+          'coordinates': [
+            [SHOP_LOCATION.lng, SHOP_LOCATION.lat],
+            [customerCoords.lng, customerCoords.lat]
+          ]
+        }
+      }
+    });
+    
+    map.addLayer({
+      'id': 'route-layer',
+      'type': 'line',
+      'source': 'route',
+      'layout': {
+        'line-join': 'round',
+        'line-cap': 'round'
+      },
+      'paint': {
+        'line-color': '#2673DD',
+        'line-width': 4,
+        'line-opacity': 0.7,
+        'line-dasharray': [0.5, 1.5]
+      }
+    });
+    
+    // Create a bounds that includes both points
+    const bounds = new mapboxgl.LngLatBounds()
+      .extend([SHOP_LOCATION.lng, SHOP_LOCATION.lat])
+      .extend([customerCoords.lng, customerCoords.lat]);
+    
+    // Fit the map to the bounds with some padding
+    map.fitBounds(bounds, { 
+      padding: { top: 60, bottom: 60, left: 60, right: 60 },
+      maxZoom: 15 // Don't zoom in too much
+    });
+    
+    // Hiển thị thông tin khoảng cách và thời gian
+    const estimatedMinutes = Math.ceil(distanceStraightLine / 30 * 60);
+    
+    const infoDiv = document.getElementById('map-info');
+    if (infoDiv) {
+      infoDiv.innerHTML = `
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
+            <span class="font-semibold text-gray-700 text-xs sm:text-sm">Cửa hàng → Địa chỉ nhận hàng (đường thẳng)</span>
+          </div>
+          <div class="flex gap-4">
+            <div class="text-xs sm:text-sm"><span class="font-medium text-blue-600">Khoảng cách:</span> ${distanceStraightLine.toFixed(1)} km</div>
+            <div class="text-xs sm:text-sm"><span class="font-medium text-blue-600">Thời gian ước tính:</span> ${estimatedMinutes} phút</div>
+          </div>
+        </div>
+      `;
+    }
+  }, []);
+  
+  // Hàm thêm markers và route line vào map
+  const addMapMarkers = useCallback((map, location) => {
+    if (!location && (!customerLocation || !customerLocation.lat || !customerLocation.lng)) {
+      console.error("Missing customer location coordinates for markers");
+      return;
+    }
+    
+    // Use provided location or fall back to customerLocation state
+    const customerCoords = location || customerLocation;
+    
+    console.log("Adding markers for shop and customer locations", {
+      shop: SHOP_LOCATION,
+      customer: customerCoords
+    });
+    
+    // Clear any existing markers
+    const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
+    existingMarkers.forEach(marker => marker.remove());
+    
+          // Tạo marker cho vị trí cửa hàng
+          const shopEl = document.createElement('div');
+          shopEl.className = 'shop-marker';
+          shopEl.style.width = '36px';
+          shopEl.style.height = '36px';
+          shopEl.style.backgroundImage = 'url(https://deo.shopeemobile.com/shopee/shopee-pcmall-live-sg/ordertracking/f1f718b157cd67f128f91b166a08990e.png)';
+          shopEl.style.backgroundSize = 'cover';
+          
+          // Thêm marker shop với popup
+          new mapboxgl.Marker({ element: shopEl })
+            .setLngLat([SHOP_LOCATION.lng, SHOP_LOCATION.lat])
+            .setPopup(
+              new mapboxgl.Popup({ offset: 25 })
+                .setHTML(`
+            <div style="padding: 8px;">
+              <div style="font-weight: bold; font-size: 14px;">${SHOP_LOCATION.address}</div>
+              <div style="font-size: 12px; color: #388e3c; margin-top: 4px;">Địa điểm xuất hàng</div>
+                  </div>
+                `)
+            )
+            .addTo(map);
+          
+          // Tạo custom element cho customer marker
+          const customerEl = document.createElement('div');
+          customerEl.className = 'customer-marker';
+          customerEl.style.width = '36px';
+          customerEl.style.height = '36px';
+          customerEl.style.backgroundImage = 'url(https://maps.google.com/mapfiles/ms/icons/red-dot.png)';
+          customerEl.style.backgroundSize = 'cover';
+          
+          // Sử dụng địa chỉ từ location
+    const displayAddress = customerCoords.address || "Địa chỉ không xác định";
+          
+          // Thêm marker khách hàng với popup
+          new mapboxgl.Marker({ element: customerEl, color: '#ff0000' })
+      .setLngLat([customerCoords.lng, customerCoords.lat])
+            .setPopup(
+              new mapboxgl.Popup({ offset: 25 })
+                .setHTML(`
+            <div style="padding: 8px;">
+              <div style="font-weight: bold; font-size: 14px;">Địa chỉ giao hàng</div>
+              <div style="font-size: 12px; color: #666; margin-top: 4px;">${displayAddress}</div>
+                  </div>
+                `)
+            )
+            .addTo(map);
+          
+          // Tính khoảng cách theo đường chim bay giữa shop và khách hàng
+          const distanceStraightLine = calculateDistance(
+            SHOP_LOCATION.lat, SHOP_LOCATION.lng,
+      customerCoords.lat, customerCoords.lng
+    );
+    
+    console.log(`Distance between shop and customer: ${distanceStraightLine.toFixed(2)}km`);
+    
+    // Make sure to remove any existing layers and sources
+    if (map.getLayer('route-layer')) {
+      map.removeLayer('route-layer');
+    }
+    
+    if (map.getSource('route')) {
+      map.removeSource('route');
+    }
+    
+    // First fit bounds to include both points with padding
+    const bounds = new mapboxgl.LngLatBounds()
+      .extend([SHOP_LOCATION.lng, SHOP_LOCATION.lat])
+      .extend([customerCoords.lng, customerCoords.lat]);
+    
+    map.fitBounds(bounds, {
+      padding: { top: 80, bottom: 80, left: 80, right: 80 },
+      maxZoom: 14
+    });
+    
+    // Show loading indicator in info div
+    const infoDiv = document.getElementById('map-info');
+    if (infoDiv) {
+      infoDiv.innerHTML = `
+        <div class="flex justify-center items-center gap-2 py-1">
+          <div class="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-blue-500"></div>
+          <span class="text-sm text-gray-600">Đang tải đường đi từ <b>${SHOP_LOCATION.address}</b> đến <b>${displayAddress}</b>...</span>
+        </div>
+      `;
+    }
+    
+    // Make the directions API request
+    const directionsRequest = `https://api.mapbox.com/directions/v5/mapbox/driving/${SHOP_LOCATION.lng},${SHOP_LOCATION.lat};${customerCoords.lng},${customerCoords.lat}?steps=true&geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
+    
+    console.log("Requesting route from Mapbox Directions API for driving route");
+    
+    // Fetch the route data
+            fetch(directionsRequest)
+              .then(response => {
+                if (!response.ok) throw new Error('Không thể lấy dữ liệu đường đi');
+                return response.json();
+              })
+              .then(data => {
+        console.log("Route API response:", data);
+                
+                if (data.routes && data.routes.length > 0) {
+                  const route = data.routes[0];
+                  const routeDistance = route.distance / 1000; // Chuyển từ m sang km
+          
+          // Sửa tốc độ trung bình từ "theo giây thực tế" sang "tốc độ trung bình 30km/h"
+          // Do thời gian từ API có thể không chính xác cho VN
+          const routeDuration = Math.ceil(routeDistance / 30 * 60); // Tính dựa trên 30km/h
+          
+          console.log("Route data processed:", {
+                    distance: routeDistance,
+                    duration: routeDuration,
+                    geometry: route.geometry
+                  });
+                  
+          // Add the route as a new source
+          if (!map.getSource('route')) {
+                  map.addSource('route', {
+                    'type': 'geojson',
+                    'data': {
+                      'type': 'Feature',
+                      'properties': {},
+                      'geometry': route.geometry
+                    }
+                  });
+          } else {
+            // Update the source if it already exists
+            map.getSource('route').setData({
+              'type': 'Feature',
+              'properties': {},
+              'geometry': route.geometry
+            });
+          }
+          
+          // Add the route layer if it doesn't exist
+          if (!map.getLayer('route-layer')) {
+                  map.addLayer({
+                    'id': 'route-layer',
+                    'type': 'line',
+                    'source': 'route',
+                    'layout': {
+                      'line-join': 'round',
+                      'line-cap': 'round'
+                    },
+                    'paint': {
+                      'line-color': '#2673DD',
+                'line-width': 5,
+                'line-opacity': 0.8
+              }
+            });
+          }
+          
+          // Re-fit the bounds to the route
+          const coordinates = route.geometry.coordinates;
+          
+          if (coordinates && coordinates.length > 0) {
+            const routeBounds = coordinates.reduce((bounds, coord) => {
+              return bounds.extend(coord);
+            }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+            
+            map.fitBounds(routeBounds, {
+              padding: { top: 80, bottom: 80, left: 80, right: 80 },
+              maxZoom: 14
+            });
+          }
+          
+          // Update the info div
+                  if (infoDiv) {
+                    infoDiv.innerHTML = `
+                      <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                        <div class="flex items-center gap-2">
+                          <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
+                          <span class="font-semibold text-gray-700 text-xs sm:text-sm">Cửa hàng → Địa chỉ nhận hàng (đường thực tế)</span>
+                        </div>
+                        <div class="flex gap-4">
+                          <div class="text-xs sm:text-sm"><span class="font-medium text-blue-600">Khoảng cách:</span> ${routeDistance.toFixed(1)} km</div>
+                          <div class="text-xs sm:text-sm"><span class="font-medium text-blue-600">Thời gian ước tính:</span> ${routeDuration} phút</div>
+                        </div>
+                      </div>
+                    `;
+                  }
+                } else {
+          console.error("No route data returned from API, using straight line");
+          createStraightLine(map, customerCoords, distanceStraightLine);
+                }
+              })
+              .catch(error => {
+        console.error("Error fetching route:", error);
+        // Fall back to straight line
+        createStraightLine(map, customerCoords, distanceStraightLine);
+      });
+  }, [customerLocation, calculateDistance, createStraightLine]);
+
+  // Khai báo các hàm xử lý map trước khi được sử dụng
+  const initMap = useCallback(() => {
+    try {
+      console.log("Initializing map with token:", mapboxgl.accessToken ? "Token exists" : "Missing token");
+      console.log("Window orderTrackingMap:", window.orderTrackingMap ? "exists" : "doesn't exist");
+      
+      if (window.orderTrackingMap) {
+        console.log("Map already initialized, returning existing instance");
+        return window.orderTrackingMap;
+      }
+      
+      // Make sure we have the map container
+      const mapContainer = document.getElementById('order-tracking-map');
+      if (!mapContainer) {
+        console.error("Map container not found when initializing map");
+        
+        // Try to create it if the parent exists
+        const mapContainerParent = document.getElementById('map-container');
+        if (!mapContainerParent) {
+          console.error("Map container parent also not found");
+          setMapError(true);
+          
+          // Let's attempt to force render the map container
+          setTimeout(() => {
+            const app = document.getElementById('root') || document.querySelector('.App');
+            if (app) {
+              console.log("Found app container, will try to force re-render");
+              const event = new Event('resize');
+              window.dispatchEvent(event);
+            }
+          }, 500);
+          
+          return null;
+        }
+        
+        // Create the map container
+        console.log("Creating new map container in parent");
+        const newContainer = document.createElement('div');
+        newContainer.id = 'order-tracking-map';
+        newContainer.className = 'absolute inset-0';
+        newContainer.style.width = '100%';
+        newContainer.style.height = '100%';
+        newContainer.style.minHeight = '300px';
+        mapContainerParent.appendChild(newContainer);
+        
+        // Try again after DOM update
+        setTimeout(() => {
+          try {
+            console.log("Retrying map initialization after creating container");
+            initMap();
+          } catch (err) {
+            console.error("Error in delayed map initialization:", err);
+            setMapError(true);
+          }
+        }, 100);
+        
+        return null;
+      }
+      
+      // Center of Vietnam with appropriate zoom level
+      const defaultCenter = [105.85, 16.45]; // Roughly center of Vietnam
+      const defaultZoom = 5.5; // Zoom level to see most of Vietnam
+      
+      // Make sure accessToken is set
+      mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+      
+      console.log("Creating new map instance with container:", mapContainer.id);
+      console.log("Mapbox GL initialized with token:", mapboxgl.accessToken.substring(0, 5) + "...");
+      
+      // Create the map instance
+      const map = new mapboxgl.Map({
+        container: mapContainer,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: defaultCenter,
+        zoom: defaultZoom,
+        minZoom: 4,
+        maxZoom: 18,
+        attributionControl: false,
+        logoPosition: 'bottom-left'
+      });
+      
+      // Add controls
+      map.addControl(new mapboxgl.NavigationControl({ 
+        showCompass: true,
+        visualizePitch: true
+      }), 'top-right');
+      
+      map.addControl(new mapboxgl.AttributionControl({
+        compact: true,
+        customAttribution: 'Bản đồ © Mapbox & OpenStreetMap',
+      }), 'bottom-left');
+      
+      // Add fullscreen control for better map interactions
+      map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+      
+      // Update map info element
+      const mapInfoElement = document.getElementById('map-info');
+      if (mapInfoElement) {
+        mapInfoElement.innerHTML = '<div class="text-center text-sm text-gray-600 font-medium">Đang tải bản đồ...</div>';
+      }
+      
+      // Store map instance for later use
+      window.orderTrackingMap = map;
+      
+      // Handle map load event
+      map.on('load', () => {
+        console.log("Map loaded successfully");
+        setMapLoaded(true);
+        
+        // Add markers when we have customer coordinates
+        if (customerLocation && customerLocation.lat && customerLocation.lng) {
+          console.log("Adding markers on map load");
+          addMapMarkers(map);
+        } else {
+          console.log("No customer location available for markers");
+        }
+      });
+      
+      // Handle map error
+      map.on('error', (e) => {
+        console.error("Map error:", e);
+        setMapError(true);
+      });
+      
+      return map;
+    } catch (error) {
+      console.error("Error initializing map:", error);
+      setMapError(true);
+      return null;
+    }
+  }, [customerLocation, addMapMarkers, setMapLoaded, setMapError]);
+
+  // Hàm đặt vị trí mặc định khi gặp lỗi (đã di chuyển xuống dưới để tránh circular dependency)
+  const setDefaultLocation = useCallback((address) => {
+    console.log("Không thể xác định tọa độ cho địa chỉ:", address);
+    
+    // Cập nhật customerLocation với trạng thái lỗi và hiển thị thông báo
+    const errorLocation = {
+      error: true,
+      errorMessage: "Không thể xác định tọa độ của địa chỉ giao hàng",
+      address: address || "Địa chỉ không xác định",
+      pending: false,
+      initialized: true
+    };
+    
+    setCustomerLocation(errorLocation);
+    setMapError(true);
+    
+    // Hiển thị thông báo lỗi
+    toast.error("Không thể xác định vị trí của địa chỉ giao hàng trên bản đồ");
+    
+    // Đảm bảo infoDiv tồn tại trước khi cập nhật
+    setTimeout(() => {
+      const infoDiv = document.getElementById('map-info');
+      if (infoDiv) {
+        infoDiv.innerHTML = `
+          <div class="p-2 text-center text-red-500 text-sm">
+            <p>Không thể xác định tọa độ cho địa chỉ: ${address}</p>
+            <p class="text-xs mt-1">Vui lòng kiểm tra lại địa chỉ giao hàng</p>
+          </div>
+        `;
+      }
+    }, 100);
+  }, []);
+  
+  // Trong useEffect cho việc xử lý khi order được tải
+
+  // Thêm biến để track request geocoding và khởi tạo bản đồ
+  const [geocodingRequested, setGeocodingRequested] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
+
+  // Sửa useEffect để giảm số lần gọi API và tối ưu việc tải bản đồ
+  useEffect(() => {
+    if (order && !customerLocation?.initialized && !geocodingRequested) {
+      console.log("Đang xử lý thông tin vị trí giao hàng từ order:", order._id);
+      
+      // Lấy thông tin địa chỉ đầy đủ khách hàng để hiển thị trên bản đồ
+      const fullAddress = getOrderShippingAddress(order);
+      console.log("Địa chỉ đầy đủ chi tiết khách hàng FINAL:", fullAddress);
+      
+      // Đánh dấu đã yêu cầu geocoding để tránh gọi lại nhiều lần
+      setGeocodingRequested(true);
+      
+      // Ưu tiên sử dụng tọa độ từ DB nếu có
+      if (order.deliveryCoordinates && order.deliveryCoordinates.lat && order.deliveryCoordinates.lng) {
+        console.log("Sử dụng tọa độ từ database:", order.deliveryCoordinates);
+        
+        const customerLocationData = {
+          lng: parseFloat(order.deliveryCoordinates.lng),
+          lat: parseFloat(order.deliveryCoordinates.lat),
+          address: fullAddress,
+          pending: false,
+          initialized: true
+        };
+        
+        setCustomerLocation(customerLocationData);
+        
+        // Khởi tạo bản đồ sau một khoảng thời gian ngắn để đảm bảo DOM đã sẵn sàng
+        if (!mapInitialized) {
+          setTimeout(() => {
+            try {
+              console.log("Khởi tạo bản đồ với tọa độ từ database:", customerLocationData);
+              initMap(customerLocationData);
+              setMapInitialized(true);
+            } catch (err) {
+              console.error("Lỗi khi khởi tạo bản đồ với tọa độ từ database:", err);
+              setMapError(true);
+            }
+          }, 500);
+        }
+      } else {
+        // Kiểm tra cache trước khi thực hiện geocoding mới
+        try {
+          // Thử đọc cache từ localStorage
+          const geocodingCache = JSON.parse(localStorage.getItem('geocoding_cache') || '{}');
+          const addressKey = fullAddress.trim()
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^\w\s]/g, '')
+            .replace(/\s+/g, '_');
+          
+          if (geocodingCache[addressKey]) {
+            const cachedResult = geocodingCache[addressKey];
+            
+            console.log("Sử dụng kết quả geocoding từ cache cho địa chỉ:", fullAddress);
+            
+            const customerLocationData = {
+              ...cachedResult,
+              address: fullAddress,
+              pending: false,
+              initialized: true,
+              geocoded: true,
+              source: 'cache'
+            };
+                
+            setCustomerLocation(customerLocationData);
+                
+            // Khởi tạo bản đồ với dữ liệu từ cache
+            if (!mapInitialized) {
+              setTimeout(() => {
+                try {
+                  console.log("Khởi tạo bản đồ với tọa độ từ cache:", customerLocationData);
+                  initMap(customerLocationData);
+                  setMapInitialized(true);
+                } catch (err) {
+                  console.error("Lỗi khi khởi tạo bản đồ với tọa độ từ cache:", err);
+                  setMapError(true);
+                }
+              }, 500);
+            }
+            
+            return; // Thoát khỏi useEffect, không cần geocoding
+          }
+        } catch (error) {
+          console.warn("Lỗi khi đọc cache geocoding:", error);
+        }
+        
+        // Nếu không có tọa độ từ database hoặc cache và chưa yêu cầu geocoding
+        console.log("Không có tọa độ từ database hoặc cache, thực hiện geocoding cho địa chỉ:", fullAddress);
+        
+        // Khởi tạo customer location với địa chỉ đầy đủ, pending=true để trigger geocoding
+        const pendingLocation = {
+          address: fullAddress,
+          pending: true,
+          initialized: false
+        };
+        
+        setCustomerLocation(pendingLocation);
+        
+        // Thực hiện geocoding
+        if (mapboxLoaded && geocodingFnRef.current) {
+          console.log("Map đã sẵn sàng, thực hiện geocoding");
+          
+          geocodingFnRef.current(fullAddress, (result) => {
+            if (result && !result.error) {
+              const locationData = {
+                ...result,
+                address: fullAddress,
+                pending: false,
+                initialized: true,
+                geocoded: true
+              };
+              
+              setCustomerLocation(locationData);
+              
+              // Khởi tạo bản đồ sau khi có tọa độ
+              if (!mapInitialized) {
+                setTimeout(() => {
+                  try {
+                    console.log("Khởi tạo bản đồ với tọa độ từ geocoding:", locationData);
+                    initMap(locationData);
+                    setMapInitialized(true);
+                  } catch (err) {
+                    console.error("Lỗi khi khởi tạo bản đồ sau geocoding:", err);
+                    setMapError(true);
+                  }
+                }, 100);
+              }
+            } else {
+              console.error("Lỗi geocoding:", result?.errorMessage || "Không xác định");
+              setDefaultLocation(fullAddress);
+            }
+          }, 1000);
+        } else {
+          performGeocoding(fullAddress);
+        }
+      }
+    }
+  }, [order, customerLocation?.initialized, initMap, mapboxLoaded, setCustomerLocation, setMapError, performGeocoding, getOrderShippingAddress, geocodingRequested, mapInitialized]);
+
+  // Theo dõi khi mapLoaded thay đổi để thực hiện geocoding
+  useEffect(() => {
+    // Đảm bảo chỉ thực hiện geocoding một lần cho mỗi địa chỉ
+    if (mapLoaded && customerLocation?.pending && customerLocation?.address && 
+        !customerLocation?.geocoded && !geocodingRequested) {
+      try {
+        console.log("Thực hiện geocoding địa chỉ khách hàng:", customerLocation.address);
+        
+        // Đánh dấu đã thực hiện geocoding request
+        setGeocodingRequested(true);
+        
+        // Đánh dấu đã thực hiện geocoding
+        setCustomerLocation(prev => ({...prev, geocoded: true}));
+        
+        if (geocodingFnRef.current) {
+          geocodingFnRef.current(customerLocation.address);
+        }
+      } catch (geocodingError) {
+        console.error("Lỗi khi thực hiện geocoding:", geocodingError);
+          setMapError(true);
+        // Usar la ubicación predeterminada en caso de error
+        if (customerLocation?.address) {
+          setDefaultLocation(customerLocation.address);
+        }
+      }
+    }
+  }, [mapLoaded, customerLocation, setDefaultLocation, geocodingRequested]);
+  
+  // Di chuyển fetchTrackingInfo lên trước (trước khi được sử dụng)
   const fetchTrackingInfo = useCallback(async (orderCode) => {
     if (!orderCode) {
       toast.warning("Đơn hàng chưa có mã vận đơn!");
@@ -88,7 +806,7 @@ export default function OrderDetail() {
       setShowTracking(false);
       return;
     }
-
+    
     try {
       setTrackingLoading(true);
       const response = await orderApi.getOrderTracking(orderCode);
@@ -110,344 +828,6 @@ export default function OrderDetail() {
     }
   }, []);
   
-  // Hàm tính khoảng cách giữa 2 điểm địa lý (Haversine formula)
-  const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    const R = 6371; // Bán kính trái đất (km)
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2); 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-    const distance = R * c;
-    return distance;
-  };
-  
-  // Hàm fallback vẽ đường thẳng - di chuyển lên đây để tránh lỗi
-  const fallbackToStraightLine = useCallback((start, end, map) => {
-    console.log("Sử dụng đường thẳng thay vì đường thực tế giữa:", start, "và", end);
-    
-    // Kiểm tra map và tọa độ
-    if (!map || !start || !end) {
-      console.error("Map hoặc tọa độ không hợp lệ để vẽ đường thẳng");
-      return;
-    }
-    
-    try {
-      // Xóa đường đi cũ nếu có
-      if (map.getSource('route')) {
-        map.removeLayer('route-layer');
-        map.removeSource('route');
-      }
-      
-      // Thêm source cho đường thẳng
-      map.addSource('route', {
-        'type': 'geojson',
-        'data': {
-          'type': 'Feature',
-          'properties': {},
-          'geometry': {
-            'type': 'LineString',
-            'coordinates': [start, end]
-          }
-        }
-      });
-      
-      // Vẽ đường thẳng với style đứt đoạn để phân biệt với đường thực tế
-      map.addLayer({
-        'id': 'route-layer',
-        'type': 'line',
-        'source': 'route',
-        'layout': {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
-        'paint': {
-          'line-color': '#2673DD',
-          'line-width': 4,
-          'line-opacity': 0.7,
-          'line-dasharray': [0.5, 1.5]
-        }
-      });
-      
-      // Fit bounds để hiển thị đầy đủ đường đi
-      const bounds = new mapboxgl.LngLatBounds()
-        .extend(start)
-        .extend(end);
-      map.fitBounds(bounds, { padding: 80 });
-      
-      // Tính khoảng cách theo đường chim bay
-      const distance = calculateDistance(
-        start[1], start[0],
-        end[1], end[0]
-      );
-      
-      // Ước tính thời gian giao hàng (giả định tốc độ trung bình 40km/h)
-      const estimatedMinutes = Math.ceil(distance / 40 * 60);
-      
-      // Hiển thị thông tin khoảng cách và thời gian
-      const infoDiv = document.getElementById('map-info');
-      if (infoDiv) {
-        infoDiv.innerHTML = `
-          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-            <div class="flex items-center gap-2">
-              <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
-              <span class="font-semibold text-gray-700 text-xs sm:text-sm">Cửa hàng → Địa chỉ nhận hàng (đường thẳng)</span>
-            </div>
-            <div class="flex gap-4">
-              <div class="text-xs sm:text-sm"><span class="font-medium text-blue-600">Khoảng cách:</span> ${distance.toFixed(1)} km</div>
-              <div class="text-xs sm:text-sm"><span class="font-medium text-blue-600">Thời gian ước tính:</span> ${estimatedMinutes} phút</div>
-            </div>
-          </div>
-        `;
-      }
-    } catch (error) {
-      console.error("Lỗi khi vẽ đường thẳng:", error);
-      // Không thể vẽ đường thẳng, hiển thị thông báo
-      const infoDiv = document.getElementById('map-info');
-      if (infoDiv) {
-        infoDiv.innerHTML = `
-          <div class="py-2 px-3 bg-yellow-50 text-yellow-700 rounded-md text-xs">
-            Không thể hiển thị đường đi. Xin vui lòng nhấn vào nút "Xem chỉ đường" để được chỉ đường chính xác.
-          </div>
-        `;
-      }
-    }
-  }, [calculateDistance]);
-  
-  // Hàm lấy đường đi - di chuyển lên đây
-  const getDirections = useCallback((start, end, map) => {
-    console.log("Lấy đường đi giữa:", start, "và", end);
-    
-    // Kiểm tra điểm bắt đầu và kết thúc
-    if (!start || !end || !Array.isArray(start) || !Array.isArray(end) || start.length !== 2 || end.length !== 2) {
-      console.error("Tọa độ không hợp lệ để lấy đường đi", { start, end });
-      fallbackToStraightLine(
-        [SHOP_LOCATION.lng, SHOP_LOCATION.lat],
-        [end[0], end[1]],
-        map
-      );
-      return;
-    }
-    
-    // Tối ưu hóa tham số cho API directions
-    const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&overview=full&access_token=${MAPBOX_ACCESS_TOKEN}`;
-    
-    console.log("Gọi API directions với URL:", directionsUrl);
-    
-    fetch(directionsUrl)
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`Directions API error: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        console.log("Kết quả directions:", data);
-        if (data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const routeGeometry = route.geometry;
-          
-          // Kiểm tra xem route có hợp lệ không
-          if (!routeGeometry || !routeGeometry.coordinates || routeGeometry.coordinates.length < 2) {
-            console.warn("Đường đi không hợp lệ, chuyển sang vẽ đường thẳng");
-            fallbackToStraightLine(start, end, map);
-            return;
-          }
-          
-          // Đặt bounds cho map để hiển thị đầy đủ đường đi
-          const bounds = new mapboxgl.LngLatBounds();
-          routeGeometry.coordinates.forEach(coord => {
-            bounds.extend(coord);
-          });
-          map.fitBounds(bounds, { padding: 80 });
-          
-          // Thêm đường đi vào bản đồ
-          if (map.getSource('route')) {
-            map.removeLayer('route-layer');
-            map.removeSource('route');
-          }
-          
-          // Thêm source mới cho đường đi
-          map.addSource('route', {
-            'type': 'geojson',
-            'data': {
-              'type': 'Feature',
-              'properties': {},
-              'geometry': routeGeometry
-            }
-          });
-          
-          // Vẽ đường đi với style phù hợp
-          map.addLayer({
-            'id': 'route-layer',
-            'type': 'line',
-            'source': 'route',
-            'layout': {
-              'line-join': 'round',
-              'line-cap': 'round'
-            },
-            'paint': {
-              'line-color': '#2673DD',
-              'line-width': 4,
-              'line-opacity': 0.7
-            }
-          });
-          
-          // Hiển thị thông tin khoảng cách và thời gian giao hàng
-          const distance = route.distance / 1000; // Đổi sang km
-          const duration = Math.ceil(route.duration / 60); // Đổi sang phút
-          
-          // Cập nhật thông tin hiển thị
-          const infoDiv = document.getElementById('map-info');
-          if (infoDiv) {
-            infoDiv.innerHTML = `
-              <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <div class="flex items-center gap-2">
-                  <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
-                  <span class="font-semibold text-gray-700 text-xs sm:text-sm">Cửa hàng → Địa chỉ nhận hàng</span>
-                </div>
-                <div class="flex gap-4">
-                  <div class="text-xs sm:text-sm"><span class="font-medium text-blue-600">Khoảng cách:</span> ${distance.toFixed(1)} km</div>
-                  <div class="text-xs sm:text-sm"><span class="font-medium text-blue-600">Thời gian:</span> ${duration} phút</div>
-                </div>
-              </div>
-            `;
-          }
-        } else {
-          console.warn("Không tìm thấy đường đi, chuyển sang vẽ đường thẳng");
-          fallbackToStraightLine(start, end, map);
-        }
-      })
-      .catch(error => {
-        console.error("Lỗi khi lấy đường đi:", error);
-        // Fallback: Vẽ đường thẳng nếu không thể lấy đường đi thực tế
-        fallbackToStraightLine(start, end, map);
-      });
-  }, [MAPBOX_ACCESS_TOKEN, fallbackToStraightLine]);
-  
-  // Khai báo các hàm xử lý map trước khi được sử dụng
-  const initMap = useCallback((location) => {
-    console.log("Bắt đầu khởi tạo bản đồ với vị trí:", location);
-    if (!location) {
-      console.error("Không thể khởi tạo bản đồ - không có vị trí");
-      setMapError(true);
-      return;
-    }
-
-    try {
-      const mapContainer = document.getElementById('order-tracking-map');
-      if (!mapContainer) {
-        console.error("Không tìm thấy container cho bản đồ");
-        return;
-      }
-
-      // Kiểm tra xem container đã có bản đồ chưa
-      if (mapContainer.__map_initialized) {
-        console.log("Bản đồ đã được khởi tạo trước đó");
-        return;
-      }
-
-      // Đánh dấu container đã được sử dụng
-      mapContainer.__map_initialized = true;
-
-      // Tạo ID định danh duy nhất cho phiên làm việc này
-      const mapInstanceId = `map_${Date.now()}`;
-      mapContainer.setAttribute('data-map-id', mapInstanceId);
-
-      console.log("Tạo bản đồ mới với ID:", mapInstanceId);
-
-      // Xác định vị trí giữa shop và khách hàng
-      const centerLng = (SHOP_LOCATION.lng + location.lng) / 2;
-      const centerLat = (SHOP_LOCATION.lat + location.lat) / 2;
-
-      // Tạo bản đồ mới với Mapbox
-      try {
-        const map = new mapboxgl.Map({
-          container: mapContainer,
-          style: 'mapbox://styles/mapbox/streets-v12', // style URL
-          center: [centerLng, centerLat],
-          zoom: 12
-        });
-        
-        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
-        map.addControl(new mapboxgl.FullscreenControl());
-        
-        // Đảm bảo map fit đúng với cả 2 điểm (shop và customer)
-        map.on('load', () => {
-          // Tạo marker cho vị trí cửa hàng
-          const shopEl = document.createElement('div');
-          shopEl.className = 'shop-marker';
-          shopEl.style.width = '36px';
-          shopEl.style.height = '36px';
-          shopEl.style.backgroundImage = 'url(https://deo.shopeemobile.com/shopee/shopee-pcmall-live-sg/ordertracking/f1f718b157cd67f128f91b166a08990e.png)';
-          shopEl.style.backgroundSize = 'cover';
-          
-          // Thêm marker shop với popup
-          new mapboxgl.Marker({ element: shopEl })
-            .setLngLat([SHOP_LOCATION.lng, SHOP_LOCATION.lat])
-            .setPopup(
-              new mapboxgl.Popup({ offset: 25 })
-                .setHTML(`
-            <div style="padding: 5px;">
-              <div style="font-weight: bold;">${SHOP_LOCATION.address}</div>
-              <div style="font-size: 12px; color: #666;">Địa điểm xuất hàng</div>
-            </div>
-                `)
-            )
-            .addTo(map);
-          
-          // Tạo custom element cho customer marker
-          const customerEl = document.createElement('div');
-          customerEl.className = 'customer-marker';
-          customerEl.style.width = '36px';
-          customerEl.style.height = '36px';
-          customerEl.style.backgroundImage = 'url(https://maps.google.com/mapfiles/ms/icons/red-dot.png)';
-          customerEl.style.backgroundSize = 'cover';
-          
-          // Sử dụng địa chỉ từ location
-          const displayAddress = location.address;
-          
-          // Thêm marker khách hàng với popup
-          new mapboxgl.Marker({ element: customerEl, color: '#ff0000' })
-            .setLngLat([location.lng, location.lat])
-            .setPopup(
-              new mapboxgl.Popup({ offset: 25 })
-                .setHTML(`
-            <div style="padding: 5px;">
-              <div style="font-weight: bold;">Địa chỉ giao hàng</div>
-              <div style="font-size: 12px; color: #666;">${displayAddress}</div>
-            </div>
-                `)
-            )
-            .addTo(map);
-          
-          // Sử dụng Mapbox Directions API để lấy đường đi thực tế
-          getDirections(
-            [SHOP_LOCATION.lng, SHOP_LOCATION.lat], 
-            [location.lng, location.lat], 
-            map
-          );
-        });
-        
-        console.log("Bản đồ được tạo thành công");
-      } catch (mapError) {
-        console.error("Lỗi khi tạo bản đồ:", mapError);
-        setMapError(true);
-        mapContainer.__map_initialized = false;
-        return;
-      }
-    } catch (error) {
-      console.error("Lỗi khi khởi tạo bản đồ:", error);
-      setMapError(true);
-    }
-  }, [getDirections]);
-  
-  // Xóa các định nghĩa trùng lặp
-
-  // Hàm tính khoảng cách giữa 2 điểm địa lý (Haversine formula) - đã được di chuyển lên trên
-  
   // Thêm useEffect để tải dữ liệu đơn hàng
   useEffect(() => {
     let isMounted = true;
@@ -465,9 +845,9 @@ export default function OrderDetail() {
           toast.error("Không tìm thấy thông tin người dùng, vui lòng đăng nhập lại.");
           setTimeout(() => navigate("/dang-nhap"), 2000);
           setLoading(false);
-          return;
-        }
-         
+      return;
+    }
+    
         const orderData = await orderApi.getOrderById(orderId);
         console.log("Đã tải xong dữ liệu đơn hàng:", orderData?._id);
          
@@ -480,9 +860,9 @@ export default function OrderDetail() {
           toast.error("Bạn không có quyền xem đơn hàng này.");
           setTimeout(() => navigate("/tai-khoan/don-hang"), 2000);
           setLoading(false);
-          return;
-        }
-        
+        return;
+      }
+      
         if (isMounted) {
           setOrder(orderData);
           setLoading(false);
@@ -495,23 +875,36 @@ export default function OrderDetail() {
         
           // Lấy thông tin địa chỉ khách hàng để hiển thị trên bản đồ
           if (orderData.userId && orderData.userId.address) {
-            const fullAddress = `${orderData.userId.address}, ${orderData.userId.ward || ''}, ${orderData.userId.district || ''}, ${orderData.userId.province || ''}`;
+            // Xây dựng địa chỉ đầy đủ với tất cả thành phần chi tiết
+            const addressComponents = [];
+            if (orderData.userId.houseNumber) addressComponents.push(orderData.userId.houseNumber);
+            if (orderData.userId.address) addressComponents.push(orderData.userId.address);
+            if (orderData.userId.hamlet) addressComponents.push(orderData.userId.hamlet);
+            if (orderData.userId.ward) addressComponents.push(orderData.userId.ward);
+            if (orderData.userId.district) addressComponents.push(orderData.userId.district);
+            if (orderData.userId.province) addressComponents.push(orderData.userId.province);
+            
+            // Nối tất cả thành phần lại với nhau
+            const fullAddress = addressComponents.filter(Boolean).join(", ");
+            
+            console.log("Địa chỉ đầy đủ chi tiết khách hàng:", fullAddress);
+            
+            // Không gán tọa độ cứng, chỉ đặt địa chỉ và trạng thái pending để trigger geocoding
             setCustomerLocation({
-              lat: 10.034236,
-              lng: 105.775285,
               address: fullAddress,
-              pending: false
+              pending: true,
+              initialized: false
             });
           } else {
             console.log("Không tìm thấy địa chỉ khách hàng trong đơn hàng");
-            // Sử dụng vị trí mặc định cho khách hàng
-            const defaultCustomerLocation = {
-              lat: 10.034236,
-              lng: 105.775285,
-              address: "Địa chỉ khách hàng không có thông tin",
-              pending: false
-            };
-            setCustomerLocation(defaultCustomerLocation);
+            // Hiển thị thông báo lỗi thay vì sử dụng tọa độ mặc định
+            setCustomerLocation({
+              error: true,
+              errorMessage: "Không tìm thấy thông tin địa chỉ khách hàng",
+              address: "Không có thông tin địa chỉ",
+              pending: false,
+              initialized: true
+            });
           }
         }
         
@@ -547,7 +940,7 @@ export default function OrderDetail() {
             clearInterval(intervalId);
           };
         }
-      } catch (err) {
+              } catch (err) {
         console.error("Lỗi khi lấy thông tin đơn hàng:", err);
         if (isMounted) {
           toast.error("Không thể tải thông tin đơn hàng. Vui lòng thử lại sau.");
@@ -563,319 +956,6 @@ export default function OrderDetail() {
       isMounted = false;
     };
   }, [orderId, navigate, fetchTrackingInfo]);
-
-  // Thêm useEffect để xử lý khi order được tải để trích xuất vị trí khách hàng
-  useEffect(() => {
-    if (order && order.userId) {
-      console.log("Đang xử lý thông tin vị trí giao hàng từ order:", order);
-      
-      // Lấy thông tin địa chỉ đầy đủ khách hàng để hiển thị trên bản đồ
-      const fullAddress = order.userId.address ? 
-        `${order.userId.address}, ${order.userId.ward || ''}, ${order.userId.district || ''}, ${order.userId.province || ''}` : 
-        "Địa chỉ không xác định";
-      
-      console.log("Địa chỉ đầy đủ khách hàng:", fullAddress);
-      
-      // Ưu tiên sử dụng tọa độ từ DB nếu có
-      if (order.deliveryCoordinates && order.deliveryCoordinates.lat && order.deliveryCoordinates.lng) {
-        console.log("Sử dụng tọa độ từ database:", order.deliveryCoordinates);
-        
-        const customerLocationData = {
-          lng: parseFloat(order.deliveryCoordinates.lng),
-          lat: parseFloat(order.deliveryCoordinates.lat),
-          address: fullAddress,
-          pending: false
-        };
-        
-        setCustomerLocation(customerLocationData);
-        
-        // Khởi tạo bản đồ sau một khoảng thời gian ngắn để đảm bảo DOM đã sẵn sàng
-        setTimeout(() => {
-          try {
-            console.log("Khởi tạo bản đồ với tọa độ từ database:", customerLocationData);
-            initMap(customerLocationData);
-          } catch (err) {
-            console.error("Lỗi khi khởi tạo bản đồ với tọa độ từ database:", err);
-            setMapError(true);
-          }
-        }, 500);
-        
-        return; // Dừng xử lý tiếp theo nếu đã có tọa độ
-      }
-      
-      // Nếu không có tọa độ trong database, thực hiện geocoding
-      console.log("Không tìm thấy tọa độ trong DB, thực hiện geocoding cho địa chỉ:", fullAddress);
-      
-      // Đánh dấu địa chỉ cần geocoding
-      setCustomerLocation({
-        address: fullAddress,
-        pending: true
-      });
-    }
-  }, [order, initMap]);
-  
-  // Mover aquí la definición de setDefaultLocation
-  // Hàm sử dụng vị trí mặc định (tránh lặp lại code)
-  const setDefaultLocation = useCallback((address) => {
-    console.log("Sử dụng vị trí mặc định cho địa chỉ:", address);
-    // Sử dụng vị trí mặc định ở Cần Thơ
-    const defaultLocation = {
-          lat: 10.034236,
-          lng: 105.775285,
-      address: address,
-          pending: false
-    };
-    setCustomerLocation(defaultLocation);
-    
-    setTimeout(() => {
-      try {
-        initMap(defaultLocation);
-      } catch (err) {
-        console.error("Lỗi khi khởi tạo bản đồ với vị trí mặc định:", err);
-        setMapError(true);
-      }
-    }, 300);
-  }, [initMap]);
-  
-  // Hàm thử phương pháp geocoding thay thế - đặt trước performGeocoding để tránh lỗi
-  const performFallbackGeocoding = useCallback((address, specialLocation = null) => {
-    // Trích xuất thông tin quan trọng từ địa chỉ
-    console.log("Thực hiện geocoding dự phòng với địa chỉ:", address, "specialLocation:", specialLocation);
-    
-    // Lấy phần cuối của địa chỉ (quận/huyện, tỉnh/thành phố)
-    const parts = address.split(',').map(part => part.trim());
-    
-    if (parts.length < 2) {
-      console.warn("Địa chỉ không đủ thông tin chi tiết, sử dụng mặc định");
-      setDefaultLocation(address);
-      return;
-    }
-    
-    // Tìm các từ khóa xác định trong địa chỉ
-    let district = '';
-    let province = '';
-    let commune = '';
-    
-    // Scan for specific keywords in the address
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i].toLowerCase();
-      
-      if (part.includes('huyện') || part.includes('quận') || part.includes('thị xã') || part.includes('tx')) {
-        district = parts[i];
-      } else if (part.includes('tỉnh') || part.includes('thành phố') || part.includes('tp')) {
-        province = parts[i];
-      } else if (part.includes('xã') || part.includes('phường') || part.includes('thị trấn') || part.includes('tt')) {
-        commune = parts[i];
-      }
-    }
-    
-    // Nếu không tìm thấy bằng từ khóa, thử lấy phần cuối
-    if (!province && parts.length > 0) {
-      province = parts[parts.length - 1];
-    }
-    
-    if (!district && parts.length > 1) {
-      district = parts[parts.length - 2];
-    }
-    
-    // Tạo các địa chỉ dự phòng với mức độ chi tiết khác nhau
-    const fallbackAddresses = [];
-    
-    // Thêm địa chỉ đầy đủ nhất có thể
-    if (province) {
-      if (district) {
-        if (commune) {
-          fallbackAddresses.push(`${commune}, ${district}, ${province}, Việt Nam`);
-        }
-        fallbackAddresses.push(`${district}, ${province}, Việt Nam`);
-      }
-      fallbackAddresses.push(`${province}, Việt Nam`);
-    }
-    
-    // Nếu không có địa chỉ dự phòng, sử dụng vị trí mặc định
-    if (fallbackAddresses.length === 0) {
-      console.warn("Không thể tạo địa chỉ dự phòng, sử dụng vị trí mặc định");
-      setDefaultLocation(address);
-      return;
-    }
-
-    // Thử từng địa chỉ dự phòng cho đến khi thành công
-    const tryNextAddress = (index) => {
-      if (index >= fallbackAddresses.length) {
-        console.warn("Đã thử tất cả địa chỉ dự phòng mà không thành công, sử dụng vị trí mặc định");
-        setDefaultLocation(address);
-      return;
-    }
-
-      const simplifiedAddress = fallbackAddresses[index];
-      console.log(`Thử geocoding với địa chỉ dự phòng (${index + 1}/${fallbackAddresses.length}):`, simplifiedAddress);
-      
-      const encodedAddress = encodeURIComponent(simplifiedAddress);
-      
-      // Đối với Sóc Trăng, sử dụng proximity để tăng độ chính xác
-      const proximity = simplifiedAddress.toLowerCase().includes("sóc trăng") ? 
-        "105.77476,9.613899" : // Tọa độ trung tâm Sóc Trăng đã điều chỉnh
-        "105.77,10.03"; // Mặc định là Cần Thơ
-      
-      const geocodingUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${MAPBOX_ACCESS_TOKEN}&country=vn&proximity=${proximity}&limit=1&language=vi`;
-      
-      fetch(geocodingUrl)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`Geocoding API error: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(data => {
-          if (data.features && data.features.length > 0) {
-            const feature = data.features[0];
-            const [lng, lat] = feature.center;
-            
-            console.log("Geocoding dự phòng thành công:", { lng, lat, simplifiedAddress });
-            
-            // Tạo vị trí mới từ kết quả dự phòng
-          const customerLocationData = {
-              lng: lng,
-              lat: lat,
-              address: address, // Vẫn giữ địa chỉ gốc để hiển thị
-            pending: false
-          };
-          
-          setCustomerLocation(customerLocationData);
-
-          setTimeout(() => {
-            try {
-                console.log("Khởi tạo bản đồ với vị trí từ geocoding dự phòng:", customerLocationData);
-              initMap(customerLocationData);
-            } catch (err) {
-              console.error("Lỗi khi khởi tạo bản đồ:", err);
-              setMapError(true);
-            }
-          }, 300);
-          } else {
-            // Thử địa chỉ tiếp theo
-            tryNextAddress(index + 1);
-          }
-        })
-        .catch(error => {
-          console.error(`Lỗi khi geocoding địa chỉ dự phòng ${index + 1}:`, error);
-          // Thử địa chỉ tiếp theo
-          tryNextAddress(index + 1);
-        });
-    };
-    
-    // Bắt đầu thử với địa chỉ đầu tiên
-    tryNextAddress(0);
-  }, [initMap, MAPBOX_ACCESS_TOKEN, setDefaultLocation]);
-  
-  // Chuyển địa chỉ thành tọa độ - phải nằm sau định nghĩa của initMap
-  const performGeocoding = useCallback((address) => {
-    if (!address) {
-      console.error("Không có địa chỉ để thực hiện geocoding");
-      setMapError(true);
-      return;
-    }
-
-    try {
-      console.log("Thực hiện geocoding cho địa chỉ:", address);
-      
-      // Chuẩn bị địa chỉ để tăng độ chính xác
-      let structuredAddress = address;
-      
-      // Phân tích địa chỉ để tìm kiếm chính xác hơn
-      const parts = address.split(',').map(part => part.trim());
-      let district = '';
-      let province = '';
-      
-      // Trích xuất quận/huyện và tỉnh/thành phố từ địa chỉ
-      if (parts.length >= 2) {
-        for (let i = parts.length - 1; i >= 0; i--) {
-          const part = parts[i].toLowerCase();
-          if (part.includes('tỉnh') || part.includes('thành phố') || 
-              part.includes('tp') || part.includes('t.p')) {
-            province = parts[i];
-          } else if (part.includes('quận') || part.includes('huyện') || 
-                    part.includes('thị xã') || part.includes('tx')) {
-            district = parts[i];
-          }
-        }
-      }
-      
-      // Tạo địa chỉ cấu trúc cho API geocoding
-      if (district && province) {
-        structuredAddress = `${district}, ${province}, Việt Nam`;
-      }
-      
-      // Thêm "Việt Nam" vào cuối nếu chưa có
-      if (!structuredAddress.toLowerCase().includes("việt nam")) {
-        structuredAddress += ", Việt Nam";
-      }
-      
-      console.log("Địa chỉ cấu trúc cho geocoding:", structuredAddress);
-      
-      const encodedAddress = encodeURIComponent(structuredAddress);
-      
-      // Sử dụng tọa độ chung cho Việt Nam
-      const proximity = "105.77,10.03"; // Mặc định là Cần Thơ
-      
-      const geocodingUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${MAPBOX_ACCESS_TOKEN}&country=vn&proximity=${proximity}&limit=1&language=vi`;
-      
-      console.log("Gọi API geocoding với địa chỉ đã chuẩn hóa:", structuredAddress);
-      
-      // Sử dụng fetch để gọi API
-      fetch(geocodingUrl)
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`Geocoding API error: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log("Kết quả geocoding:", data);
-          // Kiểm tra kết quả
-          if (data.features && data.features.length > 0) {
-            const feature = data.features[0];
-            const [lng, lat] = feature.center; // Mapbox trả về [longitude, latitude]
-            
-            // Thêm tên địa điểm tìm thấy
-            const placeName = feature.place_name;
-            
-            console.log("Đã tìm thấy tọa độ:", { lng, lat, placeName });
-            
-            const customerLocationData = {
-              lng: lng,
-              lat: lat,
-              address: placeName || address, // Sử dụng tên địa điểm tìm thấy
-              pending: false
-            };
-      
-            setCustomerLocation(customerLocationData);
-            
-            // Khởi tạo bản đồ sau khi có tọa độ
-            setTimeout(() => {
-              try {
-                initMap(customerLocationData);
-              } catch (err) {
-                console.error("Lỗi khi khởi tạo bản đồ:", err);
-                setMapError(true);
-              }
-            }, 300);
-          } else {
-            console.warn("Không tìm thấy kết quả geocoding, thử tìm kiếm với phương pháp khác");
-            // Thử tìm kiếm với từng phần của địa chỉ
-            performFallbackGeocoding(address);
-          }
-        })
-        .catch(error => {
-          console.error("Không thể chuyển đổi địa chỉ thành tọa độ:", error);
-          performFallbackGeocoding(address);
-        });
-    } catch (error) {
-      console.error("Lỗi khi thực hiện geocoding:", error);
-      setMapError(true);
-      setDefaultLocation(address);
-    }
-  }, [initMap, MAPBOX_ACCESS_TOKEN, setDefaultLocation, performFallbackGeocoding]);
   
   // Đặt lỗi bản đồ nếu có lỗi tải API
   useEffect(() => {
@@ -889,48 +969,74 @@ export default function OrderDetail() {
         toast.error("Không thể tải bản đồ. Vui lòng làm mới trang và thử lại.");
       }
     }
-    
-    // Kiểm tra sau 5 giây nếu Mapbox đã được tải nhưng không hoạt động
-    const timeout = setTimeout(() => {
-      if (mapLoaded && !mapError) {
-        try {
-          // Nếu có customerLocation nhưng chưa khởi tạo bản đồ, thử lại
-          if (customerLocation && !customerLocation.pending && !document.getElementById('order-tracking-map')?.__map_initialized) {
-            console.log("Thử lại khởi tạo bản đồ...");
-            try {
-            initMap(customerLocation);
-            } catch (mapInitError) {
-              console.error("Lỗi khi khởi tạo bản đồ:", mapInitError);
-              setMapError(true);
-            }
-          }
-        } catch (error) {
-          console.error("Mapbox đã tải nhưng không thể sử dụng:", error);
-          setMapError(true);
-          toast.error("Mapbox gặp vấn đề. Sử dụng bản đồ tĩnh thay thế.");
-        }
-      }
-    }, 5000);
-    
-    return () => clearTimeout(timeout);
-  }, [loadError, mapError, customerLocation, initMap, mapLoaded]);
-
-  // Theo dõi khi mapLoaded thay đổi để thực hiện geocoding
+  }, [loadError]);
+  
+  // Thêm useEffect để xử lý khi mapLoaded thay đổi và khởi tạo bản đồ mặc định nếu chưa có vị trí khách hàng
   useEffect(() => {
-    if (mapLoaded && customerLocation?.pending && customerLocation?.address) {
-      try {
-        console.log("Thực hiện geocoding địa chỉ khách hàng:", customerLocation.address);
-      performGeocoding(customerLocation.address);
-      } catch (geocodingError) {
-        console.error("Lỗi khi thực hiện geocoding:", geocodingError);
-        setMapError(true);
-        // Usar la ubicación predeterminada en caso de error
-        if (customerLocation?.address) {
-          setDefaultLocation(customerLocation.address);
+    // Chỉ chạy một lần khi mapLoaded = true và chưa có customerLocation
+    // Đảm bảo chỉ chạy một lần với biến flag
+    if (mapLoaded && !mapError && !customerLocation && !window.__map_default_initialized && !window._default_location_requested) {
+      console.log("Khởi tạo vị trí mặc định cho bản đồ vì không có customerLocation");
+      // Đánh dấu đã yêu cầu khởi tạo
+      window._default_location_requested = true;
+      // Đánh dấu đã khởi tạo
+      window.__map_default_initialized = true;
+      
+      const defaultLocation = {
+        lat: 10.034236,
+        lng: 105.775285,
+        address: order?.userId?.address || "Địa chỉ không xác định",
+        pending: false,
+        initialized: true
+      };
+      setCustomerLocation(defaultLocation);
+      setTimeout(() => {
+        try {
+          initMap(defaultLocation);
+        } catch (err) {
+          console.error("Lỗi khi khởi tạo bản đồ với vị trí mặc định:", err);
+          setMapError(true);
         }
+      }, 500);
+    }
+  }, [mapLoaded, mapError, order, initMap]);
+
+  // Thêm useEffect để tải bản đồ khi có thông tin vị trí
+  useEffect(() => {
+    // Nếu đã có vị trí khách hàng và chưa bị lỗi map và bản đồ chưa được khởi tạo
+    if (customerLocation && !mapError && mapLoaded && !window.__map_initialized && !window._map_initialization_requested) {
+      console.log("Có vị trí khách hàng, thử tải bản đồ:", customerLocation);
+      // Đánh dấu đã yêu cầu khởi tạo
+      window._map_initialization_requested = true;
+      // Đánh dấu đã khởi tạo
+      window.__map_initialized = true;
+      
+      // Tạo div cho bản đồ nếu chưa tồn tại
+      const mapContainer = document.getElementById('order-tracking-map');
+      if (!mapContainer) {
+        console.log("Không tìm thấy container 'order-tracking-map' cho bản đồ");
+        
+        // Kiểm tra container map-container thay thế
+        const mapContainerAlt = document.getElementById('map-container');
+        if (mapContainerAlt) {
+          // Tạo div cho Mapbox nếu chưa có
+          if (!mapContainerAlt.querySelector('#order-tracking-map')) {
+            const mapDiv = document.createElement('div');
+            mapDiv.id = 'order-tracking-map';
+            mapDiv.style.width = '100%';
+            mapDiv.style.height = '100%';
+            mapContainerAlt.appendChild(mapDiv);
+            
+            // Khởi tạo bản đồ
+            setTimeout(() => initMap(customerLocation), 100);
+          }
+        }
+      } else if (!mapContainer.__map_initialized) {
+        // Khởi tạo bản đồ nếu container tồn tại nhưng chưa có bản đồ
+        initMap(customerLocation);
       }
     }
-  }, [mapLoaded, customerLocation, performGeocoding, setDefaultLocation]);
+  }, [customerLocation, mapError, mapLoaded, initMap]);
 
   // Manejar errores de Mapbox y mostrar el mapa estático como alternativa
   useEffect(() => {
@@ -994,39 +1100,6 @@ export default function OrderDetail() {
     }
   }, [mapLoaded, mapError, customerLocation, initMap, order]);
 
-  // Thêm useEffect để tải bản đồ khi có thông tin vị trí
-  useEffect(() => {
-    // Nếu đã có vị trí khách hàng và chưa bị lỗi map, thử tải bản đồ
-    if (customerLocation && !mapError && mapLoaded) {
-      console.log("Có vị trí khách hàng, thử tải bản đồ:", customerLocation);
-      
-      // Tạo div cho bản đồ nếu chưa tồn tại
-      const mapContainer = document.getElementById('order-tracking-map');
-      if (!mapContainer) {
-        console.log("Không tìm thấy container 'order-tracking-map' cho bản đồ");
-        
-        // Kiểm tra container map-container thay thế
-        const mapContainerAlt = document.getElementById('map-container');
-        if (mapContainerAlt) {
-          // Tạo div cho Mapbox nếu chưa có
-          if (!mapContainerAlt.querySelector('#order-tracking-map')) {
-            const mapDiv = document.createElement('div');
-            mapDiv.id = 'order-tracking-map';
-            mapDiv.style.width = '100%';
-            mapDiv.style.height = '100%';
-            mapContainerAlt.appendChild(mapDiv);
-            
-            // Khởi tạo bản đồ
-            setTimeout(() => initMap(customerLocation), 100);
-          }
-        }
-      } else if (!mapContainer.__map_initialized) {
-        // Khởi tạo bản đồ nếu container tồn tại nhưng chưa có bản đồ
-        initMap(customerLocation);
-      }
-    }
-  }, [customerLocation, mapError, mapLoaded, initMap]);
-
   // Cải thiện hàm formatDate để hiển thị ngày dự kiến giao hàng đẹp hơn
   const formatDate = (dateString) => {
     const options = { 
@@ -1049,165 +1122,34 @@ export default function OrderDetail() {
     };
     return new Date(dateString).toLocaleDateString('vi-VN', options);
   };
-
-  // Hàm lấy encoded path từ Mapbox Directions API cho bản đồ tĩnh
-  const getEncodedPath = useCallback(() => {
-    // Ruta de ejemplo codificada en polyline para mostrar en el mapa estático
-    // Este es un camino predefinido para usar cuando no podemos obtener la ruta real
-    // desde la API de directions (que requiere llamadas del lado del servidor)
-    
-    // Devuelve un path codificado representando una ruta aproximada
-    if (customerLocation && customerLocation.lng && customerLocation.lat) {
-      try {
-        // Crear un path básico con algunos puntos intermedios entre la tienda y el cliente
-        const shopLng = SHOP_LOCATION.lng;
-        const shopLat = SHOP_LOCATION.lat;
-        const custLng = customerLocation.lng;
-        const custLat = customerLocation.lat;
-        
-        // Calculamos 3 puntos intermedios para hacer la ruta más realista
-        const path = [
-          [shopLng, shopLat],
-          [shopLng + (custLng - shopLng) * 0.25, shopLat + (custLat - shopLat) * 0.25],
-          [shopLng + (custLng - shopLng) * 0.5, shopLat + (custLat - shopLat) * 0.5],
-          [shopLng + (custLng - shopLng) * 0.75, shopLat + (custLat - shopLat) * 0.75],
-          [custLng, custLat]
-        ];
-        
-        // Codificar el path en formato polyline para Mapbox
-        // Usamos una versión simplificada de codificación por compatibilidad
-        return path.map(point => point.join(',').trim()).join(';');
-      } catch (error) {
-        console.error("Error al generar el path codificado:", error);
-      }
-    }
-    
-    // Devolver un path predeterminado en caso de error
-    return `${SHOP_LOCATION.lng},${SHOP_LOCATION.lat};${customerLocation?.lng || 105.76},${customerLocation?.lat || 10.02}`;
-  }, [customerLocation]);
-
-  // Hiển thị phiên bản đơn giản của bản đồ
-  const renderSimpleMap = useCallback(() => {
-    // Si no tenemos la ubicación del cliente, mostrar un mensaje de carga
-    if (!customerLocation) {
-      return (
-        <div className="w-full aspect-video bg-gray-100 flex items-center justify-center rounded-lg border border-gray-200">
-          <div className="text-gray-500 flex flex-col items-center">
-            <FaMapMarkerAlt size={32} className="mb-2 text-gray-400" />
-            <p>Đang tải thông tin địa chỉ...</p>
-          </div>
-        </div>
-      );
-    }
-    
-    // Xác định địa chỉ hiển thị cho khách hàng - sử dụng địa chỉ thực tế từ customerLocation
-    const displayAddress = customerLocation.address;
-    
-    // Crear la URL para el mapa estático de Mapbox
-    const path = getEncodedPath();
-    const mapWidth = 800;
-    const mapHeight = 450;
-    const zoom = 13;
-    
-    // Marcadores para la tienda y el cliente
-    const shopMarker = `pin-s-shop+C41E3A(${SHOP_LOCATION.lng},${SHOP_LOCATION.lat})`;
-    const customerMarker = `pin-s-home+2673DD(${customerLocation.lng},${customerLocation.lat})`;
-    
-    // Crear la URL para el mapa estático con la ruta y los marcadores
-    const mapImageUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/path-4+2673DD-0.7(${path})/${shopMarker},${customerMarker}/auto/${mapWidth}x${mapHeight}?access_token=${MAPBOX_ACCESS_TOKEN}`;
-    
-    // URL para ver las direcciones en Google Maps (más común para usuarios)
-    const directionsUrl = `https://www.google.com/maps/dir/${SHOP_LOCATION.lat},${SHOP_LOCATION.lng}/${customerLocation.lat},${customerLocation.lng}/data=!3m1!4b1!4m2!4m1!3e0`;
-    
-    // Calcular la distancia aproximada
-    const distance = calculateDistance(
-      SHOP_LOCATION.lat, SHOP_LOCATION.lng,
-      customerLocation.lat, customerLocation.lng
-    );
-    
-    // Estimar el tiempo de entrega (40 km/h)
-    const estimatedTime = Math.ceil(distance / 40 * 60);
-    
-    return (
-      <div className="w-full rounded-lg overflow-hidden border border-gray-200">
-        <div className="relative aspect-video w-full bg-gray-100 overflow-hidden">
-          <img 
-            src={mapImageUrl} 
-            alt="Bản đồ vị trí giao hàng" 
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              console.error("Lỗi khi tải bản đồ tĩnh");
-              e.target.src = `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/${customerLocation.lng},${customerLocation.lat},${zoom}/${mapWidth}x${mapHeight}?access_token=${MAPBOX_ACCESS_TOKEN}`;
-            }}
-          />
-          <a 
-            href={directionsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute bottom-3 right-3 bg-white rounded-md shadow-md px-3 py-1.5 text-blue-600 text-xs font-medium hover:bg-blue-50 transition border border-gray-200 flex items-center gap-1"
-          >
-            <FaDirections className="text-blue-600" size={14} />
-            Xem chỉ đường
-          </a>
-        </div>
-        <div className="px-3 py-2 bg-white border-t border-gray-200">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-3 h-3 rounded-full bg-green-500"></span>
-              <span className="font-semibold text-gray-700 text-xs sm:text-sm">Cửa hàng → {displayAddress}</span>
-            </div>
-            <div className="flex gap-4">
-              <div className="text-xs sm:text-sm"><span className="font-medium text-blue-600">Khoảng cách:</span> {distance.toFixed(1)} km</div>
-              <div className="text-xs sm:text-sm"><span className="font-medium text-blue-600">Thời gian ước tính:</span> {estimatedTime} phút</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }, [customerLocation, MAPBOX_ACCESS_TOKEN, getEncodedPath, calculateDistance]);
-
-  // Hàm hiển thị bản đồ (quyết định hiển thị bản đồ nào)
-  const renderMap = useCallback(() => {
-    // Kiểm tra nếu đã hiển thị bản đồ tương tác thành công, không hiển thị static map
+  
+  // Tạo useEffect mới để đảm bảo container map tồn tại
+  useEffect(() => {
     if (mapLoaded && !mapError) {
-      // Xác định địa chỉ hiển thị cho khách hàng - sử dụng địa chỉ thực tế
-      const displayAddress = customerLocation?.address || "Địa chỉ giao hàng";
+      // Tìm hoặc tạo container cho bản đồ
+      const mapContainerDiv = document.getElementById('map-container');
+      const mapDiv = document.getElementById('order-tracking-map');
       
-      return (
-        <div className="w-full relative rounded-lg overflow-hidden border border-gray-200">
-          <div className="aspect-video w-full" id="map-container"></div>
-          <div id="map-info" className="px-3 py-2 bg-white border-t border-gray-200"></div>
-          {/* Nút mở bản đồ chỉ đường */}
-          {customerLocation && (
-            <a 
-              href={`https://www.google.com/maps/dir/${SHOP_LOCATION.lat},${SHOP_LOCATION.lng}/${customerLocation.lat},${customerLocation.lng}/data=!3m1!4b1!4m2!4m1!3e0`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="absolute bottom-12 right-3 bg-white rounded-md shadow-md px-3 py-1.5 text-blue-600 text-xs font-medium hover:bg-blue-50 transition border border-gray-200 flex items-center gap-1"
-            >
-              <FaDirections className="text-blue-600" size={14} />
-              Xem chỉ đường tới {displayAddress}
-            </a>
-          )}
-        </div>
-      );
+      if (mapContainerDiv && !mapDiv) {
+        console.log("Tạo mới div cho map vì không tìm thấy order-tracking-map");
+        const newMapDiv = document.createElement('div');
+        newMapDiv.id = 'order-tracking-map';
+        newMapDiv.style.width = '100%';
+        newMapDiv.style.height = '100%';
+        newMapDiv.style.minHeight = '300px';
+        mapContainerDiv.appendChild(newMapDiv);
+      }
+      
+      // Đảm bảo container có kích thước
+      if (mapContainerDiv) {
+        mapContainerDiv.style.minHeight = '300px';
+      }
+      
+      // Reset các biến global để tránh lỗi đã khởi tạo
+      window.__map_initialized = false;
+      window.__map_default_initialized = false;
     }
-    
-    // Nếu không thể tải bản đồ tương tác, hiển thị bản đồ tĩnh
-    if (customerLocation) {
-      return renderSimpleMap();
-    }
-    
-    // Nếu không có địa chỉ khách hàng, hiển thị thông báo
-    return (
-      <div className="w-full aspect-video bg-gray-100 flex items-center justify-center rounded-lg border border-gray-200">
-        <div className="text-gray-500 flex flex-col items-center">
-          <FaMapMarkerAlt size={32} className="mb-2 text-gray-400" />
-          <p>Đang tải thông tin địa chỉ...</p>
-        </div>
-      </div>
-    );
-  }, [mapLoaded, mapError, customerLocation, renderSimpleMap]);
+  }, [mapLoaded, mapError]);
 
   useEffect(() => {
     // Escuchar errores de Mapbox para setMapError
@@ -1223,6 +1165,487 @@ export default function OrderDetail() {
       window.removeEventListener('error', handleMapboxError);
     };
   }, []);
+
+  // Cleanup global variables khi component unmount
+  useEffect(() => {
+    return () => {
+      // Xóa tất cả các biến global đã tạo
+      console.log("Cleanup global variables khi component unmount");
+      
+      // Xóa instance map nếu có
+      if (window.mapInstance) {
+        try {
+          window.mapInstance.remove();
+        } catch (e) {
+          console.error("Lỗi khi xóa map instance:", e);
+        }
+        window.mapInstance = null;
+      }
+      
+      // Reset các cờ đánh dấu
+      window.__map_initialized = false;
+      window.__map_default_initialized = false;
+      window._geocoding_requested = false;
+      window._default_location_requested = false;
+      window._map_initialization_requested = false;
+      
+      // Xóa danh sách đang xử lý
+      window._geocoding_in_progress = [];
+      window._fallback_in_progress = {};
+      
+      // Xóa hàm global
+      window._performFallbackGeocoding = null;
+    };
+  }, []);
+
+  // Thêm log để hiển thị thông tin địa chỉ trong đơn hàng
+  useEffect(() => {
+    if (order) {
+      console.log("Thông tin địa chỉ trong đơn hàng:", {
+        shippingAddress: order?.shippingAddress,
+        shippingInfoAddress: order?.shippingInfo?.address,
+        shippingAddress2: order?.shipping?.address,
+        userAddress: order?.userId?.address
+      });
+    }
+  }, [order]);
+
+  // Tạo useEffect mới để debug việc lấy địa chỉ
+  useEffect(() => {
+    if (order) {
+      console.log("========== DEBUG ĐỊA CHỈ GIAO HÀNG ==========");
+      console.log("Order ID:", order._id);
+      console.log("1. shippingAddress:", order.shippingAddress);
+      console.log("2. shipping.address:", order.shipping?.address);
+      console.log("3. shippingInfo.address:", order.shippingInfo?.address);
+      
+      if (order.userId && typeof order.userId === 'object') {
+        console.log("4. userId.address:", order.userId.address);
+        console.log("5. userId.fullAddress:", order.userId.fullAddress);
+        console.log("6. Các thành phần địa chỉ:");
+        console.log("   - houseNumber:", order.userId.houseNumber);
+        console.log("   - hamlet:", order.userId.hamlet);
+        console.log("   - ward:", order.userId.ward);
+        console.log("   - district:", order.userId.district);
+        console.log("   - province:", order.userId.province);
+      }
+      
+      // Lấy địa chỉ cuối cùng được sử dụng
+      const finalAddress = getOrderShippingAddress(order);
+      console.log("Địa chỉ CUỐI CÙNG được sử dụng:", finalAddress);
+      console.log("==========================================");
+    }
+  }, [order, getOrderShippingAddress]);
+
+  // Lưu hàm geocoding vào ref để có thể gọi từ useEffect
+  useEffect(() => {
+    geocodingFnRef.current = performGeocoding;
+  }, [performGeocoding]);
+
+  // Add this useEffect to make sure the map container exists
+  useEffect(() => {
+    // Create the map container if it doesn't exist
+    let mapContainer = document.getElementById('order-tracking-map');
+    if (!mapContainer) {
+      const mapContainerParent = document.getElementById('map-container');
+      if (mapContainerParent) {
+        console.log("Tạo map container từ useEffect");
+        mapContainer = document.createElement('div');
+        mapContainer.id = 'order-tracking-map';
+        mapContainer.style.width = '100%';
+        mapContainer.style.height = '100%';
+        mapContainer.style.minHeight = '300px';
+        mapContainerParent.appendChild(mapContainer);
+      }
+    }
+  }, []);
+
+  // Modify useEffect for map initialization
+  useEffect(() => {
+    // Create the map container if it doesn't exist
+    const setupMapContainer = () => {
+      let mapContainer = document.getElementById('order-tracking-map');
+      if (!mapContainer) {
+        const mapContainerParent = document.getElementById('map-container');
+        if (mapContainerParent) {
+          console.log("Tạo map container từ useEffect");
+          mapContainer = document.createElement('div');
+          mapContainer.id = 'order-tracking-map';
+          mapContainer.style.width = '100%';
+          mapContainer.style.height = '100%';
+          mapContainer.style.minHeight = '300px';
+          mapContainerParent.appendChild(mapContainer);
+          return true;
+        }
+      } else {
+        return true;
+      }
+      return false;
+    };
+
+    // Delay execution to ensure DOM is ready
+    const timer = setTimeout(() => {
+      if (setupMapContainer() && customerLocation && !mapError && mapLoaded) {
+        console.log("Auto initializing map from useEffect");
+        initMap(customerLocation);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [customerLocation, mapError, mapLoaded, initMap]);
+
+  // Tạo useEffect mới để khởi tạo map container và geocoding khi component mount
+  useEffect(() => {
+    // Create the map container if it doesn't exist
+    const setupMapContainer = () => {
+      console.log("Running setupMapContainer");
+      const mapContainer = document.getElementById('order-tracking-map');
+      if (!mapContainer) {
+        const mapContainerParent = document.getElementById('map-container');
+        if (mapContainerParent) {
+          console.log("Creating map container element");
+          const newMapContainer = document.createElement('div');
+          newMapContainer.id = 'order-tracking-map';
+          newMapContainer.style.width = '100%';
+          newMapContainer.style.height = '100%';
+          newMapContainer.style.minHeight = '300px';
+          mapContainerParent.appendChild(newMapContainer);
+        } else {
+          console.warn("Map container parent not found");
+        }
+      } else {
+        console.log("Map container already exists");
+      }
+    };
+
+    // This handles the case when the DOM loads after React renders the component
+    const timer = setTimeout(() => {
+      setupMapContainer();
+    }, 300);
+
+    // Initialize on first load
+    setupMapContainer();
+
+    // Clean up function
+    return () => {
+      clearTimeout(timer);
+      
+      // Clear any existing map instances to prevent duplicate maps
+      if (window.mapInstance) {
+        try {
+          window.mapInstance.remove();
+        } catch (e) {
+          console.error("Error when removing map instance:", e);
+        }
+        window.mapInstance = null;
+        window.__map_initialized = false;
+      }
+    };
+  }, []);
+
+  // Cải thiện useEffect cho việc khởi tạo map container
+  useEffect(() => {
+    console.log("Running map container initialization effect");
+    
+    const ensureMapContainer = () => {
+      // First check if the map-container exists
+      const mapContainerParent = document.getElementById('map-container');
+      
+      if (mapContainerParent) {
+        console.log("Map container parent found:", mapContainerParent);
+        
+        // Now check if the map div exists inside it
+        let mapDiv = document.getElementById('order-tracking-map');
+        
+        if (!mapDiv) {
+          console.log("Creating new map container");
+          mapDiv = document.createElement('div');
+          mapDiv.id = 'order-tracking-map';
+          mapDiv.className = 'absolute inset-0';
+          mapDiv.style.width = '100%';
+          mapDiv.style.height = '100%';
+          mapDiv.style.minHeight = '300px';
+          mapDiv.style.borderRadius = '6px';
+          mapDiv.style.overflow = 'hidden';
+          mapContainerParent.appendChild(mapDiv);
+          
+          // Add a clear loading indicator
+          const loadingEl = document.createElement('div');
+          loadingEl.className = 'map-loading-indicator';
+          loadingEl.style.position = 'absolute';
+          loadingEl.style.top = '50%';
+          loadingEl.style.left = '50%';
+          loadingEl.style.transform = 'translate(-50%, -50%)';
+          loadingEl.style.backgroundColor = 'rgba(255,255,255,0.8)';
+          loadingEl.style.padding = '10px 15px';
+          loadingEl.style.borderRadius = '8px';
+          loadingEl.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+          loadingEl.style.fontSize = '14px';
+          loadingEl.style.color = '#333';
+          loadingEl.style.zIndex = '500';
+          loadingEl.innerHTML = '<div>Đang tải bản đồ...</div>';
+          mapDiv.appendChild(loadingEl);
+        }
+        
+        return true;
+      }
+      
+      console.error("Map container parent not found");
+      return false;
+    };
+    
+    // We'll use a timeout instead of an interval to avoid continuously trying
+    // if the element never appears
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const attemptSetup = () => {
+      if (retryCount >= maxRetries) {
+        console.error(`Failed to find map container after ${maxRetries} attempts`);
+        setMapError(true);
+        return;
+      }
+      
+      if (!ensureMapContainer()) {
+        console.log(`Attempt ${retryCount + 1} failed, trying again in ${500 * (retryCount + 1)}ms`);
+        retryCount++;
+        setTimeout(attemptSetup, 500 * retryCount);
+      } else if (customerLocation && mapboxLoaded && !window.orderTrackingMap) {
+        console.log("Container ready and we have customer location, initializing map");
+        initMap();
+      }
+    };
+    
+    // Start the attempt process
+    attemptSetup();
+    
+    // No cleanup needed since we're using timeouts, not intervals
+  }, [customerLocation, mapboxLoaded, initMap, setMapError]);
+
+  // Cải thiện việc cập nhật customerLocation và khởi tạo map
+  useEffect(() => {
+    if (customerLocation && mapLoaded && !window.__map_initialized) {
+      console.log("Customer location available and map loaded, initializing map", customerLocation);
+      setTimeout(() => {
+        try {
+          initMap(customerLocation);
+        } catch (err) {
+          console.error("Error initializing map:", err);
+          setMapError(true);
+        }
+      }, 1000); // Delay to ensure DOM is ready
+    }
+  }, [customerLocation, mapLoaded, initMap, setMapError]);
+
+  // Add CSS styles to make the map markers more visible and improve the map container element
+  useEffect(() => {
+    // Create map container CSS
+    const injectCustomStyles = () => {
+      // Check if styles already exist
+      if (document.getElementById('mapbox-custom-styles')) {
+        return;
+      }
+      
+      // Create style element
+      const styleEl = document.createElement('style');
+      styleEl.id = 'mapbox-custom-styles';
+      styleEl.textContent = `
+        .shop-marker {
+          width: 36px !important;
+          height: 36px !important;
+          background-size: cover;
+          cursor: pointer;
+          border: 2px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        
+        .customer-marker {
+          width: 36px !important;
+          height: 36px !important;
+          background-size: cover;
+          cursor: pointer;
+          border: 2px solid white;
+          border-radius: 50%;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        
+        .mapboxgl-popup-content {
+          padding: 10px !important;
+          border-radius: 8px !important;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+        }
+        
+        #order-tracking-map {
+          border-radius: 4px;
+          overflow: hidden;
+        }
+        
+        #map-info {
+          font-size: 13px;
+        }
+      `;
+      
+      // Add to head
+      document.head.appendChild(styleEl);
+      console.log("Injected custom map styles");
+    };
+    
+    // Inject CSS
+    injectCustomStyles();
+    
+    // Cleanup function
+    return () => {
+      const styleEl = document.getElementById('mapbox-custom-styles');
+      if (styleEl) {
+        styleEl.remove();
+      }
+    };
+  }, []);
+
+  // Add new useEffect for mapbox validation
+  useEffect(() => {
+    // Ensure mapboxgl is supported by the browser
+    try {
+      if (!mapboxgl.supported()) {
+        console.error("Mapbox GL không được hỗ trợ bởi trình duyệt này");
+        setMapError(true);
+        toast.error("Trình duyệt của bạn không hỗ trợ Mapbox. Vui lòng sử dụng trình duyệt khác.");
+      }
+    } catch (err) {
+      console.error("Error checking Mapbox support:", err);
+      setMapError(true);
+    }
+    
+    // Verify Mapbox token
+    if (!mapboxgl.accessToken) {
+      console.error("Mapbox access token is missing");
+      setMapError(true);
+      toast.error("Thiếu token Mapbox. Vui lòng kiểm tra cấu hình.");
+    } else {
+      console.log("Mapbox token available:", mapboxgl.accessToken.substring(0, 8) + "...");
+    }
+  }, []);
+
+  // Add this useEffect at the beginning of the component to ensure map container exists
+  useEffect(() => {
+    const ensureMapContainerExists = () => {
+      console.log("Ensuring map container exists");
+      
+      // Check for map container parent - look for the container where we want to render the map
+      const mapSection = document.getElementById('order-map-section');
+      
+      if (mapSection) {
+        // Find or create the container for the aspect-video div
+        let mapContainer = mapSection.querySelector('.aspect-video');
+        
+        if (!mapContainer) {
+          console.log("Creating map container element (aspect-video)");
+          mapContainer = document.createElement('div');
+          mapContainer.className = 'aspect-video w-full relative border border-gray-200 rounded-lg overflow-hidden';
+          
+          // Find where to insert it - after the heading
+          const heading = mapSection.querySelector('h3');
+          if (heading) {
+            heading.insertAdjacentElement('afterend', mapContainer);
+          } else {
+            mapSection.appendChild(mapContainer);
+          }
+        }
+        
+        // Check for the order-tracking-map div inside the aspect-video div
+        let mapElement = document.getElementById('order-tracking-map');
+        
+        if (!mapElement) {
+          console.log("Creating map element (order-tracking-map)");
+          mapElement = document.createElement('div');
+          mapElement.id = 'order-tracking-map';
+          mapElement.className = 'absolute inset-0';
+          mapElement.style.width = '100%';
+          mapElement.style.height = '100%';
+          mapElement.style.minHeight = '300px';
+          mapContainer.appendChild(mapElement);
+          
+          // Add loading indicator inside map element
+          const loadingIndicator = document.createElement('div');
+          loadingIndicator.className = 'absolute inset-0 flex items-center justify-center bg-gray-100';
+          loadingIndicator.innerHTML = `
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          `;
+          mapElement.appendChild(loadingIndicator);
+        }
+      }
+    };
+    
+    // Run immediately and after a short delay to ensure DOM is ready
+    ensureMapContainerExists();
+    const timer = setTimeout(ensureMapContainerExists, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Simplified OrderMapSection component that handles map rendering
+  const OrderMapSection = () => {
+    // Get delivery address from order detail
+    const deliveryAddress = order?.shippingInfo?.address || 
+                           order?.shipping?.address || 
+                           order?.deliveryAddress ||
+                           "Địa chỉ giao hàng";
+    
+    return (
+      <div id="order-map-section" className="border rounded-lg p-4 bg-white">
+        <h3 className="font-medium text-lg mb-3">Bản đồ đường đi giao hàng</h3>
+        
+        {!customerLocation || !customerLocation.lat || !customerLocation.lng ? (
+          // Show placeholder if no coordinates are available
+          <div className="bg-orange-50 rounded-lg p-4 text-center">
+            <div className="text-orange-500 font-medium mb-2">Đang tìm tọa độ địa chỉ giao hàng</div>
+            <div className="text-sm text-gray-600">Vui lòng đợi trong giây lát...</div>
+            <div className="mt-3 flex justify-center">
+              <BiLoaderAlt className="animate-spin text-orange-500" size={24} />
+            </div>
+          </div>
+        ) : customerLocation.error ? (
+          // Show error message if geocoding failed
+          <div className="bg-red-50 rounded-lg p-4 text-center">
+            <div className="text-red-500 font-medium mb-2">{customerLocation.errorMessage || "Không thể xác định tọa độ"}</div>
+            <div className="text-sm text-gray-600">Không thể hiển thị bản đồ cho địa chỉ này.</div>
+            <a 
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(deliveryAddress || "")}`}
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="mt-2 inline-block text-blue-500 underline text-sm"
+            >
+              Tìm địa chỉ trên Google Maps
+            </a>
+          </div>
+        ) : (
+          <div>
+            {/* Map information and route details */}
+            <div id="map-info" className="mb-3 text-sm p-3 bg-gray-50 rounded-md border border-gray-200">
+              <div className="text-center text-gray-500">
+                <span className="inline-block align-middle mr-2">
+                  <BiLoaderAlt className="animate-spin text-blue-500" size={18} />
+                </span>
+                Đang tải thông tin bản đồ...
+              </div>
+            </div>
+            
+            {/* Container for the map */}
+            <div className="aspect-video w-full relative border border-gray-200 rounded-lg overflow-hidden" id="map-container">
+              <OrderTrackingMap 
+                customerLocation={{
+                  ...customerLocation,
+                  address: deliveryAddress
+                }}
+                shopLocation={SHOP_LOCATION}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -1426,7 +1849,7 @@ export default function OrderDetail() {
             <div className="p-2 sm:p-4">
               <div id="map-info" className="mb-2 text-xs text-gray-500"></div>
               {/* Chỉ hiển thị một bản đồ duy nhất */}
-              {renderMap()}
+              <OrderMapSection />
             </div>
           </div>
 
@@ -1616,12 +2039,18 @@ export default function OrderDetail() {
               <div className="flex flex-col gap-1 sm:gap-2">
                 <div className="text-xs sm:text-sm text-gray-600">Địa chỉ giao hàng:</div>
                 <div className="font-medium">
-                  {order.userId?.address ? (
+                  {order.shippingAddress ? (
+                    <span className="text-xs sm:text-sm">{order.shippingAddress}</span>
+                  ) : order.shipping && order.shipping.address ? (
+                    <span className="text-xs sm:text-sm">{order.shipping.address}</span>
+                  ) : order.shippingInfo && order.shippingInfo.address ? (
                     <span className="text-xs sm:text-sm">
-                      {order.userId.address}, 
-                      {order.userId.ward && ` ${order.userId.ward},`}
-                      {order.userId.district && ` ${order.userId.district},`}
-                      {order.userId.province && ` ${order.userId.province}`}
+                      {order.shippingInfo.houseNumber && `${order.shippingInfo.houseNumber}, `}
+                      {order.shippingInfo.address && `${order.shippingInfo.address}, `}
+                      {order.shippingInfo.hamlet && `${order.shippingInfo.hamlet}, `}
+                      {order.shippingInfo.ward && `${order.shippingInfo.ward}, `}
+                      {order.shippingInfo.district && `${order.shippingInfo.district}, `}
+                      {order.shippingInfo.province && `${order.shippingInfo.province}`}
                     </span>
                   ) : (
                     "Không có thông tin địa chỉ"

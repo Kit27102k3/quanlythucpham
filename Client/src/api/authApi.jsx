@@ -357,6 +357,115 @@ const authApi = {
       throw error;
     }
   },
+
+  // Methods for address management
+  getAllAddresses: async (userId) => {
+    try {
+      const token = localStorage.getItem("accessToken") || 
+                  localStorage.getItem("token") ||
+                  localStorage.getItem("access_token");
+                  
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
+      
+      return await axios.get(`${API_URLS.AUTH}/user/${userId}/addresses`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching addresses:", error);
+      throw error;
+    }
+  },
+  
+  addAddress: async (userId, addressData) => {
+    try {
+      const token = localStorage.getItem("accessToken") || 
+                  localStorage.getItem("token") ||
+                  localStorage.getItem("access_token");
+                  
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
+      
+      return await axios.post(`${API_URLS.AUTH}/user/${userId}/addresses`, addressData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+    } catch (error) {
+      console.error("Error adding address:", error);
+      throw error;
+    }
+  },
+  
+  updateAddress: async (userId, addressId, addressData) => {
+    try {
+      const token = localStorage.getItem("accessToken") || 
+                  localStorage.getItem("token") ||
+                  localStorage.getItem("access_token");
+                  
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
+      
+      return await axios.put(`${API_URLS.AUTH}/user/${userId}/addresses/${addressId}`, addressData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+    } catch (error) {
+      console.error("Error updating address:", error);
+      throw error;
+    }
+  },
+  
+  deleteAddress: async (userId, addressId) => {
+    try {
+      const token = localStorage.getItem("accessToken") || 
+                  localStorage.getItem("token") ||
+                  localStorage.getItem("access_token");
+                  
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
+      
+      return await axios.delete(`${API_URLS.AUTH}/user/${userId}/addresses/${addressId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+    } catch (error) {
+      console.error("Error deleting address:", error);
+      throw error;
+    }
+  },
+  
+  setDefaultAddress: async (userId, addressId) => {
+    try {
+      const token = localStorage.getItem("accessToken") || 
+                  localStorage.getItem("token") ||
+                  localStorage.getItem("access_token");
+                  
+      if (!token) {
+        throw new Error("User not authenticated");
+      }
+      
+      return await axios.put(`${API_URLS.AUTH}/user/${userId}/addresses/${addressId}/default`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+    } catch (error) {
+      console.error("Error setting default address:", error);
+      throw error;
+    }
+  },
 };
 
 export { authApi, instance };
