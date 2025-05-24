@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import axios from 'axios';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -14,7 +15,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 // Nếu có thêm file .env.local, load nó
 const localEnvPath = path.join(__dirname, '..', '.env.local');
 if (fs.existsSync(localEnvPath)) {
-  const localEnvConfig = dotenv.config({ path: localEnvPath });
+  dotenv.config({ path: localEnvPath });
   console.log('Loaded local environment variables');
 }
 
@@ -22,7 +23,6 @@ if (fs.existsSync(localEnvPath)) {
 const MONGODB_ATLAS_PROJECT_ID = process.env.MONGODB_ATLAS_PROJECT_ID || ''; // Lấy từ URL Atlas
 const MONGODB_ATLAS_API_KEY = process.env.MONGODB_ATLAS_API_KEY || '';
 const MONGODB_ATLAS_API_SECRET = process.env.MONGODB_ATLAS_API_SECRET || '';
-const CLUSTER_NAME = process.env.MONGODB_CLUSTER_NAME || 'Cluster0';
 
 // Kiểm tra thông tin cấu hình
 if (!MONGODB_ATLAS_PROJECT_ID || !MONGODB_ATLAS_API_KEY || !MONGODB_ATLAS_API_SECRET) {

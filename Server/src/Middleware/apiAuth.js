@@ -2,7 +2,7 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({path: '.env'});
 
 /**
  * Middleware xác thực cho API truy cập MongoDB
