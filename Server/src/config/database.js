@@ -12,7 +12,7 @@ dns.setDefaultResultOrder('ipv4first');
 
 // Lấy URI từ biến môi trường và Node.js global process
 const URI = (typeof process !== 'undefined' ? 
-  process.env.MONGODB_IP_URI || process.env.MONGODB_DIRECT_URI || process.env.MONGOOSE_URI || process.env.MONGODB_URI || process.env.MONGODB_FALLBACK_URI : 
+  process.env.MONGODB_SUPER_SIMPLE_URI || process.env.MONGODB_MOBILE_URI || process.env.MONGODB_SINGLE_IP_URI || process.env.MONGODB_SIMPLE_URI || process.env.MONGODB_IP_URI || process.env.MONGODB_SRV_URI || process.env.MONGODB_DIRECT_URI || process.env.MONGOOSE_URI || process.env.MONGODB_URI || process.env.MONGODB_FALLBACK_URI : 
   undefined);
 
 // Thêm tham số để cho phép kết nối từ mọi IP (0.0.0.0/0)
@@ -30,15 +30,16 @@ const enhanceMongoURI = (uri) => {
       if (!uri.includes('w=majority')) {
         uri += '&w=majority';
       }
-      if (!uri.includes('tls=true') && !uri.includes('ssl=true')) {
-        uri += '&tls=true';
+      // Không thêm tls=true nữa vì có thể gây lỗi trên mobile
+      
+      // Chuyển đổi ssl=true thành tls=true chỉ khi là URI SRV
+      if (uri.includes('mongodb+srv://') && uri.includes('ssl=true')) {
+        uri = uri.replace('ssl=true', 'tls=true');
       }
-      // Thay thế ssl=true bằng tls=true nếu có
-      uri = uri.replace('ssl=true', 'tls=true');
       return uri;
     } else {
       // Chưa có tham số, thêm dấu ? và tham số mới
-      return `${uri}?retryWrites=true&w=majority&tls=true`;
+      return `${uri}?retryWrites=true&w=majority`;
     }
   } catch (err) {
     console.error("Error enhancing MongoDB URI:", err);
@@ -68,9 +69,14 @@ const mongooseOptions = {
   // Các tùy chọn bổ sung để bỏ qua xác minh IP nghiêm ngặt
   // Quan trọng cho thiết bị di động và mạng không cố định
   autoIndex: true,
-  tls: true, // Dùng TLS thay cho SSL (SSL đã deprecated)
-  tlsAllowInvalidCertificates: true, // Cho phép chứng chỉ không hợp lệ, giúp kết nối từ mạng di động
-  tlsAllowInvalidHostnames: true, // Cho phép hostname không hợp lệ, quan trọng khi dùng IP
+  
+  // Tùy chỉnh SSL/TLS dựa trên loại URI
+  ...(URI && URI.includes('mongodb+srv://') ? {
+    tls: true,
+    tlsAllowInvalidCertificates: true,
+    tlsAllowInvalidHostnames: true
+  } : {}),
+  
   // Các options này chỉ còn được dùng như aliases trong mongoose mới
   // nhưng giữ lại để đảm bảo tương thích
   useNewUrlParser: true,
@@ -184,19 +190,37 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
   // Kiểm tra DNS trước khi kết nối
   await setupCustomDNSResolver();
   
-  // Ưu tiên sử dụng URI trực tiếp đã được resolved từ SRV
+  // Lấy tất cả các URI có thể sử dụng
+  const superSimpleURI = typeof process !== 'undefined' ? process.env.MONGODB_SUPER_SIMPLE_URI : undefined;
+  const mobileURI = typeof process !== 'undefined' ? process.env.MONGODB_MOBILE_URI : undefined;
+  const singleIpURI = typeof process !== 'undefined' ? process.env.MONGODB_SINGLE_IP_URI : undefined;
+  const simpleURI = typeof process !== 'undefined' ? process.env.MONGODB_SIMPLE_URI : undefined;
   const ipURI = typeof process !== 'undefined' ? process.env.MONGODB_IP_URI : undefined;
+  const srvURI = typeof process !== 'undefined' ? process.env.MONGODB_SRV_URI : undefined;
   const resolvedDirectURI = typeof process !== 'undefined' ? process.env.MONGODB_RESOLVED_DIRECT_URI : undefined;
   
   // Quyết định URI để kết nối theo thứ tự ưu tiên
-  let uriToConnect = ipURI || resolvedDirectURI || enhancedURI;
+  let uriToConnect = superSimpleURI || mobileURI || singleIpURI || simpleURI || ipURI || srvURI || resolvedDirectURI || enhancedURI;
   
   // Log thông tin kết nối để debug
   console.log(`Đang kết nối với MongoDB, loại URI: ${
+    superSimpleURI ? 'Super Simple URI' :
+    mobileURI ? 'Mobile URI' :
+    singleIpURI ? 'Single IP URI' :
+    simpleURI ? 'Simple URI' :
     ipURI ? 'IP trực tiếp' : 
+    srvURI ? 'SRV URI' :
     resolvedDirectURI ? 'Resolved DNS' : 
     'SRV Standard'
   }`);
+  
+  // In thông tin device để debug
+  console.log("Device info:", {
+    platform: typeof process !== 'undefined' ? process.platform : 'unknown',
+    arch: typeof process !== 'undefined' ? process.arch : 'unknown',
+    node: typeof process !== 'undefined' ? process.version : 'unknown',
+    mongooseVersion: mongoose.version
+  });
   
   for (let i = 0; i < retries; i++) {
     try {
