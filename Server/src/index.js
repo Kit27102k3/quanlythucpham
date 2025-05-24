@@ -391,8 +391,8 @@ app.get("/api/geocode", async (req, res) => {
 // Start server function
 const startServer = (port) => {
   const portNumber = Number(port) || 8080;
-
-  app.listen(portNumber, async () => {
+  
+  const server = app.listen(portNumber, async () => {
     console.log(`Server running on port ${portNumber}`);
 
     // Run scheduled tasks immediately on start
@@ -400,6 +400,13 @@ const startServer = (port) => {
 
     // Schedule periodic tasks
     setInterval(runScheduledTasks, scheduleIntervalMs);
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${portNumber} is already in use. Trying port ${portNumber + 1}...`);
+      startServer(portNumber + 1);
+    } else {
+      console.error('Server error:', err);
+    }
   });
 };
 
