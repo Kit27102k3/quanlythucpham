@@ -45,7 +45,7 @@ bestSellingProductSchema.statics.updateSalesData = async function(productId, pro
         productName: productInfo.productName,
         productCategory: productInfo.productCategory,
         productPrice: productInfo.productPrice,
-        productImage: productInfo.productImages?.[0] || '',
+        productImage: productInfo.productImages && productInfo.productImages.length > 0 ? productInfo.productImages[0] : '',
         soldCount: quantity,
         totalRevenue: productInfo.productPrice * quantity,
         lastSoldDate: now,
@@ -145,7 +145,7 @@ bestSellingProductSchema.statics.getBestSellers = async function(limit = 10, per
           productName: product.productName,
           productCategory: product.productCategory,
           productPrice: product.productPrice,
-          productImage: product.productImages?.[0] || '',
+          productImage: product.productImages && product.productImages.length > 0 ? product.productImages[0] : '',
           soldCount: Math.floor(Math.random() * 50) + 1, // Tạo số lượng bán ngẫu nhiên từ 1-50
           totalRevenue: product.productPrice * (Math.floor(Math.random() * 50) + 1),
           lastSoldDate: new Date(),

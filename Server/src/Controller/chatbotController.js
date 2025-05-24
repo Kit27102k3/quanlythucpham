@@ -384,18 +384,18 @@ export const handleMessage = async (req, res) => {
               message: pyRes.data.answer
             });
           }
-          return res.status(200).json({
+          response = {
             success: true,
             type: 'text',
             message: "Xin lỗi, tôi không tìm thấy công thức phù hợp."
-          });
+          };
         } catch (error) {
           console.error("Lỗi khi lấy công thức nấu ăn:", error);
-          return res.status(200).json({
+          response = {
             success: true,
             type: 'text',
             message: "Xin lỗi, đã có lỗi xảy ra khi lấy công thức nấu ăn."
-          });
+          };
         }
         break;
         
@@ -1261,7 +1261,8 @@ const detectMultiProductSearch = (message) => {
     let cleanMessage = lowerMessage;
     for (const term of comparisonTerms) {
       if (lowerMessage.includes(term)) {
-        cleanMessage = lowerMessage.split(term)[1]?.trim() || lowerMessage;
+        const splitResult = lowerMessage.split(term);
+        cleanMessage = splitResult.length > 1 && splitResult[1] ? splitResult[1].trim() : lowerMessage;
         break;
       }
     }

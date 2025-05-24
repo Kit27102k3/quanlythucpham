@@ -71,7 +71,6 @@ export const sendPushNotification = async (userId, subscription, payload) => {
     };
 
     // Gửi thông báo với payload đã tăng cường
-    const webpush = await import('web-push');
     const result = await webpush.sendNotification(
       subscription, 
       JSON.stringify(webPushPayload)
@@ -274,10 +273,10 @@ export const sendOrderStatusNotification = async (userId, order, statusText) => 
         orderId: order._id,
         type: 'order_update',
         status: order.status,
-        orderItems: order.items?.map(item => ({
+        orderItems: order.items && order.items.length > 0 ? order.items.map(item => ({
           name: item.productName,
           quantity: item.quantity
-        })),
+        })) : [],
         icon: '/order-icon.png'
       }
     });
@@ -322,4 +321,4 @@ export const sendMessageNotification = async (userId, senderName, messageText) =
     console.error('[sendMessageNotification] Lỗi:', error);
     return { success: false, error: error.message };
   }
-}; 
+};

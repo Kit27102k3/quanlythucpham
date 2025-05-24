@@ -12,6 +12,7 @@ import {
   checkPaymentStatus,
   updatePayment
 } from "../Controller/paymentController.js";
+import Order from "../Model/Order.js";
 
 const router = express.Router();
 
@@ -46,8 +47,6 @@ router.post("/update-status/:orderId", async (req, res) => {
         message: "Missing orderId parameter" 
       });
     }
-    
-    const Order = await import("../Model/Order.js").then(module => module.default);
     
     // Tìm đơn hàng
     const order = await Order.findOne({

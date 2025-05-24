@@ -6,11 +6,15 @@
         "targets": {
           "node": "current"
         },
-        "modules": false
+        "useBuiltIns": "usage",
+        "corejs": 3
       }
     ]
   ],
-  "plugins": [],
+  "plugins": [
+    "@babel/plugin-proposal-optional-chaining",
+    "@babel/plugin-proposal-nullish-coalescing-operator"
+  ],
   "sourceMaps": "inline",
   "retainLines": true
 } 
