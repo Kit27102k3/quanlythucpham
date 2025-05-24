@@ -61,7 +61,6 @@ export const detectIntentFromKeywords = (query) => {
   
   // Kiểm tra khớp chính xác với câu hỏi
   for (const [intent, keywords] of Object.entries(intentKeywords)) {
-    const priority = intentPriority[intent] || 1;
     for (const keyword of keywords) {
       // Nếu câu hỏi khớp chính xác với từ khóa
       if (normalizedQuery === keyword.toLowerCase() || 

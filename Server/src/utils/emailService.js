@@ -118,7 +118,7 @@ const createOrderEmailTemplate = (order, qrCodeImage) => {
           <h2>Xác nhận đơn hàng #${order.orderCode}</h2>
         </div>
         <div class="content">
-          <p>Xin chào ${order.shippingInfo?.fullName || 'Quý khách'},</p>
+          <p>Xin chào ${order.shippingInfo && order.shippingInfo.fullName ? order.shippingInfo.fullName : 'Quý khách'},</p>
           <p>Cảm ơn bạn đã đặt hàng tại DNC FOOD. Đơn hàng của bạn đã được xác nhận!</p>
           
           <div class="order-info">
@@ -132,10 +132,10 @@ const createOrderEmailTemplate = (order, qrCodeImage) => {
           
           <div class="shipping-info">
             <h3>Thông tin giao hàng</h3>
-            <p><strong>Họ tên:</strong> ${order.shippingInfo?.fullName || ''}</p>
-            <p><strong>Địa chỉ:</strong> ${order.shippingInfo?.address || ''}</p>
-            <p><strong>Số điện thoại:</strong> ${order.shippingInfo?.phone || ''}</p>
-            <p><strong>Email:</strong> ${order.shippingInfo?.email || ''}</p>
+            <p><strong>Họ tên:</strong> ${order.shippingInfo && order.shippingInfo.fullName ? order.shippingInfo.fullName : ''}</p>
+            <p><strong>Địa chỉ:</strong> ${order.shippingInfo && order.shippingInfo.address ? order.shippingInfo.address : ''}</p>
+            <p><strong>Số điện thoại:</strong> ${order.shippingInfo && order.shippingInfo.phone ? order.shippingInfo.phone : ''}</p>
+            <p><strong>Email:</strong> ${order.shippingInfo && order.shippingInfo.email ? order.shippingInfo.email : ''}</p>
           </div>
           
           <h3>Chi tiết đơn hàng</h3>

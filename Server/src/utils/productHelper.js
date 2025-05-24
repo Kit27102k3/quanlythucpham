@@ -12,8 +12,8 @@
 const generateProductUsage = (product) => {
   if (!product) return "Không có thông tin về công dụng của sản phẩm này.";
   
-  const productName = product.productName?.toLowerCase() || '';
-  const category = product.productCategory?.toLowerCase() || '';
+  const productName = product.productName && product.productName.toLowerCase() || '';
+  const category = product.productCategory && product.productCategory.toLowerCase() || '';
   let description = product.productInfo || product.productDetails || '';
   
   // Từ khóa cho từng loại sản phẩm
@@ -93,8 +93,8 @@ const generateProductUsage = (product) => {
 const generateHowToUse = (product) => {
   if (!product) return "Không có thông tin về cách sử dụng sản phẩm này.";
   
-  const productName = product.productName?.toLowerCase() || '';
-  const category = product.productCategory?.toLowerCase() || '';
+  const productName = product.productName && product.productName.toLowerCase() || '';
+  const category = product.productCategory && product.productCategory.toLowerCase() || '';
   
   // Từ khóa cho từng loại sản phẩm (tương tự như ở trên)
   const fruitKeywords = ['trái cây', 'quả', 'cherry', 'táo', 'nho', 'cam', 'bưởi', 'chuối', 'dưa', 'dứa', 'xoài', 'ổi', 'lê', 'đào', 'berry'];
@@ -186,8 +186,8 @@ const generateIngredients = (product) => {
     return `${product.productName} gồm các thành phần: ${product.ingredients || product.productIngredients}.`;
   }
   
-  const productName = product.productName?.toLowerCase() || '';
-  const category = product.productCategory?.toLowerCase() || '';
+  const productName = product.productName && product.productName.toLowerCase() || '';
+  const category = product.productCategory && product.productCategory.toLowerCase() || '';
   
   // Từ khóa cho từng loại sản phẩm
   const fruitKeywords = ['trái cây', 'quả', 'cherry', 'táo', 'nho', 'cam', 'bưởi', 'chuối', 'dưa', 'dứa', 'xoài', 'ổi', 'lê', 'đào', 'berry'];
