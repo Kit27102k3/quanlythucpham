@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -15,6 +15,113 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
   const [mapInitialized, setMapInitialized] = useState(false);
   const markersRef = useRef({ shop: null, customer: null });
   const [loading, setLoading] = useState(true);
+  const locationUpdatedRef = useRef(false);
+  const routeAddedRef = useRef(false);
+
+  // Helper function to add markers and route - moved outside useEffect for reuse
+  const addMarkersAndRoute = useCallback((mapInstance) => {
+    if (!mapInstance || !shopLocation?.lat || !customerLocation?.lat) {
+      console.error("Cannot add markers: Missing map instance or coordinates");
+      return;
+    }
+    
+    console.log("Adding markers and route to map");
+    const shopCoords = [shopLocation.lng, shopLocation.lat];
+    const customerCoords = [customerLocation.lng, customerLocation.lat];
+
+    try {
+      // Remove existing markers if any
+      if (markersRef.current.shop) markersRef.current.shop.remove();
+      if (markersRef.current.customer) markersRef.current.customer.remove();
+      
+      // Create marker element
+      const createMarkerElement = (color, text) => {
+        const el = document.createElement("div");
+        el.style.width = "30px";
+        el.style.height = "30px";
+        el.style.borderRadius = "50%";
+        el.style.backgroundColor = color;
+        el.style.border = "3px solid white";
+        el.style.boxShadow = "0 3px 6px rgba(0,0,0,0.5)";
+        el.style.color = "white";
+        el.style.fontSize = "12px";
+        el.style.fontWeight = "bold";
+        el.style.display = "flex";
+        el.style.alignItems = "center";
+        el.style.justifyContent = "center";
+        el.style.zIndex = "999";
+        el.innerText = text;
+        return el;
+      };
+
+      // Add shop marker
+      const shopMarker = new mapboxgl.Marker(createMarkerElement("#e74c3c", "SHOP"))
+        .setLngLat(shopCoords)
+        .addTo(mapInstance);
+      markersRef.current.shop = shopMarker;
+
+      // Add customer marker
+      const customerMarker = new mapboxgl.Marker(createMarkerElement("#3498db", "NHẬN"))
+        .setLngLat(customerCoords)
+        .addTo(mapInstance);
+      markersRef.current.customer = customerMarker;
+
+      // Fit bounds to show both markers
+      const bounds = new mapboxgl.LngLatBounds()
+        .extend(shopCoords)
+        .extend(customerCoords);
+      mapInstance.fitBounds(bounds, { padding: 100 });
+
+      // Add or update route line
+      if (mapInstance.getSource('route')) {
+        // Update existing source
+        mapInstance.getSource('route').setData({
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: [shopCoords, customerCoords],
+          },
+        });
+      } else {
+        // Add new source and layer
+        mapInstance.addSource("route", {
+          type: "geojson",
+          data: {
+            type: "Feature",
+            properties: {},
+            geometry: {
+              type: "LineString",
+              coordinates: [shopCoords, customerCoords],
+            },
+          },
+        });
+
+        mapInstance.addLayer({
+          id: "route",
+          type: "line",
+          source: "route",
+          layout: {
+            "line-join": "round",
+            "line-cap": "round",
+          },
+          paint: {
+            "line-color": "#2ecc71",
+            "line-width": 4,
+          },
+        });
+      }
+      
+      routeAddedRef.current = true;
+      
+      // Update map info
+      updateMapInfo();
+      
+      console.log("Markers and route added successfully");
+    } catch (err) {
+      console.error("Error adding markers and route:", err);
+    }
+  }, [shopLocation, customerLocation]);
 
   // Initialize map
   useEffect(() => {
@@ -87,6 +194,11 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
       }
 
       try {
+        console.log("Initializing map with locations:", { 
+          shop: `${shopLocation.lat},${shopLocation.lng}`, 
+          customer: `${customerLocation.lat},${customerLocation.lng}` 
+        });
+        
         // Calculate center point between shop and customer
         const centerLng = (shopLocation.lng + customerLocation.lng) / 2;
         const centerLat = (shopLocation.lat + customerLocation.lat) / 2;
@@ -99,6 +211,7 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
           zoom: 8.5,
           attributionControl: false,
           logoPosition: "bottom-right",
+          preserveDrawingBuffer: true // Helps with rendering issues
         });
 
         // Add loading indicator
@@ -116,33 +229,40 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
         loadingEl.innerHTML = "<div>Đang tải bản đồ...</div>";
         mapContainer.current.appendChild(loadingEl);
 
-        // Log when the map style is fully loaded
-        newMap.on("style.load", () => {
-          console.log("Map style loaded - adding markers");
-          try {
-            // Add markers and route
-            addMarkersAndRoute(newMap);
-            // Remove loading indicator
-            loadingEl.remove();
-            setLoading(false);
-          } catch (err) {
-            console.error("Error adding markers:", err);
-            setError(true);
-            setLoading(false);
-          }
-        });
-
-        // Store map reference
+        // Store map reference early
         map.current = newMap;
         window.orderTrackingMap = newMap;
 
         // Add navigation controls
         newMap.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-        // When map loads
+        // When map style loads (this happens before the full map loads)
+        newMap.on("style.load", () => {
+          console.log("Map style loaded - adding markers");
+          try {
+            // Add markers and route as soon as style loads
+            addMarkersAndRoute(newMap);
+            // Remove loading indicator
+            loadingEl.remove();
+            setLoading(false);
+          } catch (err) {
+            console.error("Error adding markers on style load:", err);
+          }
+        });
+
+        // When map fully loads
         newMap.on("load", () => {
-          console.log("Map loaded successfully");
+          console.log("Map fully loaded");
           setMapInitialized(true);
+          locationUpdatedRef.current = true;
+          
+          // If markers weren't added during style.load, add them now
+          if (!routeAddedRef.current) {
+            console.log("Adding markers on map load");
+            addMarkersAndRoute(newMap);
+          }
+          
+          setLoading(false);
         });
 
         // Handle map error
@@ -159,7 +279,10 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
       }
     };
 
-    attemptInitialization();
+    // Only attempt initialization if we have valid coordinates
+    if (customerLocation?.lat && customerLocation?.lng) {
+      attemptInitialization();
+    }
 
     // Cleanup function
     return () => {
@@ -174,246 +297,147 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
         markersRef.current.customer.remove();
       }
       setMapInitialized(false);
+      locationUpdatedRef.current = false;
+      routeAddedRef.current = false;
     };
-  }, [shopLocation, customerLocation, mapInitialized]);
+  }, [shopLocation, customerLocation, mapInitialized, addMarkersAndRoute]);
 
-  // Helper function to add markers and route
-  const addMarkersAndRoute = (map) => {
-    const shopCoords = [shopLocation.lng, shopLocation.lat];
-    const customerCoords = [customerLocation.lng, customerLocation.lat];
-
-    // Create marker element
-    const createMarkerElement = (color, text) => {
-      const el = document.createElement("div");
-      el.style.width = "30px";
-      el.style.height = "30px";
-      el.style.borderRadius = "50%";
-      el.style.backgroundColor = color;
-      el.style.border = "3px solid white";
-      el.style.boxShadow = "0 3px 6px rgba(0,0,0,0.5)";
-      el.style.color = "white";
-      el.style.fontSize = "12px";
-      el.style.fontWeight = "bold";
-      el.style.display = "flex";
-      el.style.alignItems = "center";
-      el.style.justifyContent = "center";
-      el.style.zIndex = "999";
-      el.innerText = text;
-      return el;
-    };
-
-    // Add shop marker
-    const shopMarker = new mapboxgl.Marker(createMarkerElement("#e74c3c", "SHOP"))
-      .setLngLat(shopCoords)
-      .addTo(map);
-    markersRef.current.shop = shopMarker;
-
-    // Add customer marker
-    const customerMarker = new mapboxgl.Marker(createMarkerElement("#3498db", "NHẬN"))
-      .setLngLat(customerCoords)
-      .addTo(map);
-    markersRef.current.customer = customerMarker;
-
-    // Fit bounds to show both markers
-    const bounds = new mapboxgl.LngLatBounds()
-      .extend(shopCoords)
-      .extend(customerCoords);
-    map.fitBounds(bounds, { padding: 100 });
-
-    // Add route line
-    map.addSource("route", {
-      type: "geojson",
-      data: {
-        type: "Feature",
-        properties: {},
-        geometry: {
-          type: "LineString",
-          coordinates: [shopCoords, customerCoords],
-        },
-      },
-    });
-
-    map.addLayer({
-      id: "route",
-      type: "line",
-      source: "route",
-      layout: {
-        "line-join": "round",
-        "line-cap": "round",
-      },
-      paint: {
-        "line-color": "#2ecc71",
-        "line-width": 4,
-      },
-    });
-  };
+  // Effect to handle customer location updates after map is initialized
+  useEffect(() => {
+    // Skip if map isn't initialized yet or we don't have valid coordinates
+    if (!mapInitialized || !map.current || !customerLocation?.lat || !customerLocation?.lng) {
+      return;
+    }
+    
+    // Skip if this is the initial location we used to create the map
+    if (locationUpdatedRef.current) {
+      locationUpdatedRef.current = false;
+      return;
+    }
+    
+    console.log("Updating map with new customer location:", customerLocation);
+    
+    // Use the shared function to update markers and route
+    addMarkersAndRoute(map.current);
+    
+  }, [customerLocation, mapInitialized, addMarkersAndRoute]);
 
   // Add a retry mechanism for markers that might not appear initially
   useEffect(() => {
     if (!mapInitialized || !map.current) return;
 
-    const retryMarkers = () => {
-      console.log("Retrying marker creation");
-      try {
-        const shopCoords = [shopLocation.lng, shopLocation.lat];
-        const customerCoords = [customerLocation.lng, customerLocation.lat];
-
-        // Xóa markers cũ nếu có
-        if (markersRef.current.shop) markersRef.current.shop.remove();
-        if (markersRef.current.customer) markersRef.current.customer.remove();
-
-        // Tạo lại markers
-        const createSimpleMarker = (color, text) => {
-          const el = document.createElement("div");
-          el.style.width = "25px";
-          el.style.height = "25px";
-          el.style.borderRadius = "50%";
-          el.style.backgroundColor = color;
-          el.style.border = "2px solid white";
-          el.style.display = "flex";
-          el.style.alignItems = "center";
-          el.style.justifyContent = "center";
-          el.style.color = "white";
-          el.style.fontSize = "10px";
-          el.style.fontWeight = "bold";
-          el.innerText = text;
-          return el;
-        };
-
-        markersRef.current.shop = new mapboxgl.Marker(
-          createSimpleMarker("#e74c3c", "SHOP")
-        )
-          .setLngLat(shopCoords)
-          .addTo(map.current);
-
-        markersRef.current.customer = new mapboxgl.Marker(
-          createSimpleMarker("#3498db", "NHẬN")
-        )
-          .setLngLat(customerCoords)
-          .addTo(map.current);
-
-        // Fit bounds
-        const bounds = new mapboxgl.LngLatBounds()
-          .extend(shopCoords)
-          .extend(customerCoords);
-
-        map.current.fitBounds(bounds, { padding: 100 });
-
-        console.log("Markers recreated successfully");
-      } catch (err) {
-        console.error("Error recreating markers:", err);
+    // Try again after map is fully loaded
+    const retryMarkersTimer = setTimeout(() => {
+      if (!routeAddedRef.current) {
+        console.log("Retrying marker creation after timeout");
+        addMarkersAndRoute(map.current);
       }
-    };
+    }, 1000);
+    
+    return () => clearTimeout(retryMarkersTimer);
+  }, [mapInitialized, addMarkersAndRoute]);
 
-    // Thử lại sau 2 giây nếu markers không hiển thị
-    const timer = setTimeout(retryMarkers, 2000);
-    return () => clearTimeout(timer);
-  }, [mapInitialized, shopLocation, customerLocation]);
-
-  // Function to update info below map
+  // Function to update map info display
   const updateMapInfo = () => {
     try {
-      if (
-        !shopLocation?.lat ||
-        !shopLocation?.lng ||
-        !customerLocation?.lat ||
-        !customerLocation?.lng
-      ) {
-        return;
+      if (!customerLocation || !shopLocation) return;
+      
+      // Calculate distance between shop and customer
+      const distance = calculateDistance(
+        shopLocation.lat, 
+        shopLocation.lng, 
+        customerLocation.lat, 
+        customerLocation.lng
+      );
+      
+      // Calculate estimated delivery time (30km/h average speed)
+      const estimatedMinutes = Math.ceil((distance / 30) * 60);
+      
+      // Update info element if it exists
+      const infoElement = document.getElementById("map-info");
+      if (infoElement) {
+        infoElement.innerHTML = `
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
+              <span class="font-medium text-gray-700">Cửa hàng → Địa chỉ nhận hàng</span>
+            </div>
+            <div class="flex gap-4">
+              <div><span class="font-medium text-blue-600">Khoảng cách:</span> ${distance.toFixed(1)} km</div>
+              <div><span class="font-medium text-blue-600">Thời gian ước tính:</span> ${estimatedMinutes} phút</div>
+            </div>
+          </div>
+        `;
       }
-
-      // Calculate distance (km)
-      const R = 6371; // Earth's radius in km
-      const dLat = ((customerLocation.lat - shopLocation.lat) * Math.PI) / 180;
-      const dLon = ((customerLocation.lng - shopLocation.lng) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos((shopLocation.lat * Math.PI) / 180) *
-          Math.cos((customerLocation.lat * Math.PI) / 180) *
-          Math.sin(dLon / 2) *
-          Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      const distance = (R * c).toFixed(1);
-
-      // Estimate delivery time (minutes)
-      const timeInMinutes = Math.round((distance / 15) * 60);
-
-      setTimeout(() => {
-        const infoElement = document.getElementById("map-info");
-        if (infoElement) {
-          infoElement.innerHTML = `
-                  <div class="bg-white p-3 border-t-2 border-green-500 rounded-t-md shadow">
-                    <div class="flex justify-between items-center text-sm font-medium">
-                      <div>Khoảng cách: <span class="text-blue-600">${distance} km</span></div>
-                      <div>Thời gian giao: <span class="text-blue-600">${timeInMinutes} phút</span></div>
-                    </div>
-                  </div>
-                `;
-        }
-      }, 500);
     } catch (err) {
       console.error("Error updating map info:", err);
     }
   };
+  
+  // Helper function to calculate distance between two points
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in km
+  };
 
-  // Only render our own container if we're not using the existing one in OrderDetail.jsx
-  const renderOwnContainer = !document.getElementById("order-tracking-map");
+  // Force redraw after component mount
+  useEffect(() => {
+    const forceRedrawTimer = setTimeout(() => {
+      if (map.current && mapInitialized) {
+        console.log("Forcing map redraw");
+        map.current.resize();
+        
+        // If route still not visible, try adding it again
+        if (!routeAddedRef.current) {
+          addMarkersAndRoute(map.current);
+        }
+      }
+    }, 1500);
+    
+    return () => clearTimeout(forceRedrawTimer);
+  }, [mapInitialized, addMarkersAndRoute]);
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+        <FiMapPin className="mx-auto text-red-500 mb-2" size={24} />
+        <p className="text-red-700 text-sm">
+          Không thể tải bản đồ. Vui lòng làm mới trang và thử lại.
+        </p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+        >
+          Làm mới trang
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-800">
-          Bản đồ giao hàng
-        </h3>
-        <div className="flex flex-wrap gap-3 mt-2 text-sm">
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-red-500 rounded-full mr-1"></div>
-            <span>Cửa hàng: {shopLocation?.name}</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-3 h-3 bg-blue-500 rounded-full mr-1"></div>
-            <span>
-              Địa chỉ giao hàng: {customerLocation?.address?.split(",")[0]}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="relative">
-        {error ? (
-          <div className="flex flex-col items-center justify-center h-96 bg-gray-100">
-            <FiMapPin className="text-red-500 w-12 h-12 mb-2" />
-            <p className="text-gray-700 text-center px-4">
-              Không thể tải bản đồ. Vui lòng thử lại sau.
-            </p>
-          </div>
-        ) : renderOwnContainer ? (
-          <>
-            <div
-              ref={mapContainer}
-              className="w-full h-96"
-              style={{ height: "400px" }}
-              id="map-container"
-            >
-              <div
-                id="order-tracking-map"
-                className="absolute inset-0"
-                style={{ width: "100%", height: "100%", minHeight: "300px" }}
-              ></div>
+    <div className="relative w-full">
+      <div id="map-info" className="mb-2 text-xs text-gray-500 p-2 bg-gray-50 rounded"></div>
+      <div className="relative aspect-video w-full border border-gray-200 rounded-lg overflow-hidden">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-70 z-10">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-green-500"></div>
+              <p className="mt-2 text-sm text-gray-600">Đang tải bản đồ...</p>
             </div>
-
-            <div
-              id="map-info"
-              className="absolute bottom-0 left-0 right-0 z-10"
-            ></div>
-          </>
-        ) : (
-          <div className="w-full h-96" style={{ height: "400px" }}>
-            <p className="text-center text-sm text-gray-500 py-2">
-              Sử dụng bản đồ đã có trong trang
-            </p>
           </div>
         )}
+        <div 
+          id="order-tracking-map" 
+          ref={mapContainer} 
+          className="absolute inset-0 w-full h-full"
+        ></div>
       </div>
     </div>
   );

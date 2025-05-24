@@ -4,8 +4,13 @@ import axios from "axios";
 // Get Mapbox API key from environment variable
 const MAPBOX_API_KEY = "pk.eyJ1Ijoia2l0MjcxMCIsImEiOiJjbWF4bWh5YWQwc2N0MmtxM2p1M2Z5azZkIn0.navJSR4rbpRHVV3TEXelQg";
 
+// Export Mapbox access token for use in other components
+export const MAPBOX_ACCESS_TOKEN = MAPBOX_API_KEY;
+
 // 🧠 Rút gọn địa chỉ Việt Nam
 function simplifyVietnameseAddress(address) {
+  if (!address) return "";
+  
   const blacklist = [
     "nhà trọ",
     "hẻm",
@@ -44,14 +49,47 @@ function simplifyVietnameseAddress(address) {
     "lane",
     "alley",
   ];
+  
   let parts = address
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
+    
+  // Keep only the most important parts (ward, district, province)
   parts = parts.filter(
     (part) => !blacklist.some((word) => part.toLowerCase().includes(word))
   );
-  return parts.slice(-4).join(", ");
+  
+  // Take last 4 parts which are typically the most important for geocoding
+  const simplifiedParts = parts.slice(-4);
+  
+  // If we have a province name, make sure it's included
+  const provinces = [
+    "Hà Nội", "TP HCM", "Hồ Chí Minh", "Đà Nẵng", "Hải Phòng", "Cần Thơ",
+    "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu",
+    "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước",
+    "Bình Thuận", "Cà Mau", "Cao Bằng", "Đắk Lắk", "Đắk Nông", "Điện Biên",
+    "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Tĩnh",
+    "Hải Dương", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang",
+    "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An",
+    "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên",
+    "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị",
+    "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa",
+    "Thừa Thiên Huế", "Tiền Giang", "Trà Vinh", "Tuyên Quang", "Vĩnh Long",
+    "Vĩnh Phúc", "Yên Bái"
+  ];
+  
+  // Check if any province is in the address
+  const hasProvince = provinces.some(province => 
+    address.toLowerCase().includes(province.toLowerCase())
+  );
+  
+  // If no province found, add "Việt Nam" to help with geocoding
+  if (!hasProvince && !address.toLowerCase().includes("việt nam")) {
+    simplifiedParts.push("Việt Nam");
+  }
+  
+  return simplifiedParts.join(", ");
 }
 
 // 🗺️ Geocoding với Mapbox
@@ -66,6 +104,8 @@ export async function geocodeWithMapbox(address) {
     const encoded = encodeURIComponent(simplified);
     const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json`;
 
+    console.log("Geocoding with Mapbox:", simplified);
+    
     const response = await axios.get(url, {
       params: {
         access_token: MAPBOX_API_KEY,
@@ -83,6 +123,15 @@ export async function geocodeWithMapbox(address) {
     }
 
     const [lng, lat] = feature.center;
+    
+    // Validate that coordinates are within Vietnam's bounds
+    if (lat < 8.18 || lat > 23.39 || lng < 102.14 || lng > 109.46) {
+      console.warn("Mapbox coordinates outside Vietnam bounds:", lat, lng);
+      return null;
+    }
+    
+    console.log("Mapbox geocoding successful:", feature.place_name);
+    
     return {
       lat,
       lng,
@@ -109,6 +158,8 @@ export async function geocodeWithOSM(address) {
     const addressWithCountry = simplified.includes("Việt Nam")
       ? simplified
       : `${simplified}, Việt Nam`;
+      
+    console.log("Geocoding with OSM:", addressWithCountry);
 
     const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
       addressWithCountry
@@ -148,9 +199,11 @@ export async function geocodeWithOSM(address) {
         result.lng < 102.14 ||
         result.lng > 109.46
       ) {
-        console.warn("OSM coordinates outside Vietnam bounds");
+        console.warn("OSM coordinates outside Vietnam bounds:", result.lat, result.lng);
         return null;
       }
+      
+      console.log("OSM geocoding successful:", data[0].display_name);
 
       return result;
     }
@@ -180,8 +233,34 @@ export const geocodeAddressDebounced = (() => {
 
         const key = address.trim().toLowerCase();
         if (cache.has(key)) {
+          console.log("Using in-memory cache for address:", address);
           callback?.(cache.get(key));
           return cache.get(key);
+        }
+        
+        // Try to use localStorage cache if available
+        try {
+          const cacheKey = key.replace(/\s+/g, '_');
+          const cachedLocations = JSON.parse(localStorage.getItem('geocoding_cache') || '{}');
+          if (cachedLocations[cacheKey]) {
+            const cachedResult = cachedLocations[cacheKey];
+            // Check if cache is not too old (less than 30 days)
+            const now = Date.now();
+            if (cachedResult.timestamp && (now - cachedResult.timestamp < 30 * 24 * 60 * 60 * 1000)) {
+              console.log("Using localStorage cache for address:", address);
+              const result = {
+                lat: cachedResult.lat,
+                lng: cachedResult.lng,
+                source: 'cache',
+                fullAddress: address
+              };
+              cache.set(key, result);
+              callback?.(result);
+              return result;
+            }
+          }
+        } catch (err) {
+          console.error("Error reading from localStorage cache:", err);
         }
 
         // 1️⃣ Thử với OSM trước
@@ -193,10 +272,38 @@ export const geocodeAddressDebounced = (() => {
           result = await geocodeWithMapbox(address);
         }
 
+        // 3️⃣ Nếu cả hai đều fail, thử với địa chỉ đơn giản hóa
+        if (!result) {
+          console.log("Both services failed, trying with simplified address...");
+          const simplifiedAddress = address.split(',').slice(-3).join(',').trim();
+          if (simplifiedAddress && simplifiedAddress !== address) {
+            result = await geocodeWithOSM(simplifiedAddress);
+            
+            if (!result) {
+              result = await geocodeWithMapbox(simplifiedAddress);
+            }
+          }
+        }
+
         if (result) {
           cache.set(key, result);
           callback?.(result);
+          
+          // Also save to localStorage for persistent cache
+          try {
+            const cacheKey = key.replace(/\s+/g, '_');
+            const cachedLocations = JSON.parse(localStorage.getItem('geocoding_cache') || '{}');
+            cachedLocations[cacheKey] = {
+              lat: result.lat,
+              lng: result.lng,
+              timestamp: Date.now()
+            };
+            localStorage.setItem('geocoding_cache', JSON.stringify(cachedLocations));
+          } catch (err) {
+            console.error("Error saving to localStorage cache:", err);
+          }
         } else {
+          console.error("All geocoding attempts failed for address:", address);
           callback?.(null, "Không tìm thấy tọa độ");
         }
 
@@ -206,7 +313,7 @@ export const geocodeAddressDebounced = (() => {
         callback?.(null, err.message);
         return null;
       }
-    }, 500);
+    }, 300); // Reduced debounce time for faster response
   };
 })();
 
