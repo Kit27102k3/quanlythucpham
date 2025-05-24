@@ -1,10 +1,14 @@
 services:
   - type: web
-    name: dnc-food-api
+    name: quanlythucpham-backend
     env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    nodeVersion: 18.x
+    plan: free
+    region: singapore
+    buildCommand: cd Server && npm install && npm run build
+    startCommand: cd Server && npm start
+    healthCheckPath: /health
     envVars:
+      - key: NODE_VERSION
+        value: 18.19.0
       - key: NODE_ENV
         value: production 
