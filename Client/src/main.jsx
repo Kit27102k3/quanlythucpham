@@ -121,9 +121,7 @@ const registerServiceWorker = async () => {
           console.log("Notification permission granted.");
 
           try {
-            // Fetch VAPID public key từ server
-            console.log("Fetching VAPID public key from server...");
-            
+
             const response = await fetch(`${API_BASE_URL}/auth/vapid-public-key`);
             console.log("VAPID key response status:", response.status);
             
