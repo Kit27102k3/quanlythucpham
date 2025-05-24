@@ -81,16 +81,14 @@ const mongooseOptions = {
   // Quan trọng cho thiết bị di động và mạng không cố định
   autoIndex: true,
   
-  // Tùy chỉnh SSL/TLS dựa trên loại URI
+  // Tùy chỉnh SSL/TLS dựa trên loại URI - Sửa lỗi sslValidate
   ...(URI && URI.includes('mongodb+srv://') ? {
     tls: true,
     tlsAllowInvalidCertificates: true,
     tlsAllowInvalidHostnames: true
   } : {
-    // Với direct URI, sử dụng ssl thay vì tls
-    ssl: true,
-    sslValidate: false,
-    checkServerIdentity: false
+    // Với direct URI, sử dụng ssl thay vì tls nhưng không dùng sslValidate
+    ssl: true
   }),
   
   // Các options này chỉ còn được dùng như aliases trong mongoose mới
@@ -369,13 +367,6 @@ const setupConnectionHandlers = () => {
         process.exit(1);
       }
     });
-  }
-};
-
-// Hàm thoát an toàn
-const safeExit = (code) => {
-  if (typeof process !== 'undefined') {
-    process.exit(code);
   }
 };
 

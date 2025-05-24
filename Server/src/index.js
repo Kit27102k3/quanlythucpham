@@ -111,7 +111,7 @@ app.use((req, res, next) => {
 // Middleware kiểm tra kết nối DB trước khi xử lý request cần DB
 const checkDbConnection = (req, res, next) => {
   // Danh sách các endpoint không cần kết nối DB
-  const noDbEndpoints = ['/health', '/debug', '/favicon.ico', '/', '/maintenance.html'];
+  const noDbEndpoints = ['/health', '/debug', '/favicon.ico', '/', '/maintenance.html', '/api/status'];
   
   if (isMongoConnected || noDbEndpoints.includes(req.path)) {
     return next();
@@ -150,6 +150,62 @@ app.get('/maintenance.html', (req, res) => {
       <p>Chúng tôi đang gặp vấn đề kết nối đến cơ sở dữ liệu. Vui lòng thử lại sau hoặc liên hệ với chúng tôi nếu vấn đề kéo dài.</p>
       <p>Hotline: 0326 743391</p>
       <button onclick="window.location.reload()">Thử lại</button>
+    </body>
+    </html>
+  `);
+});
+
+// Trang chủ mặc định
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Quản Lý Thực Phẩm API</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px 20px; background-color: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #2e7d32; margin-bottom: 30px; }
+        .status { display: inline-block; padding: 8px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 20px; }
+        .status.online { background-color: #e8f5e9; color: #2e7d32; }
+        .status.offline { background-color: #ffebee; color: #c62828; }
+        .endpoints { text-align: left; background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin-top: 20px; }
+        .endpoints h3 { margin-top: 0; }
+        .endpoint { margin-bottom: 10px; padding: 5px; }
+        .endpoint code { background-color: #e0e0e0; padding: 3px 6px; border-radius: 3px; }
+        footer { margin-top: 30px; color: #757575; font-size: 0.9em; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>Quản Lý Thực Phẩm API</h1>
+        <div class="status ${isMongoConnected ? 'online' : 'offline'}">
+          ${isMongoConnected ? '✅ Hệ thống đang hoạt động' : '❌ Database đang ngắt kết nối'}
+        </div>
+        
+        <p>Đây là API server cho ứng dụng Quản Lý Thực Phẩm. Vui lòng sử dụng client app để truy cập dịch vụ.</p>
+        
+        <div class="endpoints">
+          <h3>Các endpoint chính:</h3>
+          <div class="endpoint">
+            <code>GET /health</code> - Kiểm tra trạng thái hệ thống
+          </div>
+          <div class="endpoint">
+            <code>GET /api/products</code> - Danh sách sản phẩm
+          </div>
+          <div class="endpoint">
+            <code>GET /api/categories</code> - Danh sách danh mục
+          </div>
+          <div class="endpoint">
+            <code>GET /api/db/status</code> - Trạng thái kết nối database
+          </div>
+        </div>
+        
+        <footer>
+          <p>© ${new Date().getFullYear()} Quản Lý Thực Phẩm - Phiên bản ${process.env.npm_package_version || '1.0.0'}</p>
+        </footer>
+      </div>
     </body>
     </html>
   `);

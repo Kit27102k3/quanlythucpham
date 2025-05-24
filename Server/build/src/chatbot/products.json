@@ -1,0 +1,269 @@
+[
+  {
+    "id": "VEG001",
+    "name": "Rau cải ngồng hữu cơ",
+    "description": "Rau cải ngồng hữu cơ được trồng tại trang trại Organica, không sử dụng thuốc trừ sâu và phân bón hóa học. Rau tươi ngon, giòn ngọt, chứa nhiều vitamin và khoáng chất có lợi cho sức khỏe.",
+    "price": 35000,
+    "unit": "kg",
+    "category": "Rau củ quả",
+    "origin": "Đà Lạt, Lâm Đồng",
+    "certifications": ["Organic", "VietGAP"],
+    "nutritional_info": {
+      "calories": 25,
+      "protein": 1.5,
+      "carbs": 4.7,
+      "fat": 0.1,
+      "fiber": 2.2
+    },
+    "storage": "Bảo quản trong tủ lạnh ở nhiệt độ 2-5°C, sử dụng trong vòng 3-5 ngày."
+  },
+  {
+    "id": "VEG002",
+    "name": "Cà chua beef hữu cơ",
+    "description": "Cà chua beef organic có kích thước lớn, thịt dày, ít hạt, vị ngọt đậm đà. Được trồng theo phương pháp hữu cơ, không sử dụng thuốc trừ sâu và phân bón hóa học.",
+    "price": 65000,
+    "unit": "kg",
+    "category": "Rau củ quả",
+    "origin": "Mộc Châu, Sơn La",
+    "certifications": ["Organic", "GlobalGAP"],
+    "nutritional_info": {
+      "calories": 18,
+      "protein": 0.9,
+      "carbs": 3.9,
+      "fat": 0.2,
+      "fiber": 1.2
+    },
+    "storage": "Bảo quản ở nhiệt độ phòng cho đến khi chín, sau đó chuyển vào tủ lạnh để kéo dài thời gian sử dụng."
+  },
+  {
+    "id": "FRU001",
+    "name": "Táo Fuji hữu cơ",
+    "description": "Táo Fuji hữu cơ nhập khẩu, vỏ mỏng, thịt giòn, ngọt thanh. Được trồng và thu hoạch theo tiêu chuẩn hữu cơ nghiêm ngặt, không sử dụng hóa chất và thuốc trừ sâu.",
+    "price": 125000,
+    "unit": "kg",
+    "category": "Trái cây",
+    "origin": "New Zealand",
+    "certifications": ["Organic", "GlobalGAP"],
+    "nutritional_info": {
+      "calories": 52,
+      "protein": 0.3,
+      "carbs": 13.8,
+      "fat": 0.2,
+      "fiber": 2.4
+    },
+    "storage": "Bảo quản trong tủ lạnh ở nhiệt độ 0-4°C, có thể giữ được 2-3 tuần."
+  },
+  {
+    "id": "MEAT001",
+    "name": "Thịt bò Úc hữu cơ",
+    "description": "Thịt bò Úc hữu cơ được chăn thả tự nhiên, không sử dụng hormone tăng trưởng và kháng sinh. Thịt có vân mỡ đẹp, thớ thịt mềm, hương vị đậm đà.",
+    "price": 450000,
+    "unit": "kg",
+    "category": "Thịt",
+    "origin": "Úc",
+    "certifications": ["Organic", "ACO", "MSA"],
+    "nutritional_info": {
+      "calories": 250,
+      "protein": 26,
+      "carbs": 0,
+      "fat": 17,
+      "iron": "3.5mg"
+    },
+    "storage": "Bảo quản trong tủ lạnh ở nhiệt độ 0-4°C, sử dụng trong vòng 2-3 ngày. Có thể đông lạnh đến 6 tháng."
+  },
+  {
+    "id": "MEAT002",
+    "name": "Thịt gà thả vườn",
+    "description": "Gà thả vườn được nuôi theo phương pháp tự nhiên, không sử dụng kháng sinh và thức ăn chứa hóa chất. Thịt gà chắc, thơm, ngọt, giàu protein và ít mỡ.",
+    "price": 185000,
+    "unit": "kg",
+    "category": "Thịt",
+    "origin": "Lương Sơn, Hòa Bình",
+    "certifications": ["VietGAP"],
+    "nutritional_info": {
+      "calories": 165,
+      "protein": 31,
+      "carbs": 0,
+      "fat": 3.6
+    },
+    "storage": "Bảo quản trong tủ lạnh ở nhiệt độ 0-4°C, sử dụng trong vòng 1-2 ngày. Có thể đông lạnh đến 3 tháng."
+  },
+  {
+    "id": "FISH001",
+    "name": "Cá hồi tươi hữu cơ",
+    "description": "Cá hồi tươi hữu cơ được nuôi trong môi trường tự nhiên, không sử dụng kháng sinh và hóa chất. Thịt cá có màu hồng đẹp, thơm ngon, giàu omega-3 và protein chất lượng cao.",
+    "price": 395000,
+    "unit": "kg",
+    "category": "Cá và hải sản",
+    "origin": "Na Uy",
+    "certifications": ["Organic", "ASC"],
+    "nutritional_info": {
+      "calories": 208,
+      "protein": 20,
+      "carbs": 0,
+      "fat": 13,
+      "omega3": "2.3g"
+    },
+    "storage": "Bảo quản trong tủ lạnh ở nhiệt độ 0-2°C, sử dụng trong vòng 1-2 ngày. Có thể đông lạnh đến 3 tháng."
+  },
+  {
+    "id": "DAIRY001",
+    "name": "Sữa tươi hữu cơ",
+    "description": "Sữa tươi hữu cơ từ những con bò được chăn thả tự nhiên, ăn cỏ hữu cơ, không sử dụng hormone tăng trưởng và kháng sinh. Sữa giàu canxi, protein, và các vitamin cần thiết.",
+    "price": 45000,
+    "unit": "chai 1L",
+    "category": "Trứng và sữa",
+    "origin": "Mộc Châu, Sơn La",
+    "certifications": ["Organic", "HACCP"],
+    "nutritional_info": {
+      "calories": 65,
+      "protein": 3.3,
+      "carbs": 4.7,
+      "fat": 3.7,
+      "calcium": "120mg"
+    },
+    "storage": "Bảo quản trong tủ lạnh ở nhiệt độ 2-4°C, sử dụng trong vòng 7 ngày sau khi mở nắp."
+  },
+  {
+    "id": "GRAIN001",
+    "name": "Gạo lứt hữu cơ",
+    "description": "Gạo lứt hữu cơ được trồng không sử dụng thuốc trừ sâu và phân bón hóa học. Gạo giàu chất xơ, vitamin B, và khoáng chất, hỗ trợ tiêu hóa và có lợi cho sức khỏe tim mạch.",
+    "price": 85000,
+    "unit": "túi 2kg",
+    "category": "Thực phẩm khô",
+    "origin": "Hậu Giang",
+    "certifications": ["Organic", "USDA"],
+    "nutritional_info": {
+      "calories": 110,
+      "protein": 2.6,
+      "carbs": 22.8,
+      "fat": 0.9,
+      "fiber": 1.8
+    },
+    "storage": "Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp. Có thể sử dụng đến 12 tháng."
+  },
+  {
+    "id": "SPICE001",
+    "name": "Tiêu đen hữu cơ",
+    "description": "Tiêu đen hữu cơ được trồng và thu hoạch theo phương pháp truyền thống, không sử dụng hóa chất. Hạt tiêu to tròn, mùi thơm nồng, vị cay đậm đà.",
+    "price": 120000,
+    "unit": "hộp 100g",
+    "category": "Gia vị",
+    "origin": "Phú Quốc, Kiên Giang",
+    "certifications": ["Organic", "PGI"],
+    "nutritional_info": {
+      "calories": 251,
+      "protein": 10.4,
+      "carbs": 64.8,
+      "fat": 3.3,
+      "fiber": 25.3
+    },
+    "storage": "Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp. Có thể sử dụng đến 24 tháng."
+  },
+  {
+    "id": "BEV001",
+    "name": "Trà xanh hữu cơ",
+    "description": "Trà xanh hữu cơ được trồng theo phương pháp hữu cơ, không sử dụng thuốc trừ sâu và phân bón hóa học. Trà có hương thơm dịu nhẹ, vị đắng thanh, giàu chất chống oxy hóa và có nhiều lợi ích cho sức khỏe.",
+    "price": 65000,
+    "unit": "hộp 100g",
+    "category": "Đồ uống",
+    "origin": "Thái Nguyên",
+    "certifications": ["Organic", "JAS"],
+    "nutritional_info": {
+      "calories": 0,
+      "antioxidants": "Cao",
+      "caffeine": "25-35mg/ly"
+    },
+    "storage": "Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp và mùi mạnh. Có thể sử dụng đến 18 tháng."
+  },
+  {
+    "id": "VEG003",
+    "name": "Bí đỏ hữu cơ",
+    "description": "Bí đỏ hữu cơ được trồng theo phương pháp hữu cơ, không sử dụng thuốc trừ sâu và phân bón hóa học. Bí có thịt dày, vị ngọt, giàu beta-carotene, vitamin A, và chất xơ.",
+    "price": 28000,
+    "unit": "kg",
+    "category": "Rau củ quả",
+    "origin": "Đắk Lắk",
+    "certifications": ["Organic", "VietGAP"],
+    "nutritional_info": {
+      "calories": 26,
+      "protein": 1,
+      "carbs": 6.5,
+      "fat": 0.1,
+      "fiber": 0.5
+    },
+    "storage": "Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp. Có thể giữ được 2-3 tháng."
+  },
+  {
+    "id": "FRU002",
+    "name": "Bơ sáp hữu cơ",
+    "description": "Bơ sáp hữu cơ được trồng theo phương pháp hữu cơ, không sử dụng thuốc trừ sâu và phân bón hóa học. Bơ có thịt vàng, ít xơ, béo ngậy, giàu chất béo không bão hòa đơn và vitamin E.",
+    "price": 75000,
+    "unit": "kg",
+    "category": "Trái cây",
+    "origin": "Đắk Nông",
+    "certifications": ["Organic", "VietGAP"],
+    "nutritional_info": {
+      "calories": 160,
+      "protein": 2,
+      "carbs": 9,
+      "fat": 15,
+      "fiber": 7
+    },
+    "storage": "Bảo quản ở nhiệt độ phòng cho đến khi chín, sau đó chuyển vào tủ lạnh để kéo dài thời gian sử dụng."
+  },
+  {
+    "id": "PROC001",
+    "name": "Sữa chua hữu cơ",
+    "description": "Sữa chua hữu cơ được làm từ sữa tươi hữu cơ và men vi sinh có lợi. Sữa chua có vị chua nhẹ, béo ngậy, giàu protein, canxi, và probiotics tốt cho hệ tiêu hóa.",
+    "price": 32000,
+    "unit": "hộp 150g",
+    "category": "Thực phẩm chế biến",
+    "origin": "Việt Nam",
+    "certifications": ["Organic", "HACCP"],
+    "nutritional_info": {
+      "calories": 120,
+      "protein": 4.7,
+      "carbs": 12.5,
+      "fat": 5.3,
+      "calcium": "150mg",
+      "probiotics": "Cao"
+    },
+    "storage": "Bảo quản trong tủ lạnh ở nhiệt độ 2-4°C, sử dụng trong vòng 7 ngày."
+  },
+  {
+    "id": "NUTS001",
+    "name": "Hạt điều hữu cơ",
+    "description": "Hạt điều hữu cơ được trồng và chế biến theo phương pháp hữu cơ, không sử dụng hóa chất. Hạt điều giòn, thơm, ngọt, giàu chất béo không bão hòa, protein, và khoáng chất.",
+    "price": 165000,
+    "unit": "hộp 250g",
+    "category": "Thực phẩm khô",
+    "origin": "Bình Phước",
+    "certifications": ["Organic", "USDA"],
+    "nutritional_info": {
+      "calories": 553,
+      "protein": 18,
+      "carbs": 30,
+      "fat": 44,
+      "fiber": 3
+    },
+    "storage": "Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp. Có thể sử dụng đến 6 tháng. Sau khi mở, nên bảo quản trong tủ lạnh."
+  },
+  {
+    "id": "HONEY001",
+    "name": "Mật ong rừng nguyên chất",
+    "description": "Mật ong rừng được thu hoạch từ các đàn ong hoang dã ở rừng nguyên sinh, không có sự can thiệp của con người. Mật ong có màu vàng đậm, mùi thơm đặc trưng, vị ngọt thanh, giàu khoáng chất và enzyme có lợi cho sức khỏe.",
+    "price": 350000,
+    "unit": "chai 500ml",
+    "category": "Thực phẩm khô",
+    "origin": "Cao Bằng",
+    "certifications": ["Natural", "No additives"],
+    "nutritional_info": {
+      "calories": 304,
+      "carbs": 82,
+      "enzymes": "Cao",
+      "antioxidants": "Cao"
+    },
+    "storage": "Bảo quản nơi khô ráo, thoáng mát, tránh ánh nắng trực tiếp. Không cần bảo quản trong tủ lạnh. Có thể sử dụng đến 24 tháng."
+  }
+] 
