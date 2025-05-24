@@ -11,7 +11,9 @@
     "start": "node ./build/src/index.js",
     "dev": "node --experimental-modules ./src/index.js",
     "update-webhook": "node --no-warnings updateWebhook.cjs",
-    "ngrok-dev": "node --no-warnings ngrok-dev.cjs"
+    "ngrok-dev": "node --no-warnings ngrok-dev.cjs",
+    "start:prod": "NODE_ENV=production node ./build/src/index.js",
+    "setup-db": "node scripts/whitelist-setup.js"
   },
   "dependencies": {
     "@babel/cli": "^7.27.2",
@@ -32,6 +34,7 @@
     "cors": "^2.8.5",
     "cosine-similarity": "^1.0.1",
     "crypto": "^1.0.1",
+    "dns-lookup": "^0.1.0",
     "dotenv": "^16.5.0",
     "express": "^4.21.2",
     "google-auth-library": "^9.15.1",

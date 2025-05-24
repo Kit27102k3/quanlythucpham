@@ -1,10 +1,19 @@
+/* eslint-disable no-undef */
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import dns from 'dns';
+// Không cần fileURLToPath và dirname vì chúng ta không sử dụng __dirname
 
+// Khởi tạo dotenv
 dotenv.config();
 
-// Lấy URI từ biến môi trường
-const URI = process.env.MONGODB_URI || process.env.MONGOOSE_URI;
+// Hỗ trợ IPv4 first - giúp kết nối từ nhiều loại thiết bị
+dns.setDefaultResultOrder('ipv4first');
+
+// Lấy URI từ biến môi trường và Node.js global process
+const URI = (typeof process !== 'undefined' ? 
+  process.env.MONGODB_IP_URI || process.env.MONGODB_DIRECT_URI || process.env.MONGOOSE_URI || process.env.MONGODB_URI || process.env.MONGODB_FALLBACK_URI : 
+  undefined);
 
 // Thêm tham số để cho phép kết nối từ mọi IP (0.0.0.0/0)
 // Chuyển đổi URI để thêm tham số vào
@@ -14,11 +23,22 @@ const enhanceMongoURI = (uri) => {
     
     // Nếu URI đã có tham số, thêm retryWrites và tham số IP
     if (uri.includes('?')) {
-      // Đã có tham số, thêm tham số mới
-      return `${uri}&retryWrites=true&w=majority`;
+      // Đã có tham số, thêm tham số mới nếu chưa có
+      if (!uri.includes('retryWrites=true')) {
+        uri += '&retryWrites=true';
+      }
+      if (!uri.includes('w=majority')) {
+        uri += '&w=majority';
+      }
+      if (!uri.includes('tls=true') && !uri.includes('ssl=true')) {
+        uri += '&tls=true';
+      }
+      // Thay thế ssl=true bằng tls=true nếu có
+      uri = uri.replace('ssl=true', 'tls=true');
+      return uri;
     } else {
       // Chưa có tham số, thêm dấu ? và tham số mới
-      return `${uri}?retryWrites=true&w=majority`;
+      return `${uri}?retryWrites=true&w=majority&tls=true`;
     }
   } catch (err) {
     console.error("Error enhancing MongoDB URI:", err);
@@ -41,23 +61,142 @@ const mongooseOptions = {
   maxIdleTimeMS: 60000,
   waitQueueTimeoutMS: 60000,
   heartbeatFrequencyMS: 10000,
-  family: 4,
+  family: 4, // IPv4 
+  // directConnection chỉ áp dụng cho URI kiểu SRV, không áp dụng cho IP URI trực tiếp
+  directConnection: URI && URI.includes('mongodb+srv://'), 
   
   // Các tùy chọn bổ sung để bỏ qua xác minh IP nghiêm ngặt
   // Quan trọng cho thiết bị di động và mạng không cố định
   autoIndex: true,
+  tls: true, // Dùng TLS thay cho SSL (SSL đã deprecated)
+  tlsAllowInvalidCertificates: true, // Cho phép chứng chỉ không hợp lệ, giúp kết nối từ mạng di động
+  tlsAllowInvalidHostnames: true, // Cho phép hostname không hợp lệ, quan trọng khi dùng IP
+  // Các options này chỉ còn được dùng như aliases trong mongoose mới
+  // nhưng giữ lại để đảm bảo tương thích
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
+  
+  // Thêm các tùy chọn cho mạng di động
+  bufferCommands: true, // Buffer các lệnh khi mất kết nối tạm thời
+  bufferMaxEntries: 0, // Không giới hạn số lượng lệnh đệm để tránh lỗi server timeout
+  autoReconnect: true, // Tự động kết nối lại
+  reconnectTries: Number.MAX_VALUE, // Số lần thử kết nối lại không giới hạn
+  reconnectInterval: 1000, // Thời gian giữa các lần thử kết nối lại
+  poolSize: 10, // Kích thước pool connections
 };
 
 // Biến toàn cục theo dõi trạng thái kết nối
 let isMongoConnected = false;
 let connectionAttempts = 0;
 
+// Lấy Node environment
+const getNodeEnv = () => {
+  return typeof process !== 'undefined' && process.env ? process.env.NODE_ENV || 'development' : 'development';
+};
+
+// Xử lý exit process an toàn
+const safeExit = (code) => {
+  if (typeof process !== 'undefined' && process.exit) {
+    process.exit(code);
+  }
+};
+
+// Custom resolver cho DNS - giúp giải quyết vấn đề không kết nối được từ mobile network
+const setupCustomDNSResolver = async () => {
+  try {
+    // Thử làm rõ tên miền MongoDB
+    if (URI && URI.includes('mongodb+srv://') && typeof process !== 'undefined') {
+      const host = URI.split('@')[1].split('/')[0];
+      try {
+        // Thiết lập DNS servers thay thế (Google DNS và Cloudflare DNS)
+        dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1', '1.0.0.1']);
+        
+        // Thử giải quyết SRV record
+        const lookupPromise = new Promise((resolve, reject) => {
+          dns.lookup(host, (err, address) => {
+            if (!err) {
+              console.log(`MongoDB Host ${host} resolves to IP: ${address}`);
+              resolve(address);
+            } else {
+              console.error(`DNS lookup failed for ${host}:`, err);
+              reject(err);
+            }
+          });
+        });
+        
+        // Chờ tối đa 5 giây cho DNS lookup
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('DNS lookup timeout')), 5000)
+        );
+        
+        // Chạy với timeout
+        const address = await Promise.race([lookupPromise, timeoutPromise]);
+        
+        // Nếu thành công và không có URI trực tiếp, tạo một URI trực tiếp
+        if (address && !process.env.MONGODB_DIRECT_URI) {
+          let username = '', password = '', database = '';
+          
+          // Parse URI để lấy thông tin xác thực và database
+          if (URI.includes('@')) {
+            const authPart = URI.split('@')[0].replace('mongodb+srv://', '');
+            if (authPart.includes(':')) {
+              [username, password] = authPart.split(':');
+            }
+          }
+          
+          if (URI.includes('/')) {
+            const parts = URI.split('/');
+            database = parts[parts.length - 1].split('?')[0];
+          }
+          
+          // Tạo URI trực tiếp với địa chỉ IP đã resolve
+          const directURI = `mongodb://${username}:${password}@${address}:27017/${database}?ssl=true&authSource=admin`;
+          console.log(`Created direct URI using resolved IP: ${directURI.replace(/\/\/[^:]+:[^@]+@/, "//***:***@")}`);
+          
+          // Lưu lại để sử dụng sau này
+          if (typeof process !== 'undefined') {
+            process.env.MONGODB_RESOLVED_DIRECT_URI = directURI;
+          }
+        }
+      } catch (dnsErr) {
+        console.error('DNS resolution error:', dnsErr);
+      }
+    }
+  } catch (error) {
+    console.error('Error setting up custom DNS resolver:', error);
+  }
+};
+
+// Gọi setupCustomDNSResolver để cải thiện kết nối - bây giờ là async
+(async () => {
+  try {
+    await setupCustomDNSResolver();
+  } catch (e) {
+    console.error("Error in initial DNS setup:", e);
+  }
+})();
+
 // Hàm kết nối MongoDB với khả năng thử lại
 const connectWithRetry = async (retries = 5, delay = 5000) => {
   connectionAttempts++;
   console.log(`MongoDB Connection Attempt #${connectionAttempts}...`);
+  
+  // Kiểm tra DNS trước khi kết nối
+  await setupCustomDNSResolver();
+  
+  // Ưu tiên sử dụng URI trực tiếp đã được resolved từ SRV
+  const ipURI = typeof process !== 'undefined' ? process.env.MONGODB_IP_URI : undefined;
+  const resolvedDirectURI = typeof process !== 'undefined' ? process.env.MONGODB_RESOLVED_DIRECT_URI : undefined;
+  
+  // Quyết định URI để kết nối theo thứ tự ưu tiên
+  let uriToConnect = ipURI || resolvedDirectURI || enhancedURI;
+  
+  // Log thông tin kết nối để debug
+  console.log(`Đang kết nối với MongoDB, loại URI: ${
+    ipURI ? 'IP trực tiếp' : 
+    resolvedDirectURI ? 'Resolved DNS' : 
+    'SRV Standard'
+  }`);
   
   for (let i = 0; i < retries; i++) {
     try {
@@ -66,8 +205,12 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
         await new Promise(r => setTimeout(r, 2000));
       }
       
+      // Hiển thị thông tin kết nối (che dấu thông tin nhạy cảm)
+      console.log("Connecting to MongoDB with URI:", 
+        uriToConnect ? uriToConnect.replace(/\/\/[^:]+:[^@]+@/, "//***:***@") : "URI is undefined");
+      
       // Kết nối với URI đã được nâng cao
-      await mongoose.connect(enhancedURI, mongooseOptions);
+      await mongoose.connect(uriToConnect, mongooseOptions);
       
       console.log("MongoDB Connected Successfully!");
       console.log("Connection Info:", {
@@ -75,7 +218,9 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
         port: mongoose.connection.port,
         dbName: mongoose.connection.name,
         readyState: mongoose.connection.readyState,
-        env: process.env.NODE_ENV
+        usingDirectURI: !!resolvedDirectURI,
+        usingIpURI: !!ipURI,
+        env: getNodeEnv()
       });
       
       isMongoConnected = true;
@@ -85,7 +230,7 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
       
       if (err.name === "MongooseServerSelectionError") {
         console.error("Connection Details (obfuscated):", {
-          uri: enhancedURI ? enhancedURI.replace(/\/\/[^:]+:[^@]+@/, "//***:***@") : "URI is undefined",
+          uri: uriToConnect ? uriToConnect.replace(/\/\/[^:]+:[^@]+@/, "//***:***@") : "URI is undefined",
           message: err.message,
           reason: err.reason && err.reason.message ? err.reason.message : undefined,
           code: err.code
@@ -93,6 +238,23 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
         
         console.warn("⚠️ This error might be related to IP whitelist restrictions. Please update your MongoDB Atlas whitelist to include 0.0.0.0/0 or your current IP.");
         console.warn("⚠️ Hãy kiểm tra whitelist IP trong MongoDB Atlas và đảm bảo thêm địa chỉ IP của bạn hoặc 0.0.0.0/0 để cho phép tất cả kết nối.");
+        
+        // Thử sử dụng URI dự phòng nếu có
+        const fallbackURI = typeof process !== 'undefined' ? 
+          process.env.MONGODB_FALLBACK_URI : undefined;
+        
+        if (fallbackURI && fallbackURI !== URI) {
+          console.log("Trying fallback URI...");
+          const enhancedFallbackURI = enhanceMongoURI(fallbackURI);
+          try {
+            await mongoose.connect(enhancedFallbackURI, mongooseOptions);
+            console.log("Connected successfully using fallback URI!");
+            isMongoConnected = true;
+            return mongoose.connection;
+          } catch (fallbackErr) {
+            console.error("Fallback connection failed:", fallbackErr.name);
+          }
+        }
       }
 
       if (i === retries - 1) {
@@ -140,17 +302,19 @@ const setupConnectionHandlers = () => {
     isMongoConnected = true;
   });
   
-  // Xử lý khi process kết thúc
-  process.on('SIGINT', async () => {
-    try {
-      await mongoose.connection.close();
-      console.log('MongoDB connection closed due to app termination');
-      process.exit(0);
-    } catch (err) {
-      console.error('Error during MongoDB connection closure:', err);
-      process.exit(1);
-    }
-  });
+  // Xử lý khi process kết thúc - chỉ thực hiện nếu process là định nghĩa
+  if (typeof process !== 'undefined') {
+    process.on('SIGINT', async () => {
+      try {
+        await mongoose.connection.close();
+        console.log('MongoDB connection closed due to app termination');
+        safeExit(0);
+      } catch (err) {
+        console.error('Error during MongoDB connection closure:', err);
+        safeExit(1);
+      }
+    });
+  }
 };
 
 // Hàm kiểm tra trạng thái kết nối

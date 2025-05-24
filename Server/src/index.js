@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
 import jwt from "jsonwebtoken";
+import dns from "dns";
 
 import { deleteExpiredVouchers } from "./Controller/savedVoucherController.js";
 import {
@@ -291,6 +292,88 @@ app.get("/debug", (req, res) => {
       readyState: mongoose.connection.readyState
     }
   });
+});
+
+// Thêm endpoint hiện thị thông tin chi tiết về kết nối MongoDB
+app.get('/mongodb-debug', async (req, res) => {
+  try {
+    // Chỉ cho phép trong môi trường development
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ message: 'Forbidden in production environment' });
+    }
+
+    // Thu thập thông tin chi tiết về môi trường và kết nối
+    const info = {
+      environment: {
+        nodeEnv: process.env.NODE_ENV || 'development',
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+      },
+      mongoose: {
+        version: mongoose.version,
+        connectionState: mongoose.connection.readyState,
+        connectionParams: {
+          host: mongoose.connection.host,
+          port: mongoose.connection.port,
+          name: mongoose.connection.name,
+        },
+      },
+      request: {
+        ip: req.ip,
+        ips: req.ips,
+        headers: req.headers,
+        userAgent: req.get('User-Agent'),
+      },
+      network: {
+        dnsServers: dns.getServers(),
+      },
+    };
+
+    // Thử resolve địa chỉ MongoDB Atlas
+    try {
+      const mainHost = 'cluster0.ahfbtwd.mongodb.net';
+      const dnsLookupPromise = new Promise((resolve, reject) => {
+        dns.lookup(mainHost, (err, address) => {
+          if (err) reject(err);
+          else resolve(address);
+        });
+      });
+      
+      const dnsResolvePromise = new Promise((resolve, reject) => {
+        dns.resolve(mainHost, (err, addresses) => {
+          if (err) reject(err);
+          else resolve(addresses);
+        });
+      });
+      
+      // Đặt timeout 5 giây cho các DNS lookup
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('DNS lookup timeout')), 5000)
+      );
+      
+      // Chạy các thao tác DNS với timeout
+      try {
+        info.network.dnsLookup = await Promise.race([dnsLookupPromise, timeout]);
+      } catch (e) {
+        info.network.dnsLookupError = e.message;
+      }
+      
+      try {
+        info.network.dnsResolve = await Promise.race([dnsResolvePromise, timeout]);
+      } catch (e) {
+        info.network.dnsResolveError = e.message;
+      }
+    } catch (dnsErr) {
+      info.network.dnsError = dnsErr.message;
+    }
+
+    res.json(info);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Middleware to catch unhandled requests (404)
