@@ -15,11 +15,6 @@ let isMongoConnected = false;
 let connectionAttempts = 0;
 let currentUri = null;
 
-// Lấy Node environment
-const getNodeEnv = () => {
-  return typeof process !== 'undefined' && process.env ? process.env.NODE_ENV || 'development' : 'development';
-};
-
 // Kiểm tra xem thiết bị có phải là thiết bị di động không
 const isMobileDevice = () => {
   // Kiểm tra UserAgent nếu đang chạy trong môi trường có window
@@ -129,21 +124,23 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
     isMobile: isMobileDevice()
   });
   
-  // Options kết nối MongoDB tối ưu
+  // Options kết nối MongoDB tối ưu - Điều chỉnh để khắc phục lỗi timeout
   const mongooseOptions = {
-    serverSelectionTimeoutMS: 60000,
-    socketTimeoutMS: 90000,
-    connectTimeoutMS: 60000,
-    maxPoolSize: 50,
-    family: 4, // IPv4
+    serverSelectionTimeoutMS: 30000,  // Giảm thời gian chờ server selection
+    socketTimeoutMS: 45000,           // Giảm thời gian chờ socket
+    connectTimeoutMS: 30000,          // Giảm thời gian timeout kết nối
+    maxPoolSize: 10,                  // Giảm số lượng kết nối tối đa
+    minPoolSize: 1,                   // Giảm số lượng kết nối tối thiểu
+    family: 4,                        // IPv4
     autoIndex: true,
     // Tùy chỉnh SSL/TLS dựa trên loại URI
     ...(uriToConnect.includes('mongodb+srv://') ? {
       tls: true,
+      tlsInsecure: true,              // Cho phép kết nối không an toàn để test
       tlsAllowInvalidCertificates: true,
       tlsAllowInvalidHostnames: true
     } : {
-      ssl: true
+      ssl: false                      // Tắt SSL cho kết nối trực tiếp để tránh timeout
     })
   };
   
@@ -174,6 +171,35 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
     } catch (err) {
       console.error(`MongoDB connection attempt ${i + 1} failed:`, err.name);
       console.error("Error details:", err.message);
+      
+      // Thử kết nối với URI khác nếu đã thử 2 lần với URI hiện tại
+      if (i === 1) {
+        // Thử với URI không có SSL
+        try {
+          console.log("Thử kết nối không sử dụng SSL/TLS...");
+          
+          // Tạo URI mới không có SSL
+          let noSslUri = uriToConnect;
+          if (noSslUri.includes('ssl=true')) {
+            noSslUri = noSslUri.replace('ssl=true', 'ssl=false');
+          } else if (!noSslUri.includes('ssl=false')) {
+            noSslUri += noSslUri.includes('?') ? '&ssl=false' : '?ssl=false';
+          }
+          
+          // Kết nối với URI không có SSL
+          await mongoose.connect(noSslUri, {
+            ...mongooseOptions,
+            ssl: false,
+            tls: false
+          });
+          
+          console.log("Kết nối thành công với cấu hình không SSL!");
+          isMongoConnected = true;
+          return mongoose.connection;
+        } catch (noSslErr) {
+          console.error("Kết nối không SSL cũng thất bại:", noSslErr.message);
+        }
+      }
       
       // Nếu đã thử tất cả các lần và vẫn thất bại
       if (i === retries - 1) {
