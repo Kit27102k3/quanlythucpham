@@ -1,7 +1,7 @@
+/* eslint-disable no-undef */
 import express from 'express';
 import { mongoose } from '../config/database.js';
 import { isMongoConnected } from '../config/database.js';
-import apiAuth from '../middleware/apiAuth.js';
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ const checkMongoConnection = (req, res, next) => {
   next();
 };
 
-// API endpoint kiểm tra trạng thái kết nối - Không yêu cầu xác thực
+// API endpoint kiểm tra trạng thái kết nối
 router.get('/status', (req, res) => {
   const status = isMongoConnected ? 'connected' : 'disconnected';
   const readyState = mongoose.connection.readyState;
@@ -34,9 +34,6 @@ router.get('/status', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-
-// Áp dụng middleware xác thực cho tất cả các routes bên dưới
-router.use(apiAuth);
 
 // API endpoint tổng quát để truy vấn collection
 router.post('/query/:collection', checkMongoConnection, async (req, res) => {
