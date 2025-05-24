@@ -33,7 +33,7 @@ export const verifyToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.startsWith('Bearer ') 
       ? authHeader.substring(7) 
-      : req.cookies?.AccessToken;
+      : (req.cookies && req.cookies.AccessToken ? req.cookies.AccessToken : null);
 
     if (!token) {
       return res.status(401).json({ 

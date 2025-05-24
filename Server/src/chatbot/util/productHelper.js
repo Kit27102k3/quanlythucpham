@@ -12,8 +12,8 @@
 const generateProductUsage = (product) => {
   if (!product) return "Không có thông tin về công dụng của sản phẩm này.";
   
-  const productName = product.productName?.toLowerCase() || '';
-  const category = product.productCategory?.toLowerCase() || '';
+  const productName = product.productName && product.productName.toLowerCase ? product.productName.toLowerCase() : '';
+  const category = product.productCategory && product.productCategory.toLowerCase ? product.productCategory.toLowerCase() : '';
   let description = product.productInfo || product.productDetails || '';
   
   // Từ khóa cho từng loại sản phẩm
@@ -98,8 +98,8 @@ const generateProductUsage = (product) => {
 const generateHowToUse = (product) => {
   if (!product) return "Không có thông tin về cách sử dụng sản phẩm này.";
   
-  const productName = product.productName?.toLowerCase() || '';
-  const category = product.productCategory?.toLowerCase() || '';
+  const productName = product.productName && product.productName.toLowerCase ? product.productName.toLowerCase() : '';
+  const category = product.productCategory && product.productCategory.toLowerCase ? product.productCategory.toLowerCase() : '';
   
   // Kiểm tra xem sản phẩm có phải là dâu tây 
   if (productName.includes('dâu tây') || productName.includes('strawberry')) {
@@ -174,7 +174,7 @@ const generateHowToUse = (product) => {
 const generateOrigin = (product) => {
   if (!product) return "Không có thông tin về xuất xứ của sản phẩm này.";
   
-  const productName = product.productName?.toLowerCase() || '';
+  const productName = product.productName && product.productName.toLowerCase ? product.productName.toLowerCase() : '';
   
   // Xử lý đặc biệt cho dâu tây
   if (productName.includes('dâu tây') || productName.includes('strawberry')) {
@@ -200,7 +200,7 @@ const generateOrigin = (product) => {
 const generateIngredients = (product) => {
   if (!product) return "Không có thông tin về thành phần của sản phẩm này.";
   
-  const productName = product.productName?.toLowerCase() || '';
+  const productName = product.productName && product.productName.toLowerCase ? product.productName.toLowerCase() : '';
   
   // Xử lý đặc biệt cho dâu tây
   if (productName.includes('dâu tây') || productName.includes('strawberry')) {
@@ -212,7 +212,7 @@ const generateIngredients = (product) => {
     return `${product.productName} gồm các thành phần: ${product.ingredients || product.productIngredients}.`;
   }
   
-  const category = product.productCategory?.toLowerCase() || '';
+  const category = product.productCategory && product.productCategory.toLowerCase ? product.productCategory.toLowerCase() : '';
   
   // Từ khóa cho từng loại sản phẩm
   const fruitKeywords = ['trái cây', 'quả', 'cherry', 'táo', 'nho', 'cam', 'bưởi', 'chuối', 'dưa', 'dứa', 'xoài', 'ổi', 'lê', 'đào', 'berry'];

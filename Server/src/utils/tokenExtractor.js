@@ -43,7 +43,7 @@ export const getUserIdFromToken = (token) => {
   try {
     // Decode without verification
     const decoded = jwt.decode(token);
-    return decoded?.id || null;
+    return decoded && decoded.id ? decoded.id : null;
   } catch (error) {
     console.error('Error extracting user ID from token:', error);
     return null;
