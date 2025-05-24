@@ -88,7 +88,7 @@ export const createProduct = async (req, res) => {
         typeof req.body.productDescription === "string"
           ? JSON.parse(req.body.productDescription)
           : req.body.productDescription;
-    } catch {
+    } catch (error) {
       descriptions = req.body.productDescription.split(",");
     }
 
@@ -336,7 +336,7 @@ export const updateProduct = async (req, res) => {
     if (req.body.productDescription) {
       try {
         productDescription = JSON.parse(req.body.productDescription);
-      } catch {
+      } catch (error) {
         productDescription = req.body.productDescription
           .split(".")
           .map((desc) => desc.trim())

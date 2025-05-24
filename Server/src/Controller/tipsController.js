@@ -72,7 +72,7 @@ export const createTip = async (req, res) => {
     if (req.body.tags) {
       try {
         tags = Array.isArray(req.body.tags) ? req.body.tags : JSON.parse(req.body.tags);
-      } catch {
+      } catch (error) {
         tags = req.body.tags.split(",").map(tag => tag.trim());
       }
     }
@@ -144,7 +144,7 @@ export const updateTip = async (req, res) => {
     if (req.body.tags) {
       try {
         tags = Array.isArray(req.body.tags) ? req.body.tags : JSON.parse(req.body.tags);
-      } catch {
+      } catch (error) {
         tags = req.body.tags.split(",").map(tag => tag.trim());
       }
     }
