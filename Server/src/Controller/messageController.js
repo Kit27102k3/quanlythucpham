@@ -34,15 +34,15 @@ export const getAllContacts = async (req, res) => {
       const lastMessage = conv.messages.length > 0 ? conv.messages[conv.messages.length - 1] : null;
       
       return {
-        id: user?._id.toString() || conv.userId.toString(),
-        name: user?.firstName ? `${user.firstName} ${user.lastName}` : 'Người dùng',
-        avatar: user?.userImage || null,
+        id: user && user._id ? user._id.toString() : conv.userId.toString(),
+        name: user && user.firstName ? `${user.firstName} ${user.lastName}` : 'Người dùng',
+        avatar: user && user.userImage ? user.userImage : null,
         online: false, // Có thể triển khai sau với Socket.io
         lastSeen: lastMessage ? formatTimeAgo(lastMessage.timestamp) : null,
         lastMessage: lastMessage ? lastMessage.text : '',
         unread: conv.messages.filter(msg => msg.sender === 'user' && !msg.read).length,
-        adminName: admin?.fullName || 'Admin',
-        adminId: conv.adminId?.toString()
+        adminName: admin && admin.fullName ? admin.fullName : 'Admin',
+        adminId: conv.adminId ? conv.adminId.toString() : undefined
       };
     });
     
@@ -175,8 +175,8 @@ export const sendMessage = async (req, res) => {
         const user = await User.findById(userId);
         console.log(`Kiểm tra user trước khi gửi thông báo:`, {
           userId,
-          hasSubscriptions: user?.pushSubscriptions?.length > 0,
-          subscriptionsCount: user?.pushSubscriptions?.length || 0,
+          hasSubscriptions: user && user.pushSubscriptions ? user.pushSubscriptions.length > 0 : false,
+          subscriptionsCount: user && user.pushSubscriptions ? user.pushSubscriptions.length : 0,
         });
         
         // Gửi thông báo đến người dùng

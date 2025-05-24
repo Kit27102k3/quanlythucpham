@@ -159,7 +159,7 @@ export const orderCreate = async (req, res) => {
 
 export const orderGet = async (req, res) => {
   try {
-    const userId = req.query.userId || req.user?._id;
+    const userId = req.query.userId || (req.user && req.user._id ? req.user._id : undefined);
     
     // Sử dụng userId nếu có, nếu không trả về tất cả đơn hàng
     const query = userId ? { userId } : {};
@@ -392,12 +392,12 @@ export const updateOrder = async (req, res) => {
         console.log("Đang chuẩn bị gửi email thông báo giao hàng...");
         console.log("Thông tin đơn hàng để gửi email:", {
           orderCode: order.orderCode,
-          email: order.userId?.email,
-          address: order.userId?.address,
-          phone: order.userId?.phone,
-          userName: order.userId?.userName,
-          firstName: order.userId?.firstName, 
-          lastName: order.userId?.lastName
+          email: order.userId && order.userId.email ? order.userId.email : undefined,
+          address: order.userId && order.userId.address ? order.userId.address : undefined,
+          phone: order.userId && order.userId.phone ? order.userId.phone : undefined,
+          userName: order.userId && order.userId.userName ? order.userId.userName : undefined,
+          firstName: order.userId && order.userId.firstName ? order.userId.firstName : undefined,
+          lastName: order.userId && order.userId.lastName ? order.userId.lastName : undefined,
         });
         
         // Đảm bảo order.userId đã được populate đầy đủ
@@ -413,11 +413,11 @@ export const updateOrder = async (req, res) => {
               id: order._id,
               orderCode: order.orderCode,
               userId: {
-                email: order.userId?.email,
-                firstName: order.userId?.firstName,
-                lastName: order.userId?.lastName,
-                address: order.userId?.address,
-                phone: order.userId?.phone
+                email: order.userId && order.userId.email ? order.userId.email : undefined,
+                firstName: order.userId && order.userId.firstName ? order.userId.firstName : undefined,
+                lastName: order.userId && order.userId.lastName ? order.userId.lastName : undefined,
+                address: order.userId && order.userId.address ? order.userId.address : undefined,
+                phone: order.userId && order.userId.phone ? order.userId.phone : undefined
               }
             }, null, 2));
           }
@@ -488,7 +488,7 @@ export const orderUpdate = async (req, res) => {
     console.log("Thông tin đơn hàng trước khi cập nhật:", {
       id: currentOrder._id,
       status: currentOrder.status,
-      email: currentOrder.userId?.email,
+      email: currentOrder.userId && currentOrder.userId.email ? currentOrder.userId.email : undefined,
       orderCode: currentOrder.orderCode
     });
     
@@ -503,7 +503,7 @@ export const orderUpdate = async (req, res) => {
     if (status === 'delivering' && previousStatus !== 'delivering') {
       try {
         console.log("Đang chuẩn bị gửi email thông báo giao hàng...");
-        console.log("Đơn hàng có userId với email:", currentOrder.userId?.email);
+        console.log("Đơn hàng có userId với email:", currentOrder.userId && currentOrder.userId.email ? currentOrder.userId.email : undefined);
         
         // Gửi email thông báo đơn hàng đang được giao
         const emailSent = await sendOrderShippingEmail(currentOrder);
@@ -516,9 +516,9 @@ export const orderUpdate = async (req, res) => {
             id: currentOrder._id,
             orderCode: currentOrder.orderCode,
             userId: {
-              email: currentOrder.userId?.email,
-              firstName: currentOrder.userId?.firstName,
-              lastName: currentOrder.userId?.lastName,
+              email: currentOrder.userId && currentOrder.userId.email ? currentOrder.userId.email : undefined,
+              firstName: currentOrder.userId && currentOrder.userId.firstName ? currentOrder.userId.firstName : undefined,
+              lastName: currentOrder.userId && currentOrder.userId.lastName ? currentOrder.userId.lastName : undefined,
             }
           }, null, 2));
         }
@@ -881,7 +881,7 @@ export const getOrderTracking = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Lỗi khi lấy thông tin vận chuyển:", error.response?.data || error.message);
+    console.error("Lỗi khi lấy thông tin vận chuyển:", error.response && error.response.data ? error.response.data : error.message);
     
     const USE_MOCK_ON_ERROR = process.env.USE_MOCK_ON_ERROR === 'true';
     
@@ -1308,17 +1308,17 @@ export const notifyOrderSuccess = async (req, res) => {
     
     console.log(`Order found:`, {
       orderCode: order.orderCode,
-      userId: order.userId?._id,
-      userEmail: order.userId?.email,
+      userId: order.userId && order.userId._id ? order.userId._id : undefined,
+      userEmail: order.userId && order.userId.email ? order.userId.email : undefined,
       totalAmount: order.totalAmount
     });
     
     // Tạo thông tin giao hàng cho email
     const shippingInfo = {
-      fullName: fullName || `${order.userId?.firstName || ''} ${order.userId?.lastName || ''}`.trim(),
-      address: address || order.address || order.userId?.address || '',
-      phone: phone || order.userId?.phone || '',
-      email: email || order.userId?.email || ''
+      fullName: fullName || ((order.userId && order.userId.firstName ? `${order.userId.firstName || ''} ${order.userId.lastName || ''}`.trim() : '')),
+      address: address || order.address || (order.userId && order.userId.address ? order.userId.address : ''),
+      phone: phone || (order.userId && order.userId.phone ? order.userId.phone : ''),
+      email: email || (order.userId && order.userId.email ? order.userId.email : '')
     };
     
     console.log(`Shipping info prepared:`, shippingInfo);
