@@ -55,6 +55,9 @@ import systemRoutes from "./routes/systemRoutes.js";
 import supplierRoutes from "./routes/supplierRoutes.js";
 import brandRoutes from "./routes/brandRoutes.js";
 
+// Import database config mới
+import { initializeDatabase, getConnectionStatus, isMongoConnected } from './config/database.js';
+
 const app = express();
 
 // CORS configuration
@@ -103,70 +106,10 @@ app.use((req, res, next) => {
   next();
 });
 
-// MongoDB connection
-const URI = process.env.MONGODB_URI || process.env.MONGOOSE_URI;
-const mongooseOptions = {
-  serverSelectionTimeoutMS: 60000,
-  socketTimeoutMS: 90000,
-  connectTimeoutMS: 60000,
-  retryWrites: true,
-  retryReads: true,
-  maxPoolSize: 50,
-  minPoolSize: 10,
-  maxIdleTimeMS: 60000,
-  waitQueueTimeoutMS: 60000,
-  heartbeatFrequencyMS: 10000,
-  family: 4
-};
-
-// Biến để kiểm soát trạng thái kết nối MongoDB
-let isMongoConnected = false;
-
-// Hàm kết nối MongoDB với retry logic
-const connectWithRetry = async (retries = 5, delay = 5000) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      await mongoose.connect(URI, mongooseOptions);
-      console.log("MongoDB Connected Successfully");
-      console.log("MongoDB Connection Info:", {
-        host: mongoose.connection.host,
-        port: mongoose.connection.port,
-        dbName: mongoose.connection.name,
-        readyState: mongoose.connection.readyState,
-        env: process.env.NODE_ENV
-      });
-      isMongoConnected = true;
-      return;
-    } catch (err) {
-      console.error(`MongoDB connection attempt ${i + 1} failed:`, err);
-      
-      if (err.name === "MongooseServerSelectionError") {
-        console.error({
-          uri: URI ? URI.replace(/\/\/[^:]+:[^@]+@/, "//***:***@") : "URI is undefined",
-          message: err.message,
-          reason: err.reason && err.reason.message ? err.reason.message : undefined,
-          code: err.code,
-          env: process.env.NODE_ENV
-        });
-      }
-
-      if (i === retries - 1) {
-        console.error("Max retries reached. Could not connect to MongoDB.");
-        // Không exit process, cho phép app chạy trong chế độ dự phòng
-        isMongoConnected = false;
-        console.log("Server running in fallback mode without database connection");
-      } else {
-        console.log(`Retrying in ${delay/1000} seconds...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
-};
-
 // Middleware kiểm tra kết nối DB trước khi xử lý request cần DB
 const checkDbConnection = (req, res, next) => {
   // Danh sách các endpoint không cần kết nối DB
-  const noDbEndpoints = ['/health', '/debug', '/favicon.ico', '/'];
+  const noDbEndpoints = ['/health', '/debug', '/favicon.ico', '/', '/maintenance.html'];
   
   if (isMongoConnected || noDbEndpoints.includes(req.path)) {
     return next();
@@ -213,27 +156,13 @@ app.get('/maintenance.html', (req, res) => {
 // Áp dụng middleware kiểm tra DB cho tất cả các request
 app.use(checkDbConnection);
 
-// Xử lý các sự kiện kết nối
-mongoose.connection.on("error", (err) => {
-  console.error("MongoDB connection error:", err);
-  if (err.name === "MongooseServerSelectionError") {
-    console.error(
-      "IP whitelist issue detected. Please check MongoDB Atlas IP whitelist settings."
-    );
-  }
+// Khởi tạo kết nối đến database
+initializeDatabase().then(() => {
+  console.log("Database initialization completed");
+}).catch(err => {
+  console.error("Failed to initialize database:", err);
+  console.log("Server will run in fallback mode");
 });
-
-mongoose.connection.on("disconnected", () => {
-  console.log("MongoDB disconnected. Attempting to reconnect...");
-  connectWithRetry();
-});
-
-mongoose.connection.on("reconnected", () => {
-  console.log("MongoDB reconnected successfully");
-});
-
-// Khởi tạo kết nối
-connectWithRetry();
 
 // Register API routes
 app.use("/auth", authRoutes);
@@ -322,16 +251,21 @@ const webhookHandler = async (req, res) => {
 
 // Enhanced health check endpoint
 app.get("/health", (req, res) => {
+  const dbStatus = getConnectionStatus();
+  
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV || "development",
     userAgent: req.headers['user-agent'],
     ip: req.ip || req.headers['x-forwarded-for'] || 'unknown',
-    mongoConnection: isMongoConnected ? "connected" : "disconnected",
+    mongoConnection: dbStatus.isConnected ? "connected" : "disconnected",
     mongoReadyState: mongoose.connection.readyState,
     uptime: process.uptime(),
-    fallbackMode: !isMongoConnected
+    fallbackMode: !dbStatus.isConnected,
+    dbConnectionAttempts: dbStatus.connectionAttempts,
+    dbHost: dbStatus.host,
+    dbName: dbStatus.dbName
   });
 });
 
