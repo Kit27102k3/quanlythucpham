@@ -1,0 +1,122 @@
+[
+  {
+    "question": "Thực phẩm sạch là gì?",
+    "answer": "Thực phẩm sạch là thực phẩm được sản xuất, chế biến theo quy trình đảm bảo an toàn vệ sinh thực phẩm, không chứa các chất độc hại, chất bảo quản, hóa chất, thuốc trừ sâu vượt quá ngưỡng cho phép và có nguồn gốc rõ ràng. Tại siêu thị của chúng tôi, tất cả các sản phẩm đều được kiểm soát nghiêm ngặt về chất lượng và có đầy đủ chứng nhận an toàn thực phẩm.",
+    "category": "Thông tin chung"
+  },
+  {
+    "question": "Làm thế nào để biết sản phẩm có phải là thực phẩm sạch không?",
+    "answer": "Bạn có thể xác định sản phẩm sạch thông qua các chứng nhận như VietGAP, GlobalGAP, Organic, hoặc các chứng nhận an toàn thực phẩm khác được hiển thị trên bao bì. Trên website của chúng tôi, mỗi sản phẩm đều có thông tin về nguồn gốc, chứng nhận và quy trình sản xuất để bạn có thể dễ dàng kiểm tra.",
+    "category": "Thông tin sản phẩm"
+  },
+  {
+    "question": "Các sản phẩm có chứng nhận gì?",
+    "answer": "Các sản phẩm tại siêu thị của chúng tôi có nhiều loại chứng nhận khác nhau như: VietGAP (Thực hành sản xuất nông nghiệp tốt của Việt Nam), GlobalGAP (Tiêu chuẩn toàn cầu về thực hành nông nghiệp tốt), HACCP (Hệ thống phân tích mối nguy và kiểm soát điểm tới hạn), ISO 22000 (Hệ thống quản lý an toàn thực phẩm), và chứng nhận Organic (hữu cơ) cho các sản phẩm không sử dụng hóa chất trong quá trình sản xuất.",
+    "category": "Thông tin sản phẩm"
+  },
+  {
+    "question": "Làm thế nào để đặt hàng trên website?",
+    "answer": "Để đặt hàng trên website, bạn cần thực hiện các bước sau: (1) Tạo tài khoản hoặc đăng nhập vào tài khoản hiện có, (2) Duyệt và chọn sản phẩm bạn muốn mua và thêm vào giỏ hàng, (3) Kiểm tra giỏ hàng và nhấn 'Thanh toán', (4) Điền thông tin giao hàng và chọn phương thức thanh toán, (5) Xác nhận đơn hàng. Bạn sẽ nhận được email xác nhận sau khi đặt hàng thành công.",
+    "category": "Đặt hàng"
+  },
+  {
+    "question": "Tôi có thể thay đổi hoặc hủy đơn hàng sau khi đã đặt không?",
+    "answer": "Bạn có thể thay đổi hoặc hủy đơn hàng trong vòng 2 giờ sau khi đặt, miễn là đơn hàng chưa được xử lý. Để làm điều này, vui lòng đăng nhập vào tài khoản của bạn, vào mục 'Đơn hàng của tôi', chọn đơn hàng bạn muốn thay đổi hoặc hủy, và làm theo hướng dẫn. Nếu đơn hàng đã được xử lý, bạn cần liên hệ với bộ phận chăm sóc khách hàng qua số điện thoại 1900 1234 hoặc email support@thucphamsach.com để được hỗ trợ.",
+    "category": "Đặt hàng"
+  },
+  {
+    "question": "Các phương thức thanh toán nào được chấp nhận?",
+    "answer": "Chúng tôi chấp nhận nhiều phương thức thanh toán khác nhau bao gồm: (1) Thanh toán khi nhận hàng (COD), (2) Thanh toán bằng thẻ tín dụng/ghi nợ (Visa, MasterCard, JCB), (3) Chuyển khoản ngân hàng, (4) Ví điện tử (Momo, VNPay, ZaloPay), và (5) Trả góp qua các đối tác tài chính (áp dụng cho đơn hàng từ 3 triệu đồng).",
+    "category": "Thanh toán"
+  },
+  {
+    "question": "Thời gian giao hàng là bao lâu?",
+    "answer": "Thời gian giao hàng phụ thuộc vào khu vực của bạn. Đối với các khu vực nội thành Hà Nội và TP.HCM, thời gian giao hàng thường là 1-2 ngày làm việc. Đối với các khu vực khác, thời gian giao hàng có thể từ 2-5 ngày làm việc. Đối với các sản phẩm tươi sống, chúng tôi có dịch vụ giao hàng nhanh trong ngày (áp dụng cho đơn hàng đặt trước 10 giờ sáng). Bạn có thể theo dõi trạng thái đơn hàng của mình trong mục 'Đơn hàng của tôi' trên tài khoản của bạn.",
+    "category": "Giao hàng"
+  },
+  {
+    "question": "Có phí vận chuyển không?",
+    "answer": "Có. Phí vận chuyển được tính dựa trên trọng lượng đơn hàng và khoảng cách giao hàng. Tuy nhiên, chúng tôi có các chương trình miễn phí vận chuyển cho đơn hàng từ 300,000 đồng trở lên đối với khu vực nội thành Hà Nội và TP.HCM, và từ 500,000 đồng trở lên đối với các khu vực khác. Bạn có thể xem phí vận chuyển chính xác khi thanh toán đơn hàng.",
+    "category": "Giao hàng"
+  },
+  {
+    "question": "Chính sách đổi trả hàng như thế nào?",
+    "answer": "Chúng tôi có chính sách đổi trả trong vòng 7 ngày kể từ ngày nhận hàng nếu sản phẩm không đạt chất lượng, bị hư hỏng, hoặc không đúng với mô tả. Đối với các sản phẩm tươi sống, thời gian đổi trả là 24 giờ. Để đổi trả, bạn cần giữ lại hóa đơn, bao bì nguyên vẹn, và sản phẩm chưa qua sử dụng. Chúng tôi sẽ hoàn tiền hoặc đổi sản phẩm mới tùy theo yêu cầu của bạn. Lưu ý rằng chi phí vận chuyển khi đổi trả sẽ do chúng tôi chi trả nếu lỗi thuộc về chúng tôi.",
+    "category": "Đổi trả"
+  },
+  {
+    "question": "Tôi có thể tìm thông tin dinh dưỡng của sản phẩm ở đâu?",
+    "answer": "Thông tin dinh dưỡng của sản phẩm được hiển thị trên trang chi tiết sản phẩm trên website của chúng tôi. Bạn có thể tìm thấy các thông tin như thành phần, giá trị dinh dưỡng (calo, protein, carbohydrate, chất béo), cách bảo quản, và cách sử dụng. Ngoài ra, các chứng nhận an toàn thực phẩm và thông tin về nguồn gốc sản phẩm cũng được hiển thị để bạn có thể đưa ra quyết định mua sắm thông thái.",
+    "category": "Thông tin sản phẩm"
+  },
+  {
+    "question": "Có sản phẩm nào dành cho người ăn kiêng không?",
+    "answer": "Có, chúng tôi có nhiều sản phẩm dành cho người ăn kiêng và có nhu cầu đặc biệt. Bạn có thể tìm thấy các sản phẩm dành cho người ăn chay, ăn thuần chay (vegan), các sản phẩm không gluten, không đường, không lactose, ít muối, và các sản phẩm hữu cơ. Trên website, bạn có thể sử dụng bộ lọc để tìm các sản phẩm phù hợp với chế độ ăn kiêng của mình. Chúng tôi cũng có một danh mục riêng cho 'Thực phẩm chức năng & Dinh dưỡng đặc biệt' với các sản phẩm bổ sung dinh dưỡng.",
+    "category": "Thông tin sản phẩm"
+  },
+  {
+    "question": "Làm thế nào để liên hệ với bộ phận hỗ trợ khách hàng?",
+    "answer": "Bạn có thể liên hệ với bộ phận hỗ trợ khách hàng của chúng tôi qua nhiều kênh: (1) Gọi điện đến số hotline 1900 1234 (hoạt động từ 8h-22h hàng ngày), (2) Gửi email đến support@thucphamsach.com, (3) Chat trực tuyến trên website (có sẵn ở góc dưới bên phải màn hình), (4) Gửi tin nhắn qua trang Facebook hoặc Instagram chính thức của chúng tôi, hoặc (5) Ghé thăm trực tiếp các cửa hàng của chúng tôi để được hỗ trợ.",
+    "category": "Dịch vụ khách hàng"
+  },
+  {
+    "question": "Có chương trình khuyến mãi nào không?",
+    "answer": "Chúng tôi thường xuyên có các chương trình khuyến mãi, giảm giá, và ưu đãi đặc biệt. Bạn có thể tìm thấy thông tin về các khuyến mãi hiện tại trên trang chủ của website, trong mục 'Khuyến mãi', hoặc đăng ký nhận thông báo qua email để không bỏ lỡ bất kỳ ưu đãi nào. Chúng tôi cũng có chương trình khách hàng thân thiết, nơi bạn có thể tích lũy điểm từ các đơn hàng và đổi lấy các ưu đãi và quà tặng. Ngoài ra, các khuyến mãi đặc biệt thường được tổ chức vào các dịp lễ, tết, hoặc sinh nhật của bạn (nếu bạn đã đăng ký tài khoản).",
+    "category": "Khuyến mãi"
+  },
+  {
+    "question": "Làm thế nào để tạo tài khoản trên website?",
+    "answer": "Để tạo tài khoản trên website, bạn cần làm theo các bước sau: (1) Nhấn vào nút 'Đăng ký' ở góc trên bên phải của trang web, (2) Điền thông tin cá nhân của bạn bao gồm họ tên, email, số điện thoại, và tạo mật khẩu, (3) Đồng ý với các điều khoản và điều kiện, (4) Nhấn 'Đăng ký', (5) Xác nhận email của bạn bằng cách nhấn vào liên kết trong email xác nhận mà chúng tôi gửi cho bạn. Sau khi hoàn tất các bước trên, bạn có thể đăng nhập và bắt đầu mua sắm trên website của chúng tôi.",
+    "category": "Tài khoản"
+  },
+  {
+    "question": "Làm thế nào để khôi phục mật khẩu nếu quên?",
+    "answer": "Nếu bạn quên mật khẩu, bạn có thể khôi phục nó bằng cách: (1) Nhấn vào liên kết 'Quên mật khẩu?' trên trang đăng nhập, (2) Nhập địa chỉ email bạn đã sử dụng để đăng ký tài khoản, (3) Nhấn 'Gửi yêu cầu', (4) Kiểm tra hộp thư email của bạn, bao gồm cả thư mục spam/junk, (5) Nhấn vào liên kết trong email để đặt lại mật khẩu, (6) Tạo mật khẩu mới và xác nhận. Sau khi hoàn tất, bạn có thể đăng nhập với mật khẩu mới của mình.",
+    "category": "Tài khoản"
+  },
+  {
+    "question": "Thông tin cá nhân của tôi có được bảo mật không?",
+    "answer": "Có, chúng tôi rất coi trọng việc bảo mật thông tin cá nhân của khách hàng. Chúng tôi tuân thủ nghiêm ngặt các quy định về bảo vệ dữ liệu và có các biện pháp bảo mật tiên tiến để bảo vệ thông tin của bạn. Chúng tôi không bao giờ chia sẻ, bán, hoặc cho thuê thông tin cá nhân của bạn cho bên thứ ba mà không có sự đồng ý của bạn. Bạn có thể đọc chi tiết về chính sách bảo mật của chúng tôi trong mục 'Chính sách bảo mật' ở cuối trang web.",
+    "category": "Bảo mật"
+  },
+  {
+    "question": "Website có cung cấp thông tin về các nhà cung cấp thực phẩm không?",
+    "answer": "Có, chúng tôi cung cấp thông tin chi tiết về các nhà cung cấp của mình trong mục 'Nhà cung cấp' hoặc trên trang chi tiết sản phẩm. Chúng tôi chỉ làm việc với các nhà cung cấp uy tín, có chứng nhận an toàn thực phẩm, và cam kết về chất lượng sản phẩm. Đối với mỗi nhà cung cấp, bạn có thể tìm thấy thông tin về quá trình sản xuất, các chứng nhận họ có, và cam kết về chất lượng. Chúng tôi cũng thường xuyên tổ chức các chuyến thăm trang trại và cơ sở sản xuất để đảm bảo họ đáp ứng các tiêu chuẩn của chúng tôi.",
+    "category": "Thông tin chung"
+  },
+  {
+    "question": "Có thể tìm kiếm sản phẩm theo danh mục nào?",
+    "answer": "Bạn có thể tìm kiếm sản phẩm theo nhiều danh mục khác nhau trên website của chúng tôi, bao gồm: (1) Rau củ quả, (2) Thịt, (3) Cá và hải sản, (4) Trứng và sữa, (5) Trái cây, (6) Thực phẩm khô, (7) Gia vị, (8) Đồ uống, (9) Thực phẩm chế biến sẵn, (10) Thực phẩm hữu cơ, (11) Thực phẩm chức năng, và nhiều danh mục khác. Bạn cũng có thể sử dụng bộ lọc để tìm kiếm theo giá, thương hiệu, chứng nhận, xuất xứ, hoặc các tiêu chí khác để tìm được sản phẩm phù hợp với nhu cầu của mình.",
+    "category": "Thông tin sản phẩm"
+  },
+  {
+    "question": "Có thể xem đánh giá của khách hàng về sản phẩm không?",
+    "answer": "Có, bạn có thể xem đánh giá của khách hàng khác về sản phẩm trên trang chi tiết sản phẩm. Các đánh giá bao gồm xếp hạng sao (từ 1 đến 5 sao) và nhận xét của khách hàng. Bạn cũng có thể lọc đánh giá theo số sao hoặc sắp xếp theo thời gian hoặc mức độ hữu ích. Nếu bạn đã mua sản phẩm, bạn cũng có thể để lại đánh giá của mình để giúp những khách hàng khác đưa ra quyết định mua sắm. Chúng tôi khuyến khích khách hàng để lại đánh giá chân thực để giúp cải thiện chất lượng sản phẩm và dịch vụ của chúng tôi.",
+    "category": "Thông tin sản phẩm"
+  },
+  {
+    "question": "Chính sách bảo mật thông tin của website là gì?",
+    "answer": "Chính sách bảo mật thông tin của chúng tôi bao gồm: (1) Chỉ thu thập thông tin cần thiết cho việc xử lý đơn hàng và cải thiện dịch vụ, (2) Sử dụng các biện pháp bảo mật tiên tiến để bảo vệ thông tin của bạn, (3) Không chia sẻ thông tin cá nhân với bên thứ ba mà không có sự đồng ý của bạn, (4) Tuân thủ các quy định về bảo vệ dữ liệu, (5) Cho phép bạn truy cập, chỉnh sửa, hoặc xóa thông tin cá nhân của mình bất kỳ lúc nào. Bạn có thể đọc chi tiết về chính sách bảo mật của chúng tôi trong mục 'Chính sách bảo mật' ở cuối trang web.",
+    "category": "Bảo mật"
+  },
+  {
+    "question": "Siêu thị có cửa hàng thực tế không hay chỉ bán online?",
+    "answer": "Chúng tôi có cả cửa hàng thực tế và nền tảng bán hàng online. Hiện tại, chúng tôi có 5 cửa hàng tại Hà Nội, 3 cửa hàng tại TP.HCM, và các cửa hàng khác tại Đà Nẵng, Nha Trang, và Cần Thơ. Bạn có thể tìm thấy địa chỉ và giờ mở cửa của các cửa hàng trong mục 'Hệ thống cửa hàng' trên website. Việc mua sắm online cung cấp cho bạn sự thuận tiện và tiết kiệm thời gian, trong khi mua sắm tại cửa hàng cho phép bạn trực tiếp xem và chọn sản phẩm.",
+    "category": "Thông tin chung"
+  },
+  {
+    "question": "Tôi có thể đặt hàng với số lượng lớn không?",
+    "answer": "Có, chúng tôi cung cấp dịch vụ đặt hàng với số lượng lớn cho các khách hàng doanh nghiệp, nhà hàng, khách sạn, và các sự kiện. Để đặt hàng với số lượng lớn, bạn có thể liên hệ với bộ phận kinh doanh của chúng tôi qua email b2b@thucphamsach.com hoặc gọi đến số điện thoại 1900 5678. Chúng tôi sẽ cung cấp báo giá riêng và có thể thảo luận về các điều khoản hợp tác dài hạn. Đối với các đơn hàng số lượng lớn, chúng tôi cũng có chính sách giao hàng và thanh toán linh hoạt.",
+    "category": "Đặt hàng"
+  },
+  {
+    "question": "Làm thế nào để biết sản phẩm còn hàng hay hết hàng?",
+    "answer": "Bạn có thể biết sản phẩm còn hàng hay hết hàng thông qua trạng thái hiển thị trên trang chi tiết sản phẩm. Nếu sản phẩm còn hàng, bạn sẽ thấy nút 'Thêm vào giỏ hàng' và thông tin về số lượng còn lại (nếu số lượng ít). Nếu sản phẩm hết hàng, bạn sẽ thấy thông báo 'Hết hàng' hoặc 'Tạm thời hết hàng' và có tùy chọn 'Thông báo cho tôi khi có hàng'. Bằng cách đăng ký thông báo, bạn sẽ nhận được email khi sản phẩm có hàng trở lại. Đối với các sản phẩm theo mùa, chúng tôi cũng cung cấp thông tin về thời gian sản phẩm sẽ có hàng trở lại.",
+    "category": "Thông tin sản phẩm"
+  },
+  {
+    "question": "Có thể mua thực phẩm tươi sống qua website không?",
+    "answer": "Có, bạn có thể mua các sản phẩm tươi sống như thịt, cá, hải sản, rau củ quả, và trái cây qua website của chúng tôi. Chúng tôi có hệ thống vận chuyển lạnh để đảm bảo các sản phẩm tươi sống được giao đến tay bạn trong tình trạng tốt nhất. Đối với các sản phẩm tươi sống, chúng tôi có dịch vụ giao hàng nhanh trong ngày (áp dụng cho đơn hàng đặt trước 10 giờ sáng) để đảm bảo độ tươi ngon. Bạn cũng có thể chọn ngày và giờ giao hàng phù hợp với lịch trình của mình.",
+    "category": "Thông tin sản phẩm"
+  }
+] 

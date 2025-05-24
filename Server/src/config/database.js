@@ -81,14 +81,6 @@ const mongooseOptions = {
   // nhưng giữ lại để đảm bảo tương thích
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  
-  // Thêm các tùy chọn cho mạng di động
-  bufferCommands: true, // Buffer các lệnh khi mất kết nối tạm thời
-  bufferMaxEntries: 0, // Không giới hạn số lượng lệnh đệm để tránh lỗi server timeout
-  autoReconnect: true, // Tự động kết nối lại
-  reconnectTries: Number.MAX_VALUE, // Số lần thử kết nối lại không giới hạn
-  reconnectInterval: 1000, // Thời gian giữa các lần thử kết nối lại
-  poolSize: 10, // Kích thước pool connections
 };
 
 // Biến toàn cục theo dõi trạng thái kết nối

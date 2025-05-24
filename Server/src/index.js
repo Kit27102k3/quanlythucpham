@@ -55,6 +55,7 @@ import reportRoutes from "./routes/reportRoutes.js";
 import systemRoutes from "./routes/systemRoutes.js";
 import supplierRoutes from "./routes/supplierRoutes.js";
 import brandRoutes from "./routes/brandRoutes.js";
+import apiRoutes from './routes/apiRoutes.js';
 
 // Import database config mới
 import { initializeDatabase, getConnectionStatus, isMongoConnected } from './config/database.js';
@@ -187,6 +188,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/system", systemRoutes);
 app.use("/api/suppliers", supplierRoutes);
 app.use("/api/brands", brandRoutes);
+app.use('/api/db', apiRoutes);
 
 // Direct product best sellers endpoint
 app.get("/api/products/best-sellers", getBestSellingProducts);
