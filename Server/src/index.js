@@ -119,6 +119,9 @@ const mongooseOptions = {
   family: 4
 };
 
+// Biến để kiểm soát trạng thái kết nối MongoDB
+let isMongoConnected = false;
+
 // Hàm kết nối MongoDB với retry logic
 const connectWithRetry = async (retries = 5, delay = 5000) => {
   for (let i = 0; i < retries; i++) {
@@ -132,6 +135,7 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
         readyState: mongoose.connection.readyState,
         env: process.env.NODE_ENV
       });
+      isMongoConnected = true;
       return;
     } catch (err) {
       console.error(`MongoDB connection attempt ${i + 1} failed:`, err);
@@ -148,14 +152,66 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
 
       if (i === retries - 1) {
         console.error("Max retries reached. Could not connect to MongoDB.");
-        process.exit(1);
+        // Không exit process, cho phép app chạy trong chế độ dự phòng
+        isMongoConnected = false;
+        console.log("Server running in fallback mode without database connection");
+      } else {
+        console.log(`Retrying in ${delay/1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
-
-      console.log(`Retrying in ${delay/1000} seconds...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
 };
+
+// Middleware kiểm tra kết nối DB trước khi xử lý request cần DB
+const checkDbConnection = (req, res, next) => {
+  // Danh sách các endpoint không cần kết nối DB
+  const noDbEndpoints = ['/health', '/debug', '/favicon.ico', '/'];
+  
+  if (isMongoConnected || noDbEndpoints.includes(req.path)) {
+    return next();
+  }
+  
+  // Kiểm tra xem request có phải là API hay không
+  if (req.path.startsWith('/api/')) {
+    return res.status(503).json({
+      success: false,
+      message: "Dịch vụ database tạm thời không khả dụng. Vui lòng thử lại sau.",
+      code: "DB_UNAVAILABLE"
+    });
+  }
+  
+  // Nếu là request trang web thì redirect về trang thông báo bảo trì
+  res.redirect('/maintenance.html');
+};
+
+// Tạo trang bảo trì đơn giản
+app.get('/maintenance.html', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Bảo trì hệ thống</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px 20px; }
+        h1 { color: #e53935; }
+        p { color: #333; max-width: 600px; margin: 20px auto; }
+        button { background: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+      </style>
+    </head>
+    <body>
+      <h1>Hệ thống đang được bảo trì</h1>
+      <p>Chúng tôi đang gặp vấn đề kết nối đến cơ sở dữ liệu. Vui lòng thử lại sau hoặc liên hệ với chúng tôi nếu vấn đề kéo dài.</p>
+      <p>Hotline: 0326 743391</p>
+      <button onclick="window.location.reload()">Thử lại</button>
+    </body>
+    </html>
+  `);
+});
+
+// Áp dụng middleware kiểm tra DB cho tất cả các request
+app.use(checkDbConnection);
 
 // Xử lý các sự kiện kết nối
 mongoose.connection.on("error", (err) => {
@@ -272,8 +328,10 @@ app.get("/health", (req, res) => {
     env: process.env.NODE_ENV || "development",
     userAgent: req.headers['user-agent'],
     ip: req.ip || req.headers['x-forwarded-for'] || 'unknown',
-    mongoConnection: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-    uptime: process.uptime()
+    mongoConnection: isMongoConnected ? "connected" : "disconnected",
+    mongoReadyState: mongoose.connection.readyState,
+    uptime: process.uptime(),
+    fallbackMode: !isMongoConnected
   });
 });
 
