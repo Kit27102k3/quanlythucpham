@@ -38,16 +38,29 @@ const reportsApi = {
   // Revenue reports
   getRevenueData: async (selectedTimeRange = 'week') => {
     try {
+      console.log('Trying to fetch revenue data with timeRange:', selectedTimeRange);
+      
+      // Thêm token xác thực vào request nếu có
+      const token = localStorage.getItem("accessToken");
+      const headers = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
       // Try Edge API first
       const response = await apiClient.get(
         `${EDGE_API_URL}/revenue`,
-        { params: { timeRange: selectedTimeRange } }
+        { 
+          params: { timeRange: selectedTimeRange },
+          headers
+        }
       );
       
       // Ensure the data is formatted correctly for the chart
       const formattedData = response.data.map(item => ({
         date: item.date || item.ngay,
-        doanh_thu: parseFloat(item.doanh_thu || item.revenue || 0)
+        doanh_thu: parseFloat(item.doanh_thu || item.revenue || 0),
+        don_hang: parseInt(item.don_hang || item.orders || 0)
       }));
       
       return formattedData;
@@ -55,54 +68,67 @@ const reportsApi = {
       console.error('Error fetching revenue data from Edge API:', error);
       
       try {
+        console.log('Trying fallback API endpoint for revenue data');
         // Fallback to traditional endpoint
+        const token = localStorage.getItem("accessToken");
+        const headers = {};
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+        
         const fallbackResponse = await apiClient.get(
           `${API_URL}/revenue`,
-          { params: { timeRange: selectedTimeRange } }
+          { 
+            params: { timeRange: selectedTimeRange },
+            headers
+          }
         );
         
         // Ensure the data is formatted correctly for the chart
         const formattedData = fallbackResponse.data.map(item => ({
           date: item.date || item.ngay,
-          doanh_thu: parseFloat(item.doanh_thu || item.revenue || 0)
+          doanh_thu: parseFloat(item.doanh_thu || item.revenue || 0),
+          don_hang: parseInt(item.don_hang || item.orders || 0)
         }));
         
         return formattedData;
-      } catch (error) {
-        console.error('Error fetching revenue data from fallback API:', error);
+      } catch (fallbackError) {
+        console.error('Error fetching revenue data from fallback API:', fallbackError);
         
         // Return fallback data based on time range
+        console.log('Using static fallback data for revenue');
         if (selectedTimeRange === 'week') {
           return [
-            { date: 'T2', doanh_thu: 500000 },
-            { date: 'T3', doanh_thu: 700000 },
-            { date: 'T4', doanh_thu: 600000 },
-            { date: 'T5', doanh_thu: 800000 },
-            { date: 'T6', doanh_thu: 900000 },
-            { date: 'T7', doanh_thu: 800000 },
-            { date: 'CN', doanh_thu: 600000 }
+            { date: 'T2', doanh_thu: 500000, don_hang: 5 },
+            { date: 'T3', doanh_thu: 700000, don_hang: 7 },
+            { date: 'T4', doanh_thu: 600000, don_hang: 6 },
+            { date: 'T5', doanh_thu: 800000, don_hang: 8 },
+            { date: 'T6', doanh_thu: 900000, don_hang: 9 },
+            { date: 'T7', doanh_thu: 800000, don_hang: 8 },
+            { date: 'CN', doanh_thu: 600000, don_hang: 6 }
           ];
         } else if (selectedTimeRange === 'month') {
           // Return mock data for month view
           return Array.from({ length: 30 }, (_, i) => ({
             date: `${i + 1}`,
-            doanh_thu: Math.floor(Math.random() * 500000) + 300000
+            doanh_thu: Math.floor(Math.random() * 500000) + 300000,
+            don_hang: Math.floor(Math.random() * 10) + 1
           }));
         } else if (selectedTimeRange === 'year') {
           // Return mock data for year view
           return [
-            { date: 'T1', doanh_thu: 5000000 },
-            { date: 'T2', doanh_thu: 6000000 },
-            { date: 'T3', doanh_thu: 7000000 },
-            { date: 'T4', doanh_thu: 8000000 },
-            { date: 'T5', doanh_thu: 9000000 },
-            { date: 'T6', doanh_thu: 10000000 },
-            { date: 'T7', doanh_thu: 11000000 },
-            { date: 'T8', doanh_thu: 12000000 },
-            { date: 'T9', doanh_thu: 13000000 },
-            { date: 'T10', doanh_thu: 12000000 },
-            { date: 'T11', doanh_thu: 11000000 },
-            { date: 'T12', doanh_thu: 14000000 }
+            { date: 'T1', doanh_thu: 5000000, don_hang: 50 },
+            { date: 'T2', doanh_thu: 6000000, don_hang: 60 },
+            { date: 'T3', doanh_thu: 7000000, don_hang: 70 },
+            { date: 'T4', doanh_thu: 8000000, don_hang: 80 },
+            { date: 'T5', doanh_thu: 9000000, don_hang: 90 },
+            { date: 'T6', doanh_thu: 10000000, don_hang: 100 },
+            { date: 'T7', doanh_thu: 11000000, don_hang: 110 },
+            { date: 'T8', doanh_thu: 12000000, don_hang: 120 },
+            { date: 'T9', doanh_thu: 13000000, don_hang: 130 },
+            { date: 'T10', doanh_thu: 12000000, don_hang: 120 },
+            { date: 'T11', doanh_thu: 11000000, don_hang: 110 },
+            { date: 'T12', doanh_thu: 14000000, don_hang: 140 }
           ];
         }
         
@@ -188,10 +214,8 @@ const reportsApi = {
     try {
       // Gọi API mới từ productsApi
       try {
-        console.log("Gọi phương thức getInventoryData từ productsApi");
         const inventoryData = await productsApi.getInventoryData();
         if (inventoryData && Array.isArray(inventoryData) && inventoryData.length > 0) {
-          console.log("Nhận được dữ liệu tồn kho từ productsApi:", inventoryData.length, "sản phẩm");
           return inventoryData;
         }
       } catch (apiError) {
@@ -210,7 +234,6 @@ const reportsApi = {
       const inventoryResponse = await apiClient.get(`${API_URL}/products/inventory`);
       
       if (inventoryResponse?.data && Array.isArray(inventoryResponse.data) && inventoryResponse.data.length > 0) {
-        console.log("Dữ liệu inventory từ inventory API:", inventoryResponse.data);
         return inventoryResponse.data;
       }
       
@@ -218,7 +241,6 @@ const reportsApi = {
       const reportsResponse = await apiClient.get(`${EDGE_API_URL}/inventory`);
       
       if (reportsResponse?.data && Array.isArray(reportsResponse.data) && reportsResponse.data.length > 0) {
-        console.log("Dữ liệu inventory từ reports API:", reportsResponse.data);
         return reportsResponse.data;
       }
       
@@ -227,8 +249,6 @@ const reportsApi = {
         const allProducts = await productsApi.getAllProducts();
         
         if (allProducts?.products && Array.isArray(allProducts.products) && allProducts.products.length > 0) {
-          console.log("Dữ liệu tồn kho từ productsApi.getAllProducts:", allProducts.products.length, "sản phẩm");
-          
           // Chuyển đổi thành định dạng tồn kho dựa trên cấu trúc MongoDB
           const inventoryData = allProducts.products.map(product => ({
             id: product._id || product.id || '',
@@ -252,8 +272,6 @@ const reportsApi = {
       const productsResponse = await apiClient.get(`${API_URL}/products`);
       
       if (productsResponse?.data?.products && Array.isArray(productsResponse.data.products)) {
-        console.log("Dữ liệu tồn kho từ products API:", productsResponse.data.products.length, "sản phẩm");
-        
         // Chuyển đổi tất cả sản phẩm sang định dạng tồn kho dựa trên cấu trúc MongoDB
         const inventoryData = productsResponse.data.products.map(product => ({
           id: product._id || product.id || '',
@@ -270,8 +288,8 @@ const reportsApi = {
         return inventoryData;
       }
       
-      // Dữ liệu mẫu tương tự như cấu trúc trong MongoDB
       console.error('Không nhận được dữ liệu từ bất kỳ API nào - Trả về mẫu');
+      // Dữ liệu mẫu nếu không lấy được từ API
       return [
         { name: "Táo xanh Mỹ", category: "Trái cây", stock: 15, value: 3000000, status: "Sắp hết", price: 200000, sku: "CATTB-001" },
         { name: "Thịt bò Úc", category: "Thịt tươi", stock: 8, value: 4000000, status: "Sắp hết", price: 500000, sku: "THTTB-001" },
@@ -641,7 +659,7 @@ const reportsApi = {
             return deliveryStats;
           }
         }
-      } catch (_) {
+      } catch (err) {
         // Silent fail, continue to next approach
       }
       
@@ -655,7 +673,7 @@ const reportsApi = {
       }
       
       throw new Error("No valid data returned from delivery API");
-    } catch (_) {
+    } catch (err) {
       // Trả về dữ liệu mẫu
       return {
         statistics: {
@@ -692,15 +710,66 @@ const reportsApi = {
   // Feedback statistics
   getFeedbackData: async () => {
     try {
-      const response = await apiClient.get(`${API_URL}/reviews/stats`);
-      return response.data;
+      // Thử lấy dữ liệu từ API phản hồi
+      const token = localStorage.getItem("accessToken");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      // Thử lấy từ API reports trước
+      try {
+        const response = await apiClient.get(`${EDGE_API_URL}/feedback`, { headers });
+        if (response.data) {
+          return response.data;
+        }
+      } catch (feedbackError) {
+        console.error('Không thể lấy dữ liệu từ API feedback:', feedbackError.message);
+      }
+      
+      // Thử API reviews stats
+      try {
+        const response = await apiClient.get(`${API_URL}/reviews/stats`, { headers });
+        if (response.data) {
+          return response.data;
+        }
+      } catch (statsError) {
+        console.error('Không thể lấy dữ liệu từ API reviews/stats:', statsError.message);
+      }
+      
+      // Không có dữ liệu từ API, trả về dữ liệu mẫu
+      return {
+        totalReviews: 7,
+        averageRating: 4.9,
+        ratingDistribution: [
+          { rating: 5, count: 5 },
+          { rating: 4, count: 2 },
+          { rating: 3, count: 0 },
+          { rating: 2, count: 0 },
+          { rating: 1, count: 0 }
+        ],
+        reviewsOverTime: [
+          { date: '2023-05-19', count: 2, avgRating: 5.0 },
+          { date: '2023-05-20', count: 3, avgRating: 4.7 },
+          { date: '2023-05-21', count: 1, avgRating: 5.0 },
+          { date: '2023-05-22', count: 1, avgRating: 5.0 }
+        ],
+        topReviewedProducts: [
+          { id: '1', name: 'Táo xanh Mỹ', category: 'Trái cây', image: 'https://example.com/apple.jpg', reviewCount: 3, avgRating: 4.7 },
+          { id: '2', name: 'Thịt bò Úc', category: 'Thịt tươi', image: 'https://example.com/beef.jpg', reviewCount: 2, avgRating: 5.0 },
+          { id: '3', name: 'Cá hồi Na Uy', category: 'Hải sản', image: 'https://example.com/salmon.jpg', reviewCount: 1, avgRating: 5.0 },
+          { id: '4', name: 'Gạo ST25', category: 'Gạo', image: 'https://example.com/rice.jpg', reviewCount: 1, avgRating: 5.0 }
+        ],
+        recentReviews: [
+          { id: '1', product: 'Táo xanh Mỹ', user: 'Nguyễn Văn A', rating: 5, comment: 'Táo rất ngọt và giòn', date: '2023-05-22T15:30:00Z', isVerified: true, isPublished: true },
+          { id: '2', product: 'Thịt bò Úc', user: 'Trần Thị B', rating: 5, comment: 'Thịt tươi ngon, đúng chuẩn Úc', date: '2023-05-21T10:15:00Z', isVerified: true, isPublished: true },
+          { id: '3', product: 'Táo xanh Mỹ', user: 'Lê Văn C', rating: 4, comment: 'Táo ngon nhưng hơi chua', date: '2023-05-20T14:45:00Z', isVerified: true, isPublished: true },
+          { id: '4', product: 'Cá hồi Na Uy', user: 'Phạm Thị D', rating: 5, comment: 'Cá tươi, thịt đỏ hồng rất đẹp', date: '2023-05-20T09:20:00Z', isVerified: true, isPublished: true },
+          { id: '5', product: 'Táo xanh Mỹ', user: 'Hoàng Văn E', rating: 5, comment: 'Đóng gói cẩn thận, táo không bị dập', date: '2023-05-20T08:10:00Z', isVerified: true, isPublished: true },
+          { id: '6', product: 'Thịt bò Úc', user: 'Ngô Thị F', rating: 5, comment: 'Thịt mềm, không dai, nấu rất ngon', date: '2023-05-19T16:30:00Z', isVerified: true, isPublished: true },
+          { id: '7', product: 'Gạo ST25', user: 'Đinh Văn G', rating: 5, comment: 'Gạo thơm ngon, cơm dẻo', date: '2023-05-19T11:40:00Z', isVerified: true, isPublished: true }
+        ]
+      };
     } catch (error) {
       console.error('Error fetching feedback data:', error);
-      return {
-        average: 0,
-        total: 0,
-        distribution: [0, 0, 0, 0, 0]
-      };
+      throw error;
     }
   }
 };

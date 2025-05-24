@@ -1,5 +1,7 @@
+import Product from '../src/Model/Products.js';
+
 // Lấy dữ liệu tồn kho sản phẩm cho báo cáo
-exports.getInventory = async (req, res) => {
+export const getInventory = async (req, res) => {
   try {
     const products = await Product.find({}).select('_id productName productCategory productPrice productStock productCode productImages productBrand productStatus productOrigin productWeight productUnit');
     

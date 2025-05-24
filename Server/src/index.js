@@ -153,36 +153,16 @@ app.get("/api/orders/delivery-stats", reportsController.getDeliveryData);
 app.get("/api/reviews/stats", reportsController.getFeedbackData);
 
 // Reports API routes for Edge API (no authentication required)
-app.get("/api/reports/dashboard", (req, res) => {
-  reportsController.getDashboardStats(req, res);
-});
-app.get("/api/reports/revenue", (req, res) => {
-  reportsController.getRevenueData(req, res);
-});
-app.get("/api/reports/top-products", (req, res) => {
-  reportsController.getTopProducts(req, res);
-});
-app.get("/api/reports/inventory", (req, res) => {
-  reportsController.getInventoryData(req, res);
-});
-app.get("/api/reports/users", (req, res) => {
-  reportsController.getUserData(req, res);
-});
-app.get("/api/reports/orders", (req, res) => {
-  reportsController.getOrderData(req, res);
-});
-app.get("/api/reports/promotions", (req, res) => {
-  reportsController.getPromotionData(req, res);
-});
-app.get("/api/reports/system-activity", (req, res) => {
-  reportsController.getSystemActivityData(req, res);
-});
-app.get("/api/reports/delivery", (req, res) => {
-  reportsController.getDeliveryData(req, res);
-});
-app.get("/api/reports/feedback", (req, res) => {
-  reportsController.getFeedbackData(req, res);
-});
+app.get("/api/reports/dashboard", reportsController.getDashboardStats);
+app.get("/api/reports/revenue", reportsController.getRevenueData);
+app.get("/api/reports/top-products", reportsController.getTopProducts);
+app.get("/api/reports/inventory", reportsController.getInventoryData);
+app.get("/api/reports/users", reportsController.getUserData);
+app.get("/api/reports/orders", reportsController.getOrderData);
+app.get("/api/reports/promotions", reportsController.getPromotionData);
+app.get("/api/reports/system-activity", reportsController.getSystemActivityData);
+app.get("/api/reports/delivery", reportsController.getDeliveryData);
+app.get("/api/reports/feedback", reportsController.getFeedbackData);
 
 // Dọn dẹp các webhook handler trùng lặp
 // Đây là danh sách các đường dẫn webhook cần hỗ trợ

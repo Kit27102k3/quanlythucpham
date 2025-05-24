@@ -295,14 +295,7 @@ const Reports = () => {
         );
       case "feedback":
         return (
-          <FeedbackReport
-            feedbackData={feedbackData}
-            exportToPDF={exportToPDF}
-            exportToExcel={exportToExcel}
-            sendReportEmail={sendReportEmail}
-            exportLoading={exportLoading}
-            setExportLoading={setExportLoading}
-          />
+          <FeedbackReport />
         );
       default:
         return null;

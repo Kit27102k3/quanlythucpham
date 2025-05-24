@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import {
   PieChart,
   Pie,
@@ -14,6 +15,7 @@ import {
 } from "recharts";
 import { COLORS } from '../utils/reportUtils';
 import productsApi from '../../../../api/productsApi';
+import { toast } from 'react-toastify';
 
 const InventoryReport = ({ 
   inventory = [], 
@@ -30,29 +32,44 @@ const InventoryReport = ({
   });
   const [loading, setLoading] = useState(false);
   const [localInventory, setLocalInventory] = useState([]);
+  const [error, setError] = useState(null);
   
-  // Tải dữ liệu tồn kho trực tiếp từ API nếu không nhận được props
+  // Tải dữ liệu tồn kho trực tiếp từ API
   useEffect(() => {
     const fetchInventoryData = async () => {
+      // Nếu đã có dữ liệu từ props, sử dụng nó
       if (inventory && inventory.length > 0) {
         setLocalInventory(inventory);
         return;
       }
 
       setLoading(true);
+      setError(null);
+      
       try {
-        // Gọi API trực tiếp từ component
+        // Gọi API lấy dữ liệu tồn kho
         const data = await productsApi.getInventoryData();
+        
         if (data && Array.isArray(data)) {
-          console.log('Dữ liệu tồn kho từ API:', data.length, 'sản phẩm');
+
+          
+          // Kiểm tra dữ liệu trước khi hiển thị
+          if (data.length === 0) {
+            toast.warning('Không tìm thấy dữ liệu tồn kho');
+          }
+          
           setLocalInventory(data);
         } else {
           console.error('Dữ liệu tồn kho không hợp lệ:', data);
+          setError('Dữ liệu tồn kho không hợp lệ');
           setLocalInventory([]);
+          toast.error('Không thể tải dữ liệu tồn kho từ máy chủ');
         }
       } catch (error) {
         console.error('Lỗi khi tải dữ liệu tồn kho:', error);
+        setError('Lỗi khi tải dữ liệu tồn kho: ' + (error.message || 'Lỗi không xác định'));
         setLocalInventory([]);
+        toast.error('Lỗi khi tải dữ liệu tồn kho: ' + (error.message || 'Lỗi không xác định'));
       } finally {
         setLoading(false);
       }
@@ -63,7 +80,7 @@ const InventoryReport = ({
   
   // Lấy danh sách danh mục từ dữ liệu tồn kho
   const categories = useMemo(() => {
-    if (!localInventory || !Array.isArray(localInventory)) return [];
+    if (!localInventory || !Array.isArray(localInventory) || localInventory.length === 0) return [];
     
     const uniqueCategories = [...new Set(localInventory.map(item => item.category || 'Không phân loại'))];
     return uniqueCategories.sort();
@@ -71,15 +88,17 @@ const InventoryReport = ({
   
   // Lọc dữ liệu theo bộ lọc hiện tại
   const filteredInventory = useMemo(() => {
+    if (!localInventory || !Array.isArray(localInventory)) return [];
+    
     let result = [...localInventory];
     
     // Lọc theo trạng thái tồn kho
     if (filters.stockStatus === 'low') {
-      result = result.filter(item => item.stock > 0 && item.stock <= 20);
+      result = result.filter(item => (item.stock || 0) > 0 && (item.stock || 0) <= 20);
     } else if (filters.stockStatus === 'out') {
-      result = result.filter(item => item.stock <= 0);
+      result = result.filter(item => (item.stock || 0) <= 0);
     } else if (filters.stockStatus === 'available') {
-      result = result.filter(item => item.stock > 20);
+      result = result.filter(item => (item.stock || 0) > 20);
     }
     
     // Lọc theo danh mục
@@ -89,11 +108,11 @@ const InventoryReport = ({
     
     // Sắp xếp dữ liệu
     if (filters.sortBy === 'name') {
-      result.sort((a, b) => a.name.localeCompare(b.name));
+      result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     } else if (filters.sortBy === 'stock-asc') {
-      result.sort((a, b) => a.stock - b.stock);
+      result.sort((a, b) => (a.stock || 0) - (b.stock || 0));
     } else if (filters.sortBy === 'stock-desc') {
-      result.sort((a, b) => b.stock - a.stock);
+      result.sort((a, b) => (b.stock || 0) - (a.stock || 0));
     }
     
     return result;
@@ -105,18 +124,28 @@ const InventoryReport = ({
     
     const categoryGroups = {};
     filteredInventory.forEach(item => {
-      if (!categoryGroups[item.category]) {
-        categoryGroups[item.category] = {
-          name: item.category,
+      const category = item.category || 'Không phân loại';
+      if (!categoryGroups[category]) {
+        categoryGroups[category] = {
+          name: category,
           totalStock: 0,
           itemCount: 0
         };
       }
-      categoryGroups[item.category].totalStock += item.stock;
-      categoryGroups[item.category].itemCount += 1;
+      categoryGroups[category].totalStock += (item.stock || 0);
+      categoryGroups[category].itemCount += 1;
     });
     
     return Object.values(categoryGroups);
+  }, [filteredInventory]);
+  
+  // Dữ liệu cho biểu đồ tròn
+  const pieChartData = useMemo(() => {
+    // Lấy 10 sản phẩm có tồn kho cao nhất
+    return filteredInventory
+      .filter(item => (item.stock || 0) > 0) // Chỉ lấy sản phẩm còn hàng
+      .sort((a, b) => (b.stock || 0) - (a.stock || 0)) // Sắp xếp theo tồn kho giảm dần
+      .slice(0, 10); // Lấy 10 sản phẩm đầu tiên
   }, [filteredInventory]);
   
   // Xử lý thay đổi bộ lọc
@@ -127,10 +156,30 @@ const InventoryReport = ({
     }));
   };
   
+  // Tính tổng giá trị tồn kho
+  const totalInventoryValue = useMemo(() => {
+    return filteredInventory.reduce((sum, item) => sum + (item.value || 0), 0);
+  }, [filteredInventory]);
+  
+  // Tính tổng số lượng sản phẩm tồn kho
+  const totalStockCount = useMemo(() => {
+    return filteredInventory.reduce((sum, item) => sum + (item.stock || 0), 0);
+  }, [filteredInventory]);
+  
   return (
     <div id="inventory-report" className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4 sm:mb-0">Báo cáo tồn kho</h2>
+        <div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Báo cáo tồn kho</h2>
+          <div className="text-sm text-gray-600 mb-4">
+            <span className="mr-4">Tổng số sản phẩm: <b>{filteredInventory.length}</b></span>
+            <span className="mr-4">Tổng số lượng: <b>{totalStockCount.toLocaleString()}</b></span>
+            <span>Tổng giá trị: <b>{new Intl.NumberFormat('vi-VN', {
+              style: 'currency',
+              currency: 'VND'
+            }).format(totalInventoryValue)}</b></span>
+          </div>
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => exportToPDF('inventory', setExportLoading)}
@@ -210,33 +259,49 @@ const InventoryReport = ({
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-60">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
-          <span className="ml-3 text-gray-700">Đang tải dữ liệu tồn kho...</span>
+        <div className="flex flex-col justify-center items-center h-60">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500 mb-4"></div>
+          <span className="text-gray-700 text-lg">Đang tải dữ liệu tồn kho...</span>
+        </div>
+      ) : error ? (
+        <div className="flex flex-col justify-center items-center h-60 bg-red-50 rounded-lg p-6">
+          <div className="text-red-500 text-xl mb-2">⚠️ Lỗi khi tải dữ liệu</div>
+          <p className="text-gray-700">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+          >
+            Tải lại trang
+          </button>
         </div>
       ) : filteredInventory.length > 0 ? (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <div className="h-80">
-              <h3 className="text-lg font-semibold mb-2 text-center">Phân bố tồn kho theo sản phẩm</h3>
+              <h3 className="text-lg font-semibold mb-2 text-center">Top 10 sản phẩm tồn kho nhiều nhất</h3>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={filteredInventory.slice(0, 10)} // Giới hạn 10 sản phẩm để dễ nhìn
+                    data={pieChartData}
                     cx="50%"
                     cy="50%"
                     labelLine={true}
-                    label={({ name, percent }) => `${name.length > 15 ? name.substring(0, 12) + '...' : name} (${(percent * 100).toFixed(0)}%)`}
+                    label={({ name, percent }) => `${name && name.length > 15 ? name.substring(0, 12) + '...' : name || 'Không tên'} (${(percent * 100).toFixed(0)}%)`}
                     outerRadius={90}
                     fill="#8884d8"
                     dataKey="stock"
+                    nameKey="name"
                   >
-                    {filteredInventory.slice(0, 10).map((entry, index) => (
+                    {pieChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value} sản phẩm`, "Số lượng"]} />
-                  <Legend />
+                  <Tooltip 
+                    formatter={(value, name, entry) => {
+                      return [`${value} sản phẩm`, entry && entry.payload && entry.payload.name ? entry.payload.name : "Số lượng"];
+                    }} 
+                  />
+                  <Legend formatter={(value) => value || 'Không tên'} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -262,7 +327,7 @@ const InventoryReport = ({
                       overflow: 'hidden'
                     }}
                     tickFormatter={(value) => {
-                      return value.length > 10 ? value.substring(0, 8) + '...' : value;
+                      return value && value.length > 10 ? value.substring(0, 8) + '...' : (value || 'Không phân loại');
                     }}
                   />
                   <Tooltip 
@@ -319,7 +384,7 @@ const InventoryReport = ({
                       {item.image && (
                         <img 
                           src={item.image.startsWith('http') ? item.image : `/images/products/${item.image}`} 
-                          alt={item.name}
+                          alt={item.name || 'Sản phẩm'}
                           className="w-10 h-10 object-cover rounded-md mr-2"
                           onError={(e) => { 
                             e.target.onerror = null; 
@@ -327,11 +392,11 @@ const InventoryReport = ({
                           }}
                         />
                       )}
-                      <span>{item.name}</span>
+                      <span>{item.name || 'Không xác định'}</span>
                       {item.sku && <span className="ml-2 text-xs text-gray-500">({item.sku})</span>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.category}
+                      {item.category || 'Không phân loại'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {item.brand || "Không có"}
@@ -346,10 +411,10 @@ const InventoryReport = ({
                       }).format(item.price || 0)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.stock}
+                      {item.stock || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.weight ? `${item.weight} ${item.unit || 'gram'}` : ''}
+                      {item.weight ? `${item.weight} ${item.unit || 'gram'}` : item.unit || 'gram'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Intl.NumberFormat('vi-VN', {
@@ -367,7 +432,7 @@ const InventoryReport = ({
                             : "bg-green-100 text-green-800"
                         }`}
                       >
-                        {item.status}
+                        {item.status || 'Không rõ'}
                       </span>
                     </td>
                   </tr>
@@ -377,12 +442,31 @@ const InventoryReport = ({
           </div>
         </>
       ) : (
-        <div className="flex justify-center items-center h-60">
-          <p className="text-gray-500">Không có dữ liệu tồn kho phù hợp với bộ lọc</p>
+        <div className="flex flex-col justify-center items-center h-60 bg-gray-50 rounded-lg">
+          <div className="text-gray-500 text-xl mb-2">Không có dữ liệu tồn kho</div>
+          <p className="text-gray-500">Không tìm thấy sản phẩm nào phù hợp với bộ lọc</p>
+          {filters.category !== 'all' || filters.stockStatus !== 'all' ? (
+            <button 
+              onClick={() => setFilters({stockStatus: 'all', category: 'all', sortBy: 'name'})}
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+            >
+              Xóa bộ lọc
+            </button>
+          ) : null}
         </div>
       )}
     </div>
   );
+};
+
+// Thêm prop types validation
+InventoryReport.propTypes = {
+  inventory: PropTypes.array,
+  exportToPDF: PropTypes.func,
+  exportToExcel: PropTypes.func,
+  sendReportEmail: PropTypes.func,
+  exportLoading: PropTypes.bool,
+  setExportLoading: PropTypes.func
 };
 
 export default InventoryReport; 

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useRef, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import mapboxgl from "mapbox-gl";
@@ -19,109 +20,112 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
   const routeAddedRef = useRef(false);
 
   // Helper function to add markers and route - moved outside useEffect for reuse
-  const addMarkersAndRoute = useCallback((mapInstance) => {
-    if (!mapInstance || !shopLocation?.lat || !customerLocation?.lat) {
-      console.error("Cannot add markers: Missing map instance or coordinates");
-      return;
-    }
-    
-    console.log("Adding markers and route to map");
-    const shopCoords = [shopLocation.lng, shopLocation.lat];
-    const customerCoords = [customerLocation.lng, customerLocation.lat];
+  const addMarkersAndRoute = useCallback(
+    (mapInstance) => {
+      if (!mapInstance || !shopLocation?.lat || !customerLocation?.lat) {
+        return;
+      }
 
-    try {
-      // Remove existing markers if any
-      if (markersRef.current.shop) markersRef.current.shop.remove();
-      if (markersRef.current.customer) markersRef.current.customer.remove();
-      
-      // Create marker element
-      const createMarkerElement = (color, text) => {
-        const el = document.createElement("div");
-        el.style.width = "30px";
-        el.style.height = "30px";
-        el.style.borderRadius = "50%";
-        el.style.backgroundColor = color;
-        el.style.border = "3px solid white";
-        el.style.boxShadow = "0 3px 6px rgba(0,0,0,0.5)";
-        el.style.color = "white";
-        el.style.fontSize = "12px";
-        el.style.fontWeight = "bold";
-        el.style.display = "flex";
-        el.style.alignItems = "center";
-        el.style.justifyContent = "center";
-        el.style.zIndex = "999";
-        el.innerText = text;
-        return el;
-      };
+      const shopCoords = [shopLocation.lng, shopLocation.lat];
+      const customerCoords = [customerLocation.lng, customerLocation.lat];
 
-      // Add shop marker
-      const shopMarker = new mapboxgl.Marker(createMarkerElement("#e74c3c", "SHOP"))
-        .setLngLat(shopCoords)
-        .addTo(mapInstance);
-      markersRef.current.shop = shopMarker;
+      try {
+        // Remove existing markers if any
+        if (markersRef.current.shop) markersRef.current.shop.remove();
+        if (markersRef.current.customer) markersRef.current.customer.remove();
 
-      // Add customer marker
-      const customerMarker = new mapboxgl.Marker(createMarkerElement("#3498db", "NHẬN"))
-        .setLngLat(customerCoords)
-        .addTo(mapInstance);
-      markersRef.current.customer = customerMarker;
+        // Create marker element
+        const createMarkerElement = (color, text) => {
+          const el = document.createElement("div");
+          el.style.width = "30px";
+          el.style.height = "30px";
+          el.style.borderRadius = "50%";
+          el.style.backgroundColor = color;
+          el.style.border = "3px solid white";
+          el.style.boxShadow = "0 3px 6px rgba(0,0,0,0.5)";
+          el.style.color = "white";
+          el.style.fontSize = "12px";
+          el.style.fontWeight = "bold";
+          el.style.display = "flex";
+          el.style.alignItems = "center";
+          el.style.justifyContent = "center";
+          el.style.zIndex = "999";
+          el.innerText = text;
+          return el;
+        };
 
-      // Fit bounds to show both markers
-      const bounds = new mapboxgl.LngLatBounds()
-        .extend(shopCoords)
-        .extend(customerCoords);
-      mapInstance.fitBounds(bounds, { padding: 100 });
+        // Add shop marker
+        const shopMarker = new mapboxgl.Marker(
+          createMarkerElement("#e74c3c", "SHOP")
+        )
+          .setLngLat(shopCoords)
+          .addTo(mapInstance);
+        markersRef.current.shop = shopMarker;
 
-      // Add or update route line
-      if (mapInstance.getSource('route')) {
-        // Update existing source
-        mapInstance.getSource('route').setData({
-          type: "Feature",
-          properties: {},
-          geometry: {
-            type: "LineString",
-            coordinates: [shopCoords, customerCoords],
-          },
-        });
-      } else {
-        // Add new source and layer
-        mapInstance.addSource("route", {
-          type: "geojson",
-          data: {
+        // Add customer marker
+        const customerMarker = new mapboxgl.Marker(
+          createMarkerElement("#3498db", "NHẬN")
+        )
+          .setLngLat(customerCoords)
+          .addTo(mapInstance);
+        markersRef.current.customer = customerMarker;
+
+        // Fit bounds to show both markers
+        const bounds = new mapboxgl.LngLatBounds()
+          .extend(shopCoords)
+          .extend(customerCoords);
+        mapInstance.fitBounds(bounds, { padding: 100 });
+
+        // Add or update route line
+        if (mapInstance.getSource("route")) {
+          // Update existing source
+          mapInstance.getSource("route").setData({
             type: "Feature",
             properties: {},
             geometry: {
               type: "LineString",
               coordinates: [shopCoords, customerCoords],
             },
-          },
-        });
+          });
+        } else {
+          // Add new source and layer
+          mapInstance.addSource("route", {
+            type: "geojson",
+            data: {
+              type: "Feature",
+              properties: {},
+              geometry: {
+                type: "LineString",
+                coordinates: [shopCoords, customerCoords],
+              },
+            },
+          });
 
-        mapInstance.addLayer({
-          id: "route",
-          type: "line",
-          source: "route",
-          layout: {
-            "line-join": "round",
-            "line-cap": "round",
-          },
-          paint: {
-            "line-color": "#2ecc71",
-            "line-width": 4,
-          },
-        });
+          mapInstance.addLayer({
+            id: "route",
+            type: "line",
+            source: "route",
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#2ecc71",
+              "line-width": 4,
+            },
+          });
+        }
+
+        routeAddedRef.current = true;
+
+        // Update map info
+        updateMapInfo();
+      } catch (err) {
+        console.error("Error adding markers and route:", err);
       }
-      
-      routeAddedRef.current = true;
-      
-      // Update map info
-      updateMapInfo();
-      
-      console.log("Markers and route added successfully");
-    } catch (err) {
-      console.error("Error adding markers and route:", err);
-    }
-  }, [shopLocation, customerLocation]);
+    },
+    [shopLocation, customerLocation]
+  );
 
   // Initialize map
   useEffect(() => {
@@ -142,7 +146,7 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
         parentContainer = document.createElement("div");
         parentContainer.id = "map-container";
         parentContainer.className = "relative w-full h-full min-h-[300px]";
-        
+
         // Find a suitable place to insert the container
         const mapSection = document.getElementById("order-map-section");
         if (mapSection) {
@@ -170,10 +174,14 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
     // Try to initialize container with retries
     let retryCount = 0;
     const maxRetries = 3;
-    
+
     const attemptInitialization = () => {
       if (retryCount >= maxRetries) {
-        console.error("Failed to initialize map container after", maxRetries, "attempts");
+        console.error(
+          "Failed to initialize map container after",
+          maxRetries,
+          "attempts"
+        );
         setError(true);
         setLoading(false);
         return;
@@ -186,19 +194,22 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
       }
 
       // Check required data
-      if (!shopLocation?.lat || !shopLocation?.lng || !customerLocation?.lat || !customerLocation?.lng) {
-        console.error("Missing location data:", { shopLocation, customerLocation });
+      if (
+        !shopLocation?.lat ||
+        !shopLocation?.lng ||
+        !customerLocation?.lat ||
+        !customerLocation?.lng
+      ) {
+        console.error("Missing location data:", {
+          shopLocation,
+          customerLocation,
+        });
         setError(true);
         setLoading(false);
         return;
       }
 
       try {
-        console.log("Initializing map with locations:", { 
-          shop: `${shopLocation.lat},${shopLocation.lng}`, 
-          customer: `${customerLocation.lat},${customerLocation.lng}` 
-        });
-        
         // Calculate center point between shop and customer
         const centerLng = (shopLocation.lng + customerLocation.lng) / 2;
         const centerLat = (shopLocation.lat + customerLocation.lat) / 2;
@@ -211,7 +222,7 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
           zoom: 8.5,
           attributionControl: false,
           logoPosition: "bottom-right",
-          preserveDrawingBuffer: true // Helps with rendering issues
+          preserveDrawingBuffer: true, // Helps with rendering issues
         });
 
         // Add loading indicator
@@ -238,7 +249,6 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
 
         // When map style loads (this happens before the full map loads)
         newMap.on("style.load", () => {
-          console.log("Map style loaded - adding markers");
           try {
             // Add markers and route as soon as style loads
             addMarkersAndRoute(newMap);
@@ -252,16 +262,14 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
 
         // When map fully loads
         newMap.on("load", () => {
-          console.log("Map fully loaded");
           setMapInitialized(true);
           locationUpdatedRef.current = true;
-          
+
           // If markers weren't added during style.load, add them now
           if (!routeAddedRef.current) {
-            console.log("Adding markers on map load");
             addMarkersAndRoute(newMap);
           }
-          
+
           setLoading(false);
         });
 
@@ -271,7 +279,6 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
           setError(true);
           setLoading(false);
         });
-
       } catch (err) {
         console.error("Error initializing map:", err);
         setError(true);
@@ -305,21 +312,23 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
   // Effect to handle customer location updates after map is initialized
   useEffect(() => {
     // Skip if map isn't initialized yet or we don't have valid coordinates
-    if (!mapInitialized || !map.current || !customerLocation?.lat || !customerLocation?.lng) {
+    if (
+      !mapInitialized ||
+      !map.current ||
+      !customerLocation?.lat ||
+      !customerLocation?.lng
+    ) {
       return;
     }
-    
+
     // Skip if this is the initial location we used to create the map
     if (locationUpdatedRef.current) {
       locationUpdatedRef.current = false;
       return;
     }
-    
-    console.log("Updating map with new customer location:", customerLocation);
-    
+
     // Use the shared function to update markers and route
     addMarkersAndRoute(map.current);
-    
   }, [customerLocation, mapInitialized, addMarkersAndRoute]);
 
   // Add a retry mechanism for markers that might not appear initially
@@ -329,11 +338,10 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
     // Try again after map is fully loaded
     const retryMarkersTimer = setTimeout(() => {
       if (!routeAddedRef.current) {
-        console.log("Retrying marker creation after timeout");
         addMarkersAndRoute(map.current);
       }
     }, 1000);
-    
+
     return () => clearTimeout(retryMarkersTimer);
   }, [mapInitialized, addMarkersAndRoute]);
 
@@ -341,18 +349,18 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
   const updateMapInfo = () => {
     try {
       if (!customerLocation || !shopLocation) return;
-      
+
       // Calculate distance between shop and customer
       const distance = calculateDistance(
-        shopLocation.lat, 
-        shopLocation.lng, 
-        customerLocation.lat, 
+        shopLocation.lat,
+        shopLocation.lng,
+        customerLocation.lat,
         customerLocation.lng
       );
-      
+
       // Calculate estimated delivery time (30km/h average speed)
       const estimatedMinutes = Math.ceil((distance / 30) * 60);
-      
+
       // Update info element if it exists
       const infoElement = document.getElementById("map-info");
       if (infoElement) {
@@ -363,7 +371,9 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
               <span class="font-medium text-gray-700">Cửa hàng → Địa chỉ nhận hàng</span>
             </div>
             <div class="flex gap-4">
-              <div><span class="font-medium text-blue-600">Khoảng cách:</span> ${distance.toFixed(1)} km</div>
+              <div><span class="font-medium text-blue-600">Khoảng cách:</span> ${distance.toFixed(
+                1
+              )} km</div>
               <div><span class="font-medium text-blue-600">Thời gian ước tính:</span> ${estimatedMinutes} phút</div>
             </div>
           </div>
@@ -373,17 +383,19 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
       console.error("Error updating map info:", err);
     }
   };
-  
+
   // Helper function to calculate distance between two points
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371; // Earth's radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // Distance in km
   };
 
@@ -391,16 +403,15 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
   useEffect(() => {
     const forceRedrawTimer = setTimeout(() => {
       if (map.current && mapInitialized) {
-        console.log("Forcing map redraw");
         map.current.resize();
-        
+
         // If route still not visible, try adding it again
         if (!routeAddedRef.current) {
           addMarkersAndRoute(map.current);
         }
       }
     }, 1500);
-    
+
     return () => clearTimeout(forceRedrawTimer);
   }, [mapInitialized, addMarkersAndRoute]);
 
@@ -411,7 +422,7 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
         <p className="text-red-700 text-sm">
           Không thể tải bản đồ. Vui lòng làm mới trang và thử lại.
         </p>
-        <button 
+        <button
           onClick={() => window.location.reload()}
           className="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
         >
@@ -423,7 +434,10 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
 
   return (
     <div className="relative w-full">
-      <div id="map-info" className="mb-2 text-xs text-gray-500 p-2 bg-gray-50 rounded"></div>
+      <div
+        id="map-info"
+        className="mb-2 text-xs text-gray-500 p-2 bg-gray-50 rounded"
+      ></div>
       <div className="relative aspect-video w-full border border-gray-200 rounded-lg overflow-hidden">
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-70 z-10">
@@ -433,9 +447,9 @@ const OrderMap = ({ shopLocation, customerLocation }) => {
             </div>
           </div>
         )}
-        <div 
-          id="order-tracking-map" 
-          ref={mapContainer} 
+        <div
+          id="order-tracking-map"
+          ref={mapContainer}
           className="absolute inset-0 w-full h-full"
         ></div>
       </div>
