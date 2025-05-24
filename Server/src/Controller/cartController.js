@@ -1,4 +1,5 @@
 import Cart from "../Model/Cart.js";
+import Product from "../Model/Products.js";
 
 export const getCart = async (req, res) => {
   const { userId } = req.params;
@@ -54,7 +55,6 @@ export const addToCart = async (req, res) => {
     let cart = await Cart.findOne({ userId });
     
     // Lấy thông tin sản phẩm để có giá chính xác
-    const Product = (await import("../Model/Products.js")).default;
     const product = await Product.findById(productId);
     
     if (!product) {
