@@ -68,7 +68,7 @@ class PaymentService {
                     qr_code: qrCodeDataURL
                 };
             } else {
-                throw new Error(`Phản hồi không thành công từ SePay API: ${response.data?.message || 'Unknown error'}`);
+                throw new Error(`Phản hồi không thành công từ SePay API: ${response.data && response.data.message ? response.data.message : 'Unknown error'}`);
             }
         } catch (error) {
             throw new Error(`Lỗi tạo thanh toán SePay: ${error.message}`);
