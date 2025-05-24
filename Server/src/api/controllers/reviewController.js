@@ -105,10 +105,10 @@ export const getProductReviews = async (req, res) => {
         reviews,
         totalReviews,
         stats: {
-          averageRating: stats?.averageRating || 0,
-          totalReviews: stats?.totalReviews || 0,
-          ratingDistribution: stats?.ratingDistribution || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-          percentages: stats?.getStarPercentages() || {
+          averageRating: stats && stats.averageRating ? stats.averageRating : 0,
+          totalReviews: stats && stats.totalReviews ? stats.totalReviews : 0,
+          ratingDistribution: stats && stats.ratingDistribution ? stats.ratingDistribution : { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+          percentages: stats && typeof stats.getStarPercentages === 'function' ? stats.getStarPercentages() : {
             oneStar: 0,
             twoStar: 0,
             threeStar: 0,
