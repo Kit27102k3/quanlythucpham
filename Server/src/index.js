@@ -98,7 +98,7 @@ app.use(cookieParser());
 // JWT Authentication middleware
 app.use((req, res, next) => {
     const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith("Bearer ")) {
+  if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.substring(7);
     const secretKey = process.env.JWT_SECRET_ACCESS;
 
@@ -157,7 +157,7 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
         console.error({
           uri: URI ? URI.replace(/\/\/[^:]+:[^@]+@/, "//***:***@") : "URI is undefined",
           message: err.message,
-          reason: err.reason?.message,
+          reason: err.reason && err.reason.message ? err.reason.message : undefined,
           code: err.code,
           env: process.env.NODE_ENV
         });
@@ -309,7 +309,7 @@ app.use((err, req, res) => {
   console.error("Global error:", err);
 
   // Kiểm tra req.path tồn tại trước khi sử dụng
-  const path = req?.path || '';
+  const path = req && req.path ? req.path : '';
 
   // Kiểm tra res là đối tượng response hợp lệ
   if (!res || typeof res.status !== 'function') {
