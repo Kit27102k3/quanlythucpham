@@ -51,11 +51,11 @@ export const sendPushNotification = async (userId, subscription, payload) => {
       notification: {
         title: payload.title,
         body: payload.body,
-        icon: payload.data?.icon || '/logo192.png',
+        icon: payload.data && payload.data.icon ? payload.data.icon : '/logo192.png',
         badge: '/badge-icon.png',
         vibrate: [100, 50, 100],
-        tag: payload.data?.type || 'general',
-        actions: payload.data?.actions || [
+        tag: payload.data && payload.data.type ? payload.data.type : 'general',
+        actions: payload.data && payload.data.actions ? payload.data.actions : [
           {
             action: 'view',
             title: 'Xem ngay'
