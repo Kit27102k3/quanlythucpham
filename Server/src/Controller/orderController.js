@@ -143,7 +143,7 @@ export const orderCreate = async (req, res) => {
         hasOrder: !!populatedOrder,
         hasUserId: !!(populatedOrder && populatedOrder.userId),
         hasEmail: !!(populatedOrder && populatedOrder.userId && populatedOrder.userId.email),
-        email: populatedOrder?.userId?.email
+        email: populatedOrder && populatedOrder.userId && populatedOrder.userId.email ? populatedOrder.userId.email : undefined
       });
     }
     
