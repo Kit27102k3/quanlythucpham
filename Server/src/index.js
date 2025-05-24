@@ -58,35 +58,12 @@ import brandRoutes from "./routes/brandRoutes.js";
 const app = express();
 
 // CORS configuration
-const allowedOrigins = [
-      "http://localhost:3000", 
-      "https://quanlythucpham.vercel.app", 
-      "https://quanlythucpham-vercel.app",
-      "https://quanlythucpham-git-main-kits-projects.vercel.app",
-  "https://quanlythucpham-azf6-cvjbbij6u-kit27102k3s-projects.vercel.app",
-  "https://*.vercel.app" // Cho phép tất cả subdomain của vercel.app
-];
-
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Cho phép requests không có origin (như mobile apps)
-      if (!origin) {
-        return callback(null, true);
-      }
-      
-      if (allowedOrigins.includes(origin) || 
-          origin.endsWith('.vercel.app') || 
-          process.env.NODE_ENV !== "production") {
-        callback(null, true);
-      } else {
-        console.log('CORS blocked for origin:', origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
+    origin: "*", // Cho phép tất cả các origin 
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    maxAge: 3600,
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Access-Token", "Accept", "Origin"]
   })
 );
 
@@ -118,6 +95,12 @@ app.use((req, res, next) => {
       }
     }
     next();
+});
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - User Agent: ${req.headers['user-agent']}`);
+  next();
 });
 
 // MongoDB connection
@@ -281,12 +264,40 @@ const webhookHandler = async (req, res) => {
   "/api/payments/sepay/webhook",
 ].forEach((path) => app.post(path, webhookHandler));
 
-// Health check endpoint
+// Enhanced health check endpoint
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV || "development",
+    userAgent: req.headers['user-agent'],
+    ip: req.ip || req.headers['x-forwarded-for'] || 'unknown',
+    mongoConnection: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    uptime: process.uptime()
+  });
+});
+
+// Endpoint để kiểm tra thông tin chi tiết (chỉ dùng trong development)
+app.get("/debug", (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({
+      message: "Debug endpoint is disabled in production"
+    });
+  }
+  
+  res.json({
+    env: {
+      NODE_ENV: process.env.NODE_ENV,
+      PORT: process.env.PORT,
+      HOST: process.env.HOST
+    },
+    headers: req.headers,
+    mongo: {
+      host: mongoose.connection.host,
+      port: mongoose.connection.port,
+      name: mongoose.connection.name,
+      readyState: mongoose.connection.readyState
+    }
   });
 });
 
@@ -392,7 +403,7 @@ app.get("/api/geocode", async (req, res) => {
 const startServer = (port) => {
   const portNumber = Number(port) || 8080;
   
-  const server = app.listen(portNumber, async () => {
+  app.listen(portNumber, async () => {
     console.log(`Server running on port ${portNumber}`);
 
     // Run scheduled tasks immediately on start
@@ -411,3 +422,4 @@ const startServer = (port) => {
 };
 
 startServer(process.env.PORT);
+
