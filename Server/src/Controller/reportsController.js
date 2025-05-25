@@ -149,59 +149,59 @@ const reportsController = {
         };
       }
       
-      try {
-        // Aggregate revenue data
-        const revenueAggregation = await Order.aggregate([
-          { $match: matchCriteria },
-          { 
-            $group: {
-              _id: groupBy,
-              revenue: { $sum: "$totalAmount" },
-              orders: { $sum: 1 }
-            }
-          },
-          { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
-        ]);
+      // Aggregate revenue data
+      const revenueAggregation = await Order.aggregate([
+        { $match: matchCriteria },
+        { 
+          $group: {
+            _id: groupBy,
+            revenue: { $sum: "$totalAmount" },
+            orders: { $sum: 1 }
+          }
+        },
+        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+      ]);
+      
+      // Format the results
+      let revenueData = revenueAggregation.map(item => ({
+        date: dateFormat(item),
+        doanh_thu: item.revenue,
+        don_hang: item.orders
+      }));
+      
+      // Nếu không có dữ liệu, tạo dữ liệu trống cho các ngày trong khoảng
+      if (revenueData.length === 0) {
+        console.log('No revenue data found, generating empty dates');
         
-        // Format the results
-        const revenueData = revenueAggregation.map(item => ({
-          date: dateFormat(item),
-          doanh_thu: item.revenue,
-          don_hang: item.orders
-        }));
+        // Tạo mảng các ngày
+        const dateArray = [];
+        let currentDateIter = new Date(startDate);
         
-        return res.json(revenueData);
-      } catch (dbError) {
-        console.error('Error querying database for revenue data:', dbError);
+        // Tạo chuỗi ngày rỗng
+        while (currentDateIter <= currentDate) {
+          dateArray.push({
+            date: currentDateIter.toLocaleDateString('vi-VN'),
+            doanh_thu: 0,
+            don_hang: 0
+          });
+          
+          // Tăng ngày lên 1
+          if (timeRange === 'year') {
+            // Tăng 1 tháng
+            currentDateIter.setMonth(currentDateIter.getMonth() + 1);
+          } else {
+            // Tăng 1 ngày
+            currentDateIter.setDate(currentDateIter.getDate() + 1);
+          }
+        }
         
-        // Trả về dữ liệu mẫu nếu không thể truy vấn database
-        const sampleData = [
-          { date: '01/05/2023', doanh_thu: 1200000, don_hang: 5 },
-          { date: '02/05/2023', doanh_thu: 1500000, don_hang: 7 },
-          { date: '03/05/2023', doanh_thu: 1800000, don_hang: 8 },
-          { date: '04/05/2023', doanh_thu: 1300000, don_hang: 6 },
-          { date: '05/05/2023', doanh_thu: 2000000, don_hang: 9 },
-          { date: '06/05/2023', doanh_thu: 2200000, don_hang: 10 },
-          { date: '07/05/2023', doanh_thu: 1900000, don_hang: 8 }
-        ];
-        
-        return res.json(sampleData);
+        revenueData = dateArray;
       }
+      
+      return res.json(revenueData);
     } catch (error) {
       console.error('Error fetching revenue data:', error);
-      
-      // Trả về dữ liệu mẫu nếu có lỗi
-      const sampleData = [
-        { date: '01/05/2023', doanh_thu: 1200000, don_hang: 5 },
-        { date: '02/05/2023', doanh_thu: 1500000, don_hang: 7 },
-        { date: '03/05/2023', doanh_thu: 1800000, don_hang: 8 },
-        { date: '04/05/2023', doanh_thu: 1300000, don_hang: 6 },
-        { date: '05/05/2023', doanh_thu: 2000000, don_hang: 9 },
-        { date: '06/05/2023', doanh_thu: 2200000, don_hang: 10 },
-        { date: '07/05/2023', doanh_thu: 1900000, don_hang: 8 }
-      ];
-      
-      return res.json(sampleData);
+      return res.status(500).json({ message: 'Lỗi khi lấy dữ liệu doanh thu', error: error.message });
     }
   },
 
@@ -629,6 +629,7 @@ const reportsController = {
       // Gọi trực tiếp hàm getDeliveryStats từ orderController
       return getDeliveryStats(req, res);
     } catch (err) {
+      console.error('Error fetching delivery data:', err);
       return res.status(200).json({
         statistics: {
           completed: 0,

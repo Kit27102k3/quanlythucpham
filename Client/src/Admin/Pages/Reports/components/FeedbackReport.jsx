@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Typography, Card, Space, Row, Col, Divider, Rate, Progress, Table, Avatar, Tag, Skeleton, Empty, Alert } from 'antd';
 import { UserOutlined, StarFilled, LikeOutlined, DislikeOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
-import reportsApi from '../../../../api/reportsApi';
+import {reportsApi} from '../../../../api/reportsApi';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { formatDate, formatCurrency } from '../../../../utils/helpers';
 

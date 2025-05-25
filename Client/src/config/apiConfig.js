@@ -1,13 +1,10 @@
-// Kiểm tra môi trường và tự động xác định API URL
 const getApiBaseUrl = () => {
-  // Trong môi trường phát triển (development/local)
   if (import.meta.env.DEV) {
     return import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
   }
-  
-  // Trong môi trường production (Vercel), sử dụng URL backend được cấu hình
-  // URL chính xác cho Vercel deployment
-  return import.meta.env.VITE_SERVER_URL || "https://quanlythucpham-azf6.vercel.app";
+  return (
+    import.meta.env.VITE_SERVER_URL || "https://quanlythucpham-azf6.vercel.app"
+  );
 };
 
 export const API_BASE_URL = getApiBaseUrl();
@@ -29,5 +26,5 @@ export const API_URLS = {
   TIPS: `${API_BASE_URL}/api`,
   CONTACT: `${API_BASE_URL}/api/contact`,
   COUPONS: `${API_BASE_URL}/api/coupons`,
-  SAVED_VOUCHERS: `${API_BASE_URL}/api/saved-vouchers`
-}; 
+  SAVED_VOUCHERS: `${API_BASE_URL}/api/saved-vouchers`,
+};

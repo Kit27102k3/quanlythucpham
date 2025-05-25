@@ -8,16 +8,19 @@ import { generateOTP } from "../utils/otp.until.js";
 import { sendOTPEmail } from "../Services/email.service.js";
 import Admin from "../Model/adminModel.js";
 import dotenv from "dotenv";
-import { OAuth2Client } from 'google-auth-library';
-import axios from 'axios';
-import webpush from 'web-push';
+import { OAuth2Client } from "google-auth-library";
+import axios from "axios";
+import webpush from "web-push";
 
 // Load environment variables
 dotenv.config();
 
 // Fallback secret keys in case environment variables aren't set
-const JWT_SECRET_ACCESS = process.env.JWT_SECRET_ACCESS || "a5e2c2e7-bf3a-4aa1-b5e2-eab36d9db2ea";
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5d6f7e8c9d0a1b2";
+const JWT_SECRET_ACCESS =
+  process.env.JWT_SECRET_ACCESS || "a5e2c2e7-bf3a-4aa1-b5e2-eab36d9db2ea";
+const JWT_REFRESH_SECRET =
+  process.env.JWT_REFRESH_SECRET ||
+  "7f8e9d0c1b2a3f4e5d6c7b8a9f0e1d2c3b4a5d6f7e8c9d0a1b2";
 
 // Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -49,7 +52,7 @@ export const register = async (req, res) => {
 
     // Băm mật khẩu
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
     // Tạo user mới
     const newUser = new User({
       email,
@@ -61,7 +64,7 @@ export const register = async (req, res) => {
       address,
       userImage,
     });
-    
+
     // Lưu user vào database
     await newUser.save();
 
@@ -71,13 +74,13 @@ export const register = async (req, res) => {
       process.env.JWT_REFRESH_SECRET || "SECRET_REFRESH", // Fallback nếu không có biến môi trường
       { expiresIn: "7d" }
     );
-    
+
     // Lưu refresh token vào database với thời gian hết hạn
     await RefreshToken.create({
       userId: newUser._id,
       userModel: "User",
       token: refreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 ngày
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 ngày
     });
 
     // Tạo access token cho người dùng mới
@@ -85,7 +88,7 @@ export const register = async (req, res) => {
       {
         id: newUser._id,
         role: "user",
-        permissions: ["Xem"]
+        permissions: ["Xem"],
       },
       process.env.JWT_SECRET_ACCESS || "SECRET_ACCESS", // Fallback nếu không có biến môi trường
       { expiresIn: "1d" }
@@ -100,14 +103,14 @@ export const register = async (req, res) => {
       refreshToken,
       role: "user",
       permissions: ["Xem"],
-      fullName: `${newUser.firstName} ${newUser.lastName}`
+      fullName: `${newUser.firstName} ${newUser.lastName}`,
     });
   } catch (error) {
     console.error("Registration error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi đăng ký người dùng",
-      error: error.message 
+      error: error.message,
     });
   }
 };
@@ -115,85 +118,88 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { username, userName, user_name, password } = req.body;
-    
+
     // Normalize username variants (database might have either username or userName)
     const usernameToUse = username || userName || user_name;
-    
+
     if (!usernameToUse || !password) {
       return res.status(400).json({
         success: false,
         message: "Vui lòng cung cấp tên người dùng và mật khẩu",
       });
     }
-    
-    const foundUser = await User.findOne({ 
+
+    const foundUser = await User.findOne({
       $or: [
         { userName: usernameToUse },
         { username: usernameToUse },
-        { email: usernameToUse }
-      ] 
+        { email: usernameToUse },
+      ],
     });
-    
+
     if (!foundUser) {
       return res.status(404).json({
         success: false,
         message: "Người dùng không tồn tại",
       });
     }
-    
+
     if (foundUser.isBlocked) {
       return res.status(403).json({
         success: false,
         message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.",
       });
     }
-    
+
     const isPasswordValid = await bcrypt.compare(password, foundUser.password);
-    
+
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
         message: "Mật khẩu không đúng",
       });
     }
-    
+
     const accessToken = jwt.sign(
       {
         id: foundUser._id,
         role: "user",
-        permissions: ["Xem"]
+        permissions: ["Xem"],
       },
       process.env.JWT_SECRET_ACCESS,
       { expiresIn: "1d" }
     );
-    
+
     // Generate refresh token with extended expiry
     const refreshToken = jwt.sign(
       { id: foundUser._id },
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: "7d" }
     );
-    
+
     // Xóa refresh tokens cũ của user này trước khi tạo mới
     try {
-      await RefreshToken.deleteMany({ userId: foundUser._id, userModel: "User" });
-      
+      await RefreshToken.deleteMany({
+        userId: foundUser._id,
+        userModel: "User",
+      });
+
       // Sau khi xóa tokens cũ, tạo token mới
       await RefreshToken.create({
         userId: foundUser._id,
         userModel: "User",
         token: refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
     } catch (tokenError) {
       console.error("Error managing refresh tokens:", tokenError);
       // Continue even if token storage fails
     }
-    
+
     // Update last login time
     foundUser.lastLogin = new Date();
     await foundUser.save();
-    
+
     // Format response
     return res.status(200).json({
       success: true,
@@ -206,7 +212,7 @@ export const login = async (req, res) => {
         email: foundUser.email,
         firstName: foundUser.firstName,
         lastName: foundUser.lastName,
-        role: "user"
+        role: "user",
       },
     });
   } catch (error) {
@@ -292,21 +298,21 @@ const migrateLegacyAddress = async (user) => {
     // Check if addresses array is empty but legacy address exists
     if ((!user.addresses || user.addresses.length === 0) && user.address) {
       console.log(`Migrating legacy address for user: ${user._id}`);
-      
+
       // Create new address object from legacy fields
       const newAddress = {
         fullAddress: user.fullAddress || user.address,
-        houseNumber: user.houseNumber || '',
-        ward: user.ward || '',
-        district: user.district || '',
-        province: user.province || '',
+        houseNumber: user.houseNumber || "",
+        ward: user.ward || "",
+        district: user.district || "",
+        province: user.province || "",
         coordinates: user.coordinates || {},
         isDefault: true,
         label: "Nhà",
         receiverName: `${user.firstName} ${user.lastName}`,
-        receiverPhone: user.phone
+        receiverPhone: user.phone,
       };
-      
+
       // Add to addresses array
       user.addresses = [newAddress];
       await user.save();
@@ -328,7 +334,7 @@ export const getUserProfile = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    
+
     // Migrate legacy address if needed
     user = await migrateLegacyAddress(user);
 
@@ -350,7 +356,15 @@ export const getAllUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { currentPassword, newPassword, firstName, lastName, phone, address, userImage } = req.body;
+    const {
+      currentPassword,
+      newPassword,
+      firstName,
+      lastName,
+      phone,
+      address,
+      userImage,
+    } = req.body;
 
     console.log("Updating user profile:", userId);
     console.log("Request body:", req.body);
@@ -417,7 +431,7 @@ export const updateUser = async (req, res) => {
       console.log("Updating address to:", address);
       user.address = address;
     }
-    
+
     // Xử lý cập nhật avatar nếu có
     if (userImage !== undefined) {
       console.log("Updating user image to:", userImage);
@@ -426,7 +440,7 @@ export const updateUser = async (req, res) => {
 
     await user.save();
     console.log("User updated successfully:", user);
-    
+
     // Trả về thông tin người dùng đã được cập nhật
     res.json({
       success: true,
@@ -438,7 +452,7 @@ export const updateUser = async (req, res) => {
         email: user.email,
         phone: user.phone,
         address: user.address,
-        userImage: user.userImage
+        userImage: user.userImage,
       },
     });
   } catch (err) {
@@ -446,7 +460,7 @@ export const updateUser = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi cập nhật thông tin",
-      error: err.message
+      error: err.message,
     });
   }
 };
@@ -564,7 +578,7 @@ export const blockUser = async (req, res) => {
     if (isBlocked === undefined) {
       return res.status(400).json({
         success: false,
-        message: "Thiếu thông tin trạng thái chặn người dùng"
+        message: "Thiếu thông tin trạng thái chặn người dùng",
       });
     }
 
@@ -572,7 +586,7 @@ export const blockUser = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy người dùng"
+        message: "Không tìm thấy người dùng",
       });
     }
 
@@ -582,16 +596,18 @@ export const blockUser = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: isBlocked ? "Đã chặn người dùng thành công" : "Đã bỏ chặn người dùng thành công",
+      message: isBlocked
+        ? "Đã chặn người dùng thành công"
+        : "Đã bỏ chặn người dùng thành công",
       user: {
         _id: user._id,
-        isBlocked: user.isBlocked
-      }
+        isBlocked: user.isBlocked,
+      },
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Đã xảy ra lỗi khi xử lý yêu cầu"
+      message: "Đã xảy ra lỗi khi xử lý yêu cầu",
     });
   }
 };
@@ -600,86 +616,89 @@ export const blockUser = async (req, res) => {
 export const facebookLogin = async (req, res) => {
   try {
     const { accessToken, userID } = req.body;
-    
+
     if (!accessToken || !userID) {
       return res.status(400).json({
         success: false,
-        message: "Thiếu thông tin xác thực từ Facebook"
+        message: "Thiếu thông tin xác thực từ Facebook",
       });
     }
 
     // Xác thực token Facebook bằng cách gọi API của Facebook
-    const fbResponse = await axios.get(`https://graph.facebook.com/v18.0/${userID}`, {
-      params: {
-        fields: 'id,email,first_name,last_name,picture',
-        access_token: accessToken
+    const fbResponse = await axios.get(
+      `https://graph.facebook.com/v18.0/${userID}`,
+      {
+        params: {
+          fields: "id,email,first_name,last_name,picture",
+          access_token: accessToken,
+        },
       }
-    });
+    );
 
     if (!fbResponse.data || !fbResponse.data.id) {
       return res.status(401).json({
         success: false,
-        message: "Không thể xác thực với Facebook"
+        message: "Không thể xác thực với Facebook",
       });
     }
 
     const { id, email, first_name, last_name, picture } = fbResponse.data;
-    
+
     // Tìm user với FacebookID
     let user = await User.findOne({ facebookId: id });
-    
+
     // Nếu user không tồn tại nhưng email đã tồn tại, liên kết tài khoản đó
     if (!user && email) {
       user = await User.findOne({ email });
       if (user) {
         // Liên kết tài khoản đã tồn tại với Facebook
         user.facebookId = id;
-        user.authProvider = 'facebook';
+        user.authProvider = "facebook";
         await user.save();
       }
     }
-    
+
     // Nếu vẫn không tìm thấy user, tạo mới
     if (!user) {
       // Tạo username ngẫu nhiên nếu không có
       const uniqueUsername = `fb_${id}_${Date.now().toString().slice(-4)}`;
-      
+
       // Tạo mật khẩu ngẫu nhiên
       const randomPassword = Math.random().toString(36).slice(-10);
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
-      
+
       // Use default avatar instead of Facebook profile pic
-      const profileImageUrl = ''; // Don't store Facebook profile URL
-      
+      const profileImageUrl = ""; // Don't store Facebook profile URL
+
       user = new User({
         email: email || `${id}@facebook.com`,
-        phone: '0000000000', // Placeholder phone number
-        firstName: first_name || 'Facebook',
-        lastName: last_name || 'User',
+        phone: "0000000000", // Placeholder phone number
+        firstName: first_name || "Facebook",
+        lastName: last_name || "User",
         userName: uniqueUsername,
         password: hashedPassword,
         userImage: profileImageUrl,
         facebookId: id,
-        authProvider: 'facebook'
+        authProvider: "facebook",
       });
-      
+
       await user.save();
     }
-    
+
     // Kiểm tra nếu tài khoản bị chặn
     if (user.isBlocked) {
       return res.status(403).json({
         success: false,
-        message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên."
+        message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.",
       });
     }
-    
+
     // Tạo tokens
     const token = jwt.sign(
       {
         id: user._id,
         role: "user",
-        permissions: ["Xem"]
+        permissions: ["Xem"],
       },
       process.env.JWT_SECRET_ACCESS,
       { expiresIn: "1d" }
@@ -690,19 +709,19 @@ export const facebookLogin = async (req, res) => {
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: "7d" }
     );
-    
+
     // Lưu refresh token
     await RefreshToken.create({
       userId: user._id,
       userModel: "User",
       token: refreshToken,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
-    
+
     // Cập nhật lastLogin
     user.lastLogin = new Date();
     await user.save();
-    
+
     // Gửi response
     res.status(200).json({
       success: true,
@@ -713,16 +732,15 @@ export const facebookLogin = async (req, res) => {
         name: `${user.firstName} ${user.lastName}`,
         email: user.email,
         role: "user",
-        permissions: ["Xem"]
+        permissions: ["Xem"],
       },
-      message: "Đăng nhập bằng Facebook thành công!"
+      message: "Đăng nhập bằng Facebook thành công!",
     });
-    
   } catch (error) {
     console.error("Facebook login error:", error);
     res.status(500).json({
       success: false,
-      message: "Đăng nhập bằng Facebook thất bại. Vui lòng thử lại."
+      message: "Đăng nhập bằng Facebook thất bại. Vui lòng thử lại.",
     });
   }
 };
@@ -731,80 +749,82 @@ export const facebookLogin = async (req, res) => {
 export const googleLogin = async (req, res) => {
   try {
     const { credential } = req.body;
-    
+
     if (!credential) {
       return res.status(400).json({
         success: false,
-        message: "Thiếu thông tin xác thực từ Google"
+        message: "Thiếu thông tin xác thực từ Google",
       });
     }
-    
+
     console.log("Google login with clientID:", process.env.GOOGLE_CLIENT_ID);
-    
+
     // Xác thực Google ID token
     try {
       const ticket = await googleClient.verifyIdToken({
         idToken: credential,
-        audience: process.env.GOOGLE_CLIENT_ID
+        audience: process.env.GOOGLE_CLIENT_ID,
       });
-      
+
       const payload = ticket.getPayload();
       console.log("Google payload verified successfully:", payload.sub);
-      
+
       const { sub, email, given_name, family_name, picture } = payload;
-      
+
       // Tìm user với GoogleID
       let user = await User.findOne({ googleId: sub });
-      
+
       // Nếu user không tồn tại nhưng email đã tồn tại, liên kết tài khoản đó
       if (!user && email) {
         user = await User.findOne({ email });
         if (user) {
           // Liên kết tài khoản đã tồn tại với Google
           user.googleId = sub;
-          user.authProvider = 'google';
+          user.authProvider = "google";
           await user.save();
         }
       }
-      
+
       // Nếu vẫn không tìm thấy user, tạo mới
       if (!user) {
         // Tạo username ngẫu nhiên nếu không có
-        const uniqueUsername = `google_${sub.slice(-8)}_${Date.now().toString().slice(-4)}`;
-        
+        const uniqueUsername = `google_${sub.slice(-8)}_${Date.now()
+          .toString()
+          .slice(-4)}`;
+
         // Tạo mật khẩu ngẫu nhiên
         const randomPassword = Math.random().toString(36).slice(-10);
         const hashedPassword = await bcrypt.hash(randomPassword, 10);
-        
+
         user = new User({
           email: email,
-          phone: '0000000000', // Placeholder phone number
-          firstName: given_name || 'Google',
-          lastName: family_name || 'User',
+          phone: "0000000000", // Placeholder phone number
+          firstName: given_name || "Google",
+          lastName: family_name || "User",
           userName: uniqueUsername,
           password: hashedPassword,
-          userImage: picture || '',
+          userImage: picture || "",
           googleId: sub,
-          authProvider: 'google'
+          authProvider: "google",
         });
-        
+
         await user.save();
       }
-      
+
       // Kiểm tra nếu tài khoản bị chặn
       if (user.isBlocked) {
         return res.status(403).json({
           success: false,
-          message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên."
+          message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.",
         });
       }
-      
+
       // Tạo tokens
       const token = jwt.sign(
         {
           id: user._id,
           role: "user",
-          permissions: ["Xem"]
+          permissions: ["Xem"],
         },
         process.env.JWT_SECRET_ACCESS,
         { expiresIn: "1d" }
@@ -815,19 +835,19 @@ export const googleLogin = async (req, res) => {
         process.env.JWT_REFRESH_SECRET,
         { expiresIn: "7d" }
       );
-      
+
       // Lưu refresh token
       await RefreshToken.create({
         userId: user._id,
         userModel: "User",
         token: refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
-      
+
       // Cập nhật lastLogin
       user.lastLogin = new Date();
       await user.save();
-      
+
       // Gửi response
       res.status(200).json({
         success: true,
@@ -838,23 +858,22 @@ export const googleLogin = async (req, res) => {
           name: `${user.firstName} ${user.lastName}`,
           email: user.email,
           role: "user",
-          permissions: ["Xem"]
+          permissions: ["Xem"],
         },
-        message: "Đăng nhập bằng Google thành công!"
+        message: "Đăng nhập bằng Google thành công!",
       });
-      
     } catch (error) {
       console.error("Google login error:", error);
       res.status(500).json({
         success: false,
-        message: "Đăng nhập bằng Google thất bại. Vui lòng thử lại."
+        message: "Đăng nhập bằng Google thất bại. Vui lòng thử lại.",
       });
     }
   } catch (error) {
     console.error("Google login error:", error);
     res.status(500).json({
       success: false,
-      message: "Đăng nhập bằng Google thất bại. Vui lòng thử lại."
+      message: "Đăng nhập bằng Google thất bại. Vui lòng thử lại.",
     });
   }
 };
@@ -864,90 +883,93 @@ export const facebookCallback = async (req, res) => {
   try {
     // Code from authentication callback
     const { code } = req.query;
-    
+
     if (!code) {
-      return res.redirect('/dang-nhap?error=no_code');
+      return res.redirect("/dang-nhap?error=no_code");
     }
-    
+
     // Exchange code for access token
-    const tokenResponse = await axios.get('https://graph.facebook.com/oauth/access_token', {
-      params: {
-        client_id: process.env.FACEBOOK_APP_ID,
-        client_secret: process.env.FACEBOOK_APP_SECRET,
-        redirect_uri: process.env.FACEBOOK_CALLBACK_URL,
-        code
+    const tokenResponse = await axios.get(
+      "https://graph.facebook.com/oauth/access_token",
+      {
+        params: {
+          client_id: process.env.FACEBOOK_APP_ID,
+          client_secret: process.env.FACEBOOK_APP_SECRET,
+          redirect_uri: process.env.FACEBOOK_CALLBACK_URL,
+          code,
+        },
       }
-    });
-    
+    );
+
     if (!tokenResponse.data.access_token) {
-      return res.redirect('/dang-nhap?error=token_exchange_failed');
+      return res.redirect("/dang-nhap?error=token_exchange_failed");
     }
-    
+
     const accessToken = tokenResponse.data.access_token;
-    
+
     // Get user data with access token
-    const userDataResponse = await axios.get('https://graph.facebook.com/me', {
+    const userDataResponse = await axios.get("https://graph.facebook.com/me", {
       params: {
-        fields: 'id,first_name,last_name,email,picture',
-        access_token: accessToken
-      }
+        fields: "id,first_name,last_name,email,picture",
+        access_token: accessToken,
+      },
     });
-    
+
     if (!userDataResponse.data.id) {
-      return res.redirect('/dang-nhap?error=user_data_failed');
+      return res.redirect("/dang-nhap?error=user_data_failed");
     }
-    
+
     const { id, first_name, last_name, email } = userDataResponse.data;
-    
+
     // Look for user with Facebook ID
     let user = await User.findOne({ facebookId: id });
-    
+
     // If user not found but we have an email, look for user with that email
     if (!user && email) {
       user = await User.findOne({ email });
-      
+
       // If found by email, update the Facebook ID
       if (user) {
         user.facebookId = id;
         await user.save();
       }
     }
-    
+
     // If still no user, create a new one
     if (!user) {
       const uniqueUsername = `fb_${id}_${Date.now().toString().slice(-4)}`;
       const randomPassword = Math.random().toString(36).slice(-10);
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
-      
+
       // Use default avatar instead of Facebook image
-      const profileImageUrl = '';
-      
+      const profileImageUrl = "";
+
       user = new User({
         email: `${uniqueUsername}@facebook.com`,
-        phone: '0000000000', // Placeholder phone number
-        firstName: first_name || 'Facebook',
-        lastName: last_name || 'User',
+        phone: "0000000000", // Placeholder phone number
+        firstName: first_name || "Facebook",
+        lastName: last_name || "User",
         userName: uniqueUsername,
         password: hashedPassword,
         userImage: profileImageUrl,
         facebookId: id,
-        authProvider: 'facebook'
+        authProvider: "facebook",
       });
-      
+
       await user.save();
     }
-    
+
     // Check if account is blocked
     if (user.isBlocked) {
-      return res.redirect('/dang-nhap?error=account_blocked');
+      return res.redirect("/dang-nhap?error=account_blocked");
     }
-    
+
     // Create tokens
     const token = jwt.sign(
       {
         id: user._id,
         role: "user",
-        permissions: ["Xem"]
+        permissions: ["Xem"],
       },
       process.env.JWT_SECRET_ACCESS,
       { expiresIn: "1d" }
@@ -958,33 +980,38 @@ export const facebookCallback = async (req, res) => {
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: "7d" }
     );
-    
+
     // Xóa refresh tokens cũ của user này trước khi tạo mới
     try {
       await RefreshToken.deleteMany({ userId: user._id, userModel: "User" });
-      
+
       // Sau khi xóa tokens cũ, tạo token mới
       await RefreshToken.create({
         userId: user._id,
         userModel: "User",
         token: refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
     } catch (tokenError) {
       console.error("Error managing refresh tokens:", tokenError);
       // Continue even if token storage fails
     }
-    
+
     // Update last login
     user.lastLogin = new Date();
     await user.save();
-    
+
     // Redirect with tokens as URL parameters
-    res.redirect(`/dang-nhap/success?token=${token}&refreshToken=${refreshToken}&userId=${user._id}&name=${encodeURIComponent(`${user.firstName} ${user.lastName}`)}&role=user`);
-    
+    res.redirect(
+      `/dang-nhap/success?token=${token}&refreshToken=${refreshToken}&userId=${
+        user._id
+      }&name=${encodeURIComponent(
+        `${user.firstName} ${user.lastName}`
+      )}&role=user`
+    );
   } catch (error) {
     console.error("Facebook callback error:", error);
-    res.redirect('/dang-nhap?error=server_error');
+    res.redirect("/dang-nhap?error=server_error");
   }
 };
 
@@ -992,56 +1019,67 @@ export const facebookCallback = async (req, res) => {
 export const facebookTokenLogin = async (req, res) => {
   try {
     const { accessToken } = req.body;
-    
+
     if (!accessToken) {
       return res.status(400).json({
         success: false,
-        message: "Thiếu access token"
+        message: "Thiếu access token",
       });
     }
 
     // Lấy thông tin từ Facebook bằng access token
     const fbResponse = await axios.get(`https://graph.facebook.com/v18.0/me`, {
       params: {
-        fields: 'id,first_name,last_name,email,picture{url,width,height,is_silhouette}',
-        access_token: accessToken
-      }
+        fields:
+          "id,first_name,last_name,email,picture{url,width,height,is_silhouette}",
+        access_token: accessToken,
+      },
     });
 
     if (!fbResponse.data || !fbResponse.data.id) {
       return res.status(401).json({
         success: false,
-        message: "Không thể xác thực với Facebook"
+        message: "Không thể xác thực với Facebook",
       });
     }
 
     const { id, first_name, last_name, email, picture } = fbResponse.data;
-    
+
     // Log thông tin nhận được từ Facebook
-    console.log("Facebook data received:", { 
-      id, 
-      first_name, 
-      last_name, 
+    console.log("Facebook data received:", {
+      id,
+      first_name,
+      last_name,
       email: email || "No email provided by Facebook",
-      hasPicture: !!picture 
+      hasPicture: !!picture,
     });
-    
+
     // Lấy ảnh chất lượng cao hơn từ Facebook nếu có
-    let profileImageUrl = '';
+    let profileImageUrl = "";
     if (picture && picture.data && !picture.data.is_silhouette) {
       try {
         // Thử lấy ảnh lớn hơn từ Facebook Graph API
-        const pictureResponse = await axios.get(`https://graph.facebook.com/v18.0/${id}/picture`, {
-          params: {
-            type: 'large',
-            redirect: 'false',
-            access_token: accessToken
+        const pictureResponse = await axios.get(
+          `https://graph.facebook.com/v18.0/${id}/picture`,
+          {
+            params: {
+              type: "large",
+              redirect: "false",
+              access_token: accessToken,
+            },
           }
-        });
-        
-        if (pictureResponse.data && pictureResponse.data.data && pictureResponse.data.data.url) {
+        );
+
+        if (
+          pictureResponse.data &&
+          pictureResponse.data.data &&
+          pictureResponse.data.data.url
+        ) {
           profileImageUrl = pictureResponse.data.data.url;
-          console.log("Retrieved larger Facebook profile image:", profileImageUrl);
+          console.log(
+            "Retrieved larger Facebook profile image:",
+            profileImageUrl
+          );
         }
       } catch (pictureError) {
         console.error("Error fetching larger picture:", pictureError);
@@ -1051,15 +1089,15 @@ export const facebookTokenLogin = async (req, res) => {
         }
       }
     }
-    
+
     // Fallback to default avatar if no Facebook image
     if (!profileImageUrl) {
-      profileImageUrl = 'https://www.gravatar.com/avatar/?d=mp&s=256';
+      profileImageUrl = "https://www.gravatar.com/avatar/?d=mp&s=256";
     }
-    
+
     // Tìm user với FacebookID
     let user = await User.findOne({ facebookId: id });
-    
+
     // Nếu không tìm thấy theo facebookId và có email, thử tìm theo email
     if (!user && email) {
       user = await User.findOne({ email });
@@ -1069,54 +1107,57 @@ export const facebookTokenLogin = async (req, res) => {
         await user.save();
       }
     }
-    
+
     // Nếu vẫn không tìm thấy user, tạo mới
     if (!user) {
       // Tạo username ngẫu nhiên nếu không có
       const uniqueUsername = `fb_${id}_${Date.now().toString().slice(-4)}`;
-      
+
       // Tạo mật khẩu ngẫu nhiên
       const randomPassword = Math.random().toString(36).slice(-10);
       const hashedPassword = await bcrypt.hash(randomPassword, 10);
-      
+
       // Tạo email giả nếu không có email từ Facebook
       const userEmail = email || `${uniqueUsername}@facebook.user`;
-      
+
       user = new User({
         email: userEmail,
-        phone: '0000000000', // Placeholder phone number
-        firstName: first_name || 'Facebook',
-        lastName: last_name || 'User',
+        phone: "0000000000", // Placeholder phone number
+        firstName: first_name || "Facebook",
+        lastName: last_name || "User",
         userName: uniqueUsername,
         password: hashedPassword,
         userImage: profileImageUrl,
         facebookId: id,
-        authProvider: 'facebook'
+        authProvider: "facebook",
       });
-      
+
       await user.save();
     } else {
       // Cập nhật avatar nếu người dùng đã tồn tại
-      if (profileImageUrl && profileImageUrl !== 'https://www.gravatar.com/avatar/?d=mp&s=256') {
+      if (
+        profileImageUrl &&
+        profileImageUrl !== "https://www.gravatar.com/avatar/?d=mp&s=256"
+      ) {
         user.userImage = profileImageUrl;
         await user.save();
       }
     }
-    
+
     // Kiểm tra nếu tài khoản bị chặn
     if (user.isBlocked) {
       return res.status(403).json({
         success: false,
-        message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên."
+        message: "Tài khoản đã bị khóa. Vui lòng liên hệ quản trị viên.",
       });
     }
-    
+
     // Tạo tokens
     const token = jwt.sign(
       {
         id: user._id,
         role: "user",
-        permissions: ["Xem"]
+        permissions: ["Xem"],
       },
       process.env.JWT_SECRET_ACCESS,
       { expiresIn: "1d" }
@@ -1127,27 +1168,27 @@ export const facebookTokenLogin = async (req, res) => {
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: "7d" }
     );
-    
+
     // Xóa refresh tokens cũ của user này trước khi tạo mới
     try {
       await RefreshToken.deleteMany({ userId: user._id, userModel: "User" });
-      
+
       // Sau khi xóa tokens cũ, tạo token mới
       await RefreshToken.create({
         userId: user._id,
         userModel: "User",
         token: refreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
     } catch (tokenError) {
       console.error("Error managing refresh tokens:", tokenError);
       // Continue even if token storage fails
     }
-    
+
     // Cập nhật lastLogin
     user.lastLogin = new Date();
     await user.save();
-    
+
     // Gửi response
     res.status(200).json({
       success: true,
@@ -1159,16 +1200,15 @@ export const facebookTokenLogin = async (req, res) => {
         email: user.email,
         userImage: user.userImage,
         role: "user",
-        permissions: ["Xem"]
+        permissions: ["Xem"],
       },
-      message: "Đăng nhập bằng Facebook thành công!"
+      message: "Đăng nhập bằng Facebook thành công!",
     });
-    
   } catch (error) {
     console.error("Facebook token login error:", error);
     res.status(500).json({
       success: false,
-      message: "Đăng nhập bằng Facebook thất bại. Vui lòng thử lại."
+      message: "Đăng nhập bằng Facebook thất bại. Vui lòng thử lại.",
     });
   }
 };
@@ -1178,18 +1218,26 @@ export const getUserAvatar = async (req, res) => {
   try {
     const userId = req.params.id;
     console.log("Fetching avatar for user ID:", userId);
-    
-    const user = await User.findById(userId).select("userImage firstName lastName email authProvider facebookId");
+
+    const user = await User.findById(userId).select(
+      "userImage firstName lastName email authProvider facebookId"
+    );
 
     if (!user) {
       console.log("User not found for ID:", userId);
-      return res.json({ userImage: 'https://www.gravatar.com/avatar/?d=mp&s=256' });
+      return res.json({
+        userImage: "https://www.gravatar.com/avatar/?d=mp&s=256",
+      });
     }
 
     console.log("User found:", user.email, "- Image:", user.userImage);
 
     // Nếu người dùng đang sử dụng Facebook và không có ảnh đại diện
-    if (user.authProvider === 'facebook' && (!user.userImage || user.userImage.includes('platform-lookaside.fbsbx.com'))) {
+    if (
+      user.authProvider === "facebook" &&
+      (!user.userImage ||
+        user.userImage.includes("platform-lookaside.fbsbx.com"))
+    ) {
       if (user.facebookId) {
         try {
           // Tạo một avatar tốt hơn cho người dùng Facebook
@@ -1200,11 +1248,17 @@ export const getUserAvatar = async (req, res) => {
         }
       }
       // Fallback nếu không lấy được ảnh Facebook
-      return res.json({ userImage: 'https://www.gravatar.com/avatar/?d=mp&s=256' });
+      return res.json({
+        userImage: "https://www.gravatar.com/avatar/?d=mp&s=256",
+      });
     }
 
     // If user has a userImage that is a URL, return the URL directly
-    if (user.userImage && (user.userImage.startsWith('http://') || user.userImage.startsWith('https://'))) {
+    if (
+      user.userImage &&
+      (user.userImage.startsWith("http://") ||
+        user.userImage.startsWith("https://"))
+    ) {
       console.log("Returning external avatar URL:", user.userImage);
       return res.json({ userImage: user.userImage });
     }
@@ -1218,36 +1272,36 @@ export const getUserAvatar = async (req, res) => {
 
     // If no image is found, return a default avatar
     console.log("No avatar found, using default");
-    return res.json({ userImage: 'https://www.gravatar.com/avatar/?d=mp&s=256' });
+    return res.json({
+      userImage: "https://www.gravatar.com/avatar/?d=mp&s=256",
+    });
   } catch (error) {
     console.error("Error fetching user avatar:", error);
-    return res.json({ userImage: 'https://www.gravatar.com/avatar/?d=mp&s=256' });
+    return res.json({
+      userImage: "https://www.gravatar.com/avatar/?d=mp&s=256",
+    });
   }
 };
 
 // New controller function to provide VAPID public key
 export const getVapidPublicKey = (req, res) => {
   try {
-    console.log("[getVapidPublicKey] Đang lấy VAPID public key từ biến môi trường...");
-    
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
-    console.log("[getVapidPublicKey] VAPID_PUBLIC_KEY:", vapidPublicKey ? "Found" : "Not found");
-    
+
     if (!vapidPublicKey) {
-      console.error("[getVapidPublicKey] VAPID Public Key not configured in environment variables");
-      return res.status(500).json({ message: "VAPID Public Key not configured on server." });
+      return res
+        .status(500)
+        .json({ message: "VAPID Public Key not configured on server." });
     }
-    
+
     // Log to confirm the key is valid (should be Base64 URL-safe encoded)
     const isValidBase64 = /^[A-Za-z0-9\-_]+=*$/.test(vapidPublicKey);
-    console.log("[getVapidPublicKey] Key appears to be valid Base64:", isValidBase64);
-    console.log("[getVapidPublicKey] Key length:", vapidPublicKey.length);
-    
-    console.log("[getVapidPublicKey] Returning VAPID public key to client");
+
     res.status(200).json({ vapidPublicKey: vapidPublicKey });
   } catch (error) {
-    console.error("[getVapidPublicKey] Error providing VAPID Public Key:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 };
 
@@ -1256,18 +1310,16 @@ export const subscribeToPush = async (req, res) => {
   const subscription = req.body;
   const userId = req.user.id;
 
-  console.log(`[subscribeToPush] Đang xử lý yêu cầu đăng ký thông báo cho user ${userId}`);
-  console.log(`[subscribeToPush] Dữ liệu subscription:`, JSON.stringify(subscription, null, 2));
-
   if (!subscription || !subscription.endpoint) {
-    console.error(`[subscribeToPush] Missing or invalid subscription object`);
-    return res.status(400).json({ message: "Push subscription object is required." });
+    return res
+      .status(400)
+      .json({ message: "Push subscription object is required." });
   }
 
   try {
     // Set timeout for MongoDB operations
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database operation timed out')), 5000)
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Database operation timed out")), 5000)
     );
 
     // Find user with timeout
@@ -1281,7 +1333,6 @@ export const subscribeToPush = async (req, res) => {
 
     // Initialize pushSubscriptions array if not exists
     if (!user.pushSubscriptions) {
-      console.log(`[subscribeToPush] Initializing pushSubscriptions array for user: ${userId}`);
       user.pushSubscriptions = [];
     }
 
@@ -1291,33 +1342,45 @@ export const subscribeToPush = async (req, res) => {
     );
 
     if (existingSubscription) {
-      console.log(`[subscribeToPush] Subscription already exists for user: ${userId}`);
-      return res.status(200).json({ 
+      console.log(
+        `[subscribeToPush] Subscription already exists for user: ${userId}`
+      );
+      return res.status(200).json({
         message: "Subscription already exists.",
-        subscriptionCount: user.pushSubscriptions.length
+        subscriptionCount: user.pushSubscriptions.length,
       });
     }
 
     // Validate subscription
-    if (!subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
-      console.error(`[subscribeToPush] Invalid subscription object, missing required keys`);
-      return res.status(400).json({ message: "Invalid subscription object. Missing required keys." });
+    if (
+      !subscription.keys ||
+      !subscription.keys.p256dh ||
+      !subscription.keys.auth
+    ) {
+      console.error(
+        `[subscribeToPush] Invalid subscription object, missing required keys`
+      );
+      return res
+        .status(400)
+        .json({
+          message: "Invalid subscription object. Missing required keys.",
+        });
     }
 
     // Add new subscription
-    console.log(`[subscribeToPush] Adding new subscription for user: ${userId}`);
+    console.log(
+      `[subscribeToPush] Adding new subscription for user: ${userId}`
+    );
     user.pushSubscriptions.push(subscription);
 
     // Save with timeout
     const savePromise = user.save();
     await Promise.race([savePromise, timeoutPromise]);
-    
-    console.log(`[subscribeToPush] Subscription saved successfully. Total subscriptions: ${user.pushSubscriptions.length}`);
 
     // Send response immediately after saving
-    res.status(201).json({ 
+    res.status(201).json({
       message: "Push subscription saved successfully.",
-      subscriptionCount: user.pushSubscriptions.length
+      subscriptionCount: user.pushSubscriptions.length,
     });
 
     // Send test notification asynchronously after response
@@ -1332,38 +1395,46 @@ export const subscribeToPush = async (req, res) => {
             url: "/",
             dateOfArrival: Date.now(),
             primaryKey: 1,
-            type: "test_notification"
-          }
-        }
+            type: "test_notification",
+          },
+        },
       };
-      
+
       // Add retry logic for sending notification
       let retries = 3;
       while (retries > 0) {
         try {
-          console.log(`[subscribeToPush] Sending test notification to new subscription (attempt ${4-retries}/3)`);
-          await webpush.sendNotification(subscription, JSON.stringify(testPayload));
+          await webpush.sendNotification(
+            subscription,
+            JSON.stringify(testPayload)
+          );
           console.log(`[subscribeToPush] Test notification sent successfully`);
           break;
         } catch (error) {
           retries--;
           if (retries === 0) {
-            console.error(`[subscribeToPush] Failed to send test notification after 3 attempts:`, error);
+            console.error(
+              `[subscribeToPush] Failed to send test notification after 3 attempts:`,
+              error
+            );
           } else {
             console.log(`[subscribeToPush] Retrying test notification...`);
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1s before retry
           }
         }
       }
     } catch (notificationError) {
-      console.error(`[subscribeToPush] Error in test notification process:`, notificationError);
+      console.error(
+        `[subscribeToPush] Error in test notification process:`,
+        notificationError
+      );
       // Don't throw error since we already sent success response
     }
   } catch (error) {
     console.error(`[subscribeToPush] Error saving push subscription:`, error);
-    res.status(500).json({ 
-      message: "Internal server error while saving subscription", 
-      error: error.message 
+    res.status(500).json({
+      message: "Internal server error while saving subscription",
+      error: error.message,
     });
   }
 };
@@ -1372,73 +1443,73 @@ export const subscribeToPush = async (req, res) => {
 export const validateSubscription = async (req, res) => {
   try {
     const { subscription } = req.body;
-    
+
     if (!subscription) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: "Subscription data is required" 
+        message: "Subscription data is required",
       });
     }
 
-    const webpush = require('web-push');
-    
+    const webpush = require("web-push");
+
     // Configure web-push with VAPID keys
     webpush.setVapidDetails(
-      'mailto:daninc.system@gmail.com',
+      "mailto:daninc.system@gmail.com",
       process.env.VAPID_PUBLIC_KEY,
       process.env.VAPID_PRIVATE_KEY
     );
-    
+
     // Send a small test notification payload
     const testPayload = JSON.stringify({
       title: "Validation Test",
       body: "This is a test to validate your subscription",
-      silent: true
+      silent: true,
     });
-    
+
     try {
       // Try to send a notification to check if the subscription is valid
       await webpush.sendNotification(subscription, testPayload);
-      return res.status(200).json({ 
+      return res.status(200).json({
         success: true,
         valid: true,
-        message: "Subscription is valid" 
+        message: "Subscription is valid",
       });
     } catch (error) {
       console.log("Validation error:", error);
-      
+
       // Check for specific error status codes
       if (error.statusCode === 404 || error.statusCode === 410) {
         // 404: Not Found, 410: Gone - Subscription has expired or is invalid
-        return res.status(200).json({ 
+        return res.status(200).json({
           success: true,
           valid: false,
           message: "Subscription has expired or is invalid",
-          error: error.body || error.message
+          error: error.body || error.message,
         });
       } else if (error.statusCode === 400) {
         // Bad request - Invalid subscription
-        return res.status(200).json({ 
+        return res.status(200).json({
           success: true,
           valid: false,
           message: "Invalid subscription format",
-          error: error.body || error.message
+          error: error.body || error.message,
         });
       } else {
         // Other errors
-        return res.status(200).json({ 
+        return res.status(200).json({
           success: true,
           valid: false,
           message: "Error validating subscription",
-          error: error.body || error.message
+          error: error.body || error.message,
         });
       }
     }
   } catch (error) {
     console.error("Validate subscription error:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
-      message: "Server error while validating subscription" 
+      message: "Server error while validating subscription",
     });
   }
 };
@@ -1446,51 +1517,70 @@ export const validateSubscription = async (req, res) => {
 // Tạo/cập nhật địa chỉ mặc định đơn lẻ từ mảng địa chỉ cho tính tương thích ngược
 const updateDefaultAddressForBackwardCompatibility = async (userId) => {
   try {
-    console.log(`[updateDefaultAddressForBackwardCompatibility] Updating legacy address for user ${userId}`);
-    
+    console.log(
+      `[updateDefaultAddressForBackwardCompatibility] Updating legacy address for user ${userId}`
+    );
+
     const user = await User.findById(userId);
     if (!user) {
-      console.log(`[updateDefaultAddressForBackwardCompatibility] User not found: ${userId}`);
+      console.log(
+        `[updateDefaultAddressForBackwardCompatibility] User not found: ${userId}`
+      );
       return;
     }
-    
+
     // Tìm địa chỉ mặc định trong mảng
-    const defaultAddress = user.addresses.find(addr => addr.isDefault === true);
-    
+    const defaultAddress = user.addresses.find(
+      (addr) => addr.isDefault === true
+    );
+
     if (defaultAddress) {
-      console.log(`[updateDefaultAddressForBackwardCompatibility] Found default address: ${defaultAddress.fullAddress}`);
-      
+      console.log(
+        `[updateDefaultAddressForBackwardCompatibility] Found default address: ${defaultAddress.fullAddress}`
+      );
+
       // Cập nhật trường address legacy - đảm bảo không phải undefined
-      user.address = defaultAddress.fullAddress || '';
-      
+      user.address = defaultAddress.fullAddress || "";
+
       // Cập nhật các trường riêng lẻ cho địa chỉ (nếu có)
-      user.houseNumber = defaultAddress.houseNumber || '';
-      user.ward = defaultAddress.ward || '';
-      user.district = defaultAddress.district || '';
-      user.province = defaultAddress.province || '';
-      
+      user.houseNumber = defaultAddress.houseNumber || "";
+      user.ward = defaultAddress.ward || "";
+      user.district = defaultAddress.district || "";
+      user.province = defaultAddress.province || "";
+
       // Sao chép tọa độ nếu có
-      if (defaultAddress.coordinates && defaultAddress.coordinates.lat && defaultAddress.coordinates.lng) {
+      if (
+        defaultAddress.coordinates &&
+        defaultAddress.coordinates.lat &&
+        defaultAddress.coordinates.lng
+      ) {
         user.coordinates = {
           lat: defaultAddress.coordinates.lat,
-          lng: defaultAddress.coordinates.lng
+          lng: defaultAddress.coordinates.lng,
         };
       }
-      
+
       // Đảm bảo fullAddress được cập nhật
-      user.fullAddress = defaultAddress.fullAddress || '';
-      
+      user.fullAddress = defaultAddress.fullAddress || "";
+
       // Đánh dấu là đã sửa đổi để đảm bảo mongoose cập nhật
-      user.markModified('address');
-      user.markModified('coordinates');
-      
+      user.markModified("address");
+      user.markModified("coordinates");
+
       await user.save();
-      console.log(`[updateDefaultAddressForBackwardCompatibility] Updated legacy address fields for user ${userId}`);
+      console.log(
+        `[updateDefaultAddressForBackwardCompatibility] Updated legacy address fields for user ${userId}`
+      );
     } else {
-      console.log(`[updateDefaultAddressForBackwardCompatibility] No default address found for user ${userId}`);
+      console.log(
+        `[updateDefaultAddressForBackwardCompatibility] No default address found for user ${userId}`
+      );
     }
   } catch (error) {
-    console.error(`[updateDefaultAddressForBackwardCompatibility] Error updating legacy address:`, error);
+    console.error(
+      `[updateDefaultAddressForBackwardCompatibility] Error updating legacy address:`,
+      error
+    );
   }
 };
 
@@ -1499,11 +1589,11 @@ export const addUserAddress = async (req, res) => {
   try {
     const { userId } = req.params;
     const addressData = req.body;
-    
+
     if (!addressData.fullAddress) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng cung cấp địa chỉ đầy đủ"
+        message: "Vui lòng cung cấp địa chỉ đầy đủ",
       });
     }
 
@@ -1511,7 +1601,7 @@ export const addUserAddress = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy người dùng"
+        message: "Không tìm thấy người dùng",
       });
     }
 
@@ -1520,16 +1610,16 @@ export const addUserAddress = async (req, res) => {
       addressData.isDefault = true;
     } else if (addressData.isDefault) {
       // Nếu địa chỉ mới là mặc định, cập nhật tất cả các địa chỉ khác thành không mặc định
-      user.addresses.forEach(addr => {
+      user.addresses.forEach((addr) => {
         addr.isDefault = false;
       });
     }
-    
+
     // Nếu không có thông tin người nhận, sử dụng thông tin người dùng
     if (!addressData.receiverName) {
       addressData.receiverName = `${user.firstName} ${user.lastName}`;
     }
-    
+
     if (!addressData.receiverPhone) {
       addressData.receiverPhone = user.phone;
     }
@@ -1548,14 +1638,14 @@ export const addUserAddress = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Thêm địa chỉ thành công",
-      addresses: user.addresses
+      addresses: user.addresses,
     });
   } catch (error) {
     console.error("Lỗi khi thêm địa chỉ:", error);
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi thêm địa chỉ",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1564,28 +1654,28 @@ export const addUserAddress = async (req, res) => {
 export const getUserAddresses = async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     let user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy người dùng"
+        message: "Không tìm thấy người dùng",
       });
     }
-    
+
     // Migrate legacy address if needed
     user = await migrateLegacyAddress(user);
 
     res.status(200).json({
       success: true,
-      addresses: user.addresses || []
+      addresses: user.addresses || [],
     });
   } catch (error) {
     console.error("Lỗi khi lấy danh sách địa chỉ:", error);
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi lấy danh sách địa chỉ",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1595,37 +1685,37 @@ export const updateUserAddress = async (req, res) => {
   try {
     const { userId, addressId } = req.params;
     const updatedData = req.body;
-    
+
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy người dùng"
+        message: "Không tìm thấy người dùng",
       });
     }
 
     // Tìm địa chỉ cần cập nhật
     const addressIndex = user.addresses.findIndex(
-      addr => addr._id.toString() === addressId
+      (addr) => addr._id.toString() === addressId
     );
 
     if (addressIndex === -1) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy địa chỉ"
+        message: "Không tìm thấy địa chỉ",
       });
     }
 
     // Kiểm tra nếu địa chỉ được cập nhật trở thành mặc định
     if (updatedData.isDefault) {
       // Cập nhật tất cả các địa chỉ khác thành không mặc định
-      user.addresses.forEach(addr => {
+      user.addresses.forEach((addr) => {
         addr.isDefault = false;
       });
     }
 
     // Cập nhật địa chỉ
-    Object.keys(updatedData).forEach(key => {
+    Object.keys(updatedData).forEach((key) => {
       user.addresses[addressIndex][key] = updatedData[key];
     });
 
@@ -1640,14 +1730,14 @@ export const updateUserAddress = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Cập nhật địa chỉ thành công",
-      addresses: user.addresses
+      addresses: user.addresses,
     });
   } catch (error) {
     console.error("Lỗi khi cập nhật địa chỉ:", error);
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi cập nhật địa chỉ",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1656,24 +1746,24 @@ export const updateUserAddress = async (req, res) => {
 export const deleteUserAddress = async (req, res) => {
   try {
     const { userId, addressId } = req.params;
-    
+
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy người dùng"
+        message: "Không tìm thấy người dùng",
       });
     }
 
     // Tìm địa chỉ cần xóa
     const addressIndex = user.addresses.findIndex(
-      addr => addr._id.toString() === addressId
+      (addr) => addr._id.toString() === addressId
     );
 
     if (addressIndex === -1) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy địa chỉ"
+        message: "Không tìm thấy địa chỉ",
       });
     }
 
@@ -1699,14 +1789,14 @@ export const deleteUserAddress = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Xóa địa chỉ thành công",
-      addresses: user.addresses
+      addresses: user.addresses,
     });
   } catch (error) {
     console.error("Lỗi khi xóa địa chỉ:", error);
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi xóa địa chỉ",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1715,58 +1805,64 @@ export const deleteUserAddress = async (req, res) => {
 export const setDefaultAddress = async (req, res) => {
   try {
     const { userId, addressId } = req.params;
-    
-    console.log(`[setDefaultAddress] Setting address ${addressId} as default for user ${userId}`);
-    
+
+    console.log(
+      `[setDefaultAddress] Setting address ${addressId} as default for user ${userId}`
+    );
+
     const user = await User.findById(userId);
     if (!user) {
       console.log(`[setDefaultAddress] User not found: ${userId}`);
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy người dùng"
+        message: "Không tìm thấy người dùng",
       });
     }
 
     // Kiểm tra xem địa chỉ có tồn tại không
-    const addressExists = user.addresses.some(addr => addr._id.toString() === addressId);
+    const addressExists = user.addresses.some(
+      (addr) => addr._id.toString() === addressId
+    );
     if (!addressExists) {
       console.log(`[setDefaultAddress] Address not found: ${addressId}`);
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy địa chỉ"
+        message: "Không tìm thấy địa chỉ",
       });
     }
 
     // Đặt tất cả địa chỉ thành không mặc định, sau đó đặt địa chỉ được chọn thành mặc định
-    user.addresses.forEach(addr => {
+    user.addresses.forEach((addr) => {
       const isSelected = addr._id.toString() === addressId;
       addr.isDefault = isSelected;
-      
+
       if (isSelected) {
-        console.log(`[setDefaultAddress] Setting address as default: ${addr.fullAddress}`);
+        console.log(
+          `[setDefaultAddress] Setting address as default: ${addr.fullAddress}`
+        );
       }
     });
 
     // Đánh dấu mảng addresses đã được sửa đổi để đảm bảo mongoose cập nhật
-    user.markModified('addresses');
-    
+    user.markModified("addresses");
+
     // Lưu thay đổi trước khi cập nhật tương thích ngược
     await user.save();
-    
+
     // Cập nhật trường address cũ
     await updateDefaultAddressForBackwardCompatibility(userId);
 
     res.status(200).json({
       success: true,
       message: "Đặt địa chỉ mặc định thành công",
-      addresses: user.addresses
+      addresses: user.addresses,
     });
   } catch (error) {
     console.error(`[setDefaultAddress] Error setting default address:`, error);
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi đặt địa chỉ mặc định",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1775,26 +1871,23 @@ export const setDefaultAddress = async (req, res) => {
 export const migrateAllLegacyAddresses = async (req, res) => {
   try {
     // Kiểm tra quyền admin (thực tế nên sử dụng middleware)
-    if (!req.user || !req.user.role || req.user.role !== 'admin') {
+    if (!req.user || !req.user.role || req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
-        message: "Không có quyền thực hiện chức năng này"
+        message: "Không có quyền thực hiện chức năng này",
       });
     }
 
     // Lấy tất cả user có địa chỉ cũ
-    const users = await User.find({ 
+    const users = await User.find({
       address: { $exists: true, $ne: "" },
-      $or: [
-        { addresses: { $exists: false } },
-        { addresses: { $size: 0 } }
-      ]
+      $or: [{ addresses: { $exists: false } }, { addresses: { $size: 0 } }],
     });
 
     let migratedCount = 0;
     let skippedCount = 0;
     let errorCount = 0;
-    
+
     // Xử lý từng user
     for (const user of users) {
       try {
@@ -1817,14 +1910,14 @@ export const migrateAllLegacyAddresses = async (req, res) => {
       total: users.length,
       migrated: migratedCount,
       skipped: skippedCount,
-      errors: errorCount
+      errors: errorCount,
     });
   } catch (error) {
     console.error("Lỗi khi di chuyển dữ liệu địa chỉ:", error);
     res.status(500).json({
       success: false,
       message: "Đã xảy ra lỗi khi di chuyển dữ liệu địa chỉ",
-      error: error.message
+      error: error.message,
     });
   }
 };

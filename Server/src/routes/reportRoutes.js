@@ -1,399 +1,231 @@
-import express from 'express';
-const router = express.Router();
-import mongoose from 'mongoose';
-import Order from '../Model/Order.js';
-import Product from '../Model/Products.js';
-import User from '../Model/Register.js';
-import { verifyToken as authMiddleware } from '../Middleware/authMiddleware.js';
+/* eslint-disable no-unused-vars */
+import express from "express";
+import Order from "../Model/Order.js";
+import Product from "../Model/Products.js";
+import User from "../Model/Register.js";
+import Category from "../Model/Category.js"; // Added missing import
+import { verifyToken as authMiddleware } from "../Middleware/authMiddleware.js";
+import { getLowStockProducts } from "../Controller/ProductController.js";
 
-// Lấy dữ liệu doanh thu theo khoảng thời gian (tuần/tháng/năm)
-router.get('/revenue', authMiddleware, async (req, res) => {
+const router = express.Router();
+
+// Get revenue data by time range (week/month/year)
+router.get("/revenue", authMiddleware, async (req, res) => {
   try {
     const { timeRange } = req.query;
-    
-    // Kiểm tra xem có order nào đã hoàn thành không
-    const completedOrderCount = await Order.countDocuments({ status: 'completed' });
-    
-    // Nếu không có đơn hàng hoàn thành, trả về mảng trống
-    if (completedOrderCount === 0) {
-      return res.json([]);
-    }
-    
-    let startDate, endDate;
     const currentDate = new Date();
-    
-    // Xác định khoảng thời gian dựa trên timeRange
-    if (timeRange === 'week') {
-      // Lấy dữ liệu 7 ngày gần nhất
-      startDate = new Date(currentDate);
-      startDate.setDate(currentDate.getDate() - 7);
-    } else if (timeRange === 'month') {
-      // Lấy dữ liệu 30 ngày gần nhất
-      startDate = new Date(currentDate);
-      startDate.setDate(currentDate.getDate() - 30);
-    } else if (timeRange === 'year') {
-      // Lấy dữ liệu 12 tháng gần nhất
-      startDate = new Date(currentDate);
-      startDate.setFullYear(currentDate.getFullYear() - 1);
-    } else {
-      return res.status(400).json({ message: 'Thông số không hợp lệ' });
+    let startDate;
+
+    // Set time range
+    switch (timeRange) {
+      case "week":
+        startDate = new Date(currentDate.setDate(currentDate.getDate() - 7));
+        break;
+      case "month":
+        startDate = new Date(currentDate.setDate(currentDate.getDate() - 30));
+        break;
+      case "year":
+        startDate = new Date(
+          currentDate.setFullYear(currentDate.getFullYear() - 1)
+        );
+        break;
+      default:
+        return res.status(400).json({ message: "Invalid timeRange parameter" });
     }
 
-    // Truy vấn dữ liệu từ DB
+    // Aggregate revenue data
     let revenueData;
-    
-    if (timeRange === 'week') {
-      // Doanh thu theo ngày trong tuần
+    if (timeRange === "week") {
       revenueData = await Order.aggregate([
         {
           $match: {
-            createdAt: { $gte: startDate, $lte: currentDate },
-            status: { $in: ['completed', 'delivered'] } // Tính cả đơn hàng đã hoàn thành và đã giao
-          }
+            createdAt: { $gte: startDate },
+            status: { $in: ["completed", "delivered"] },
+          },
         },
         {
           $group: {
-            _id: { $dayOfWeek: '$createdAt' },
-            revenue: { $sum: '$totalAmount' }
-          }
+            _id: { $dayOfWeek: "$createdAt" },
+            revenue: { $sum: "$totalAmount" },
+          },
         },
-        {
-          $sort: { _id: 1 }
-        },
-        {
-          $project: {
-            _id: 0,
-            day: '$_id',
-            revenue: 1
-          }
-        }
+        { $sort: { _id: 1 } },
+        { $project: { _id: 0, day: "$_id", revenue: 1 } },
       ]);
 
-      // Chuyển đổi định dạng dữ liệu cho phù hợp với frontend
-      const daysOfWeek = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-      
-      // Tạo dữ liệu cho tất cả các ngày trong tuần, kể cả ngày không có doanh thu
-      const completeData = [];
-      for (let i = 1; i <= 7; i++) {
-        const dayData = revenueData.find(item => item.day === i);
-        completeData.push({
-          name: daysOfWeek[i - 1],
-          revenue: dayData ? dayData.revenue : 0
-        });
-      }
-      revenueData = completeData;
-    } else if (timeRange === 'month') {
-      // Doanh thu theo ngày trong tháng
+      // Format data for all days of the week
+      const daysOfWeek = [
+        "CN",
+        "Thứ 2",
+        "Thứ 3",
+        "Thứ 4",
+        "Thứ 5",
+        "Thứ 6",
+        "Thứ 7",
+      ];
+      revenueData = Array.from({ length: 7 }, (_, i) => ({
+        name: daysOfWeek[i],
+        revenue: revenueData.find((item) => item.day === i + 1)?.revenue || 0,
+      }));
+    } else if (timeRange === "month") {
       revenueData = await Order.aggregate([
         {
           $match: {
-            createdAt: { $gte: startDate, $lte: currentDate },
-            status: { $in: ['completed', 'delivered'] }
-          }
+            createdAt: { $gte: startDate },
+            status: { $in: ["completed", "delivered"] },
+          },
         },
         {
           $group: {
-            _id: { $dayOfMonth: '$createdAt' },
-            revenue: { $sum: '$totalAmount' }
-          }
+            _id: { $dayOfMonth: "$createdAt" },
+            revenue: { $sum: "$totalAmount" },
+          },
         },
-        {
-          $sort: { _id: 1 }
-        },
-        {
-          $project: {
-            _id: 0,
-            name: { $toString: '$_id' },
-            revenue: 1
-          }
-        }
-      ]);
-      
-      // Đảm bảo có dữ liệu cho mỗi ngày trong tháng
-      if (revenueData.length === 0) {
-        revenueData = Array.from({ length: 30 }, (_, i) => ({
-          name: `${i + 1}`,
-          revenue: 0
-        }));
-      }
-    } else if (timeRange === 'year') {
-      // Doanh thu theo tháng trong năm
-      revenueData = await Order.aggregate([
-        {
-          $match: {
-            createdAt: { $gte: startDate, $lte: currentDate },
-            status: { $in: ['completed', 'delivered'] }
-          }
-        },
-        {
-          $group: {
-            _id: { $month: '$createdAt' },
-            revenue: { $sum: '$totalAmount' }
-          }
-        },
-        {
-          $sort: { _id: 1 }
-        },
-        {
-          $project: {
-            _id: 0,
-            month: '$_id',
-            revenue: 1
-          }
-        }
+        { $sort: { _id: 1 } },
+        { $project: { _id: 0, name: { $toString: "$_id" }, revenue: 1 } },
       ]);
 
-      // Chuyển đổi định dạng dữ liệu
-      const months = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 
-                      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
-                      
-      // Tạo dữ liệu cho tất cả các tháng, kể cả tháng không có doanh thu
-      const completeData = [];
-      for (let i = 1; i <= 12; i++) {
-        const monthData = revenueData.find(item => item.month === i);
-        completeData.push({
-          name: months[i - 1],
-          revenue: monthData ? monthData.revenue : 0
-        });
-      }
-      revenueData = completeData;
+      // Ensure data for all days
+      const daysInMonth = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+        0
+      ).getDate();
+      revenueData = Array.from({ length: daysInMonth }, (_, i) => ({
+        name: `${i + 1}`,
+        revenue:
+          revenueData.find((item) => parseInt(item.name) === i + 1)?.revenue ||
+          0,
+      }));
+    } else {
+      revenueData = await Order.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: startDate },
+            status: { $in: ["completed", "delivered"] },
+          },
+        },
+        {
+          $group: {
+            _id: { $month: "$createdAt" },
+            revenue: { $sum: "$totalAmount" },
+          },
+        },
+        { $sort: { _id: 1 } },
+        { $project: { _id: 0, month: "$_id", revenue: 1 } },
+      ]);
+
+      // Format data for all months
+      const months = Array.from({ length: 12 }, (_, i) => `Tháng ${i + 1}`);
+      revenueData = Array.from({ length: 12 }, (_, i) => ({
+        name: months[i],
+        revenue: revenueData.find((item) => item.month === i + 1)?.revenue || 0,
+      }));
     }
 
     res.json(revenueData);
   } catch (error) {
-    res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy dữ liệu doanh thu' });
+    console.error("Error fetching revenue data:", error);
+    res.status(500).json({ message: "Error fetching revenue data" });
   }
 });
 
-// Lấy danh sách sản phẩm bán chạy
-router.get('/top-products', authMiddleware, async (req, res) => {
+// Get top-selling products
+router.get("/top-products", authMiddleware, async (req, res) => {
   try {
-    // Kiểm tra xem có order nào không
-    const orderCount = await Order.countDocuments({ status: 'completed' });
-    if (orderCount === 0) {
-      return res.json([]);
-    }
-
-    // Kiểm tra xem Product collection có sản phẩm nào không
-    const productCount = await Product.countDocuments();
-    if (productCount === 0) {
-      return res.json([]);
-    }
-
-    // Lấy mẫu một đơn hàng để kiểm tra cấu trúc thực tế
-    const sampleOrder = await Order.findOne({ status: 'completed' }).lean();
+    const { limit = 10 } = req.query;
 
     const topProducts = await Order.aggregate([
-      {
-        $match: { status: 'completed' }
-      },
-      {
-        $unwind: {
-          path: '$products',
-          preserveNullAndEmptyArrays: false
-        }
-      },
+      { $match: { status: "completed" } },
+      { $unwind: "$products" },
       {
         $lookup: {
-          from: 'products',
-          localField: 'products.productId',
-          foreignField: '_id',
-          as: 'productInfo'
-        }
+          from: "products",
+          localField: "products.productId",
+          foreignField: "_id",
+          as: "productInfo",
+        },
       },
       {
         $group: {
-          _id: '$products.productId',
-          name: { 
-            $first: {
-              $cond: [
-                { $gt: [{ $size: '$productInfo' }, 0] },
-                { $arrayElemAt: ['$productInfo.productName', 0] },
-                'Sản phẩm không xác định'
-              ]
-            } 
+          _id: "$products.productId",
+          name: { $first: { $arrayElemAt: ["$productInfo.productName", 0] } },
+          sold: { $sum: "$products.quantity" },
+          revenue: {
+            $sum: { $multiply: ["$products.price", "$products.quantity"] },
           },
-          sold: { $sum: '$products.quantity' },
-          revenue: { $sum: { $multiply: ['$products.price', '$products.quantity'] } }
-        }
+        },
       },
-      {
-        $sort: { revenue: -1 }
-      },
-      {
-        $limit: 10
-      },
-      {
-        $project: {
-          _id: 0,
-          name: 1,
-          sold: 1,
-          revenue: 1
-        }
-      }
+      { $sort: { revenue: -1 } },
+      { $limit: parseInt(limit) },
+      { $project: { _id: 0, name: 1, sold: 1, revenue: 1 } },
     ]);
 
     res.json(topProducts);
   } catch (error) {
-    res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy danh sách sản phẩm bán chạy' });
+    console.error("Error fetching top products:", error);
+    res.status(500).json({ message: "Error fetching top products" });
   }
 });
 
-// Lấy dữ liệu tồn kho
-router.get('/inventory', authMiddleware, async (req, res) => {
+// Get low-stock products (delegated to ProductController)
+router.get("/low-stock", authMiddleware, getLowStockProducts);
+
+// Get user statistics
+router.get("/users", authMiddleware, async (req, res) => {
   try {
-    console.log("Đang lấy dữ liệu tồn kho...");
-    
-    // Kiểm tra xem có sản phẩm nào không
-    const productCount = await Product.countDocuments();
-    console.log(`Số lượng sản phẩm: ${productCount}`);
-    
-    if (productCount === 0) {
-      console.log("Không có sản phẩm nào trong hệ thống");
-      return res.json([]);
-    }
-    
-    // Lấy mẫu một sản phẩm để kiểm tra cấu trúc
-    const sampleProduct = await Product.findOne().lean();
-    console.log("Sample product structure:", JSON.stringify(sampleProduct, null, 2));
-    
-    // Lấy danh sách các danh mục
-    const categories = await Product.distinct('productCategory');
-    console.log("Product categories:", categories);
-    
-    if (!categories || categories.length === 0) {
-      console.log("Không tìm thấy danh mục sản phẩm");
-      return res.json([]);
-    }
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    // Tính tổng tồn kho theo danh mục
-    const inventory = await Product.aggregate([
-      {
-        $group: {
-          _id: '$productCategory',
-          stock: { $sum: '$productStock' },
-          lowStock: { $sum: { $cond: [{ $lt: ['$productStock', 10] }, 1, 0] } },
-          value: { $sum: '$productStock' }
-        }
-      },
-      {
-        $sort: { stock: -1 }
-      },
-      {
-        $project: {
-          _id: 0,
-          name: '$_id',
-          stock: 1,
-          lowStock: 1,
-          value: 1
-        }
-      }
+    const [totalUsers, newUsers, activeUsers, guestOrders] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ createdAt: { $gte: thirtyDaysAgo } }),
+      Order.distinct("userId", {
+        createdAt: { $gte: thirtyDaysAgo },
+        userId: { $exists: true, $ne: null },
+      }).then((users) => users.length),
+      Order.countDocuments({
+        createdAt: { $gte: thirtyDaysAgo },
+        userId: { $exists: false },
+      }),
     ]);
-
-    // Log kết quả trước khi trả về
-    console.log("Inventory data result:", inventory);
-    
-    if (inventory.length === 0) {
-      console.log("Không tìm thấy dữ liệu tồn kho");
-      return res.json([]);
-    }
-    
-    res.json(inventory);
-  } catch (error) {
-    console.error('Lỗi khi lấy dữ liệu tồn kho:', error);
-    res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy dữ liệu tồn kho' });
-  }
-});
-
-// Lấy dữ liệu người dùng
-router.get('/users', authMiddleware, async (req, res) => {
-  try {
-    console.log("Đang lấy dữ liệu người dùng...");
-    
-    const currentDate = new Date();
-    const thirtyDaysAgo = new Date(currentDate);
-    thirtyDaysAgo.setDate(currentDate.getDate() - 30);
-    
-    // Tổng số người dùng
-    const totalUsers = await User.countDocuments({});
-    
-    // Người dùng mới trong 30 ngày qua
-    const newUsers = await User.countDocuments({
-      createdAt: { $gte: thirtyDaysAgo }
-    });
-    
-    // Người dùng hoạt động (có đơn hàng trong 30 ngày)
-    const activeUsers = await Order.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: thirtyDaysAgo },
-          userId: { $exists: true, $ne: null } // Đảm bảo userId tồn tại và không phải null
-        }
-      },
-      {
-        $group: {
-          _id: '$userId'
-        }
-      },
-      {
-        $count: 'count'
-      }
-    ]);
-    
-    const activeUsersCount = activeUsers.length > 0 ? activeUsers[0].count : 0;
-    
-    // Khách vãng lai (có đơn hàng nhưng không có tài khoản)
-    const guestOrders = await Order.countDocuments({
-      createdAt: { $gte: thirtyDaysAgo },
-      $or: [
-        { userId: { $exists: false } },
-        { userId: null }
-      ]
-    });
 
     const userData = [
-      { name: 'Người dùng mới', count: newUsers, color: '#8884d8' },
-      { name: 'Khách hàng thân thiết', count: activeUsersCount, color: '#82ca9d' },
-      { name: 'Khách vãng lai', count: guestOrders, color: '#ffc658' }
+      { name: "Người dùng mới", count: newUsers, color: "#8884d8" },
+      { name: "Khách hàng thân thiết", count: activeUsers, color: "#82ca9d" },
+      { name: "Khách vãng lai", count: guestOrders, color: "#ffc658" },
     ];
 
-    // Log kết quả trước khi trả về
-    console.log("User data result:", userData);
     res.json(userData);
   } catch (error) {
-    console.error('Lỗi khi lấy dữ liệu người dùng:', error);
-    res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy dữ liệu người dùng' });
+    console.error("Error fetching user data:", error);
+    res.status(500).json({ message: "Error fetching user data" });
   }
 });
 
-// Thêm endpoint kiểm tra cấu trúc Order
-router.get('/test-structure', authMiddleware, async (req, res) => {
+// Test data structure
+router.get("/test-structure", authMiddleware, async (req, res) => {
   try {
-    const orders = await Order.find().limit(1);
-    const products = await Product.find().limit(1);
-    const users = await User.find().limit(1);
-    
-    const orderCount = await Order.countDocuments();
-    const productCount = await Product.countDocuments();
-    const userCount = await User.countDocuments();
-    
-    const orderStatus = await Order.aggregate([
-      { $group: { _id: "$status", count: { $sum: 1 } } }
-    ]);
-    
-    const categories = await Category.find();
-    
-    res.json({ 
-      message: "Cấu trúc dữ liệu đã được kiểm tra",
+    const [orderCount, productCount, userCount, orderStatus, categories] =
+      await Promise.all([
+        Order.countDocuments(),
+        Product.countDocuments(),
+        User.countDocuments(),
+        Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+        Category.find(),
+      ]);
+
+    res.json({
+      message: "Data structure checked successfully",
       orderCount,
       productCount,
       userCount,
       orderStatus,
-      categories
+      categories,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Đã xảy ra lỗi khi kiểm tra cấu trúc dữ liệu' });
+    console.error("Error checking data structure:", error);
+    res.status(500).json({ message: "Error checking data structure" });
   }
 });
 
-export default router; 
+export default router;

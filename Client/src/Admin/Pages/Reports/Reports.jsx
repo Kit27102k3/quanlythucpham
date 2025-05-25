@@ -1,5 +1,6 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
-import reportsApi from "../../../api/reportsApi";
+import {reportsApi} from "../../../api/reportsApi";
 
 // Import report components
 import {

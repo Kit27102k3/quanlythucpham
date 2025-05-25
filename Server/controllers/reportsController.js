@@ -1,38 +1,50 @@
-import { Op } from 'sequelize';
-import User from '../Model/User.js';
-import Order from '../Model/Order.js';
-import Product from '../Model/Product.js';
-import BestSellingProduct from '../Model/BestSellingProduct.js';
-import Coupon from '../Model/Coupon.js';
-import Review from '../Model/Review.js';
-import SystemLog from '../Model/SystemLog.js';
-// import db from '../models/index.js';
+import BestSellingProduct from "../Model/BestSellingProduct.js";
+import User from "../Model/User.js";
+import Order from "../Model/Order.js";
+import Product from "../Model/Product.js";
+import Review from "../Model/Review.js";
+import SystemLog from "../Model/SystemLog.js";
+import Coupon from "../Model/Coupon.js";
 
 /**
  * Reports controller to handle API requests for generating various reports
- * This is a simplified version that will need to be expanded with actual database queries
  */
 const reportsController = {
   // Dashboard statistics
   getDashboardStats: async (req, res) => {
     try {
-      // Sample dashboard statistics - to be replaced with actual DB queries
-      const stats = {
-        totalOrders: 152,
-        totalRevenue: 75600000,  // In VND
-        totalCustomers: 84,
-        totalProducts: 126,
-        recentActivities: [
-          { id: 1, type: 'order', message: 'Đơn hàng mới #1234 đã được tạo', timestamp: new Date() },
-          { id: 2, type: 'user', message: 'Người dùng mới Nguyễn Văn A đã đăng ký', timestamp: new Date(Date.now() - 3600000) },
-          { id: 3, type: 'product', message: 'Sản phẩm "Thịt bò Úc" đã được cập nhật', timestamp: new Date(Date.now() - 7200000) }
-        ]
-      };
-      
-      res.json(stats);
+      const [
+        totalOrders,
+        totalRevenue,
+        totalCustomers,
+        totalProducts,
+        recentActivities,
+      ] = await Promise.all([
+        Order.countDocuments(),
+        Order.aggregate([
+          { $match: { status: "completed" } },
+          { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+        ]),
+        User.countDocuments({ role: "customer" }),
+        Product.countDocuments(),
+        SystemLog.find().sort({ createdAt: -1 }).limit(5),
+      ]);
+
+      res.json({
+        totalOrders,
+        totalRevenue: totalRevenue[0]?.total || 0,
+        totalCustomers,
+        totalProducts,
+        recentActivities: recentActivities.map((log) => ({
+          id: log._id,
+          type: log.type || "system",
+          message: log.message,
+          timestamp: log.createdAt,
+        })),
+      });
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu thống kê' });
+      console.error("Error in getDashboardStats:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu thống kê" });
     }
   },
 
@@ -40,180 +52,299 @@ const reportsController = {
   getRevenueData: async (req, res) => {
     try {
       const { timeRange } = req.query;
-      // paymentMethod and region will be used in actual implementation
-      // const { paymentMethod, region } = req.query;
-      
-      // Generate sample data based on time range
-      // In a real implementation, you would query the database based on these filters
-      const revenueData = Array(timeRange === 'year' ? 12 : timeRange === 'month' ? 30 : 7)
-        .fill(0)
-        .map((_, index) => ({
-          date: new Date(Date.now() - (index * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
-          revenue: Math.floor(Math.random() * 10000000) + 5000000,
-          orders: Math.floor(Math.random() * 20) + 5
+      const startDate = new Date();
+
+      switch (timeRange) {
+        case "year":
+          startDate.setFullYear(startDate.getFullYear() - 1);
+          break;
+        case "month":
+          startDate.setMonth(startDate.getMonth() - 1);
+          break;
+        default:
+          startDate.setDate(startDate.getDate() - 7);
+      }
+
+      const revenueData = await Order.aggregate([
+        { $match: { status: "completed", createdAt: { $gte: startDate } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+            revenue: { $sum: "$totalAmount" },
+            orders: { $sum: 1 },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]);
+
+      res.json(
+        revenueData.map((item) => ({
+          date: item._id,
+          revenue: item.revenue,
+          orders: item.orders,
         }))
-        .reverse();
-      
-      res.json(revenueData);
+      );
     } catch (error) {
-      console.error('Error fetching revenue data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu doanh thu' });
+      console.error("Error in getRevenueData:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu doanh thu" });
     }
   },
 
   // Top products
   getTopProducts: async (req, res) => {
     try {
-      // Use BestSellingProduct model to get top products
-      const bestSellingProducts = await BestSellingProduct.getBestSellers(5, 'month');
-      
-      // Format the response to match what the frontend expects
-      const topProductsResponse = bestSellingProducts.map(product => ({
-        name: product.productName,
-        category: product.productCategory,
-        sold: product.soldCount,
-        revenue: product.totalRevenue
-      }));
-      
-      res.status(200).json(topProductsResponse);
+      const limit = parseInt(req.query.limit) || 5;
+      const bestSellingProducts = await BestSellingProduct.getBestSellers(
+        limit,
+        "month"
+      );
+
+      res.json(
+        bestSellingProducts.map((product) => ({
+          name: product.productName,
+          category: product.productCategory,
+          sold: product.soldCount,
+          revenue: product.totalRevenue,
+        }))
+      );
     } catch (error) {
-      console.error("Error generating top products report:", error);
-      res.status(500).json({ message: "Lỗi khi tạo báo cáo sản phẩm bán chạy", error: error.message });
+      console.error("Error in getTopProducts:", error);
+      res
+        .status(500)
+        .json({ message: "Lỗi khi lấy dữ liệu sản phẩm bán chạy" });
     }
   },
 
   // Inventory data
   getInventoryData: async (req, res) => {
     try {
-      // Dữ liệu mẫu cho tồn kho các danh mục
-      const inventoryData = [
-        {
-          name: "Hải sản",
-          stock: 18,
-          status: "Sắp hết"
-        },
-        {
-          name: "Trái cây",
-          stock: 15,
-          status: "Sắp hết"
-        },
-        {
-          name: "Rau củ",
-          stock: 12,
-          status: "Sắp hết"
-        },
-        {
-          name: "Thịt tươi",
-          stock: 25,
-          status: "Còn hàng"
-        },
-        {
-          name: "Sữa và các sản phẩm từ sữa",
-          stock: 30,
-          status: "Còn hàng"
-        }
-      ];
+      const limit = parseInt(req.query.limit) || 5;
+      const products = await Product.find()
+        .select("productName productCategory stock productStock")
+        .lean();
 
-      return res.status(200).json(inventoryData);
+      const inventoryData = products
+        .filter((product) => {
+          const stockValue = product.productStock ?? product.stock;
+          return (
+            typeof stockValue === "number" && stockValue < 20 && stockValue >= 0
+          );
+        })
+        .map((product) => ({
+          id: product._id,
+          name: product.productName,
+          category: product.productCategory || "Không phân loại",
+          stock: product.productStock ?? product.stock,
+          status:
+            (product.productStock ?? product.stock) <= 5
+              ? "Sắp hết"
+              : "Còn hàng",
+        }))
+        .sort((a, b) => a.stock - b.stock)
+        .slice(0, limit);
+
+      res.json(inventoryData);
     } catch (error) {
-      console.error('Error getting inventory data:', error);
-      return res.status(500).json({ message: "Lỗi khi lấy dữ liệu tồn kho", error: error.message });
+      console.error("Error in getInventoryData:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu tồn kho" });
     }
   },
 
   // User statistics
   getUserData: async (req, res) => {
     try {
-      const userData = {
-        totalUsers: 84,
-        newUsers: 12,
-        activeUsers: 65,
-        usersByRegion: [
-          { region: 'Hà Nội', count: 32 },
-          { region: 'TP.HCM', count: 28 },
-          { region: 'Đà Nẵng', count: 14 },
-          { region: 'Khác', count: 10 }
-        ],
-        usersByAge: [
-          { range: '18-24', count: 15 },
-          { range: '25-34', count: 32 },
-          { range: '35-44', count: 25 },
-          { range: '45+', count: 12 }
-        ]
-      };
-      
-      res.json(userData);
+      const dateThreshold = new Date();
+      dateThreshold.setMonth(dateThreshold.getMonth() - 1);
+
+      const [totalUsers, newUsers, activeUsers, usersByRegion, usersByAge] =
+        await Promise.all([
+          User.countDocuments({ role: "customer" }),
+          User.countDocuments({
+            role: "customer",
+            createdAt: { $gte: dateThreshold },
+          }),
+          User.countDocuments({
+            role: "customer",
+            lastLogin: { $gte: dateThreshold },
+          }),
+          User.aggregate([
+            { $match: { role: "customer" } },
+            { $group: { _id: "$region", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+          ]),
+          User.aggregate([
+            { $match: { role: "customer" } },
+            {
+              $project: {
+                ageRange: {
+                  $switch: {
+                    branches: [
+                      { case: { $lt: ["$age", 25] }, then: "18-24" },
+                      { case: { $lt: ["$age", 35] }, then: "25-34" },
+                      { case: { $lt: ["$age", 45] }, then: "35-44" },
+                    ],
+                    default: "45+",
+                  },
+                },
+              },
+            },
+            { $group: { _id: "$ageRange", count: { $sum: 1 } } },
+            { $sort: { _id: 1 } },
+          ]),
+        ]);
+
+      res.json({
+        totalUsers,
+        newUsers,
+        activeUsers,
+        usersByRegion: usersByRegion.map((item) => ({
+          region: item._id,
+          count: item.count,
+        })),
+        usersByAge: usersByAge.map((item) => ({
+          range: item._id,
+          count: item.count,
+        })),
+      });
     } catch (error) {
-      console.error('Error fetching user data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu người dùng' });
+      console.error("Error in getUserData:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu người dùng" });
     }
   },
 
   // Order statistics
   getOrderData: async (req, res) => {
     try {
-      // timeRange will be used in actual implementation
-      // const { timeRange } = req.query;
-      
-      const orderData = {
-        totalOrders: 152,
-        completedOrders: 128,
-        pendingOrders: 15,
-        cancelledOrders: 9,
-        averageOrderValue: 500000,
-        ordersByStatus: [
-          { status: 'Hoàn thành', count: 128 },
-          { status: 'Đang xử lý', count: 10 },
-          { status: 'Đang giao hàng', count: 5 },
-          { status: 'Đã hủy', count: 9 }
-        ],
-        ordersByTimeOfDay: [
-          { time: 'Sáng', count: 45 },
-          { time: 'Trưa', count: 38 },
-          { time: 'Chiều', count: 41 },
-          { time: 'Tối', count: 28 }
-        ],
-        recentOrders: [
-          { id: 1, customer: 'Nguyễn Văn A', total: 580000, status: 'Hoàn thành', date: new Date() },
-          { id: 2, customer: 'Trần Thị B', total: 420000, status: 'Đang giao hàng', date: new Date(Date.now() - 3600000) },
-          { id: 3, customer: 'Lê Văn C', total: 650000, status: 'Đang xử lý', date: new Date(Date.now() - 7200000) }
-        ]
-      };
-      
-      res.json(orderData);
+      const [
+        totalOrders,
+        completedOrders,
+        pendingOrders,
+        cancelledOrders,
+        avgResult,
+        ordersByStatus,
+        ordersByTimeOfDay,
+        recentOrders,
+      ] = await Promise.all([
+        Order.countDocuments(),
+        Order.countDocuments({ status: "completed" }),
+        Order.countDocuments({ status: "pending" }),
+        Order.countDocuments({ status: "cancelled" }),
+        Order.aggregate([
+          { $match: { status: "completed" } },
+          { $group: { _id: null, avg: { $avg: "$totalAmount" } } },
+        ]),
+        Order.aggregate([{ $group: { _id: "$status", count: { $sum: 1 } } }]),
+        Order.aggregate([
+          {
+            $project: {
+              timeOfDay: {
+                $switch: {
+                  branches: [
+                    {
+                      case: { $lt: [{ $hour: "$createdAt" }, 12] },
+                      then: "Sáng",
+                    },
+                    {
+                      case: { $lt: [{ $hour: "$createdAt" }, 15] },
+                      then: "Trưa",
+                    },
+                    {
+                      case: { $lt: [{ $hour: "$createdAt" }, 18] },
+                      then: "Chiều",
+                    },
+                  ],
+                  default: "Tối",
+                },
+              },
+            },
+          },
+          { $group: { _id: "$timeOfDay", count: { $sum: 1 } } },
+        ]),
+        Order.find()
+          .sort({ createdAt: -1 })
+          .limit(5)
+          .populate("userId", "firstName lastName"),
+      ]);
+
+      res.json({
+        totalOrders,
+        completedOrders,
+        pendingOrders,
+        cancelledOrders,
+        averageOrderValue: avgResult[0]?.avg || 0,
+        ordersByStatus: ordersByStatus.map((item) => ({
+          status: item._id,
+          count: item.count,
+        })),
+        ordersByTimeOfDay: ordersByTimeOfDay.map((item) => ({
+          time: item._id,
+          count: item.count,
+        })),
+        recentOrders: recentOrders.map((order) => ({
+          id: order._id,
+          customer: order.userId
+            ? `${order.userId.firstName} ${order.userId.lastName}`
+            : "Khách vãng lai",
+          total: order.totalAmount,
+          status: order.status,
+          date: order.createdAt,
+        })),
+      });
     } catch (error) {
-      console.error('Error fetching order data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu đơn hàng' });
+      console.error("Error in getOrderData:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu đơn hàng" });
     }
   },
 
   // Promotion statistics
   getPromotionData: async (req, res) => {
     try {
-      // timeRange will be used in actual implementation
-      // const { timeRange } = req.query;
-      
-      const promotionData = {
-        totalVouchers: 10,
-        activeVouchers: 6,
-        usedVouchers: 125,
-        totalDiscount: 15800000,
-        voucherStats: [
-          { code: 'SUMMER30', type: 'Phần trăm', discount: '30%', used: 45, limit: 100, revenue: 6750000, usageRate: 45 },
-          { code: 'FREESHIP', type: 'Cố định', discount: '50.000đ', used: 60, limit: 100, revenue: 7200000, usageRate: 60 },
-          { code: 'NEW20', type: 'Phần trăm', discount: '20%', used: 20, limit: 50, revenue: 1850000, usageRate: 40 }
-        ],
-        promotionEffectiveness: [
-          { name: 'SUMMER30', conversion: 45 },
-          { name: 'FREESHIP', conversion: 60 },
-          { name: 'NEW20', conversion: 40 }
-        ]
-      };
-      
-      res.json(promotionData);
+      const [totalVouchers, activeVouchers, usageStats, voucherDetails] =
+        await Promise.all([
+          Coupon.countDocuments(),
+          Coupon.countDocuments({ isActive: true }),
+          Coupon.aggregate([
+            {
+              $group: {
+                _id: null,
+                usedCount: { $sum: "$usedCount" },
+                totalDiscount: {
+                  $sum: { $multiply: ["$discountAmount", "$usedCount"] },
+                },
+              },
+            },
+          ]),
+          Coupon.find(),
+        ]);
+
+      res.json({
+        totalVouchers,
+        activeVouchers,
+        usedVouchers: usageStats[0]?.usedCount || 0,
+        totalDiscount: usageStats[0]?.totalDiscount || 0,
+        voucherStats: voucherDetails.map((voucher) => ({
+          code: voucher.code,
+          type: voucher.discountType,
+          discount:
+            voucher.discountType === "percentage"
+              ? `${voucher.discountAmount}%`
+              : `${voucher.discountAmount.toLocaleString()}đ`,
+          used: voucher.usedCount,
+          limit: voucher.maxUses,
+          revenue: voucher.generatedRevenue || 0,
+          usageRate:
+            voucher.maxUses > 0
+              ? Math.round((voucher.usedCount / voucher.maxUses) * 100)
+              : 0,
+        })),
+        promotionEffectiveness: voucherDetails.map((voucher) => ({
+          name: voucher.code,
+          conversion: voucher.conversionRate || 0,
+        })),
+      });
     } catch (error) {
-      console.error('Error fetching promotion data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu khuyến mãi' });
+      console.error("Error in getPromotionData:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu khuyến mãi" });
     }
   },
 
@@ -221,35 +352,88 @@ const reportsController = {
   getSystemActivityData: async (req, res) => {
     try {
       const { timeRange } = req.query;
-      
-      const systemActivityData = {
-        totalActivities: 320,
-        userActivities: 185,
-        adminActivities: 135,
-        activityByType: [
-          { type: 'Đăng nhập', count: 95 },
-          { type: 'Đặt hàng', count: 152 },
-          { type: 'Cập nhật sản phẩm', count: 45 },
-          { type: 'Thêm sản phẩm', count: 28 }
-        ],
-        activityTimeline: Array(timeRange === 'year' ? 12 : timeRange === 'month' ? 30 : 7)
-          .fill(0)
-          .map((_, index) => ({
-            date: new Date(Date.now() - (index * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
-            activities: Math.floor(Math.random() * 20) + 5
-          }))
-          .reverse(),
-        recentActivities: [
-          { id: 1, user: 'Nguyễn Văn A', action: 'Đăng nhập', timestamp: new Date(), ip: '192.168.1.1' },
-          { id: 2, user: 'Admin', action: 'Cập nhật sản phẩm', timestamp: new Date(Date.now() - 3600000), ip: '192.168.1.2' },
-          { id: 3, user: 'Trần Thị B', action: 'Đặt hàng', timestamp: new Date(Date.now() - 7200000), ip: '192.168.1.3' }
-        ]
-      };
-      
-      res.json(systemActivityData);
+      const startDate = new Date();
+
+      switch (timeRange) {
+        case "year":
+          startDate.setFullYear(startDate.getFullYear() - 1);
+          break;
+        case "month":
+          startDate.setMonth(startDate.getMonth() - 1);
+          break;
+        default:
+          startDate.setDate(startDate.getDate() - 7);
+      }
+
+      const [
+        totalActivities,
+        userActivities,
+        adminActivities,
+        activityByType,
+        activityTimeline,
+        recentActivities,
+      ] = await Promise.all([
+        SystemLog.countDocuments({ createdAt: { $gte: startDate } }),
+        SystemLog.countDocuments({
+          createdAt: { $gte: startDate },
+          userType: "user",
+        }),
+        SystemLog.countDocuments({
+          createdAt: { $gte: startDate },
+          userType: "admin",
+        }),
+        SystemLog.aggregate([
+          { $match: { createdAt: { $gte: startDate } } },
+          { $group: { _id: "$actionType", count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+        ]),
+        SystemLog.aggregate([
+          { $match: { createdAt: { $gte: startDate } } },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+              },
+              activities: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ]),
+        SystemLog.find()
+          .sort({ createdAt: -1 })
+          .limit(10)
+          .populate("userId", "firstName lastName userName"),
+      ]);
+
+      res.json({
+        totalActivities,
+        userActivities,
+        adminActivities,
+        activityByType: activityByType.map((item) => ({
+          type: item._id,
+          count: item.count,
+        })),
+        activityTimeline: activityTimeline.map((item) => ({
+          date: item._id,
+          activities: item.activities,
+        })),
+        recentActivities: recentActivities.map((activity) => ({
+          id: activity._id,
+          user: activity.userId
+            ? `${activity.userId.firstName || ""} ${
+                activity.userId.lastName || ""
+              }`.trim() || activity.userId.userName
+            : "System",
+          action: activity.actionType,
+          timestamp: activity.createdAt,
+          ip: activity.ipAddress,
+        })),
+      });
     } catch (error) {
-      console.error('Error fetching system activity data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu hoạt động hệ thống' });
+      console.error("Error in getSystemActivityData:", error);
+      res
+        .status(500)
+        .json({ message: "Lỗi khi lấy dữ liệu hoạt động hệ thống" });
     }
   },
 
@@ -257,76 +441,282 @@ const reportsController = {
   getDeliveryData: async (req, res) => {
     try {
       const { timeRange } = req.query;
-      
-      const deliveryData = {
-        totalDeliveries: 128,
-        successfulDeliveries: 120,
-        pendingDeliveries: 5,
-        failedDeliveries: 3,
-        averageDeliveryTime: 2.3, // in days
-        deliveryByRegion: [
-          { region: 'Hà Nội', count: 45, avgTime: 1.8 },
-          { region: 'TP.HCM', count: 38, avgTime: 2.1 },
-          { region: 'Đà Nẵng', count: 25, avgTime: 2.5 },
-          { region: 'Khác', count: 20, avgTime: 3.2 }
-        ],
-        deliveryTimeline: Array(timeRange === 'year' ? 12 : timeRange === 'month' ? 30 : 7)
-          .fill(0)
-          .map((_, index) => ({
-            date: new Date(Date.now() - (index * 24 * 60 * 60 * 1000)).toISOString().split('T')[0],
-            deliveries: Math.floor(Math.random() * 10) + 2,
-            avgTime: Math.random() * 2 + 1
-          }))
-          .reverse(),
-        deliveryMethods: [
-          { method: 'Giao hàng tiêu chuẩn', count: 85 },
-          { method: 'Giao hàng nhanh', count: 35 },
-          { method: 'Giao trong ngày', count: 8 }
-        ]
-      };
-      
-      res.json(deliveryData);
+      const startDate = new Date();
+
+      switch (timeRange) {
+        case "year":
+          startDate.setFullYear(startDate.getFullYear() - 1);
+          break;
+        case "month":
+          startDate.setMonth(startDate.getMonth() - 1);
+          break;
+        default:
+          startDate.setDate(startDate.getDate() - 7);
+      }
+
+      const [
+        totalDeliveries,
+        successfulDeliveries,
+        pendingDeliveries,
+        failedDeliveries,
+        deliveryTimeAvg,
+        deliveryByRegion,
+        deliveryTimeline,
+        deliveryMethods,
+      ] = await Promise.all([
+        Order.countDocuments({
+          createdAt: { $gte: startDate },
+          deliveryStatus: { $exists: true },
+        }),
+        Order.countDocuments({
+          createdAt: { $gte: startDate },
+          deliveryStatus: "delivered",
+        }),
+        Order.countDocuments({
+          createdAt: { $gte: startDate },
+          deliveryStatus: "in_transit",
+        }),
+        Order.countDocuments({
+          createdAt: { $gte: startDate },
+          deliveryStatus: "failed",
+        }),
+        Order.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate },
+              deliveryStatus: "delivered",
+              deliveryDate: { $exists: true },
+            },
+          },
+          {
+            $project: {
+              deliveryTime: {
+                $divide: [
+                  { $subtract: ["$deliveryDate", "$createdAt"] },
+                  1000 * 60 * 60 * 24,
+                ],
+              },
+            },
+          },
+          { $group: { _id: null, avgTime: { $avg: "$deliveryTime" } } },
+        ]),
+        Order.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate },
+              deliveryStatus: { $exists: true },
+            },
+          },
+          {
+            $group: {
+              _id: "$deliveryAddress.city",
+              count: { $sum: 1 },
+              totalTime: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$deliveryStatus", "delivered"] },
+                    {
+                      $divide: [
+                        { $subtract: ["$deliveryDate", "$createdAt"] },
+                        1000 * 60 * 60 * 24,
+                      ],
+                    },
+                    0,
+                  ],
+                },
+              },
+              delivered: {
+                $sum: {
+                  $cond: [{ $eq: ["$deliveryStatus", "delivered"] }, 1, 0],
+                },
+              },
+            },
+          },
+          {
+            $project: {
+              count: 1,
+              avgTime: {
+                $cond: [
+                  { $gt: ["$delivered", 0] },
+                  { $divide: ["$totalTime", "$delivered"] },
+                  0,
+                ],
+              },
+            },
+          },
+          { $sort: { count: -1 } },
+        ]),
+        Order.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate },
+              deliveryStatus: { $exists: true },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+              },
+              deliveries: { $sum: 1 },
+              totalTime: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$deliveryStatus", "delivered"] },
+                    {
+                      $divide: [
+                        { $subtract: ["$deliveryDate", "$createdAt"] },
+                        1000 * 60 * 60 * 24,
+                      ],
+                    },
+                    0,
+                  ],
+                },
+              },
+              delivered: {
+                $sum: {
+                  $cond: [{ $eq: ["$deliveryStatus", "delivered"] }, 1, 0],
+                },
+              },
+            },
+          },
+          {
+            $project: {
+              deliveries: 1,
+              avgTime: {
+                $cond: [
+                  { $gt: ["$delivered", 0] },
+                  { $divide: ["$totalTime", "$delivered"] },
+                  0,
+                ],
+              },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ]),
+        Order.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate },
+              deliveryMethod: { $exists: true },
+            },
+          },
+          { $group: { _id: "$deliveryMethod", count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+        ]),
+      ]);
+
+      res.json({
+        totalDeliveries,
+        successfulDeliveries,
+        pendingDeliveries,
+        failedDeliveries,
+        averageDeliveryTime: deliveryTimeAvg[0]?.avgTime
+          ? parseFloat(deliveryTimeAvg[0].avgTime.toFixed(1))
+          : 0,
+        deliveryByRegion: deliveryByRegion.map((item) => ({
+          region: item._id || "Không xác định",
+          count: item.count,
+          avgTime: parseFloat(item.avgTime.toFixed(1)),
+        })),
+        deliveryTimeline: deliveryTimeline.map((item) => ({
+          date: item._id,
+          deliveries: item.deliveries,
+          avgTime: parseFloat(item.avgTime.toFixed(1)),
+        })),
+        deliveryMethods: deliveryMethods.map((item) => ({
+          method: item._id,
+          count: item.count,
+        })),
+      });
     } catch (error) {
-      console.error('Error fetching delivery data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu giao hàng' });
+      console.error("Error in getDeliveryData:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu giao hàng" });
     }
   },
 
   // Feedback statistics
   getFeedbackData: async (req, res) => {
     try {
-      // timeRange will be used in actual implementation
-      // const { timeRange } = req.query;
-      
-      const feedbackData = {
-        totalReviews: 96,
-        averageRating: 4.2,
-        ratingDistribution: [
-          { rating: 5, count: 45 },
-          { rating: 4, count: 32 },
-          { rating: 3, count: 12 },
-          { rating: 2, count: 5 },
-          { rating: 1, count: 2 }
-        ],
-        categoryRatings: [
-          { category: 'Thịt', rating: 4.5 },
-          { category: 'Hải sản', rating: 4.3 },
-          { category: 'Rau củ', rating: 3.9 },
-          { category: 'Trái cây', rating: 4.7 }
-        ],
-        recentFeedback: [
-          { id: 1, customer: 'Nguyễn Văn A', rating: 5, comment: 'Sản phẩm rất tươi, giao hàng nhanh!', date: new Date() },
-          { id: 2, customer: 'Trần Thị B', rating: 4, comment: 'Thịt bò rất ngon, sẽ mua lại.', date: new Date(Date.now() - 86400000) },
-          { id: 3, customer: 'Lê Văn C', rating: 3, comment: 'Sản phẩm tốt nhưng giao hàng hơi chậm.', date: new Date(Date.now() - 172800000) }
-        ]
-      };
-      
-      res.json(feedbackData);
+      const [
+        totalReviews,
+        ratingResult,
+        ratingDistribution,
+        categoryRatings,
+        recentFeedback,
+      ] = await Promise.all([
+        Review.countDocuments(),
+        Review.aggregate([
+          { $group: { _id: null, avgRating: { $avg: "$rating" } } },
+        ]),
+        Review.aggregate([
+          { $group: { _id: "$rating", count: { $sum: 1 } } },
+          { $sort: { _id: -1 } },
+        ]),
+        Review.aggregate([
+          {
+            $lookup: {
+              from: "products",
+              localField: "productId",
+              foreignField: "_id",
+              as: "product",
+            },
+          },
+          { $unwind: "$product" },
+          {
+            $group: {
+              _id: "$product.productCategory",
+              totalRating: { $sum: "$rating" },
+              count: { $sum: 1 },
+            },
+          },
+          {
+            $project: {
+              category: "$_id",
+              rating: { $divide: ["$totalRating", "$count"] },
+            },
+          },
+          { $sort: { rating: -1 } },
+        ]),
+        Review.find()
+          .sort({ createdAt: -1 })
+          .limit(5)
+          .populate("userId", "firstName lastName")
+          .populate("productId", "productName"),
+      ]);
+
+      res.json({
+        totalReviews,
+        averageRating: ratingResult[0]?.avgRating
+          ? parseFloat(ratingResult[0].avgRating.toFixed(1))
+          : 0,
+        ratingDistribution: Array.from({ length: 5 }, (_, i) => {
+          const rating = 5 - i;
+          const found = ratingDistribution.find((r) => r._id === rating);
+          return { rating, count: found ? found.count : 0 };
+        }),
+        categoryRatings: categoryRatings.map((cat) => ({
+          category: cat.category,
+          rating: parseFloat(cat.rating.toFixed(1)),
+        })),
+        recentFeedback: recentFeedback.map((review) => ({
+          id: review._id,
+          customer: review.userId
+            ? `${review.userId.firstName} ${review.userId.lastName}`
+            : "Khách vãng lai",
+          rating: review.rating,
+          comment: review.comment,
+          product: review.productId
+            ? review.productId.productName
+            : "Sản phẩm không xác định",
+          date: review.createdAt,
+        })),
+      });
     } catch (error) {
-      console.error('Error fetching feedback data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu phản hồi' });
+      console.error("Error in getFeedbackData:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu phản hồi" });
     }
-  }
+  },
 };
 
-export default reportsController; 
+export default reportsController;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   AreaChart,
   Area,
@@ -11,37 +11,37 @@ import {
   Line,
   BarChart,
   Bar,
-  Legend
+  Legend,
 } from "recharts";
 
 // Format currency helper function
 const formatVietnameseCurrency = (value) => {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
   }).format(value);
 };
 
-const RevenueChart = ({ revenueData, chartType = 'line', formatCurrency }) => {
+const RevenueChart = ({ revenueData, chartType = "line", formatCurrency }) => {
   const [chartData, setChartData] = useState([]);
 
   // Hàm định dạng ngày trong tuần theo tiếng Việt
   const formatDayOfWeek = (dateStr) => {
     // Nếu dateStr đã là string ngắn như 'T2', 'T3' thì giữ nguyên
-    if (typeof dateStr === 'string' && dateStr.length <= 3) {
+    if (typeof dateStr === "string" && dateStr.length <= 3) {
       return dateStr;
     }
-    
+
     try {
       const date = new Date(dateStr);
       // Kiểm tra xem date có hợp lệ không
       if (isNaN(date.getTime())) {
         return dateStr; // Trả về string ban đầu nếu không phải date hợp lệ
       }
-      
+
       const day = date.getDay(); // 0 = CN, 1 = T2, ...
-      const daysOfWeek = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+      const daysOfWeek = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
       return daysOfWeek[day];
     } catch (error) {
       console.error("Error formatting day of week:", error);
@@ -51,47 +51,98 @@ const RevenueChart = ({ revenueData, chartType = 'line', formatCurrency }) => {
 
   useEffect(() => {
     if (revenueData && Array.isArray(revenueData)) {
-      console.log("Processing revenue data for chart:", revenueData);
+      console.log("Original revenue data:", revenueData);
       
-      // Make a copy to avoid modifying the original data
-      let processedData = [...revenueData];
+      // Đảm bảo dữ liệu có định dạng phù hợp
+      let processedData = [...revenueData].map((item, index) => {
+        // Xử lý ngày tháng
+        let formattedDate = item.date;
+        
+        if (formattedDate === "N/A" || !formattedDate) {
+          // Tạo ngày theo index nếu không có dữ liệu ngày
+          const currentDate = new Date();
+          const newDate = new Date(currentDate);
+          newDate.setDate(currentDate.getDate() - (revenueData.length - 1 - index));
+          formattedDate = newDate.toLocaleDateString('vi-VN');
+        }
+        
+        // Đảm bảo formattedDate là chuỗi
+        if (typeof formattedDate !== 'string') {
+          try {
+            formattedDate = String(formattedDate);
+          } catch {
+            formattedDate = `Ngày ${index + 1}`;
+          }
+        }
+        
+        // Kiểm tra xem formattedDate có phải là chuỗi rỗng hoặc 'undefined'/'null'
+        if (!formattedDate || formattedDate === 'undefined' || formattedDate === 'null') {
+          formattedDate = `Ngày ${index + 1}`;
+        }
+        
+        // Đảm bảo có doanh thu
+        const result = {
+          date: formattedDate,
+          doanh_thu: typeof item.doanh_thu === 'number' ? item.doanh_thu : 0,
+          index: index // Thêm index để đảm bảo thứ tự hiển thị đúng
+        };
+        
+        console.log(`Processed chart item ${index}:`, result);
+        return result;
+      });
       
-      // Ensure all data has doanh_thu property
-      processedData = processedData.map(item => ({
-        date: item.date || '',
-        doanh_thu: item.doanh_thu || item.revenue || 0
-      }));
+      // Sắp xếp lại dữ liệu theo thứ tự index để đảm bảo hiển thị đúng
+      processedData = processedData.sort((a, b) => a.index - b.index);
       
+      console.log("Final processed chart data:", processedData);
       setChartData(processedData);
     } else {
-      // Fallback data if revenueData is invalid
-      console.log("Using fallback chart data");
-      setChartData([
-        { date: 'T2', doanh_thu: 500000 },
-        { date: 'T3', doanh_thu: 700000 },
-        { date: 'T4', doanh_thu: 600000 },
-        { date: 'T5', doanh_thu: 800000 },
-        { date: 'T6', doanh_thu: 900000 },
-        { date: 'T7', doanh_thu: 800000 },
-        { date: 'CN', doanh_thu: 600000 }
-      ]);
+      console.warn("No revenue data or invalid format");
+      setChartData([]);
     }
   }, [revenueData]);
+
+  // Custom formatter cho XAxis để hiển thị ngày gọn hơn
+  const dateAxisFormatter = (dateStr) => {
+    if (!dateStr || dateStr === "N/A") return "";
+    
+    try {
+      // Kiểm tra các định dạng ngày Việt Nam phổ biến: DD/MM/YYYY
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+        const parts = dateStr.split('/');
+        // Trả về ngày và tháng: DD/MM
+        return `${parts[0]}/${parts[1]}`;
+      }
+      
+      // Nếu là chuỗi date khác, thử parse và format
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) {
+        // Format ngày/tháng
+        return `${date.getDate()}/${date.getMonth() + 1}`;
+      }
+      
+      // Trả về 10 ký tự đầu tiên nếu quá dài
+      return dateStr.length > 10 ? dateStr.substring(0, 10) : dateStr;
+    } catch (error) {
+      console.warn("Error formatting axis date:", error, dateStr);
+      return dateStr;
+    }
+  };
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       let formattedValue;
       try {
-        if (typeof formatCurrency === 'function') {
+        if (typeof formatCurrency === "function") {
           formattedValue = formatCurrency(payload[0].value);
         } else {
           formattedValue = formatVietnameseCurrency(payload[0].value);
         }
       } catch (error) {
         console.error("Error formatting currency:", error);
-        formattedValue = `${payload[0].value.toLocaleString('vi-VN')} đ`;
+        formattedValue = `${payload[0].value.toLocaleString("vi-VN")} đ`;
       }
-      
+
       return (
         <div className="bg-white p-3 border border-gray-200 shadow-md rounded-md">
           <p className="text-sm font-medium text-gray-900">{`Ngày: ${label}`}</p>
@@ -107,19 +158,19 @@ const RevenueChart = ({ revenueData, chartType = 'line', formatCurrency }) => {
   return (
     <div className="w-full h-72 mt-4">
       <ResponsiveContainer width="100%" height="100%">
-        {chartType === 'line' ? (
+        {chartType === "line" ? (
           <LineChart
             data={chartData}
             margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis 
-              tickFormatter={(value) => 
-                new Intl.NumberFormat('vi-VN', {
-                  notation: 'compact',
-                  compactDisplay: 'short',
-                  maximumFractionDigits: 1
+            <XAxis dataKey="date" tickFormatter={dateAxisFormatter} />
+            <YAxis
+              tickFormatter={(value) =>
+                new Intl.NumberFormat("vi-VN", {
+                  notation: "compact",
+                  compactDisplay: "short",
+                  maximumFractionDigits: 1,
                 }).format(value)
               }
             />
@@ -140,13 +191,13 @@ const RevenueChart = ({ revenueData, chartType = 'line', formatCurrency }) => {
             margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" />
-            <YAxis 
-              tickFormatter={(value) => 
-                new Intl.NumberFormat('vi-VN', {
-                  notation: 'compact',
-                  compactDisplay: 'short',
-                  maximumFractionDigits: 1
+            <XAxis dataKey="date" tickFormatter={dateAxisFormatter} />
+            <YAxis
+              tickFormatter={(value) =>
+                new Intl.NumberFormat("vi-VN", {
+                  notation: "compact",
+                  compactDisplay: "short",
+                  maximumFractionDigits: 1,
                 }).format(value)
               }
             />
@@ -165,4 +216,4 @@ const RevenueChart = ({ revenueData, chartType = 'line', formatCurrency }) => {
   );
 };
 
-export default RevenueChart; 
+export default RevenueChart;

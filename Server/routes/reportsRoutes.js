@@ -13,8 +13,12 @@ router.get('/analytics/revenue', authenticate, reportsController.getRevenueData)
 // Top products
 router.get('/analytics/top-products', authenticate, reportsController.getTopProducts);
 
-// Inventory data
+// Inventory data - add specific route with improved query handling
 router.get('/products/inventory', authenticate, reportsController.getInventoryData);
+
+// Alternative routes for inventory
+router.get('/inventory', authenticate, reportsController.getInventoryData);
+router.get('/inventory/low-stock', authenticate, reportsController.getInventoryData);
 
 // User statistics
 router.get('/users/stats', authenticate, reportsController.getUserData);
