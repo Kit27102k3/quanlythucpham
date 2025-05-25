@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import PropTypes from 'prop-types';
 import {
   BarChart,
   Bar,
@@ -22,111 +23,86 @@ const PromotionReport = ({
   setExportLoading,
   formatCurrency
 }) => {
-  // Create fallback data using useMemo to optimize performance
-  const typeData = useMemo(() => [
-    { name: 'Phần trăm', value: promotionData?.typeStats?.percentage?.count || 0 },
-    { name: 'Giá trị cố định', value: promotionData?.typeStats?.fixed?.count || 0 },
-  ], [promotionData?.typeStats]);
+  // Create data for type distribution chart
+  const typeData = useMemo(() => {
+    if (!promotionData?.typeStats) return [
+      { name: 'Phần trăm', value: 0 },
+      { name: 'Giá trị cố định', value: 0 },
+    ];
+    
+    return [
+      { name: 'Phần trăm', value: promotionData.typeStats.percentage?.count || 0 },
+      { name: 'Giá trị cố định', value: promotionData.typeStats.fixed?.count || 0 },
+    ];
+  }, [promotionData?.typeStats]);
   
   const COLORS = ['#4ade80', '#60a5fa'];
   
-  // Ensure there's always data for these charts
+  // Ensure there's always data for usage over time chart
   const usageOverTime = useMemo(() => {
     if (Array.isArray(promotionData?.usageOverTime) && promotionData.usageOverTime.length > 0) {
       return promotionData.usageOverTime;
     }
     
-    // Fallback data
-    const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", 
-                         "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
-    const currentMonth = new Date().getMonth();
-    const fallbackData = [];
-    
-    for (let i = 5; i >= 0; i--) {
-      const monthIndex = (currentMonth - i + 12) % 12;
-      fallbackData.push({
-        month: monthNames[monthIndex],
-        'Phần trăm': Math.floor(Math.random() * 20) + 5,
-        'Cố định': Math.floor(Math.random() * 15) + 3,
-      });
-    }
-    
-    return fallbackData;
+    // Return empty array if no data
+    return [];
   }, [promotionData?.usageOverTime]);
   
+  // Ensure there's always data for revenue comparison chart
   const revenueComparison = useMemo(() => {
     if (Array.isArray(promotionData?.revenueComparison) && promotionData.revenueComparison.length > 0) {
       return promotionData.revenueComparison;
     }
     
-    // Fallback data
-    const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", 
-                         "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
-    const currentMonth = new Date().getMonth();
-    const fallbackData = [];
-    
-    for (let i = 5; i >= 0; i--) {
-      const monthIndex = (currentMonth - i + 12) % 12;
-      const baseRevenue = Math.floor(Math.random() * 30000000) + 10000000;
-      const discountValue = Math.floor(Math.random() * 5000000) + 1000000;
-      
-      fallbackData.push({
-        month: monthNames[monthIndex],
-        'Doanh thu thực tế': baseRevenue - discountValue,
-        'Doanh thu không có khuyến mãi': baseRevenue,
-        'Tổng giảm giá': discountValue
-      });
-    }
-    
-    return fallbackData;
+    // Return empty array if no data
+    return [];
   }, [promotionData?.revenueComparison]);
   
+  // Ensure there's always data for voucher usage table
   const voucherUsage = useMemo(() => {
     if (Array.isArray(promotionData?.voucherUsage) && promotionData.voucherUsage.length > 0) {
       return promotionData.voucherUsage;
     }
     
-    // Fallback data if voucherUsage is missing
-    return [
-      { code: "WELCOME10", discount: "10%", used: 45, limit: 100, revenue: 1200000, description: "Chào mừng khách hàng mới" },
-      { code: "SUMMER20", discount: "20%", used: 37, limit: 50, revenue: 2500000, description: "Khuyến mãi mùa hè" },
-      { code: "HOLIDAY15", discount: "15%", used: 30, limit: 50, revenue: 1850000, description: "Giảm giá dịp lễ" },
-    ];
+    // Return empty array if no data
+    return [];
   }, [promotionData?.voucherUsage]);
   
+  // Ensure there's always data for promotion effectiveness chart
   const promotionEffectiveness = useMemo(() => {
     if (Array.isArray(promotionData?.promotionEffectiveness) && promotionData.promotionEffectiveness.length > 0) {
       return promotionData.promotionEffectiveness;
     }
     
-    // Get coupon codes from voucherUsage for consistency
-    const codes = voucherUsage.slice(0, 3).map(v => v.code);
-    
-    // Fallback data with real codes
-    return [
-      { name: codes[0] || 'WELCOME10', 'Rau': 450000, 'Thịt & Hải sản': 850000, 'Trứng & Sữa': 320000 },
-      { name: codes[1] || 'SUMMER20', 'Rau': 780000, 'Thịt & Hải sản': 1200000, 'Trứng & Sữa': 540000 },
-      { name: codes[2] || 'HOLIDAY15', 'Rau': 620000, 'Thịt & Hải sản': 950000, 'Trứng & Sữa': 430000 }
-    ];
-  }, [promotionData?.promotionEffectiveness, voucherUsage]);
+    // Return empty array if no data
+    return [];
+  }, [promotionData?.promotionEffectiveness]);
   
+  // Ensure there's always data for conversion rate chart
   const conversionRate = useMemo(() => {
     if (Array.isArray(promotionData?.conversionRate) && promotionData.conversionRate.length > 0) {
       return promotionData.conversionRate;
     }
     
-    // Get coupon codes from voucherUsage for consistency
-    const codes = voucherUsage.slice(0, 5).map(v => v.code);
-    
-    // Fallback data with real codes
-    return [
-      { name: codes[0] || 'WELCOME10', rate: 68 },
-      { name: codes[1] || 'SUMMER20', rate: 85 },
-      { name: codes[2] || 'HOLIDAY15', rate: 72 },
-      { name: codes[3] || 'FRESH25', rate: 59 },
-      { name: codes[4] || 'NEWUSER', rate: 91 }
-    ];
-  }, [promotionData?.conversionRate, voucherUsage]);
+    // Return empty array if no data
+    return [];
+  }, [promotionData?.conversionRate]);
+
+  // Check if we have data to display
+  const hasData = promotionData && Object.keys(promotionData).length > 0;
+
+  if (!hasData) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-gray-800">Báo cáo khuyến mãi / mã giảm giá</h2>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div id="promotions-report" className="bg-white p-6 rounded-lg shadow-md">
@@ -213,7 +189,7 @@ const PromotionReport = ({
             <div>
               <span className="text-xs text-blue-700 bg-blue-200 px-2 py-1 rounded-full">
                 Tỷ lệ thành công: {Math.round((promotionData?.totalUsedCount / 
-                  (promotionData?.voucherUsage?.reduce((acc, v) => acc + v.limit, 0) || 1)) * 100)}%
+                  (voucherUsage.reduce((acc, v) => acc + (v.limit === '∞' ? 0 : v.limit), 0) || 1)) * 100)}%
               </span>
             </div>
           </div>
@@ -306,177 +282,234 @@ const PromotionReport = ({
       </div>
 
       {/* Bảng thống kê mã giảm giá */}
-      <div className="mb-6">
-        <h3 className="text-lg font-medium text-gray-800 mb-4">Thống kê mã giảm giá</h3>
-        <div className="overflow-x-auto bg-gray-50 p-4 rounded-lg">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Mã giảm giá
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Loại giảm giá
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Đã sử dụng
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Giới hạn
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Doanh thu
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tỷ lệ
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {voucherUsage.map((voucher, index) => (
-                <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {voucher.code}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {voucher.discount}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {voucher.used}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {voucher.limit}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatCurrency(voucher.revenue)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-green-500 h-2.5 rounded-full"
-                        style={{
-                          width: `${(voucher.used / voucher.limit) * 100}%`,
-                        }}
-                      ></div>
-                    </div>
-                    <span className="text-xs text-gray-500">{Math.round((voucher.used / voucher.limit) * 100)}%</span>
-                  </td>
+      {voucherUsage.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-lg font-medium text-gray-800 mb-4">Thống kê mã giảm giá</h3>
+          <div className="overflow-x-auto bg-gray-50 p-4 rounded-lg">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Mã giảm giá
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Loại giảm giá
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Đã sử dụng
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Giới hạn
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Doanh thu
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tỷ lệ
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {voucherUsage.map((voucher, index) => (
+                  <tr key={index}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {voucher.code}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {voucher.discount}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {voucher.used}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {voucher.limit}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatCurrency(voucher.revenue)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-green-500 h-2.5 rounded-full"
+                          style={{
+                            width: `${voucher.limit === '∞' ? 100 : (voucher.used / voucher.limit) * 100}%`,
+                          }}
+                        ></div>
+                      </div>
+                      <span className="text-xs text-gray-500">
+                        {voucher.limit === '∞' ? 'Không giới hạn' : `${Math.round((voucher.used / voucher.limit) * 100)}%`}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
+      {/* Charts section - only render if data is available */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Usage Over Time */}
-        <div>
-          <h3 className="text-lg font-medium text-gray-800 mb-4">Lượng sử dụng mã giảm giá theo thời gian</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={usageOverTime}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="Phần trăm" name="Loại phần trăm" fill="#4ade80" />
-                <Bar dataKey="Cố định" name="Loại cố định" fill="#60a5fa" />
-              </BarChart>
-            </ResponsiveContainer>
+        {usageOverTime.length > 0 && (
+          <div>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Lượng sử dụng mã giảm giá theo thời gian</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={usageOverTime}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="Phần trăm" name="Loại phần trăm" fill="#4ade80" />
+                  <Bar dataKey="Cố định" name="Loại cố định" fill="#60a5fa" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Revenue Comparison */}
-        <div>
-          <h3 className="text-lg font-medium text-gray-800 mb-4">So sánh doanh thu</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={revenueComparison}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis 
-                  tickFormatter={(value) => 
-                    new Intl.NumberFormat('vi-VN', {
-                      notation: 'compact',
-                      compactDisplay: 'short',
-                      maximumFractionDigits: 1
-                    }).format(value)
-                  }
-                />
-                <Tooltip 
-                  formatter={(value) => [formatCurrency(value), ""]}
-                />
-                <Legend />
-                <Bar dataKey="Doanh thu thực tế" name="Doanh thu thực tế" fill="#4ade80" />
-                <Bar dataKey="Doanh thu không có khuyến mãi" name="Doanh thu không KM" fill="#94a3b8" />
-              </BarChart>
-            </ResponsiveContainer>
+        {revenueComparison.length > 0 && (
+          <div>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">So sánh doanh thu</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={revenueComparison}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis 
+                    tickFormatter={(value) => 
+                      new Intl.NumberFormat('vi-VN', {
+                        notation: 'compact',
+                        compactDisplay: 'short',
+                        maximumFractionDigits: 1
+                      }).format(value)
+                    }
+                  />
+                  <Tooltip 
+                    formatter={(value) => [formatCurrency(value), ""]}
+                  />
+                  <Legend />
+                  <Bar dataKey="Doanh thu thực tế" name="Doanh thu thực tế" fill="#4ade80" />
+                  <Bar dataKey="Doanh thu không có khuyến mãi" name="Doanh thu không KM" fill="#94a3b8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* More charts - only render if data is available */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         {/* Hiệu quả chương trình khuyến mãi */}
-        <div>
-          <h3 className="text-lg font-medium text-gray-800 mb-4">Hiệu quả chương trình khuyến mãi</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={promotionEffectiveness}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis 
-                  tickFormatter={(value) => 
-                    new Intl.NumberFormat('vi-VN', {
-                      notation: 'compact',
-                      compactDisplay: 'short',
-                      maximumFractionDigits: 1
-                    }).format(value)
-                  }
-                />
-                <Tooltip 
-                  formatter={(value) => [formatCurrency(value), ""]}
-                />
-                <Legend />
-                <Bar dataKey="Rau" name="Rau" fill="#4ade80" />
-                <Bar dataKey="Thịt & Hải sản" name="Thịt & Hải sản" fill="#f87171" />
-                <Bar dataKey="Trứng & Sữa" name="Trứng & Sữa" fill="#fbbf24" />
-              </BarChart>
-            </ResponsiveContainer>
+        {promotionEffectiveness.length > 0 && (
+          <div>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Hiệu quả chương trình khuyến mãi</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={promotionEffectiveness}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis 
+                    tickFormatter={(value) => 
+                      new Intl.NumberFormat('vi-VN', {
+                        notation: 'compact',
+                        compactDisplay: 'short',
+                        maximumFractionDigits: 1
+                      }).format(value)
+                    }
+                  />
+                  <Tooltip 
+                    formatter={(value) => [formatCurrency(value), ""]}
+                  />
+                  <Legend />
+                  <Bar dataKey="Rau" name="Rau" fill="#4ade80" />
+                  <Bar dataKey="Thịt & Hải sản" name="Thịt & Hải sản" fill="#f87171" />
+                  <Bar dataKey="Trứng & Sữa" name="Trứng & Sữa" fill="#fbbf24" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Tỷ lệ chuyển đổi */}
-        <div>
-          <h3 className="text-lg font-medium text-gray-800 mb-4">Tỷ lệ chuyển đổi (%)</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={conversionRate}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip formatter={(value) => [`${value}%`, "Tỷ lệ chuyển đổi"]} />
-                <Legend />
-                <Bar dataKey="rate" name="Tỷ lệ chuyển đổi" fill="#60a5fa" />
-              </BarChart>
-            </ResponsiveContainer>
+        {conversionRate.length > 0 && (
+          <div>
+            <h3 className="text-lg font-medium text-gray-800 mb-4">Tỷ lệ chuyển đổi (%)</h3>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={conversionRate}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip formatter={(value) => [`${value}%`, "Tỷ lệ chuyển đổi"]} />
+                  <Legend />
+                  <Bar dataKey="rate" name="Tỷ lệ chuyển đổi" fill="#60a5fa" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
+};
+
+// PropTypes validation
+PromotionReport.propTypes = {
+  promotionData: PropTypes.shape({
+    totalCoupons: PropTypes.number,
+    activeCoupons: PropTypes.number,
+    totalUsedCount: PropTypes.number,
+    typeStats: PropTypes.shape({
+      percentage: PropTypes.shape({
+        count: PropTypes.number,
+        used: PropTypes.number,
+        totalValue: PropTypes.number,
+        estimatedRevenue: PropTypes.number
+      }),
+      fixed: PropTypes.shape({
+        count: PropTypes.number,
+        used: PropTypes.number,
+        totalValue: PropTypes.number,
+        estimatedRevenue: PropTypes.number
+      })
+    }),
+    voucherUsage: PropTypes.arrayOf(
+      PropTypes.shape({
+        code: PropTypes.string,
+        discount: PropTypes.string,
+        used: PropTypes.number,
+        limit: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+        revenue: PropTypes.number,
+        description: PropTypes.string
+      })
+    ),
+    usageOverTime: PropTypes.arrayOf(PropTypes.object),
+    revenueComparison: PropTypes.arrayOf(PropTypes.object),
+    promotionEffectiveness: PropTypes.arrayOf(PropTypes.object),
+    conversionRate: PropTypes.arrayOf(PropTypes.object)
+  }),
+  exportToPDF: PropTypes.func.isRequired,
+  exportToExcel: PropTypes.func.isRequired,
+  sendReportEmail: PropTypes.func.isRequired,
+  exportLoading: PropTypes.bool.isRequired,
+  setExportLoading: PropTypes.func.isRequired,
+  formatCurrency: PropTypes.func.isRequired
 };
 
 export default PromotionReport; 

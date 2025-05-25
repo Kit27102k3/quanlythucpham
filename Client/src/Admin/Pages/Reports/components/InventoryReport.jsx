@@ -33,6 +33,32 @@ const InventoryReport = ({
   const [loading, setLoading] = useState(false);
   const [localInventory, setLocalInventory] = useState([]);
   const [error, setError] = useState(null);
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  
+  // Tải danh mục từ API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const categoriesData = await productsApi.getCategoriesData();
+        if (categoriesData && Array.isArray(categoriesData)) {
+          setCategories(categoriesData.map(cat => cat.name || cat));
+          console.log("Đã tải", categoriesData.length, "danh mục từ API");
+        } else {
+          console.warn("Dữ liệu danh mục không hợp lệ:", categoriesData);
+          setCategories([]);
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải danh mục:", error);
+        setCategories([]);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    
+    fetchCategories();
+  }, []);
   
   // Tải dữ liệu tồn kho trực tiếp từ API
   useEffect(() => {
@@ -51,11 +77,11 @@ const InventoryReport = ({
         const data = await productsApi.getInventoryData();
         
         if (data && Array.isArray(data)) {
-
-          
           // Kiểm tra dữ liệu trước khi hiển thị
           if (data.length === 0) {
             toast.warning('Không tìm thấy dữ liệu tồn kho');
+          } else {
+            console.log("Đã tải", data.length, "sản phẩm từ API");
           }
           
           setLocalInventory(data);
@@ -78,13 +104,19 @@ const InventoryReport = ({
     fetchInventoryData();
   }, [inventory]);
   
-  // Lấy danh sách danh mục từ dữ liệu tồn kho
-  const categories = useMemo(() => {
-    if (!localInventory || !Array.isArray(localInventory) || localInventory.length === 0) return [];
+  // Lấy danh sách danh mục từ dữ liệu tồn kho nếu không có danh mục từ API
+  const availableCategories = useMemo(() => {
+    if (categories.length > 0) {
+      return categories.sort();
+    }
+    
+    if (!localInventory || !Array.isArray(localInventory) || localInventory.length === 0) {
+      return [];
+    }
     
     const uniqueCategories = [...new Set(localInventory.map(item => item.category || 'Không phân loại'))];
     return uniqueCategories.sort();
-  }, [localInventory]);
+  }, [localInventory, categories]);
   
   // Lọc dữ liệu theo bộ lọc hiện tại
   const filteredInventory = useMemo(() => {
@@ -158,13 +190,39 @@ const InventoryReport = ({
   
   // Tính tổng giá trị tồn kho
   const totalInventoryValue = useMemo(() => {
-    return filteredInventory.reduce((sum, item) => sum + (item.value || 0), 0);
+    return filteredInventory.reduce((sum, item) => {
+      const itemValue = (item.price || 0) * (item.stock || 0);
+      return sum + itemValue;
+    }, 0);
   }, [filteredInventory]);
   
   // Tính tổng số lượng sản phẩm tồn kho
   const totalStockCount = useMemo(() => {
     return filteredInventory.reduce((sum, item) => sum + (item.stock || 0), 0);
   }, [filteredInventory]);
+  
+  // Làm mới dữ liệu
+  const handleRefresh = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const data = await productsApi.getInventoryData();
+      if (data && Array.isArray(data)) {
+        setLocalInventory(data);
+        toast.success('Đã cập nhật dữ liệu tồn kho');
+      } else {
+        setError('Dữ liệu tồn kho không hợp lệ');
+        toast.error('Không thể tải dữ liệu tồn kho');
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải lại dữ liệu tồn kho:', error);
+      setError('Lỗi khi tải dữ liệu tồn kho: ' + (error.message || 'Lỗi không xác định'));
+      toast.error('Lỗi khi tải lại dữ liệu');
+    } finally {
+      setLoading(false);
+    }
+  };
   
   return (
     <div id="inventory-report" className="bg-white p-6 rounded-lg shadow-md">
@@ -181,6 +239,20 @@ const InventoryReport = ({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={loading}
+            className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-sm font-medium flex items-center"
+          >
+            {loading ? (
+              <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-white rounded-full"></span>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            )}
+            Làm mới
+          </button>
           <button
             onClick={() => exportToPDF('inventory', setExportLoading)}
             disabled={exportLoading || loading}
@@ -231,14 +303,20 @@ const InventoryReport = ({
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Danh mục</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Danh mục 
+            {loadingCategories && (
+              <span className="ml-2 inline-block w-4 h-4 border-t-2 border-gray-500 rounded-full animate-spin"></span>
+            )}
+          </label>
           <select
             className="w-full bg-gray-100 border border-gray-300 text-gray-700 py-2 px-3 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
             value={filters.category}
             onChange={(e) => handleFilterChange('category', e.target.value)}
+            disabled={loadingCategories}
           >
             <option value="all">Tất cả danh mục</option>
-            {categories.map((category, index) => (
+            {availableCategories.map((category, index) => (
               <option key={index} value={category}>{category}</option>
             ))}
           </select>
@@ -268,29 +346,35 @@ const InventoryReport = ({
           <div className="text-red-500 text-xl mb-2">⚠️ Lỗi khi tải dữ liệu</div>
           <p className="text-gray-700">{error}</p>
           <button 
-            onClick={() => window.location.reload()} 
+            onClick={handleRefresh} 
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
           >
-            Tải lại trang
+            Tải lại dữ liệu
           </button>
         </div>
       ) : filteredInventory.length > 0 ? (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div className="h-80">
-              <h3 className="text-lg font-semibold mb-2 text-center">Top 10 sản phẩm tồn kho nhiều nhất</h3>
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-80 border border-gray-200 rounded-lg shadow-sm p-4 bg-white">
+              <h3 className="text-lg font-semibold mb-4 text-center text-gray-800">Top 10 sản phẩm tồn kho nhiều nhất</h3>
+              <ResponsiveContainer width="100%" height="90%">
                 <PieChart>
                   <Pie
                     data={pieChartData}
                     cx="50%"
                     cy="50%"
-                    labelLine={true}
-                    label={({ name, percent }) => `${name && name.length > 15 ? name.substring(0, 12) + '...' : name || 'Không tên'} (${(percent * 100).toFixed(0)}%)`}
+                    labelLine={false}
+                    label={({ name, percent, value }) => 
+                      `${name && name.length > 15 ? name.substring(0, 12) + '...' : name || 'Không tên'}: ${value} (${(percent * 100).toFixed(0)}%)`
+                    }
                     outerRadius={90}
+                    innerRadius={30}
+                    paddingAngle={2}
                     fill="#8884d8"
                     dataKey="stock"
                     nameKey="name"
+                    stroke="#fff"
+                    strokeWidth={1}
                   >
                     {pieChartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -298,17 +382,43 @@ const InventoryReport = ({
                   </Pie>
                   <Tooltip 
                     formatter={(value, name, entry) => {
-                      return [`${value} sản phẩm`, entry && entry.payload && entry.payload.name ? entry.payload.name : "Số lượng"];
-                    }} 
+                      return [
+                        `${value} sản phẩm (${((value / totalStockCount) * 100).toFixed(1)}%)`, 
+                        entry && entry.payload && entry.payload.name ? entry.payload.name : "Sản phẩm"
+                      ];
+                    }}
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      border: '1px solid #e2e8f0',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                    }}
+                    itemStyle={{
+                      padding: '4px 0'
+                    }}
                   />
-                  <Legend formatter={(value) => value || 'Không tên'} />
+                  <Legend 
+                    layout="vertical" 
+                    verticalAlign="middle" 
+                    align="right"
+                    wrapperStyle={{
+                      fontSize: '12px',
+                      paddingLeft: '10px'
+                    }}
+                    formatter={(value) => {
+                      return <span style={{ color: '#333', fontSize: '10px' }}>
+                        {value && value.length > 16 ? value.substring(0, 14) + '...' : value || 'Không tên'}
+                      </span>
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
 
-            <div className="h-80">
-              <h3 className="text-lg font-semibold mb-2 text-center">Tồn kho theo danh mục</h3>
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-80 border border-gray-200 rounded-lg shadow-sm p-4 bg-white">
+              <h3 className="text-lg font-semibold mb-4 text-center text-gray-800">Tồn kho theo danh mục</h3>
+              <ResponsiveContainer width="100%" height="90%">
                 <BarChart
                   data={categoryData}
                   layout="vertical"
@@ -336,109 +446,127 @@ const InventoryReport = ({
                       if (name === "itemCount") return [`${value}`, "Số loại sản phẩm"];
                       return [value, name];
                     }}
+                    contentStyle={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      border: '1px solid #e2e8f0',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                    }}
                   />
                   <Legend />
-                  <Bar dataKey="totalStock" name="Tổng số lượng" fill="#4ade80" />
+                  <Bar dataKey="totalStock" name="Tổng số lượng" fill="#4ade80" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Sản phẩm
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Danh mục
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Thương hiệu
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Xuất xứ
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Giá
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tồn kho
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Đơn vị
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Giá trị tồn
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Trạng thái
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredInventory.map((item, index) => (
-                  <tr key={index} className={item.stock <= 5 ? "bg-red-50" : (item.stock <= 20 ? "bg-yellow-50" : "")}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex items-center">
-                      {item.image && (
-                        <img 
-                          src={item.image.startsWith('http') ? item.image : `/images/products/${item.image}`} 
-                          alt={item.name || 'Sản phẩm'}
-                          className="w-10 h-10 object-cover rounded-md mr-2"
-                          onError={(e) => { 
-                            e.target.onerror = null; 
-                            e.target.src = "/placeholder-image.png"; 
-                          }}
-                        />
-                      )}
-                      <span>{item.name || 'Không xác định'}</span>
-                      {item.sku && <span className="ml-2 text-xs text-gray-500">({item.sku})</span>}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.category || 'Không phân loại'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.brand || "Không có"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.origin || "Không có"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Intl.NumberFormat('vi-VN', {
-                        style: 'currency',
-                        currency: 'VND'
-                      }).format(item.price || 0)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.stock || 0}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.weight ? `${item.weight} ${item.unit || 'gram'}` : item.unit || 'gram'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Intl.NumberFormat('vi-VN', {
-                        style: 'currency',
-                        currency: 'VND'
-                      }).format(item.value || 0)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          item.status === 'Hết hàng'
-                            ? "bg-red-100 text-red-800"
-                            : item.status === 'Sắp hết'
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-green-100 text-green-800"
-                        }`}
-                      >
-                        {item.status || 'Không rõ'}
-                      </span>
-                    </td>
+          <div className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            <h3 className="text-lg font-semibold p-4 bg-gray-50 border-b border-gray-200">Chi tiết tồn kho</h3>
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto scrollbar-custom">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Sản phẩm
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Danh mục
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Thương hiệu
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Xuất xứ
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Giá
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tồn kho
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Đơn vị
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Giá trị tồn
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Trạng thái
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredInventory.map((item, index) => (
+                    <tr key={index} className={item.stock <= 5 ? "bg-red-50" : (item.stock <= 20 ? "bg-yellow-50" : "")}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <div className="flex items-center">
+                          {item.image && (
+                            <img 
+                              src={item.image.startsWith('http') ? item.image : `/images/products/${item.image}`} 
+                              alt={item.name || 'Sản phẩm'}
+                              className="w-10 h-10 object-cover rounded-md mr-2"
+                              onError={(e) => { 
+                                e.target.onerror = null; 
+                                e.target.src = "/placeholder-image.png"; 
+                              }}
+                            />
+                          )}
+                          <div>
+                            <div className="font-medium">{item.name || 'Không xác định'}</div>
+                            {item.sku && <div className="text-xs text-gray-500">SKU: {item.sku}</div>}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.category || 'Không phân loại'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.brand || "Không có"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.origin || "Không có"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Intl.NumberFormat('vi-VN', {
+                          style: 'currency',
+                          currency: 'VND'
+                        }).format(item.price || 0)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <span className={`
+                          ${item.stock <= 5 ? "text-red-600" : (item.stock <= 20 ? "text-yellow-600" : "text-green-600")}
+                        `}>
+                          {item.stock || 0}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.weight ? `${item.weight} ${item.unit || 'gram'}` : item.unit || 'gram'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Intl.NumberFormat('vi-VN', {
+                          style: 'currency',
+                          currency: 'VND'
+                        }).format((item.price || 0) * (item.stock || 0))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            item.status === 'Hết hàng'
+                              ? "bg-red-100 text-red-800"
+                              : item.status === 'Sắp hết'
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {item.status || 'Không rõ'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       ) : (
@@ -452,7 +580,14 @@ const InventoryReport = ({
             >
               Xóa bộ lọc
             </button>
-          ) : null}
+          ) : (
+            <button 
+              onClick={handleRefresh}
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+            >
+              Tải lại dữ liệu
+            </button>
+          )}
         </div>
       )}
     </div>

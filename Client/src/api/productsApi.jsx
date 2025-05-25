@@ -15,32 +15,105 @@ const productsApi = {
     }
   },
 
+  // Lấy danh sách danh mục từ server
+  getCategoriesData: async () => {
+    try {
+      console.log("Đang lấy danh sách danh mục...");
+      
+      const token = localStorage.getItem("accessToken");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      try {
+        // Thử lấy từ API categories
+        const response = await axios.get(CATEGORY_API_URL, { headers, timeout: 15000 });
+        
+        if (response?.data && Array.isArray(response.data)) {
+          console.log("Lấy danh mục từ API thành công:", response.data.length, "danh mục");
+          return response.data.map(cat => ({
+            id: cat._id || cat.id,
+            name: cat.nameCategory || cat.name || 'Không xác định'
+          }));
+        }
+      } catch (error) {
+        console.warn("Không thể lấy danh mục từ API chính:", error.message);
+      }
+      
+      try {
+        // Thử endpoint thay thế
+        const altResponse = await axios.get(`${API_BASE_URL}/api/product-categories`, { headers, timeout: 15000 });
+        
+        if (altResponse?.data && Array.isArray(altResponse.data)) {
+          console.log("Lấy danh mục từ API thay thế thành công:", altResponse.data.length, "danh mục");
+          return altResponse.data.map(cat => ({
+            id: cat._id || cat.id,
+            name: cat.nameCategory || cat.name || 'Không xác định'
+          }));
+        }
+      } catch (error) {
+        console.warn("Không thể lấy danh mục từ API thay thế:", error.message);
+      }
+      
+      // Thử trích xuất danh mục từ dữ liệu sản phẩm
+      try {
+        const allProductsResponse = await axios.get(API_URL);
+        
+        if (allProductsResponse?.data?.products && Array.isArray(allProductsResponse.data.products)) {
+          // Lấy tất cả các danh mục duy nhất từ sản phẩm
+          const uniqueCategories = [...new Set(
+            allProductsResponse.data.products
+              .map(p => p.productCategory || p.category)
+              .filter(Boolean)
+          )];
+          
+          console.log("Trích xuất danh mục từ sản phẩm:", uniqueCategories.length, "danh mục");
+          
+          return uniqueCategories.map(name => ({
+            id: name.toLowerCase().replace(/\s+/g, '-'),
+            name: name
+          }));
+        }
+      } catch (error) {
+        console.error("Không thể trích xuất danh mục từ sản phẩm:", error.message);
+      }
+      
+      // Nếu không lấy được dữ liệu, trả về mảng rỗng
+      console.warn("Không thể lấy danh mục từ bất kỳ nguồn nào");
+      return [];
+    } catch (error) {
+      console.error("Lỗi khi lấy danh mục:", error);
+      return [];
+    }
+  },
+
   // Lấy dữ liệu tồn kho
   getInventoryData: async () => {
     try {
+      console.log("Đang lấy dữ liệu tồn kho...");
       // Thử endpoint /api/products/inventory trước
       const token = localStorage.getItem("accessToken");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       
       try {
-        const response = await axios.get(`${API_URL}/products/inventory`, { headers, timeout: 15000 });
+        const response = await axios.get(`${API_URL}/inventory`, { headers, timeout: 15000 });
         
         if (response?.data && Array.isArray(response.data) && response.data.length > 0) {
+          console.log("Lấy dữ liệu tồn kho từ API thành công:", response.data.length, "sản phẩm");
           return response.data;
         }
       } catch (inventoryError) {
-        console.error('Không thể lấy dữ liệu từ API inventory:', inventoryError.message);
+        console.warn('Không thể lấy dữ liệu từ API inventory:', inventoryError.message);
       }
       
       // Thử endpoint reports
       try {
-        const reportsResponse = await axios.get(`${API_URL}/reports/inventory`, { headers, timeout: 15000 });
+        const reportsResponse = await axios.get(`${API_BASE_URL}/api/reports/inventory`, { headers, timeout: 15000 });
         
         if (reportsResponse?.data && Array.isArray(reportsResponse.data) && reportsResponse.data.length > 0) {
+          console.log("Lấy dữ liệu tồn kho từ API reports thành công:", reportsResponse.data.length, "sản phẩm");
           return reportsResponse.data;
         }
       } catch (reportsError) {
-        console.error('Không thể lấy dữ liệu từ API reports/inventory:', reportsError.message);
+        console.warn('Không thể lấy dữ liệu từ API reports/inventory:', reportsError.message);
       }
       
       // Thử lấy tất cả sản phẩm và chuyển đổi thành dữ liệu tồn kho
@@ -48,8 +121,10 @@ const productsApi = {
         const allProductsResponse = await axios.get(API_URL);
         
         if (allProductsResponse?.data?.products && Array.isArray(allProductsResponse.data.products) && allProductsResponse.data.products.length > 0) {
+          console.log("Chuyển đổi dữ liệu sản phẩm thành dữ liệu tồn kho:", allProductsResponse.data.products.length, "sản phẩm");
+          
           const inventoryData = allProductsResponse.data.products.map(product => {
-            const stock = product.productStock || 0;
+            const stock = product.productStock || product.stock || 0;
             let status = 'Còn hàng';
             
             if (stock <= 0) status = 'Hết hàng';
@@ -57,21 +132,21 @@ const productsApi = {
             else if (stock <= 20) status = 'Sắp hết';
             
             return {
-              id: product._id,
-              name: product.productName || 'Không xác định',
+              id: product._id || product.id,
+              name: product.productName || product.name || 'Không xác định',
               stock: stock,
-              value: (product.productPrice || 0) * stock,
+              value: (product.productPrice || product.price || 0) * stock,
               status: status,
-              category: product.productCategory || 'Không phân loại',
-              price: product.productPrice || 0,
-              sku: product.productCode || '',
+              category: product.productCategory || product.category || 'Không phân loại',
+              price: product.productPrice || product.price || 0,
+              sku: product.productCode || product.sku || '',
               image: Array.isArray(product.productImages) && product.productImages.length > 0 
                 ? product.productImages[0] 
-                : '',
-              brand: product.productBrand || '',
-              weight: product.productWeight || 0,
-              unit: product.productUnit || 'gram',
-              origin: product.productOrigin || ''
+                : (product.image || ''),
+              brand: product.productBrand || product.brand || '',
+              weight: product.productWeight || product.weight || 0,
+              unit: product.productUnit || product.unit || 'gram',
+              origin: product.productOrigin || product.origin || ''
             };
           });
           
@@ -81,24 +156,12 @@ const productsApi = {
         console.error('Không thể lấy dữ liệu sản phẩm:', error.message);
       }
       
-      // Trả về mẫu nếu không lấy được dữ liệu
-      return [
-        { name: "Táo xanh Mỹ", category: "Trái cây", stock: 15, value: 3000000, status: "Sắp hết", price: 200000, sku: "CATTB-001" },
-        { name: "Thịt bò Úc", category: "Thịt tươi", stock: 8, value: 4000000, status: "Sắp hết", price: 500000, sku: "THTTB-001" },
-        { name: "Sữa tươi nguyên kem", category: "Sữa", stock: 4, value: 800000, status: "Sắp hết", price: 200000, sku: "SUATB-001" },
-        { name: "Cà chua Đà Lạt", category: "Rau củ", stock: 12, value: 600000, status: "Sắp hết", price: 50000, sku: "RACTB-001" },
-        { name: "Nước mắm Nam Ngư", category: "Gia vị", stock: 6, value: 450000, status: "Sắp hết", price: 75000, sku: "GVTB-001" }
-      ];
+      // Nếu không thể lấy dữ liệu từ bất kỳ nguồn nào, trả về mảng rỗng
+      console.error('Không thể lấy dữ liệu tồn kho từ bất kỳ nguồn nào');
+      return [];
     } catch (error) {
       console.error('Lỗi khi lấy dữ liệu tồn kho:', error);
-      // Trả về mẫu khi có lỗi
-      return [
-        { name: "Táo xanh Mỹ", category: "Trái cây", stock: 15, value: 3000000, status: "Sắp hết", price: 200000, sku: "CATTB-001" },
-        { name: "Thịt bò Úc", category: "Thịt tươi", stock: 8, value: 4000000, status: "Sắp hết", price: 500000, sku: "THTTB-001" },
-        { name: "Sữa tươi nguyên kem", category: "Sữa", stock: 4, value: 800000, status: "Sắp hết", price: 200000, sku: "SUATB-001" },
-        { name: "Cà chua Đà Lạt", category: "Rau củ", stock: 12, value: 600000, status: "Sắp hết", price: 50000, sku: "RACTB-001" },
-        { name: "Nước mắm Nam Ngư", category: "Gia vị", stock: 6, value: 450000, status: "Sắp hết", price: 75000, sku: "GVTB-001" }
-      ];
+      return [];
     }
   },
 
