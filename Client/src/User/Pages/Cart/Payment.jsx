@@ -142,65 +142,160 @@ export default function Payment() {
 
   // Hàm áp dụng voucher đã lưu
   const handleApplySavedVoucher = async (voucher) => {
-    const coupon = voucher.couponId;
-    
-    if (!isVoucherValid(coupon)) {
-      toast.error("Voucher này đã hết hạn hoặc hết lượt sử dụng");
-      return;
-    }
-    
-    // Kiểm tra nếu người dùng đã sử dụng voucher này trước đó
-    const currentUserId = users?._id;
-    const currentCouponId = coupon._id;
-
-    // Check local storage for used vouchers
-    const usedVouchersStr = localStorage.getItem('usedVouchers');
-    const usedVouchers = usedVouchersStr ? JSON.parse(usedVouchersStr) : [];
-    
-    const hasUsedVoucher = usedVouchers.some(
-      used => used.userId === currentUserId && used.couponId === currentCouponId
-    );
-    
-    if (hasUsedVoucher) {
-      toast.error("Bạn đã sử dụng voucher này rồi, vui lòng chọn voucher khác");
-      return;
-    }
-    
-    setCouponCode(coupon.code);
-    setValidatingCoupon(true);
-    
     try {
-      // Gọi API để kiểm tra mã giảm giá
-      const result = await couponApi.validateCoupon(coupon.code, calculateSubtotal());
+      if (!voucher || !voucher.couponId) {
+        toast.error("Voucher không hợp lệ");
+        return;
+      }
       
-      if (result.success) {
-        // Lưu thông tin mã giảm giá đã áp dụng
-        setAppliedCoupon(result.data.coupon);
-        setAppliedSavedVoucher(voucher);
-        setCouponDiscount(result.data.discountAmount);
-        setCouponSuccess(result.data.message);
-        setShowVouchersList(false);
+      const coupon = voucher.couponId;
+      console.log("Thông tin voucher cần áp dụng:", {
+        voucherId: voucher._id,
+        couponId: coupon._id,
+        code: coupon.code,
+        value: coupon.value,
+        type: coupon.type
+      });
+      
+      if (!isVoucherValid(coupon)) {
+        toast.error("Voucher này đã hết hạn hoặc hết lượt sử dụng");
+        return;
+      }
+      
+      // Kiểm tra nếu người dùng đã sử dụng voucher này trước đó
+      const currentUserId = users?._id;
+      if (!currentUserId) {
+        toast.error("Vui lòng đăng nhập để sử dụng voucher");
+        return;
+      }
+      
+      const currentCouponId = coupon._id;
+      if (!currentCouponId) {
+        toast.error("Mã giảm giá không hợp lệ");
+        return;
+      }
+
+      // Check local storage for used vouchers
+      const usedVouchersStr = localStorage.getItem('usedVouchers');
+      const usedVouchers = usedVouchersStr ? JSON.parse(usedVouchersStr) : [];
+      
+      const hasUsedVoucher = usedVouchers.some(
+        used => used.userId === currentUserId && used.couponId === currentCouponId
+      );
+      
+      if (hasUsedVoucher) {
+        toast.error("Bạn đã sử dụng voucher này rồi, vui lòng chọn voucher khác");
+        return;
+      }
+      
+      if (!coupon.code) {
+        toast.error("Mã giảm giá không hợp lệ");
+        return;
+      }
+      
+      setCouponCode(coupon.code);
+      setValidatingCoupon(true);
+      
+      try {
+        // Gọi API để kiểm tra mã giảm giá
+        console.log("Gọi API validateCoupon với mã:", coupon.code, "và giá trị:", calculateSubtotal());
+        const result = await couponApi.validateCoupon(coupon.code, calculateSubtotal());
+        console.log("Kết quả kiểm tra mã giảm giá từ voucher đã lưu:", result);
         
-        // Hiển thị thông báo thành công
-        toast.success(result.data.message);
-      } else {
-        // Hiển thị lỗi
-        setCouponError(result.message);
+        if (!result) {
+          throw new Error("Không nhận được phản hồi từ máy chủ");
+        }
+        
+        // Kiểm tra API trả về thành công và có dữ liệu hợp lệ
+        if (result.success) {
+          // Trường hợp API trả về success nhưng không có data
+          if (!result.data) {
+            // Sử dụng thông tin sẵn có từ voucher được lưu
+            const discountValue = calculateDiscountFromVoucher(coupon, calculateSubtotal());
+            
+            setAppliedCoupon(coupon);
+            setAppliedSavedVoucher(voucher);
+            setCouponDiscount(discountValue);
+            setCouponSuccess("Áp dụng mã giảm giá thành công");
+            setShowVouchersList(false);
+            
+            toast.success("Áp dụng mã giảm giá thành công");
+            return;
+          }
+          
+          // Trường hợp có data nhưng không có coupon
+          if (!result.data.coupon) {
+            setAppliedCoupon(coupon);
+            setAppliedSavedVoucher(voucher);
+            setCouponDiscount(result.data.discountAmount || calculateDiscountFromVoucher(coupon, calculateSubtotal()));
+            setCouponSuccess(result.data.message || "Áp dụng mã giảm giá thành công");
+            setShowVouchersList(false);
+            
+            toast.success(result.data.message || "Áp dụng mã giảm giá thành công");
+            return;
+          }
+          
+          // Trường hợp bình thường - có đầy đủ dữ liệu
+          setAppliedCoupon(result.data.coupon);
+          setAppliedSavedVoucher(voucher);
+          setCouponDiscount(result.data.discountAmount || 0);
+          setCouponSuccess(result.data.message || "Áp dụng mã giảm giá thành công");
+          setShowVouchersList(false);
+          
+          toast.success(result.data.message || "Áp dụng mã giảm giá thành công");
+        } else {
+          // Hiển thị lỗi
+          const errorMessage = (result && result.message) 
+            ? result.message 
+            : "Mã giảm giá không hợp lệ hoặc đã hết hạn";
+          setCouponError(errorMessage);
+          setCouponDiscount(0);
+          setAppliedCoupon(null);
+          setAppliedSavedVoucher(null);
+          
+          toast.error(errorMessage);
+        }
+      } catch (apiError) {
+        console.error("Error applying coupon:", apiError);
+        const errorMessage = apiError.response?.data?.message || apiError.message || "Không thể áp dụng mã giảm giá";
+        setCouponError(errorMessage);
         setCouponDiscount(0);
         setAppliedCoupon(null);
         setAppliedSavedVoucher(null);
+        
+        toast.error(errorMessage);
+      } finally {
+        setValidatingCoupon(false);
       }
-    } catch (error) {
-      console.error("Error applying coupon:", error);
-      setCouponError(error.message || "Không thể áp dụng mã giảm giá");
-      setCouponDiscount(0);
-      setAppliedCoupon(null);
-      setAppliedSavedVoucher(null);
-    } finally {
+    } catch (mainError) {
+      console.error("Error in handleApplySavedVoucher:", mainError);
+      toast.error("Có lỗi xảy ra khi áp dụng voucher");
       setValidatingCoupon(false);
     }
   };
   
+  // Hàm tính giảm giá từ thông tin voucher
+  const calculateDiscountFromVoucher = (coupon, subtotal) => {
+    if (!coupon) return 0;
+    
+    if (coupon.type === 'percentage') {
+      // Giảm giá theo phần trăm
+      const discountAmount = (subtotal * coupon.value) / 100;
+      
+      // Nếu có giới hạn giảm giá tối đa
+      if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
+        return coupon.maxDiscount;
+      }
+      
+      return discountAmount;
+    } else if (coupon.type === 'fixed') {
+      // Giảm giá cố định
+      return Math.min(coupon.value, subtotal);
+    }
+    
+    return 0;
+  };
+
   // Hàm copy mã giảm giá
   const handleCopyVoucherCode = (code) => {
     navigator.clipboard.writeText(code)
@@ -230,6 +325,7 @@ export default function Payment() {
     // Kiểm tra đã nhập mã giảm giá chưa
     if (!couponCode.trim()) {
       setCouponError("Vui lòng nhập mã giảm giá");
+      toast.error("Vui lòng nhập mã giảm giá");
       return;
     }
     
@@ -238,8 +334,9 @@ export default function Payment() {
     try {
       // Gọi API để kiểm tra mã giảm giá
       const result = await couponApi.validateCoupon(couponCode, calculateSubtotal());
+      console.log("Kết quả kiểm tra mã giảm giá:", result);
       
-      if (result.success) {
+      if (result && result.success && result.data && result.data.coupon) {
         const coupon = result.data.coupon;
         
         // Kiểm tra xem người dùng đã sử dụng voucher này trước đó chưa
@@ -264,22 +361,32 @@ export default function Payment() {
         
         // Lưu thông tin mã giảm giá đã áp dụng
         setAppliedCoupon(coupon);
-        setCouponDiscount(result.data.discountAmount);
-        setCouponSuccess(result.data.message);
+        setCouponDiscount(result.data.discountAmount || 0);
+        setCouponSuccess(result.data.message || "Áp dụng mã giảm giá thành công");
         
         // Hiển thị thông báo thành công
-        toast.success(result.data.message);
+        toast.success(result.data.message || "Áp dụng mã giảm giá thành công");
       } else {
         // Hiển thị lỗi
-        setCouponError(result.message);
+        const errorMessage = result && result.message 
+          ? result.message 
+          : "Mã giảm giá không hợp lệ hoặc đã hết hạn";
+        setCouponError(errorMessage);
         setCouponDiscount(0);
         setAppliedCoupon(null);
+        
+        // Hiển thị thông báo lỗi
+        toast.error(errorMessage);
       }
     } catch (error) {
       console.error("Error applying coupon:", error);
-      setCouponError(error.message || "Không thể áp dụng mã giảm giá");
+      const errorMessage = error.response?.data?.message || error.message || "Không thể áp dụng mã giảm giá";
+      setCouponError(errorMessage);
       setCouponDiscount(0);
       setAppliedCoupon(null);
+      
+      // Hiển thị thông báo lỗi
+      toast.error(errorMessage);
     } finally {
       setValidatingCoupon(false);
     }
@@ -733,7 +840,7 @@ export default function Payment() {
   const renderVoucherSection = () => {
     return (
       <div className="pt-3 mb-2">
-        <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+        <label className=" text-sm font-medium text-gray-700 mb-2 flex items-center">
           <FontAwesomeIcon icon={faTicket} className="text-[#51bb1a] mr-2" />
           Mã giảm giá
         </label>
@@ -766,15 +873,15 @@ export default function Payment() {
                 placeholder="Nhập mã giảm giá"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                className="flex-grow p-2 border border-gray-300 border-r-0 rounded-l-md outline-none"
+                className="flex-grow p-2 border border-gray-300 border-r-0 rounded-l-md outline-none bg-gray-50"
                 disabled={true}
               />
               <button
                 onClick={handleApplyCoupon}
                 className={`bg-[#51bb1a] text-white px-4 border border-[#51bb1a] rounded-r-md hover:bg-[#48a718] transition ${
-                  validatingCoupon ? 'opacity-70 cursor-not-allowed' : ''
+                  validatingCoupon ? 'opacity-70 cursor-not-allowed' : 'opacity-50 cursor-not-allowed'
                 }`}
-                disabled={validatingCoupon}
+                disabled={true}
               >
                 {validatingCoupon ? 'Đang áp dụng...' : 'Áp dụng'}
               </button>
@@ -792,36 +899,47 @@ export default function Payment() {
                 </button>
                 
                 {showVouchersList && (
-                  <div className="mt-2 border border-gray-200 rounded-md max-h-40 overflow-y-auto">
-                    {userSavedVouchers.map((voucher) => (
-                      <div 
-                        key={voucher._id}
-                        className="p-2 hover:bg-gray-50 border-b border-gray-200 last:border-b-0 flex justify-between items-center"
-                      >
-                        <div>
-                          <div className="font-medium text-gray-700">
-                            {voucher.couponId.type === 'percentage' 
-                              ? `Giảm ${voucher.couponId.value}%` 
-                              : `Giảm ${formatCurrency(voucher.couponId.value)}`}
-                          </div>
-                          <div className="flex items-center text-sm text-gray-500">
-                            <span className="mr-2">{voucher.couponId.code}</span>
-                            <button 
-                              onClick={() => handleCopyVoucherCode(voucher.couponId.code)}
-                              className="text-gray-400 hover:text-gray-600"
-                            >
-                              <FontAwesomeIcon icon={faClipboard} />
-                            </button>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleApplySavedVoucher(voucher)}
-                          className="bg-[#51bb1a] text-white px-3 py-1 rounded-md text-sm hover:bg-[#48a718] transition"
+                  <div className="mt-2 border border-gray-200 rounded-md max-h-56 overflow-y-auto">
+                    {userSavedVouchers.length === 0 ? (
+                      <p className="p-3 text-gray-500 text-center">Bạn chưa lưu voucher nào</p>
+                    ) : (
+                      userSavedVouchers.map((voucher) => (
+                        <div 
+                          key={voucher._id}
+                          className="p-3 hover:bg-gray-50 border-b border-gray-200 last:border-b-0 flex justify-between items-center"
                         >
-                          Áp dụng
-                        </button>
-                      </div>
-                    ))}
+                          <div>
+                            <div className="font-medium text-gray-700">
+                              {voucher.couponId.type === 'percentage' 
+                                ? `Giảm ${voucher.couponId.value}%` 
+                                : `Giảm ${formatCurrency(voucher.couponId.value)}`}
+                            </div>
+                            <div className="flex items-center text-sm text-gray-500">
+                              <span className="bg-gray-100 px-2 py-1 rounded mr-2 font-mono">{voucher.couponId.code}</span>
+                              <button 
+                                onClick={() => handleCopyVoucherCode(voucher.couponId.code)}
+                                className="text-[#51bb1a] hover:text-[#48a718] flex items-center gap-1"
+                                title="Sao chép mã"
+                              >
+                                <FontAwesomeIcon icon={faClipboard} />
+                                <span className="text-xs">Sao chép</span>
+                              </button>
+                            </div>
+                            {voucher.couponId.expiresAt && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                Hết hạn: {new Date(voucher.couponId.expiresAt).toLocaleDateString('vi-VN')}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleApplySavedVoucher(voucher)}
+                            className="bg-[#51bb1a] text-white px-3 py-1.5 rounded-md text-sm hover:bg-[#48a718] transition ml-2"
+                          >
+                            Áp dụng
+                          </button>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
               </div>
@@ -889,7 +1007,7 @@ export default function Payment() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1 mt-2">
-                Địa chỉ giao hàng
+                
               </label>
               {users && users._id && (
                 <AddressSelector 

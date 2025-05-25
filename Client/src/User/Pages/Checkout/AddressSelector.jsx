@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
 import { authApi } from "../../../api/authApi";
 import { FiEdit, FiHome, FiCheck, FiMapPin, FiUser, FiPhone, FiPlus } from "react-icons/fi";
@@ -20,11 +21,10 @@ export default function AddressSelector({ selectedAddressId, onAddressSelect, us
           setLoading(false);
           return;
         }
-        
-        console.log("Đang tải danh sách địa chỉ cho user:", userId);
+
         const response = await authApi.getAllAddresses(userId);
         const addressList = response.data.addresses || [];
-        console.log("Danh sách địa chỉ nhận được:", addressList);
+
         setAddresses(addressList);
         
         // Auto-select default address if no address is selected or if we need to initialize
@@ -130,14 +130,16 @@ export default function AddressSelector({ selectedAddressId, onAddressSelect, us
               </Link>
             </div>
             
-            <div className="mt-2 text-sm space-y-1">
-              <div className="flex items-start gap-2">
-                <FiUser className="w-4 h-4 text-gray-500 mt-1 flex-shrink-0" />
-                <span>{address.receiverName}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <FiPhone className="w-4 h-4 text-gray-500 mt-1 flex-shrink-0" />
-                <span>{address.receiverPhone}</span>
+            <div className="mt-2 text-sm space-y-1 flex flex-col gap-3">
+              <div className="flex items-center gap-5">
+                <div className="flex items-start gap-2">
+                  <FiUser className="w-4 h-4 text-gray-500 mt-1 flex-shrink-0" />
+                  <span>{address.receiverName}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <FiPhone className="w-4 h-4 text-gray-500 mt-1 flex-shrink-0" />
+                  <span>{address.receiverPhone}</span>
+                </div>
               </div>
               <div className="flex items-start gap-2">
                 <FiMapPin className="w-4 h-4 text-gray-500 mt-1 flex-shrink-0" />
@@ -151,7 +153,7 @@ export default function AddressSelector({ selectedAddressId, onAddressSelect, us
       <div className="mt-4">
         <Link
           to="/tai-khoan/dia-chi"
-          className="text-green-600 hover:text-green-800 text-sm inline-flex items-center"
+          className="text-white p-2 rounded bg-[#51bb1a] hover:bg-[#449e13] text-sm inline-flex items-center"
         >
           <FiPlus className="mr-1" /> Thêm địa chỉ mới
         </Link>

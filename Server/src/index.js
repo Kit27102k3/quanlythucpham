@@ -107,11 +107,35 @@ app.use((req, res, next) => {
 
 const URI = process.env.MONGOOSE_URI;
 mongoose
-  .connect(URI)
-  .then(() => {
-    // Removed console.log for MongoDB connection success
+  .connect(URI, {
+    // Tăng thời gian timeout cho các hoạt động
+    serverSelectionTimeoutMS: 30000, // 30 giây thay vì 10 giây mặc định
+    socketTimeoutMS: 45000,          // Tăng socket timeout
+    connectTimeoutMS: 30000,         // Tăng connect timeout
+    // Cấu hình connection pool
+    maxPoolSize: 10,                 // Tối đa 10 kết nối đồng thời
+    minPoolSize: 1,                  // Tối thiểu 1 kết nối
+    // Cấu hình retry
+    retryWrites: true,
+    retryReads: true
   })
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .then(() => {
+    console.log("MongoDB connected successfully");
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+    // Thêm retry logic nếu cần
+  });
+
+// Thêm xử lý các sự kiện kết nối
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected, attempting to reconnect...');
+  // Có thể thêm logic reconnect ở đây nếu cần
+});
 
 app.use("/auth", authRoutes);
 app.use("/admin/auth", adminAuthRoutes);

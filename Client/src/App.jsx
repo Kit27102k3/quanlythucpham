@@ -15,7 +15,7 @@ function App() {
     if (["admin", "manager", "employee"].includes(userRole)) {
       // Chỉ chuyển hướng nếu không phải đang ở trang admin
       if (!location.pathname.startsWith("/admin")) {
-        navigate("/admin/dashboard", { replace: true });
+        navigate("/admin/products", { replace: true });
       }
     }
   }, [location, navigate]);

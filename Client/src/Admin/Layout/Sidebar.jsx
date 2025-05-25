@@ -7,7 +7,6 @@ import {
   CubeIcon,
   ExitIcon,
   GearIcon,
-  HomeIcon,
   PersonIcon,
   ReaderIcon,
   TriangleLeftIcon,
@@ -33,12 +32,7 @@ const AdminSidebar = () => {
   const navigate = useNavigate();
 
   const menuItems = [
-    {
-      icon: <HomeIcon className="size-5 md:size-6" />,
-      text: "Trang chủ",
-      path: "/admin/dashboard",
-      key: "dashboard",
-    },
+    
     {
       icon: <CubeIcon className="size-5 md:size-6" />,
       text: "Sản phẩm",

@@ -29,7 +29,7 @@ const Login = () => {
     if (token && userId) {
       // User is already logged in, redirect based on role
       if (userRole === "admin") {
-        navigate("/admin/dashboard");
+        navigate("/admin/products");
       } else {
       navigate("/");
       }
@@ -72,7 +72,7 @@ const Login = () => {
       // Chuyển hướng đến trang admin
       setTimeout(() => {
         console.log("Chuyển hướng đến trang admin");
-        navigate("/admin/dashboard");
+        navigate("/admin/products");
       }, 1000);
 
       setIsLoading(false);
@@ -291,7 +291,7 @@ const Login = () => {
           console.log(
             "Xác nhận là tài khoản admin, chuyển hướng đến trang admin"
           );
-          navigate("/admin/dashboard");
+          navigate("/admin/products");
         } else {
           console.log(
             "Xác nhận là tài khoản user thường, chuyển hướng đến trang chủ"
@@ -467,7 +467,7 @@ const Login = () => {
         // Chuyển hướng dựa trên vai trò
         setTimeout(() => {
           if (userRole === "admin") {
-            navigate("/admin/dashboard");
+            navigate("/admin/products");
           } else {
             navigate("/");
           }

@@ -13,7 +13,7 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
 
   // Nếu có allowedRoles và role của user không nằm trong danh sách được phép
   if (allowedRoles.length > 0 && userRole && !allowedRoles.includes(userRole)) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to="/admin/products" replace />;
   }
 
   return children;

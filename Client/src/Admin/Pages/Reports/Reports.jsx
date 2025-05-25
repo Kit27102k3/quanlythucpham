@@ -271,17 +271,7 @@ const Reports = () => {
             formatCurrency={formatCurrency}
           />
         );
-      case "system-activity":
-        return (
-          <SystemActivityReport
-            systemActivityData={systemActivityData}
-            exportToPDF={exportToPDF}
-            exportToExcel={exportToExcel}
-            sendReportEmail={sendReportEmail}
-            exportLoading={exportLoading}
-            setExportLoading={setExportLoading}
-          />
-        );
+     
       case "delivery":
         return (
           <DeliveryReport

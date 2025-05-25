@@ -76,7 +76,7 @@ const LoginSuccess = () => {
           // Redirect based on role
           setTimeout(() => {
             if (role === 'admin') {
-              navigate('/admin/dashboard');
+              navigate('/admin/products');
             } else {
               navigate('/');
             }
@@ -135,7 +135,7 @@ const LoginSuccess = () => {
         const userRole = localStorage.getItem('userRole');
         setTimeout(() => {
           if (userRole === 'admin') {
-            navigate('/admin/dashboard');
+            navigate('/admin/products');
           } else {
             navigate('/');
           }

@@ -5,15 +5,10 @@ import useAuth from "../hooks/useAuth";
 const AdminLayout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const location = useLocation();
-  const navigate = useNavigate();
   const { adminInfo, logout } = useAuth();
 
   const menuItems = [
-    {
-      path: "/admin/dashboard",
-      label: "Tổng Quan",
-      icon: "pi pi-home",
-    },
+
     {
       path: "/admin/employees",
       label: "Quản Lý Nhân Viên",

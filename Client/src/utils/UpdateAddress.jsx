@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import axios from "axios";
 import {authApi} from "../api/authApi";
@@ -493,12 +495,12 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
 
       {renderGeocodeStatus()}
 
-      <div className="flex justify-end space-x-3 mt-6">
+      <div className="flex justify-end gap-5 space-x-3 mt-6">
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 text-sm hover:bg-gray-50"
+            className="px-4 py-2 border cursor-pointer border-gray-300 rounded-md text-gray-700 text-sm hover:bg-gray-50"
           >
             Hủy
           </button>
@@ -507,7 +509,7 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
         <button
           type="button"
           onClick={handleUpdate}
-          className="px-4 py-2 bg-green-600 rounded-md text-white text-sm hover:bg-green-700 flex items-center"
+          className="px-4 py-2 bg-[#51bb1a] cursor-pointer rounded-md text-white text-sm hover:bg-[#449e13] flex items-center"
           disabled={isLoading || isGeocoding}
         >
           {(isLoading || isGeocoding) && (
