@@ -15,6 +15,7 @@ import {
   handleBankWebhook,
 } from "./Controller/paymentController.js";
 import reportsController from "./Controller/reportsController.js";
+import NodeCache from 'node-cache';
 
 // ES modules compatibility
 const __filename = fileURLToPath(import.meta.url);
@@ -59,6 +60,9 @@ Object.keys(mongoose.models).forEach((modelName) => {
     delete mongoose.models[modelName];
   }
 });
+
+// Tạo cache với thời gian sống 5 phút
+const cache = new NodeCache({ stdTTL: 300 });
 
 app.use(
   cors({
@@ -105,27 +109,56 @@ app.use((req, res, next) => {
   }
 });
 
+// Thêm middleware kiểm tra kết nối MongoDB trước khi xử lý request
+app.use((req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    // 0: disconnected, 1: connected, 2: connecting, 3: disconnecting
+    console.log("MongoDB not connected, returning cached or fallback data");
+    
+    // Nếu là request API products, trả về dữ liệu mẫu
+    if (req.path === '/api/products') {
+      return res.json({
+        success: false,
+        message: "Không thể kết nối đến cơ sở dữ liệu",
+        isOffline: true,
+        data: [] // Hoặc dữ liệu mẫu/cache nếu có
+      });
+    }
+    
+    // Các API khác
+    return next();
+  }
+  next();
+});
+
 const URI = process.env.MONGOOSE_URI;
-mongoose
-  .connect(URI, {
-    // Tăng thời gian timeout cho các hoạt động
-    serverSelectionTimeoutMS: 30000, // 30 giây thay vì 10 giây mặc định
-    socketTimeoutMS: 45000,          // Tăng socket timeout
-    connectTimeoutMS: 30000,         // Tăng connect timeout
-    // Cấu hình connection pool
-    maxPoolSize: 10,                 // Tối đa 10 kết nối đồng thời
-    minPoolSize: 1,                  // Tối thiểu 1 kết nối
-    // Cấu hình retry
-    retryWrites: true,
-    retryReads: true
-  })
-  .then(() => {
-    console.log("MongoDB connected successfully");
-  })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err);
-    // Thêm retry logic nếu cần
-  });
+
+const connectWithRetry = async (retries = 5, delay = 5000) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await mongoose.connect(URI, {
+        serverSelectionTimeoutMS: 30000,
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 30000,
+        maxPoolSize: 10,
+        minPoolSize: 1,
+        retryWrites: true,
+        retryReads: true
+      });
+      console.log("MongoDB connected successfully");
+      return;
+    } catch (err) {
+      console.error(`Connection attempt ${i + 1} failed:`, err);
+      if (i < retries - 1) {
+        console.log(`Retrying in ${delay / 1000} seconds...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  console.error("Failed to connect to MongoDB after multiple retries");
+};
+
+connectWithRetry();
 
 // Thêm xử lý các sự kiện kết nối
 mongoose.connection.on('error', (err) => {
@@ -363,3 +396,25 @@ const startServer = (port) => {
 // Khởi động server
 const port = process.env.PORT || 8080;
 startServer(port);
+
+// Middleware sử dụng cache cho các request GET
+app.use((req, res, next) => {
+  if (req.method !== 'GET') return next();
+  
+  const key = req.originalUrl;
+  const cachedResponse = cache.get(key);
+  
+  if (cachedResponse) {
+    console.log(`Serving from cache: ${key}`);
+    return res.json(cachedResponse);
+  }
+  
+  // Lưu response gốc
+  const originalSend = res.json;
+  res.json = function(body) {
+    cache.set(key, body);
+    originalSend.call(this, body);
+  };
+  
+  next();
+});
