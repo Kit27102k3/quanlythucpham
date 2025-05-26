@@ -15,9 +15,14 @@ COPY . .
 # Sửa các lỗi cú pháp trong mã nguồn (nếu cần)
 RUN find ./src -name "*.js" -exec sed -i 's/\([^:]\) *\n *? */\1 ? /g' {} \;
 # Chuyển đổi optional chaining thành cú pháp thông thường
-RUN find ./src -name "*.js" -exec sed -i 's/\([a-zA-Z0-9_]\+\)?\.([a-zA-Z0-9_]\+)/\1 \&\& \1.\2/g' {} \;
 RUN find ./src -name "*.js" -exec sed -i 's/\([a-zA-Z0-9_]\+\)?\.\([a-zA-Z0-9_]\+\)/\1 \&\& \1.\2/g' {} \;
 RUN find ./src -name "*.js" -exec sed -i 's/\([a-zA-Z0-9_]\+\)?\[\([^]]*\)\]/\1 \&\& \1[\2]/g' {} \;
+
+# Cài đặt thêm plugin Babel cho import.meta.url
+RUN npm install --save-dev @babel/plugin-syntax-import-meta
+
+# Cập nhật babel.config.json để hỗ trợ import.meta
+RUN sed -i 's/"plugins": \[/"plugins": \["@babel\/plugin-syntax-import-meta",/g' babel.config.json
 
 # Build ứng dụng
 RUN npm run build
