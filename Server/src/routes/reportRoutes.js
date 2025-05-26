@@ -63,10 +63,13 @@ router.get("/revenue", authMiddleware, async (req, res) => {
         "Thứ 6",
         "Thứ 7",
       ];
-      revenueData = Array.from({ length: 7 }, (_, i) => ({
-        name: daysOfWeek[i],
-        revenue: revenueData.find((item) => item.day === i + 1)?.revenue || 0,
-      }));
+      revenueData = Array.from({ length: 7 }, (_, i) => {
+        const item = revenueData.find((item) => item.day === i + 1);
+        return {
+          name: daysOfWeek[i],
+          revenue: item ? item.revenue : 0,
+        };
+      });
     } else if (timeRange === "month") {
       revenueData = await Order.aggregate([
         {
@@ -91,12 +94,13 @@ router.get("/revenue", authMiddleware, async (req, res) => {
         currentDate.getMonth() + 1,
         0
       ).getDate();
-      revenueData = Array.from({ length: daysInMonth }, (_, i) => ({
-        name: `${i + 1}`,
-        revenue:
-          revenueData.find((item) => parseInt(item.name) === i + 1)?.revenue ||
-          0,
-      }));
+      revenueData = Array.from({ length: daysInMonth }, (_, i) => {
+        const item = revenueData.find((item) => parseInt(item.name) === i + 1);
+        return {
+          name: `${i + 1}`,
+          revenue: item ? item.revenue : 0,
+        };
+      });
     } else {
       revenueData = await Order.aggregate([
         {
@@ -117,10 +121,13 @@ router.get("/revenue", authMiddleware, async (req, res) => {
 
       // Format data for all months
       const months = Array.from({ length: 12 }, (_, i) => `Tháng ${i + 1}`);
-      revenueData = Array.from({ length: 12 }, (_, i) => ({
-        name: months[i],
-        revenue: revenueData.find((item) => item.month === i + 1)?.revenue || 0,
-      }));
+      revenueData = Array.from({ length: 12 }, (_, i) => {
+        const item = revenueData.find((item) => item.month === i + 1);
+        return {
+          name: months[i],
+          revenue: item ? item.revenue : 0,
+        };
+      });
     }
 
     res.json(revenueData);

@@ -62,7 +62,7 @@ export const getLowStockProducts = async (req, res) => {
       name: product.productName,
       category: product.productCategory || 'Không phân loại',
       stock: product.productStock,
-      image: product.productImages?.[0] || null,
+      image: product.productImages && product.productImages.length > 0 ? product.productImages[0] : null,
       status: product.productStock <= 5 ? 'Sắp hết' : (product.productStock <= 10 ? 'Cảnh báo' : 'Thấp')
     }));
 

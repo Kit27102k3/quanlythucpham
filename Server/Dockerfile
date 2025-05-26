@@ -14,6 +14,10 @@ COPY . .
 
 # Sửa các lỗi cú pháp trong mã nguồn (nếu cần)
 RUN find ./src -name "*.js" -exec sed -i 's/\([^:]\) *\n *? */\1 ? /g' {} \;
+# Chuyển đổi optional chaining thành cú pháp thông thường
+RUN find ./src -name "*.js" -exec sed -i 's/\([a-zA-Z0-9_]\+\)?\.([a-zA-Z0-9_]\+)/\1 \&\& \1.\2/g' {} \;
+RUN find ./src -name "*.js" -exec sed -i 's/\([a-zA-Z0-9_]\+\)?\.\([a-zA-Z0-9_]\+\)/\1 \&\& \1.\2/g' {} \;
+RUN find ./src -name "*.js" -exec sed -i 's/\([a-zA-Z0-9_]\+\)?\[\([^]]*\)\]/\1 \&\& \1[\2]/g' {} \;
 
 # Build ứng dụng
 RUN npm run build
