@@ -9,10 +9,10 @@
     "build-babel": "npx babel ./src -d ./build/src --copy-files",
     "build": "npm run clean && npm run build-babel",
     "start": "node ./build/src/index.js",
-    "dev": "nodemon --watch src --ext js --exec node ./src/index.js",
+    "dev": "node --watch src --ext js --exec node ./src/index.js",
     "update-webhook": "node --no-warnings updateWebhook.cjs",
     "ngrok-dev": "node --no-warnings ngrok-dev.cjs",
-    "start:prod": "cross-env NODE_ENV=production node ./build/src/index.js",
+    "start:prod": "NODE_ENV=production node ./build/src/index.js",
     "setup-db": "node scripts/whitelist-setup.js"
   },
   "dependencies": {
@@ -63,7 +63,6 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react-swc": "^3.5.0",
-    "cross-env": "^7.0.3",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.0.0",

@@ -16,7 +16,6 @@ services:
       - NODE_ENV=production
     env_file:
       - .env
-    command: npm run start:prod
     networks:
       - app-network
 
