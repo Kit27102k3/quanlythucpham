@@ -8,6 +8,8 @@ COPY babel.config.json ./
 
 # Cài đặt dependencies
 RUN npm install
+# Cài đặt nodemon toàn cục
+RUN npm install -g nodemon
 
 # Sao chép mã nguồn
 COPY . .
@@ -24,5 +26,6 @@ RUN npm run build
 # Mở cổng
 EXPOSE 8080
 
-# Khởi động ứng dụng
-CMD ["npm", "run", "start:prod"]
+# Khởi động ứng dụng không phụ thuộc vào cross-env
+ENV NODE_ENV=production
+CMD ["node", "./build/src/index.js"]
