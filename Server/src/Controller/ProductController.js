@@ -63,11 +63,7 @@ export const getLowStockProducts = async (req, res) => {
       category: product.productCategory || 'Không phân loại',
       stock: product.productStock,
       image: product.productImages?.[0] || null,
-      status: product.productStock <= 5 
-        ? 'Sắp hết' 
-        : product.productStock <= 10 
-          ? 'Cảnh báo' 
-          : 'Thấp'
+      status: product.productStock <= 5 ? 'Sắp hết' : (product.productStock <= 10 ? 'Cảnh báo' : 'Thấp')
     }));
 
     console.log('Found low stock products:', result);
