@@ -10,6 +10,7 @@ import {
   getProductByCategory,
   getProductBySlug,
   getBestSellingProducts,
+  getTopRatedProducts,
   checkAndUpdateExpirations
 } from "../Controller/productsController.js";
 import { verifyToken, isAdmin } from "../Middleware/authMiddleware.js";
@@ -21,6 +22,7 @@ router.get("/products", getAllProducts);
 router.get("/products/search", searchProducts);
 router.get("/products/best-selling", getBestSellingProducts);
 router.get("/products/best-sellers", getBestSellingProducts);
+router.get("/products/top-rated", getTopRatedProducts);
 router.get("/products/category/:category", getProductByCategory);
 router.get("/products/slug/:slug", getProductBySlug);
 router.get("/products/:id", getProductById);

@@ -708,4 +708,65 @@ export const getBestSellingProducts = async (req, res) => {
   }
 };
 
+// Lấy danh sách sản phẩm có đánh giá cao nhất
+export const getTopRatedProducts = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 4;
+    
+    // Tìm sản phẩm có đánh giá cao nhất
+    const topRatedProducts = await Product.find({
+      productStatus: { $ne: 'Hết hàng' },
+      productStock: { $gt: 0 },
+      averageRating: { $gt: 0 } // Chỉ lấy sản phẩm có đánh giá
+    })
+    .sort({ averageRating: -1, numOfReviews: -1 }) // Sắp xếp theo đánh giá cao nhất, ưu tiên sản phẩm có nhiều đánh giá
+    .limit(limit)
+    .select('productName productPrice productStatus productImages productDiscount productStock productCategory averageRating numOfReviews');
+    
+    // Nếu không có sản phẩm có đánh giá, lấy sản phẩm thông thường
+    if (!topRatedProducts || topRatedProducts.length === 0) {
+      console.log('[getTopRatedProducts] Không có dữ liệu sản phẩm có đánh giá, lấy sản phẩm thông thường...');
+      
+      try {
+        const normalProducts = await Product.find({
+          productStatus: { $ne: 'Hết hàng' },
+          productStock: { $gt: 0 }
+        })
+        .sort({ createdAt: -1 })
+        .limit(limit);
+        
+        console.log(`[getTopRatedProducts] Tìm thấy ${normalProducts.length} sản phẩm thông thường để thay thế`);
+        
+        return res.status(200).json({
+          success: true,
+          message: "Trả về sản phẩm thông thường thay thế",
+          data: normalProducts
+        });
+      } catch (productError) {
+        console.error("[getTopRatedProducts] Lỗi khi lấy sản phẩm thông thường:", productError);
+        return res.status(200).json({
+          success: true,
+          message: "Không tìm thấy sản phẩm nào",
+          data: []
+        });
+      }
+    }
+    
+    console.log(`[getTopRatedProducts] Trả về ${topRatedProducts.length} sản phẩm có đánh giá cao nhất`);
+    
+    return res.status(200).json({
+      success: true,
+      message: "Lấy danh sách sản phẩm có đánh giá cao nhất thành công",
+      data: topRatedProducts
+    });
+  } catch (error) {
+    console.error('[getTopRatedProducts] Lỗi:', error.message);
+    return res.status(200).json({ 
+      success: true,
+      message: "Đã xảy ra lỗi khi lấy sản phẩm có đánh giá cao",
+      data: [] // Trả về mảng rỗng thay vì lỗi 500
+    });
+  }
+};
+
 /*******  7cab8ad6-4345-4fb6-92ff-2129f8b85842  *******/

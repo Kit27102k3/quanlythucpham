@@ -369,7 +369,7 @@ const DashboardReport = ({
                       {topProducts.slice(0, 5).map((product, index) => (
                         <TableRow key={index} hover>
                           <TableCell>{product.name || product.productName || "Không xác định"}</TableCell>
-                          <TableCell>{product.category || product.productCategory || "Không phân loại"}</TableCell>
+                          <TableCell>{product?.category || product?.productCategory || "Không phân loại"}</TableCell>
                           <TableCell align="right">{product.sold || product.quantitySold || 0}</TableCell>
                           <TableCell align="right">
                             {formatCurrency

@@ -8,6 +8,7 @@ const Kitchen = lazy(() => import("../../Pages/Product/Kitchen"));
 const Drinks = lazy(() => import("../../Pages/Product/Drinks"));
 const ProductNew = lazy(() => import("./ProductNew"));
 const BestSelling = lazy(() => import("./BestSelling"));
+const TopRated = lazy(() => import("./TopRated"));
 const Vouchers = lazy(() => import("./Vouchers"));
 
 // Loading component
@@ -57,6 +58,10 @@ function Home() {
         
         <Suspense fallback={<Loading />}>
           <BestSelling />
+        </Suspense>
+        
+        <Suspense fallback={<Loading />}>
+          <TopRated />
         </Suspense>
         
         <Suspense fallback={<Loading />}>
