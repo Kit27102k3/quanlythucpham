@@ -7,8 +7,6 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
 import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
 import { deleteExpiredVouchers } from "./Controller/savedVoucherController.js";
 import {
   handleSepayCallback,
@@ -18,14 +16,8 @@ import reportsController from "./Controller/reportsController.js";
 import NodeCache from 'node-cache';
 
 // ES modules compatibility
-let __dirname;
-try {
-  const __filename = fileURLToPath(import.meta.url);
-  __dirname = dirname(__filename);
-} catch (error) {
-  // Fallback for environments where import.meta.url is not supported
-  __dirname = process.cwd();
-}
+// // Sử dụng process.cwd() thay vì import.meta.url
+// const __dirname = process.cwd();
 
 // Import models before routes
 import "./Model/Review.js";
