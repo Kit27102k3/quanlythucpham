@@ -40,7 +40,6 @@ pip install -r requirements.txt
 
 ```
 # OpenAI API Key (tùy chọn, nếu sử dụng mô hình của OpenAI)
-OPENAI_API_KEY=your_openai_api_key
 
 # MongoDB connection string (tùy chọn, nếu sử dụng MongoDB)
 MONGO_URI=mongodb://localhost:27017/
