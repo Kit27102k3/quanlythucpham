@@ -1,3 +1,5 @@
+/* eslint-disable react/prop-types */
+/* eslint-disable no-unused-vars */
 import React, { useState } from "react";
 import "../index.css";
 
@@ -73,7 +75,7 @@ export default function Pagination({
         »
       </button>
 
-      <select
+      {/* <select
         className="rows-select"
         value={rowsPerPage}
         onChange={handleRowsChange}
@@ -83,7 +85,7 @@ export default function Pagination({
             {option}
           </option>
         ))}
-      </select>
+      </select> */}
     </div>
   );
 }

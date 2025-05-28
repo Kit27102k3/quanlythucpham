@@ -12,7 +12,7 @@ from openai import OpenAI
 app = Flask(__name__)
 
 # Cấu hình API key đúng cách
-client = OpenAI(api_key="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")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.route('/api/chatbot/ask', methods=['POST'])
 def ask():

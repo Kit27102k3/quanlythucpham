@@ -16,6 +16,7 @@ import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import PageHeader from '../components/PageHeader';
 import couponApi from '../../api/couponApi';
 import { Checkbox } from 'primereact/checkbox';
+import Pagination from "../../utils/Paginator";
 
 const CouponList = () => {
   // Refs
@@ -35,6 +36,9 @@ const CouponList = () => {
     expired: 0,
     used: 0
   });
+  // Pagination state
+  const [first, setFirst] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -436,6 +440,12 @@ const CouponList = () => {
     });
   };
 
+  // Handle pagination change
+  const handlePageChange = ({ page, rows }) => {
+    setFirst((page - 1) * rows);
+    setRowsPerPage(rows);
+  };
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <Toast ref={toast} />
@@ -485,10 +495,7 @@ const CouponList = () => {
       <div className="card">
         <DataTable 
           ref={dt}
-          value={coupons} 
-          paginator 
-          rows={10} 
-          rowsPerPageOptions={[5, 10, 25, 50]} 
+          value={coupons.slice(first, first + rowsPerPage)} 
           dataKey="_id"
           filters={filters}
           filterDisplay="menu"
@@ -509,25 +516,12 @@ const CouponList = () => {
               />
             </div>
           }
-          currentPageReportTemplate="Hiển thị {first} đến {last} của {totalRecords} mã giảm giá"
-          paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           tableStyle={{ minWidth: '50rem' }}
           stripedRows
           rowHover
           resizableColumns
           size="small"
           sortMode="single"
-          pt={{
-            paginator: {
-              root: { className: 'flex items-center justify-center my-4 px-4' },
-              pageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors border border-transparent hover:border-blue-200 hover:bg-blue-50' },
-              currentPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors font-medium bg-blue-500 text-white border border-blue-500' },
-              prevPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
-              nextPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
-              pages: { className: 'flex items-center' },
-              dropdown: { root: { className: 'border border-gray-300 rounded-lg mx-2 text-sm' } }
-            }
-          }}
         >
           <Column field="code" header="Mã giảm giá" body={codeTemplate} sortable={false} headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '10rem' }} />
           <Column field="value" header="Giá trị" body={valueTemplate} sortable={false} headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '8rem' }} />
@@ -538,6 +532,14 @@ const CouponList = () => {
           <Column field="isActive" header="Trạng thái" body={statusTemplate} sortable={false} headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '8rem' }} />
           <Column body={actionBodyTemplate} exportable={false} header="Thao tác" headerClassName="bg-gray-50 text-gray-700" style={{ minWidth: '8rem', textAlign: 'center' }} />
         </DataTable>
+        {/* External pagination */}
+        <div className="mt-4">
+          <Pagination
+            totalRecords={coupons.length}
+            rowsPerPageOptions={[5,10,25,50]}
+            onPageChange={handlePageChange}
+          />
+        </div>
       </div>
 
       <Dialog

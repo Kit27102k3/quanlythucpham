@@ -613,3 +613,16 @@ html {
 .scrollbar-custom::-webkit-scrollbar-thumb:hover {
   background-color: #94a3b8;
 }
+
+/* Override PrimeReact AutoComplete panel z-index and positioning */
+.p-autocomplete-panel {
+  position: absolute !important;
+  z-index: 2147483000 !important;
+  max-width: 80vw !important;
+  white-space: normal !important;
+}
+
+.p-autocomplete-panel .p-autocomplete-item {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+}

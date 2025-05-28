@@ -32,7 +32,6 @@ const AdminSidebar = () => {
   const navigate = useNavigate();
 
   const menuItems = [
-    
     {
       icon: <CubeIcon className="size-5 md:size-6" />,
       text: "Sản phẩm",
@@ -58,10 +57,22 @@ const AdminSidebar = () => {
       key: "brands",
     },
     {
+      icon: <CubeIcon className="size-5 md:size-6" />,
+      text: "Chi nhánh",
+      path: "/admin/branches",
+      key: "branches",
+    },
+    {
       icon: <CardStackIcon className="size-5 md:size-6" />,
       text: "Đơn hàng",
       path: "/admin/orders",
       key: "orders",
+    },
+    {
+      icon: <IdCardIcon className="size-5 md:size-6" />,
+      text: "Giao hàng",
+      path: "/admin/delivery",
+      key: "delivery",
     },
     {
       icon: <IdCardIcon className="size-5 md:size-6" />,
@@ -83,7 +94,6 @@ const AdminSidebar = () => {
       badge: unreadMessages > 0 ? unreadMessages : null,
       badgeClassName: "bg-red-500 text-white",
     },
-
     {
       icon: <EnvelopeClosedIcon className="size-5 md:size-6" />,
       text: "Liên hệ",

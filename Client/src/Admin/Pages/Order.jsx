@@ -24,6 +24,7 @@ import { PackageIcon, ClockIcon, CheckIcon, XIcon, EyeIcon, Trash2Icon, RefreshC
 import { API_BASE_URL } from '../../config/apiConfig';
 import { Activity, Banknote, Calendar, ChevronDown, Clock, DollarSign, ExternalLink, Eye, FileText, Gift, Home, List, Loader2, PackageCheck, PackageOpen, PackageX, PanelRight, Phone, Plus, RefreshCcw, Search, ShoppingBag, Truck, User, XCircle } from "lucide-react";
 import { showToast } from '../Utils/toast';
+import Pagination from "../../utils/Paginator";
 
 // Mô hình OrderAutoTransition - Định nghĩa luồng chuyển đổi trạng thái tự động
 const OrderAutoTransition = {
@@ -552,6 +553,9 @@ const OrderAdmin = () => {
       completed: 0,
       cancelled: 0
     });
+    // Pagination state
+    const [first, setFirst] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
     
     // State for search and filtering
     const [searchTerm, setSearchTerm] = useState("");
@@ -1491,13 +1495,10 @@ const OrderAdmin = () => {
 
           <div className="p-4 bg-gray-50">
             <DataTable
-              value={filteredOrders.slice(0, 50)}
+              value={filteredOrders.slice(first, first + rowsPerPage)}
               selection={selectedOrders}
               onSelectionChange={(e) => setSelectedOrders(e.value)}
               dataKey="_id"
-              paginator={filteredOrders.length > 10}
-              rows={10}
-              rowsPerPageOptions={[10, 25, 50]}
               tableStyle={{ minWidth: '960px', borderCollapse: 'separate', borderSpacing: '0 0.8rem' }}
               emptyMessage={
                 <div className="text-center py-12 px-4">
@@ -1739,6 +1740,18 @@ const OrderAdmin = () => {
                 }}
               />
             </DataTable>
+          </div>
+
+          {/* External pagination */}
+          <div className="mt-4">
+            <Pagination
+              totalRecords={filteredOrders.length}
+              rowsPerPageOptions={[10,25,50]}
+              onPageChange={({ page, rows }) => {
+                setFirst((page - 1) * rows);
+                setRowsPerPage(rows);
+              }}
+            />
           </div>
 
           <div className="p-5 bg-gradient-to-r from-gray-50 to-white rounded-b-xl border-t border-gray-100 mt-4">

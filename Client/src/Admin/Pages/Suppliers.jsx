@@ -4,7 +4,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
-import { Paginator } from "primereact/paginator";
+import Pagination from "../../utils/Paginator";
 import suppliersApi from "../../api/suppliersApi";
 
 const Suppliers = () => {
@@ -30,8 +30,7 @@ const Suppliers = () => {
 
   // Pagination states
   const [first, setFirst] = useState(0);
-  const [rows, setRows] = useState(10);
-  const [totalRecords, setTotalRecords] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     fetchSuppliers();
@@ -50,8 +49,6 @@ const Suppliers = () => {
     );
 
     setFilteredSuppliers(filtered);
-    setTotalRecords(filtered.length);
-    // Reset to first page when filter changes
     setFirst(0);
   }, [suppliers, searchTerm]);
 
@@ -197,15 +194,13 @@ const Suppliers = () => {
   };
 
   // Handle pagination change
-  const onPageChange = (event) => {
-    setFirst(event.first);
-    setRows(event.rows);
+  const handlePageChange = ({ page, rows }) => {
+    setFirst((page - 1) * rows);
+    setRowsPerPage(rows);
   };
 
   // Get current page suppliers
-  const getCurrentPageSuppliers = () => {
-    return filteredSuppliers.slice(first, first + rows);
-  };
+  const getCurrentPageSuppliers = () => filteredSuppliers.slice(first, first + rowsPerPage);
 
   const renderSupplierForm = () => (
     <div className="p-6 bg-gradient-to-b from-white to-blue-50 rounded-lg">
@@ -491,13 +486,10 @@ const Suppliers = () => {
       </div>
 
       <div className="mt-4 bg-white p-2 rounded-lg shadow-sm">
-        <Paginator
-          first={first}
-          rows={rows}
-          totalRecords={totalRecords}
-          onPageChange={onPageChange}
-          template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink"
-          className="p-1 md:p-2 text-xs md:text-sm"
+        <Pagination
+          totalRecords={filteredSuppliers.length}
+          rowsPerPageOptions={[5,10,25,50]}
+          onPageChange={handlePageChange}
         />
       </div>
 

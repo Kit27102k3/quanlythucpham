@@ -9,7 +9,7 @@
     "build-babel": "npx babel ./src -d ./build/src --copy-files",
     "build": "npm run clean && npm run build-babel",
     "start": "node ./build/src/index.js",
-    "dev": "node --watch src --ext js --exec node ./src/index.js",
+    "dev": "nodemon --watch src --ext js --exec node ./src/index.js",
     "update-webhook": "node --no-warnings updateWebhook.cjs",
     "ngrok-dev": "node --no-warnings ngrok-dev.cjs",
     "start:prod": "NODE_ENV=production node ./build/src/index.js",

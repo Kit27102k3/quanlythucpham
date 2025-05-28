@@ -108,7 +108,7 @@ const getDefaultPermissions = (role) => {
 
 export const createAdmin = async (req, res) => {
     try {
-        const { userName, password, fullName, email, phone, birthday, role } = req.body;
+        const { userName, password, fullName, email, phone, birthday, role, branchId } = req.body;
         
         // Kiểm tra email đã tồn tại
         const existingEmail = await Admin.findOne({ email });
@@ -131,6 +131,7 @@ export const createAdmin = async (req, res) => {
             phone,
             birthday,
             role,
+            branchId: branchId || null,
             permissions: getDefaultPermissions(role)
         });
 
@@ -143,7 +144,9 @@ export const createAdmin = async (req, res) => {
 
 export const getAllAdmins = async (req, res) => {
     try {
-        const admins = await Admin.find().select('-password');
+        const admins = await Admin.find()
+            .select('-password')
+            .populate('branchId', 'name address phone');
         res.status(200).json(admins);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -151,35 +154,63 @@ export const getAllAdmins = async (req, res) => {
 };
 
 export const updateAdmin = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const updateData = { ...req.body };
-        
-        // Nếu có thay đổi mật khẩu, hash mật khẩu mới
-        if (updateData.password) {
-            const salt = await bcrypt.genSalt(10);
-            updateData.password = await bcrypt.hash(updateData.password, salt);
-        }
+  try {
+    const { id } = req.params;
+    const { 
+      userName, 
+      fullName, 
+      phone, 
+      email, 
+      birthday, 
+      role, 
+      permissions,
+      branchId,
+      isActive,
+      password 
+    } = req.body;
 
-        // Cập nhật quyền nếu thay đổi role
-        if (updateData.role) {
-            updateData.permissions = getDefaultPermissions(updateData.role);
-        }
-
-        const admin = await Admin.findByIdAndUpdate(
-            id,
-            updateData,
-            { new: true }
-        ).select('-password');
-
-        if (!admin) {
-            return res.status(404).json({ message: "Không tìm thấy admin" });
-        }
-
-        res.status(200).json(admin);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    // Kiểm tra xem admin có tồn tại không
+    const admin = await Admin.findById(id);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy admin"
+      });
     }
+
+    // Cập nhật thông tin cơ bản
+    if (userName) admin.userName = userName;
+    if (fullName) admin.fullName = fullName;
+    if (phone) admin.phone = phone;
+    if (email) admin.email = email;
+    if (birthday) admin.birthday = birthday;
+    if (role) admin.role = role;
+    if (permissions) admin.permissions = permissions;
+    if (branchId !== undefined) admin.branchId = branchId;
+    if (isActive !== undefined) admin.isActive = isActive;
+    
+    // Cập nhật mật khẩu nếu có
+    if (password && password.trim() !== '') {
+      const salt = await bcrypt.genSalt(10);
+      admin.password = await bcrypt.hash(password, salt);
+    }
+
+    // Sử dụng validateModifiedOnly để chỉ validate các trường đã sửa
+    const updatedAdmin = await admin.save({ validateModifiedOnly: true });
+
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật thông tin admin thành công",
+      data: updatedAdmin
+    });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật thông tin admin:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi cập nhật thông tin admin",
+      error: error.message
+    });
+  }
 };
 
 export const deleteAdmin = async (req, res) => {
@@ -199,13 +230,14 @@ export const deleteAdmin = async (req, res) => {
 
 export const getAdminById = async (req, res) => {
     try {
-        const { id } = req.params;
-        const admin = await Admin.findById(id).select('-password');
+        const admin = await Admin.findById(req.params.id)
+            .select('-password')
+            .populate('branchId', 'name address phone');
         
         if (!admin) {
-            return res.status(404).json({ message: "Không tìm thấy admin" });
+            return res.status(404).json({ message: "Admin không tồn tại" });
         }
-
+        
         res.status(200).json(admin);
     } catch (error) {
         res.status(500).json({ message: error.message });

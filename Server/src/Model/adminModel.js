@@ -14,7 +14,10 @@ const AdminSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Mật khẩu là bắt buộc"],
+      required: [function() {
+        // Chỉ yêu cầu mật khẩu khi tạo mới document
+        return this.isNew;
+      }, "Mật khẩu là bắt buộc"],
       minlength: [6, "Mật khẩu phải có ít nhất 6 ký tự"],
     },
     fullName: {
@@ -48,8 +51,12 @@ const AdminSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["superadmin", "manager", "admin", "user"],
+      enum: ["superadmin", "manager", "admin", "user", "employee", "shipper"],
       required: true,
+    },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Branch",
     },
     permissions: {
       type: [String],
@@ -76,6 +83,8 @@ const AdminSchema = new mongoose.Schema(
         "tips",
         "reports",
         "settings",
+        "delivery",
+        "branches",
       ],
       default: ["Xem"],
     },

@@ -25,9 +25,18 @@ const adminApi = {
     }
   },
 
-  updateAdmin: async (id, adminData) => {
+  updateAdmin: async (id, data) => {
     try {
-      const response = await axiosInstance.put(`${API_URL}/admin/${id}`, adminData);
+      const token = localStorage.getItem("accessToken");
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      
+      const response = await axios.put(`${API_URL}/admin/${id}`, data, { headers });
       return response.data;
     } catch (error) {
       console.error("Lỗi khi cập nhật admin:", error);

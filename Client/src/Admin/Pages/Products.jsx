@@ -4,7 +4,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
-import { Paginator } from "primereact/paginator";
+import Pagination from "../../utils/Paginator";
 import productsApi from "../../api/productsApi";
 import AddProduct from "./AddProduct";
 import EditProduct from "./EditProduct";
@@ -20,8 +20,7 @@ const Products = () => {
   
   // Pagination states
   const [first, setFirst] = useState(0);
-  const [rows, setRows] = useState(8);
-  const [totalRecords, setTotalRecords] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(8);
 
   useEffect(() => {
     fetchProducts();
@@ -36,8 +35,6 @@ const Products = () => {
     );
     
     setFilteredProducts(filtered);
-    setTotalRecords(filtered.length);
-    // Reset to first page when filter changes
     setFirst(0);
   }, [products, searchTerm]);
 
@@ -90,15 +87,13 @@ const Products = () => {
   };
   
   // Handle pagination change
-  const onPageChange = (event) => {
-    setFirst(event.first);
-    setRows(event.rows);
+  const handlePageChange = ({ page, rows }) => {
+    setFirst((page - 1) * rows);
+    setRowsPerPage(rows);
   };
   
   // Get current page products
-  const getCurrentPageProducts = () => {
-    return filteredProducts.slice(first, first + rows);
-  };
+  const getCurrentPageProducts = () => filteredProducts.slice(first, first + rowsPerPage);
 
   return (
     <div className="p-2 md:p-4">
@@ -209,13 +204,10 @@ const Products = () => {
       </div>
 
       <div className="mt-4">
-        <Paginator
-          first={first}
-          rows={rows}
-          totalRecords={totalRecords}
-          onPageChange={onPageChange}
-          template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink"
-          className="p-1 md:p-2 text-xs md:text-sm"
+        <Pagination
+          totalRecords={filteredProducts.length}
+          rowsPerPageOptions={[8, 16, 24]}
+          onPageChange={handlePageChange}
         />
       </div>
 

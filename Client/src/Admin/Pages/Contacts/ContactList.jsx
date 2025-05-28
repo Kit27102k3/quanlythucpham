@@ -4,7 +4,7 @@ import { toast, Toaster } from "sonner";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 import { API_URLS } from "../../../config/apiConfig";
-import { Paginator } from "primereact/paginator";
+import Pagination from "../../../utils/Paginator";
 
 function ContactList() {
   const [contacts, setContacts] = useState([]);
@@ -19,7 +19,7 @@ function ContactList() {
     sendingEmail: false
   });
   const [first, setFirst] = useState(0);
-  const [rows, setRows] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     fetchContacts();
@@ -193,12 +193,13 @@ function ContactList() {
     }
   };
 
-  const onPageChange = (event) => {
-    setFirst(event.first);
-    setRows(event.rows);
+  // Handle pagination change
+  const handlePageChange = ({ page, rows }) => {
+    setFirst((page - 1) * rows);
+    setRowsPerPage(rows);
   };
 
-  const paginatedContacts = contacts.slice(first, first + rows);
+  const paginatedContacts = contacts.slice(first, first + rowsPerPage);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -312,25 +313,10 @@ function ContactList() {
           </div>
           
           <div className="p-4 border-t border-gray-200">
-            <Paginator 
-              first={first} 
-              rows={rows} 
-              totalRecords={contacts.length} 
-              rowsPerPageOptions={[5, 10, 20, 50]} 
-              onPageChange={onPageChange}
-              template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-              className="border-none"
-              pt={{
-                root: { className: 'flex items-center justify-center my-4 px-4' },
-                pageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors border border-transparent hover:border-blue-200 hover:bg-blue-50' },
-                currentPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors font-medium bg-blue-500 text-white border border-blue-500' },
-                prevPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
-                nextPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
-                firstPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
-                lastPageButton: { className: 'w-9 h-9 mx-1 rounded-full flex items-center justify-center transition-colors text-gray-600 border border-transparent hover:border-blue-200 hover:bg-blue-50' },
-                pages: { className: 'flex items-center' },
-                dropdown: { root: { className: 'border border-gray-300 rounded-lg mx-2 text-sm' } }
-              }}
+            <Pagination
+              totalRecords={contacts.length}
+              rowsPerPageOptions={[5,10,20,50]}
+              onPageChange={handlePageChange}
             />
           </div>
         </div>

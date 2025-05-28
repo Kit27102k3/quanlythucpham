@@ -9,6 +9,7 @@ import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
 import adminApi from "../../api/adminApi";
 import { canAccess } from "../../utils/permission";
+import branchesApi from "../../api/branchesApi";
 
 const Employees = () => {
   // State management
@@ -17,6 +18,7 @@ const Employees = () => {
   const [isDialogVisible, setIsDialogVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const toastRef = React.useRef(null);
+  const [branches, setBranches] = useState([]);
 
   // Form state
   const initialFormState = {
@@ -27,7 +29,8 @@ const Employees = () => {
     email: "",
     role: null,
     password: "",
-    isActive: true
+    isActive: true,
+    branchId: null
   };
   const [employeeForm, setEmployeeForm] = useState(initialFormState);
 
@@ -35,33 +38,63 @@ const Employees = () => {
     { label: "Quản trị viên", value: "admin" },
     { label: "Quản lý", value: "manager" },
     { label: "Nhân viên", value: "employee" },
+    { label: "Giao hàng", value: "shipper" }
   ];
 
   // Lấy vai trò hiện tại
   const currentRole = localStorage.getItem("userRole");
+  
+  useEffect(() => {
+    // Gọi cả hai hàm trong một useEffect để tránh gọi nhiều lần
+    const initData = async () => {
+      await fetchBranches();
+      await fetchEmployees();
+    };
+    
+    initData();
+  }, []);
+  
   if (!canAccess(currentRole, "employees")) {
     return <div className="text-center text-red-500 font-bold text-xl mt-10">Bạn không có quyền truy cập trang này.</div>;
   }
+  
   let allowedRoles = roles;
   if (currentRole === "manager") {
-    allowedRoles = roles.filter(r => r.value === "employee");
+    allowedRoles = roles.filter(r => r.value === "employee" || r.value === "shipper");
   } else if (currentRole === "employee") {
     allowedRoles = [];
   }
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
-
   const fetchEmployees = async () => {
     try {
       setLoading(true);
+      
+      // Sử dụng danh sách chi nhánh đã được lưu trong state
+      const branchList = branches;
+      
+      // Lấy danh sách nhân viên
       const response = await adminApi.getAllAdmins();
-
+      
       const normalizedEmployees = response.map(emp => {
+        // Tìm tên chi nhánh từ ID chi nhánh
+        let branchName = "N/A";
+        if (emp.branchId) {
+          if (typeof emp.branchId === 'object' && emp.branchId.name) {
+            // Nếu branchId đã được populate
+            branchName = emp.branchId.name;
+          } else {
+            // Nếu branchId chỉ là ID, tìm trong danh sách chi nhánh
+            const branch = branchList.find(b => b._id === emp.branchId);
+            if (branch) {
+              branchName = branch.name;
+            }
+          }
+        }
+        
         return {
           ...emp,
-          userName: emp.userName || emp.username || emp.user_name || emp.user || "N/A"
+          userName: emp.userName || emp.username || emp.user_name || emp.user || "N/A",
+          branchName: branchName
         };
       });
       
@@ -77,6 +110,20 @@ const Employees = () => {
     }
   };
 
+  const fetchBranches = async () => {
+    try {
+      const data = await branchesApi.getAllBranches();
+      if (Array.isArray(data)) {
+        setBranches(data);
+      } else if (data && Array.isArray(data.branches)) {
+        setBranches(data.branches);
+      }
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách chi nhánh:", error);
+      showToast("error", "Lỗi", "Không thể tải danh sách chi nhánh");
+    }
+  };
+
   const showToast = (severity, summary, detail) => {
     toastRef.current.show({ severity, summary, detail, life: 3000 });
   };
@@ -86,8 +133,21 @@ const Employees = () => {
     setIsEditMode(false);
   };
 
-  const openEmployeeDialog = (employee = null) => {
+  const openEmployeeDialog = async (employee = null) => {
     if (employee) {
+      // Nếu có branchId, tìm tên chi nhánh
+      let branchInfo = null;
+      if (employee.branchId) {
+        try {
+          branchInfo = await branchesApi.getBranchById(employee.branchId);
+          if (branchInfo && branchInfo.branch) {
+            employee.branchName = branchInfo.branch.name;
+          }
+        } catch (error) {
+          console.error("Không thể lấy thông tin chi nhánh:", error);
+        }
+      }
+      
       setEmployeeForm({
         ...initialFormState,
         ...employee,
@@ -95,6 +155,7 @@ const Employees = () => {
         fullName: employee.fullName || "",
         phone: employee.phone || "",
         email: employee.email || "",
+        branchId: employee.branchId || null,
         password: ""
       });
       setIsEditMode(true);
@@ -128,7 +189,8 @@ const Employees = () => {
           fullName: "Họ tên",
           phone: "Số điện thoại",
           email: "Email",
-          role: "Vai trò"
+          role: "Vai trò",
+          branchId: "Chi nhánh"
         };
         
         const missingFieldNames = missingFields.map(field => fieldLabels[field]).join(", ");
@@ -144,6 +206,11 @@ const Employees = () => {
       };
 
       if (isEditMode) {
+        // Khi cập nhật, chỉ gửi mật khẩu nếu người dùng đã nhập mật khẩu mới
+        if (!formData.password) {
+          delete formData.password;
+        }
+        
         await adminApi.updateAdmin(formData._id, formData);
         showToast("success", "Thành công", "Cập nhật nhân viên thành công");
       } else {
@@ -154,11 +221,20 @@ const Employees = () => {
       fetchEmployees();
       closeDialog();
     } catch (error) {
-      showToast(
-        "error",
-        "Lỗi",
-        error.response?.data?.message || "Có lỗi xảy ra"
-      );
+      console.error("Lỗi:", error);
+      let errorMessage = "Có lỗi xảy ra";
+      
+      if (error.response) {
+        if (error.response.data && error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data && error.response.data.error) {
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      showToast("error", "Lỗi", errorMessage);
     } finally {
       setLoading(false);
     }
@@ -193,50 +269,8 @@ const Employees = () => {
     }
   };
 
-  // Form field components
-  const renderFormField = ({ id, label, type, colSpan }) => (
-    <div className={`col-${colSpan || 6} mb-4`}>
-      <label htmlFor={id} className="text-sm font-medium text-emerald-800 mb-1 flex items-center">
-        <i className={`pi ${type === 'text' ? 'pi-user' : type === 'email' ? 'pi-envelope' : type === 'tel' ? 'pi-phone' : type === 'password' ? 'pi-lock' : 'pi-calendar'} mr-2 text-emerald-600`} />
-        {label}
-      </label>
-      {type === "dropdown" ? (
-        <Dropdown
-          id={id}
-          value={employeeForm[id] || null}
-          onChange={(e) => setEmployeeForm({ ...employeeForm, [id]: e.value })}
-          options={roles}
-          optionLabel="label"
-          optionValue="value"
-          className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
-          placeholder="Chọn vai trò"
-        />
-      ) : type === "calendar" ? (
-        <Calendar
-          id={id}
-          value={employeeForm[id] || null}
-          onChange={(e) => setEmployeeForm({ ...employeeForm, [id]: e.value })}
-          className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
-          dateFormat="dd/mm/yy"
-          showIcon
-          maxDate={new Date()}
-          placeholder="Chọn ngày sinh"
-        />
-      ) : (
-        <InputText
-          id={id}
-          type={type}
-          value={employeeForm[id] || ""}
-          onChange={(e) => setEmployeeForm({ ...employeeForm, [id]: e.target.value })}
-          className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
-          placeholder={`Nhập ${label.toLowerCase()}`}
-        />
-      )}
-    </div>
-  );
-
   return (
-    <div className="min-h-screen  p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8">
       <Toast ref={toastRef} position="top-right" />
 
       <div className="container mx-auto bg-white shadow-xl rounded-xl p-4 md:p-8">
@@ -267,6 +301,7 @@ const Employees = () => {
                   "Số Điện Thoại",
                   "Email",
                   "Vai Trò",
+                  "Chi Nhánh",
                   "Thao Tác",
                 ].map((header) => (
                   <th
@@ -282,7 +317,7 @@ const Employees = () => {
               {loading && !employees.length ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="text-center py-8"
                   >
                     <i className="pi pi-spinner pi-spin text-2xl text-emerald-500"></i>
@@ -291,7 +326,7 @@ const Employees = () => {
               ) : employees.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="text-center py-8 text-gray-500"
                   >
                     Không có nhân viên nào
@@ -324,10 +359,13 @@ const Employees = () => {
                       {employee.role ? roles.find((r) => r.value === employee.role)?.label || employee.role : "N/A"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.branchName || "N/A"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex gap-2">
                         <Button
                           icon="pi pi-pencil"
-                          className="p-button-rounded p-button-warning p-button-text text-red-500"
+                          className="p-button-rounded p-button-warning p-button-text"
                           onClick={() => openEmployeeDialog(employee)}
                           tooltip="Sửa"
                           tooltipOptions={{ position: "top" }}
@@ -363,7 +401,7 @@ const Employees = () => {
                 <Button
                   label="Hủy"
                   onClick={closeDialog}
-                  className="p-button-text p-button-secondary bg-red-600 text-white  p-2 rounded px-4"
+                  className="p-button-text p-button-secondary bg-red-600 text-white p-2 rounded px-4"
                   disabled={loading}
                 />
                 <Button
@@ -384,40 +422,81 @@ const Employees = () => {
           >
             <div className="p-6 space-y-6">
               <div className="grid grid-cols-2 gap-5">
-                {[
-                  {
-                    id: "userName",
-                    label: "Tên Đăng Nhập",
-                    type: "text",
-                  },
-                  {
-                    id: "password",
-                    label: "Mật Khẩu",
-                    type: "password",
-                  },
-                  {
-                    id: "fullName",
-                    label: "Họ Tên",
-                    type: "text",
-                  },
-                  {
-                    id: "phone",
-                    label: "Số Điện Thoại",
-                    type: "tel",
-                  },
-                  {
-                    id: "email",
-                    label: "Email",
-                    type: "email",
-                    colSpan: 2,
-                  },
-                ].map((field) => (
-                  <div key={field.id} className={field.colSpan ? `col-span-${field.colSpan}` : ''}>
-                    {renderFormField({ ...field })}
-                  </div>
-                ))}
+                <div>
+                  <label htmlFor="userName" className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                    <i className="pi pi-user mr-2 text-emerald-600" />
+                    Tên Đăng Nhập
+                  </label>
+                  <InputText
+                    id="userName"
+                    value={employeeForm.userName || ""}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, userName: e.target.value })}
+                    className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                    placeholder="Nhập tên đăng nhập"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="password" className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                    <i className="pi pi-lock mr-2 text-emerald-600" />
+                    Mật Khẩu
+                  </label>
+                  <InputText
+                    id="password"
+                    type="password"
+                    value={employeeForm.password || ""}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, password: e.target.value })}
+                    className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                    placeholder="Nhập mật khẩu"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="fullName" className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                    <i className="pi pi-user mr-2 text-emerald-600" />
+                    Họ Tên
+                  </label>
+                  <InputText
+                    id="fullName"
+                    value={employeeForm.fullName || ""}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, fullName: e.target.value })}
+                    className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                    placeholder="Nhập họ tên"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="phone" className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                    <i className="pi pi-phone mr-2 text-emerald-600" />
+                    Số Điện Thoại
+                  </label>
+                  <InputText
+                    id="phone"
+                    type="tel"
+                    value={employeeForm.phone || ""}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, phone: e.target.value })}
+                    className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                    placeholder="Nhập số điện thoại"
+                  />
+                </div>
+                
+                <div className="col-span-2">
+                  <label htmlFor="email" className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                    <i className="pi pi-envelope mr-2 text-emerald-600" />
+                    Email
+                  </label>
+                  <InputText
+                    id="email"
+                    type="email"
+                    value={employeeForm.email || ""}
+                    onChange={(e) => setEmployeeForm({ ...employeeForm, email: e.target.value })}
+                    className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                    placeholder="Nhập email"
+                  />
+                </div>
               </div>
-              <div className="flex flex-col col-span-2">
+
+              <div>
                 <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
                   <i className="pi pi-calendar mr-2 text-emerald-600" />
                   Ngày Sinh
@@ -433,7 +512,8 @@ const Employees = () => {
                   placeholder="Chọn ngày sinh"
                 />
               </div>
-              <div className="flex flex-col col-span-2">
+
+              <div>
                 <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
                   <i className="pi pi-users mr-2 text-emerald-600" />
                   Vai Trò
@@ -448,6 +528,23 @@ const Employees = () => {
                   className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
                   placeholder="Chọn vai trò"
                   required
+                />
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                  <i className="pi pi-map-marker mr-2 text-emerald-600" />
+                  Chi Nhánh
+                </label>
+                <Dropdown
+                  id="branchId"
+                  value={employeeForm.branchId || null}
+                  options={branches}
+                  onChange={(e) => setEmployeeForm({ ...employeeForm, branchId: e.value })}
+                  optionLabel="name"
+                  optionValue="_id"
+                  className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                  placeholder="Chọn chi nhánh"
                 />
               </div>
             </div>

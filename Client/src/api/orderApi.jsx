@@ -157,7 +157,41 @@ const orderApi = {
       console.error("Lỗi khi lấy thống kê giao hàng:", error);
       throw error;
     }
-  }
+  },
+
+  // Lấy đơn hàng theo chi nhánh
+  getOrdersByBranch: async (branchId) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const headers = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const response = await axios.get(`${API_URL}/branch/${branchId}`, { headers });
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi lấy đơn hàng theo chi nhánh:", error);
+      throw error;
+    }
+  },
+
+  // Cập nhật trạng thái đơn hàng
+  updateOrderStatus: async (orderId, updateData) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const response = await axios.put(`${API_URL}/${orderId}/status`, updateData, { headers });
+      return response.data;
+    } catch (error) {
+      console.error("Lỗi khi cập nhật trạng thái đơn hàng:", error);
+      throw error;
+    }
+  },
 };
 
 // Hàm tạo mã vận đơn ngẫu nhiên (10 ký tự)

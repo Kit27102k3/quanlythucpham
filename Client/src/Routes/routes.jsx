@@ -41,6 +41,8 @@ import StoreLocations from "../User/Pages/Store/StoreLocations";
 import Settings from "../Admin/Pages/Settings";
 import Suppliers from "../Admin/Pages/Suppliers";
 import Brands from "../Admin/Pages/Brands";
+import Branches from "../Admin/Pages/Branches";
+import Delivery from "../Admin/Pages/Delivery";
 const publicRoutes = [
   {
     path: "/",
@@ -236,6 +238,14 @@ const privateRoutes = [
   {
     path: "/admin/settings",
     page: Settings,
+  },
+  {
+    path: "/admin/branches",
+    page: Branches,
+  },
+  {
+    path: "/admin/delivery",
+    page: Delivery,
   },
 ];
 

@@ -4,7 +4,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
-import { Paginator } from "primereact/paginator";
+import Pagination from "../../utils/Paginator";
 import * as brandsApi from "../../api/brandsApi";
 
 const Brands = () => {
@@ -28,8 +28,7 @@ const Brands = () => {
 
   // Pagination states
   const [first, setFirst] = useState(0);
-  const [rows, setRows] = useState(10);
-  const [totalRecords, setTotalRecords] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     fetchBrands();
@@ -46,8 +45,6 @@ const Brands = () => {
     );
 
     setFilteredBrands(filtered);
-    setTotalRecords(filtered.length);
-    // Reset to first page when filter changes
     setFirst(0);
   }, [brands, searchTerm]);
 
@@ -198,14 +195,13 @@ const Brands = () => {
     }
   };
 
-  const onPageChange = (event) => {
-    setFirst(event.first);
-    setRows(event.rows);
+  // Handle pagination change
+  const handlePageChange = ({ page, rows }) => {
+    setFirst((page - 1) * rows);
+    setRowsPerPage(rows);
   };
 
-  const getCurrentPageBrands = () => {
-    return filteredBrands.slice(first, first + rows);
-  };
+  const getCurrentPageBrands = () => filteredBrands.slice(first, first + rowsPerPage);
 
   const renderBrandForm = () => (
     <div className="p-6 bg-white">
@@ -451,16 +447,12 @@ const Brands = () => {
         </table>
       </div>
 
-      {totalRecords > 0 && (
+      {filteredBrands.length > 0 && (
         <div className="mt-4 bg-white shadow p-4 rounded-lg">
-          <Paginator
-            first={first}
-            rows={rows}
-            totalRecords={totalRecords}
-            onPageChange={onPageChange}
-            template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown"
-            rowsPerPageOptions={[5, 10, 25, 50]}
-            className="border-0"
+          <Pagination
+            totalRecords={filteredBrands.length}
+            rowsPerPageOptions={[5,10,25,50]}
+            onPageChange={handlePageChange}
           />
         </div>
       )}
