@@ -85,7 +85,7 @@ const StoreLocations = () => {
       </Helmet>
 
       {/* Hero section */}
-      <div className="bg-gradient-to-r from-green-600 to-green-400 text-white py-10 md:py-16">
+      <div className=" text-black py-10 md:py-16">
         <div className="container mx-auto px-4 md:px-6 text-center">
           <h1 className="text-3xl md:text-4xl font-bold mb-3 md:mb-4">Hệ Thống Cửa Hàng</h1>
           <p className="text-base md:text-xl max-w-2xl mx-auto">

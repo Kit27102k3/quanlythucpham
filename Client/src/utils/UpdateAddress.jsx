@@ -1,11 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {authApi} from "../api/authApi";
 import { toast } from "sonner";
 import PropTypes from "prop-types";
 import mapboxSdk from '@mapbox/mapbox-sdk/services/geocoding';
+import MapComponent from "./MapComponent";
 
 const host = "https://provinces.open-api.vn/api/";
 const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
@@ -37,6 +38,16 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
   const [receiverPhone, setReceiverPhone] = useState("");
   const [isDefault, setIsDefault] = useState(false);
   const [editingAddress, setEditingAddress] = useState(null);
+  const [mapPosition, setMapPosition] = useState([10.8231, 106.6297]); // Default position (Ho Chi Minh City)
+  const [mapKey, setMapKey] = useState(Date.now()); // Key for map re-render
+  const [coordinates, setCoordinates] = useState({ lat: 10.8231, lng: 106.6297 });
+  const [isBrowser, setIsBrowser] = useState(false);
+  const geocodeTimeoutRef = useRef(null);
+  
+  // Set browser state for client-side map rendering
+  useEffect(() => {
+    setIsBrowser(typeof window !== 'undefined');
+  }, []);
   
   // Fetch province/city data
   useEffect(() => {
@@ -83,6 +94,16 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
               setReceiverPhone(addressToEdit.receiverPhone || '');
               setIsDefault(addressToEdit.isDefault || false);
               
+              // Set coordinates if available
+              if (addressToEdit.coordinates?.lat && addressToEdit.coordinates?.lng) {
+                setMapPosition([addressToEdit.coordinates.lat, addressToEdit.coordinates.lng]);
+                setCoordinates({
+                  lat: addressToEdit.coordinates.lat,
+                  lng: addressToEdit.coordinates.lng
+                });
+                setMapKey(Date.now()); // Force map re-render
+              }
+              
               // Find and set location data (province/city, district, ward)
               if (addressToEdit.province) {
                 const city = cities.find(c => c.name === addressToEdit.province);
@@ -120,6 +141,14 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
 
     fetchUserProfile();
   }, [editingAddressId, cities]);
+
+  // Update map when coordinates change
+  useEffect(() => {
+    if (isBrowser && (coordinates.lat !== mapPosition[0] || coordinates.lng !== mapPosition[1])) {
+      setMapPosition([coordinates.lat, coordinates.lng]);
+      setMapKey(Date.now()); // Force map re-render
+    }
+  }, [coordinates, isBrowser]);
 
   // Handle city/province selection change
   const fetchDistricts = async (cityCode) => {
@@ -174,11 +203,39 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
   };
 
   /**
+   * Xử lý cập nhật địa chỉ khi có thay đổi ở form
+   */
+  const handleAddressFieldsChange = () => {
+    if (geocodeTimeoutRef.current) {
+      clearTimeout(geocodeTimeoutRef.current);
+    }
+    
+    geocodeTimeoutRef.current = setTimeout(() => {
+      // Chỉ thực hiện geocode khi có đủ thông tin
+      if (selectedCity && selectedDistrict && selectedWard && houseNumber) {
+        const cityName = cities.find(city => city.code === Number(selectedCity))?.name || "";
+        const districtName = districts.find(district => district.code === Number(selectedDistrict))?.name || "";
+        const wardName = wards.find(ward => ward.code === Number(selectedWard))?.name || "";
+        
+        const fullAddress = `${houseNumber}, ${wardName}, ${districtName}, ${cityName}`;
+        geocodeAddress(fullAddress);
+      }
+    }, 500);
+  };
+
+  // Kích hoạt geocode khi thay đổi địa chỉ
+  useEffect(() => {
+    handleAddressFieldsChange();
+  }, [selectedCity, selectedDistrict, selectedWard, houseNumber]);
+
+  /**
    * Lấy tọa độ từ địa chỉ sử dụng OpenStreetMap hoặc Mapbox
    * @param {string} address - Địa chỉ cần lấy tọa độ
    * @returns {Promise<Object>} Tọa độ {lat, lng}
    */
-  const getCoordinatesFromAddress = async (address) => {
+  const geocodeAddress = async (address) => {
+    if (!address || address.length < 3) return;
+    
     try {
       setIsGeocoding(true);
       
@@ -188,6 +245,10 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
         const result = await geocodeAddressWithOSM(address);
         if (result) {
           console.log('OpenStreetMap geocoding thành công:', result);
+          setCoordinates({ lat: result.lat, lng: result.lng });
+          setMapPosition([result.lat, result.lng]);
+          setMapKey(Date.now());
+          setIsGeocoding(false);
           return { lat: result.lat, lng: result.lng };
         }
       }
@@ -222,6 +283,9 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
           coordinates: { lng, lat }
         });
         
+        setCoordinates({ lat, lng });
+        setMapPosition([lat, lng]);
+        setMapKey(Date.now());
         return { lat, lng };
       }
     
@@ -230,6 +294,67 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
     } catch (error) {
       console.error('Lỗi khi lấy tọa độ:', error);
       return null;
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  /**
+   * Reverse geocode để lấy địa chỉ từ tọa độ
+   * @param {number} lat - Vĩ độ
+   * @param {number} lng - Kinh độ
+   */
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      setIsGeocoding(true);
+      setCoordinates({ lat, lng });
+      
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=vi`);
+      const data = await response.json();
+      
+      console.log('Reverse geocode result:', data);
+      
+      if (data && data.address) {
+        const address = data.address;
+        
+        // Try to parse the address components
+        const houseNum = address.house_number || address.building || '';
+        const road = address.road || address.pedestrian || '';
+        const houseAndRoad = [houseNum, road].filter(Boolean).join(', ');
+        
+        setHouseNumber(houseAndRoad || data.display_name.split(',')[0] || '');
+        
+        // Find and set province
+        if (address.state || address.province) {
+          const provinceName = address.state || address.province;
+          const city = cities.find(c => c.name.includes(provinceName) || provinceName.includes(c.name));
+          if (city) {
+            setSelectedCity(city.code);
+            await fetchDistricts(city.code);
+            
+            // Find and set district
+            if (address.county || address.city || address.town) {
+              const districtName = address.county || address.city || address.town;
+              const district = districts.find(d => d.name.includes(districtName) || districtName.includes(d.name));
+              if (district) {
+                setSelectedDistrict(district.code);
+                await fetchWards(district.code);
+                
+                // Find and set ward
+                if (address.suburb || address.village || address.neighbourhood) {
+                  const wardName = address.suburb || address.village || address.neighbourhood;
+                  const ward = wards.find(w => w.name.includes(wardName) || wardName.includes(w.name));
+                  if (ward) {
+                    setSelectedWard(ward.code);
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Lỗi khi reverse geocoding:', error);
     } finally {
       setIsGeocoding(false);
     }
@@ -269,8 +394,8 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
     try {
       setIsLoading(true);
       
-      // Lấy tọa độ từ địa chỉ
-      const coords = await getCoordinatesFromAddress(fullAddress);
+      // Sử dụng tọa độ từ state
+      const coords = coordinates;
       
       const addressData = {
         fullAddress: fullAddress,
@@ -488,6 +613,55 @@ function UpdateAddress({ onUpdate, editingAddressId, onCancel }) {
                 className={inputStyles}
                 placeholder="Nhập số nhà, tên đường, thôn/ấp..."
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Map Component */}
+        <div className="mt-6 transition-all duration-300 hover:shadow-lg rounded-lg overflow-hidden bg-white p-4">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Vị trí trên bản đồ <span className="text-sm text-blue-600 font-normal">(Di chuyển chấm đỏ để chọn vị trí chính xác)</span>
+          </label>
+          <div className="bg-blue-50 p-3 rounded-md mb-3 text-sm text-gray-700 border-l-4 border-blue-500">
+            <p className="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Bạn có thể:
+            </p>
+            <ul className="ml-7 mt-1 list-disc space-y-1">
+              <li>Kéo và thả điểm đánh dấu để chọn vị trí chính xác</li>
+              <li>Sử dụng ô tìm kiếm trên bản đồ để tìm nhanh địa điểm</li>
+              <li>Nhấp chuột vào bản đồ để đặt điểm đánh dấu</li>
+            </ul>
+          </div>
+          <div className="h-[300px] w-full border border-blue-200 shadow-md rounded-md overflow-hidden transition-all duration-300 hover:shadow-lg">
+            {isBrowser && (
+              <MapComponent 
+                key={mapKey}
+                position={mapPosition}
+                setPosition={(pos) => {
+                  setMapPosition(pos);
+                  setCoordinates({ lat: pos[0], lng: pos[1] });
+                }}
+                reverseGeocode={reverseGeocode}
+              />
+            )}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="bg-blue-50 p-3 rounded-md shadow-sm flex items-center">
+              <i className="pi pi-map-marker text-blue-600 mr-2"></i>
+              <div>
+                <div className="text-xs text-gray-500">Vĩ độ:</div>
+                <div className="font-medium text-blue-800">{coordinates.lat.toFixed(6)}</div>
+              </div>
+            </div>
+            <div className="bg-blue-50 p-3 rounded-md shadow-sm flex items-center">
+              <i className="pi pi-map-marker text-blue-600 mr-2"></i>
+              <div>
+                <div className="text-xs text-gray-500">Kinh độ:</div>
+                <div className="font-medium text-blue-800">{coordinates.lng.toFixed(6)}</div>
+              </div>
             </div>
           </div>
         </div>

@@ -15,7 +15,6 @@ import { Tag } from 'primereact/tag';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import PageHeader from '../components/PageHeader';
 import couponApi from '../../api/couponApi';
-import { Checkbox } from 'primereact/checkbox';
 import Pagination from "../../utils/Paginator";
 
 const CouponList = () => {

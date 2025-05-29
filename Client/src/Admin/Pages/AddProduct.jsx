@@ -516,7 +516,7 @@ const AddProduct = ({ onHide, onAddSuccess }) => {
                   value={product.productCategory}
                   onChange={(e) => handleDropdownChange(e, "productCategory")}
                   options={categories.map((cat) => ({
-                    label: `${cat.nameCategory} (${cat.codeCategory})`,
+                    label: cat.nameCategory,
                     value: cat._id,
                     code: cat.codeCategory,
                   }))}

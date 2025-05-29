@@ -13,7 +13,8 @@ import {
   notifyOrderSuccess,
   getTopOrders,
   getOrderStats,
-  getDeliveryStats
+  getDeliveryStats,
+  getOrdersByBranch
 } from "../Controller/orderController.js";
 
 const router = Router();
@@ -25,6 +26,7 @@ router.get("/stats", getOrderStats);
 router.get("/delivery-stats", getDeliveryStats);
 router.get("/tracking/:orderCode", getOrderTracking);
 router.get("/top", getTopOrders);
+router.get("/branch/:branchId", getOrdersByBranch);
 router.get("/:id", orderGetById);
 router.delete("/:id", orderDelete);
 router.post("/:id/cancel", cancelOrder);

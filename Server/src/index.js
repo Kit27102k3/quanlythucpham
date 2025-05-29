@@ -179,7 +179,7 @@ app.use("/api", productsRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/payments", paymentRoutes);
-app.use("/orders", orderRoutes);
+app.use("/api/orders", orderRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", tipsRoutes);
 app.use("/api/contact", contactRoutes);

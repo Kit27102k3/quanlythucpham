@@ -5,11 +5,12 @@ import { Button } from "primereact/button";
 import { InputText } from "primereact/inputtext";
 import { Dropdown } from "primereact/dropdown";
 import { Calendar } from "primereact/calendar";
-import { Toast } from "primereact/toast";
 import { confirmDialog } from "primereact/confirmdialog";
 import adminApi from "../../api/adminApi";
 import { canAccess } from "../../utils/permission";
 import branchesApi from "../../api/branchesApi";
+import { toast } from "sonner";
+import { API_BASE_URL } from '../../config/apiConfig';
 
 const Employees = () => {
   // State management
@@ -17,7 +18,6 @@ const Employees = () => {
   const [loading, setLoading] = useState(false);
   const [isDialogVisible, setIsDialogVisible] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const toastRef = React.useRef(null);
   const [branches, setBranches] = useState([]);
 
   // Form state
@@ -100,11 +100,9 @@ const Employees = () => {
       
       setEmployees(normalizedEmployees);
     } catch (error) {
-      showToast(
-        "error", 
-        "Lỗi", 
-        error.response?.data?.message || "Không thể tải danh sách nhân viên"
-      );
+      toast.error("Lỗi", {
+        description: error.response?.data?.message || "Không thể tải danh sách nhân viên",
+      });
     } finally {
       setLoading(false);
     }
@@ -120,12 +118,10 @@ const Employees = () => {
       }
     } catch (error) {
       console.error("Lỗi khi lấy danh sách chi nhánh:", error);
-      showToast("error", "Lỗi", "Không thể tải danh sách chi nhánh");
+      toast.error("Lỗi", {
+        description: "Không thể tải danh sách chi nhánh",
+      });
     }
-  };
-
-  const showToast = (severity, summary, detail) => {
-    toastRef.current.show({ severity, summary, detail, life: 3000 });
   };
 
   const resetForm = () => {
@@ -170,6 +166,30 @@ const Employees = () => {
     resetForm();
   };
 
+  // Hàm xử lý tạo admin mới
+  const createNewAdmin = async (data) => {
+    try {
+      // Dữ liệu đơn giản theo yêu cầu của server
+      const essentialData = {
+        userName: data.userName.trim(),
+        username: data.userName.trim(),
+        password: data.password,
+        fullName: data.fullName.trim(),
+        email: data.email.trim().toLowerCase(),
+        phone: data.phone.trim(),
+        role: data.role,
+        branchId: data.branchId || null,
+        isActive: true
+      };
+      
+      console.log("Đang gửi dữ liệu đơn giản hóa:", essentialData);
+      const response = await adminApi.createAdmin(essentialData);
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  };
+
   // CRUD operations
   const handleSaveEmployee = async () => {
     try {
@@ -194,50 +214,157 @@ const Employees = () => {
         };
         
         const missingFieldNames = missingFields.map(field => fieldLabels[field]).join(", ");
-        showToast("error", "Lỗi", `Vui lòng điền đầy đủ thông tin: ${missingFieldNames}`);
+        toast.error("Lỗi", {
+          description: `Vui lòng điền đầy đủ thông tin: ${missingFieldNames}`,
+        });
+        return;
+      }
+      
+      // Kiểm tra định dạng email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (employeeForm.email && !emailRegex.test(employeeForm.email)) {
+        toast.error("Lỗi", {
+          description: "Email không đúng định dạng",
+        });
+        return;
+      }
+      
+      // Kiểm tra định dạng số điện thoại (10 hoặc 11 số)
+      const phoneRegex = /^(0|\+84)[0-9]{9,10}$/;
+      if (employeeForm.phone && !phoneRegex.test(employeeForm.phone)) {
+        toast.error("Lỗi", {
+          description: "Số điện thoại không đúng định dạng (phải có 10-11 số và bắt đầu bằng 0 hoặc +84)",
+        });
         return;
       }
       
       setLoading(true);
       
+      // Chuẩn bị dữ liệu
       const formData = {
         ...employeeForm,
         userName: employeeForm.userName.trim(),
+        username: employeeForm.userName.trim(),
+        email: employeeForm.email.trim().toLowerCase(),
+        phone: employeeForm.phone.trim(),
+        fullName: employeeForm.fullName.trim(),
+        branchId: employeeForm.branchId || null
       };
 
       if (isEditMode) {
-        // Khi cập nhật, chỉ gửi mật khẩu nếu người dùng đã nhập mật khẩu mới
-        if (!formData.password) {
-          delete formData.password;
+        try {
+          await adminApi.updateAdmin(formData._id, formData);
+          toast.success("Thành công", {
+            description: "Cập nhật nhân viên thành công",
+          });
+          await fetchEmployees();
+          closeDialog();
+        } catch (updateError) {
+          handleApiError(updateError, "Cập nhật nhân viên thất bại");
         }
-        
-        await adminApi.updateAdmin(formData._id, formData);
-        showToast("success", "Thành công", "Cập nhật nhân viên thành công");
       } else {
-        await adminApi.createAdmin(formData);
-        showToast("success", "Thành công", "Thêm nhân viên mới thành công");
+        try {
+          // Sử dụng hàm tạo admin mới đã tối ưu hóa
+          await createNewAdmin(formData);
+          toast.success("Thành công", {
+            description: "Thêm nhân viên mới thành công",
+          });
+          await fetchEmployees();
+          closeDialog();
+        } catch (createError) {
+          // Thử giải pháp thay thế nếu lỗi 500
+          if (createError.response && createError.response.status === 500) {
+            try {
+              console.log("Thử phương pháp thay thế...");
+              // Thử sử dụng PUT thay vì POST để tránh lỗi 500
+              const altResponse = await fetch(`${API_BASE_URL}/api/admin/create`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                },
+                body: JSON.stringify({
+                  username: formData.userName,
+                  userName: formData.userName,
+                  password: formData.password,
+                  fullName: formData.fullName,
+                  email: formData.email,
+                  phone: formData.phone,
+                  role: formData.role,
+                  branchId: formData.branchId
+                })
+              });
+              
+              if (altResponse.ok) {
+                toast.success("Thành công", {
+                  description: "Thêm nhân viên mới thành công (phương pháp thay thế)",
+                });
+                await fetchEmployees();
+                closeDialog();
+                return;
+              } else {
+                const errorData = await altResponse.json();
+                throw new Error(errorData.message || 'Lỗi khi tạo admin');
+              }
+            } catch (altError) {
+              console.error("Lỗi khi thử phương pháp thay thế:", altError);
+              handleApiError(altError, "Thêm nhân viên mới thất bại (phương pháp thay thế)");
+            }
+          } else {
+            handleApiError(createError, "Thêm nhân viên mới thất bại");
+          }
+        }
       }
-
-      fetchEmployees();
-      closeDialog();
     } catch (error) {
       console.error("Lỗi:", error);
-      let errorMessage = "Có lỗi xảy ra";
-      
-      if (error.response) {
-        if (error.response.data && error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response.data && error.response.data.error) {
-          errorMessage = error.response.data.error;
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      showToast("error", "Lỗi", errorMessage);
+      handleApiError(error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Hàm xử lý lỗi API
+  const handleApiError = (error, defaultMessage = "Có lỗi xảy ra") => {
+    let errorMessage = defaultMessage;
+    
+    if (error.response) {
+      // Lỗi từ server
+      if (error.response.data) {
+        if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        }
+      }
+      
+      // Log chi tiết lỗi
+      console.error("Chi tiết lỗi từ server:", {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      });
+      
+      // Xử lý các mã lỗi cụ thể
+      if (error.response.status === 409) {
+        errorMessage = "Tên đăng nhập đã tồn tại. Vui lòng chọn tên đăng nhập khác.";
+      } else if (error.response.status === 400) {
+        errorMessage = "Dữ liệu không hợp lệ. Vui lòng kiểm tra lại thông tin.";
+      } else if (error.response.status === 500) {
+        errorMessage = "Lỗi máy chủ. Vui lòng thử lại sau hoặc liên hệ quản trị viên.";
+      }
+    } else if (error.request) {
+      // Request đã được gửi nhưng không nhận được response
+      errorMessage = "Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.";
+    } else if (error.message) {
+      // Lỗi khi thiết lập request
+      errorMessage = error.message;
+    }
+    
+    toast.error("Lỗi", {
+      description: errorMessage,
+    });
   };
 
   const confirmDelete = (id) => {
@@ -256,14 +383,14 @@ const Employees = () => {
     try {
       setLoading(true);
       await adminApi.deleteAdmin(id);
-      showToast("success", "Thành công", "Xóa nhân viên thành công");
+      toast.success("Thành công", {
+        description: "Xóa nhân viên thành công",
+      });
       fetchEmployees();
     } catch (error) {
-      showToast(
-        "error", 
-        "Lỗi", 
-        error.response?.data?.message || "Không thể xóa nhân viên"
-      );
+      toast.error("Lỗi", {
+        description: error.response?.data?.message || "Không thể xóa nhân viên",
+      });
     } finally {
       setLoading(false);
     }
@@ -271,8 +398,6 @@ const Employees = () => {
 
   return (
     <div className="min-h-screen p-4 md:p-8">
-      <Toast ref={toastRef} position="top-right" />
-
       <div className="container mx-auto bg-white shadow-xl rounded-xl p-4 md:p-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">

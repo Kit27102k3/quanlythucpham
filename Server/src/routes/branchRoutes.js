@@ -6,8 +6,11 @@ import {
   deleteBranch,
   getBranchById,
   searchBranches,
+  findNearestBranch,
+  assignBranchToAddress,
+  getBranchByManager
 } from "../Controller/branchController.js";
-import { verifyAdmin } from "../Middleware/authMiddleware.js";
+import { verifyAdmin, verifyToken } from "../Middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -16,6 +19,15 @@ router.get("/", getAllBranches);
 
 // Route tìm kiếm chi nhánh (không cần đăng nhập)
 router.get("/search", searchBranches);
+
+// Route tìm chi nhánh gần nhất (không cần đăng nhập)
+router.get("/nearest", findNearestBranch);
+
+// Route phân công chi nhánh cho địa chỉ (không cần đăng nhập)
+router.post("/assign", assignBranchToAddress);
+
+// Route lấy chi nhánh của manager (cần đăng nhập)
+router.get("/manager", verifyToken, getBranchByManager);
 
 // Route lấy chi nhánh theo ID (không cần đăng nhập)
 router.get("/:id", getBranchById);

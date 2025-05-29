@@ -206,128 +206,249 @@ const PaymentQR = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-lg mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <button
-              onClick={handleGoBack}
-              className="flex items-center text-gray-600 hover:text-[#51bb1a]"
-            >
-              <FaArrowLeft className="mr-2" /> Quay lại
-            </button>
-            <h1 className="text-xl font-bold text-[#51bb1a]">DNC FOOD</h1>
-          </div>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-3 px-4">
+      <div className="max-w-3xl w-full bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="p-3 bg-gradient-to-r from-[#51bb1a] to-[#3d8b14] text-white flex items-center justify-between">
+          <button
+            onClick={handleGoBack}
+            className="flex items-center cursor-pointer text-white hover:text-gray-200"
+          >
+            <FaArrowLeft className="mr-2" /> Quay lại
+          </button>
+          <h1 className="text-xl font-bold flex items-center">
+            {/* <img 
+              src="https://i.imgur.com/Tc9t5YD.png" 
+              alt="DNC Logo" 
+              className="h-6 mr-2 inline" 
+            /> */}
+            DNC FOOD
+          </h1>
+        </div>
 
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+        <div className="p-4">
+          <div className="text-center mb-3 pb-2 border-b border-gray-100">
+            <h2 className="text-lg font-bold text-gray-800 mb-1">
               Quét mã QR để thanh toán
             </h2>
-            <p className="text-gray-600">
-              Đơn hàng: <span className="font-semibold">#{orderId}</span>
-            </p>
-            <p className="text-gray-600">
-              Số tiền:{" "}
-              <span className="font-semibold text-red-500">
-                {formatCurrency(amount)}
-              </span>
-            </p>
-            <p className="text-yellow-600 mt-2">
-              Mã QR sẽ hết hạn sau:{" "}
-              <span className="font-bold">{formatTime(timeLeft)}</span>
-            </p>
-          </div>
-
-          <div className="flex justify-center mb-6">
-            <div className="p-3 border border-gray-200 rounded-lg">
-              <img
-                src={qrCode}
-                alt="QR Code Thanh Toán"
-                className="w-64 h-64 object-contain"
-              />
-            </div>
-          </div>
-
-          <div className="bg-gray-50 p-4 rounded-md mb-6">
-            <h3 className="font-semibold text-gray-800 mb-3">
-              Thông tin chuyển khoản:
-            </h3>
-
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Ngân hàng</p>
-                <p className="font-medium">
-                  {decodeURIComponent(
-                    bankName || "MBBank - Ngân hàng Thương mại Cổ phần Quân đội"
-                  )}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Số tài khoản</p>
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{accountNumber}</p>
-                  <button
-                    onClick={() => copyToClipboard(accountNumber)}
-                    className="text-[#51bb1a] p-2 hover:bg-gray-200 rounded-full"
-                  >
-                    <FaCopy />
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Chủ tài khoản</p>
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">
-                    {decodeURIComponent(accountName || "NGUYEN TRONG KHIEM")}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm text-gray-500 mb-1">
-                  Nội dung chuyển khoản
-                </p>
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{orderId}</p>
-                  <button
-                    onClick={() => copyToClipboard(orderId)}
-                    className="text-[#51bb1a] p-2 hover:bg-gray-200 rounded-full"
-                  >
-                    <FaCopy />
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Lưu ý: Chỉ điền chính xác mã đơn hàng, không thêm ký tự khác
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-center text-sm text-gray-500">
-            <p>
-              Hệ thống sẽ tự động xác nhận sau khi bạn chuyển khoản thành công.
-            </p>
-            <p>Vui lòng không đóng trang này trong quá trình thanh toán.</p>
-            {checking && (
-              <p className="text-[#51bb1a] mt-2">
-                Đang kiểm tra trạng thái thanh toán...
+            <div className="flex items-center justify-center space-x-2 text-sm">
+              <p className="text-gray-600">
+                Đơn hàng: <span className="font-semibold">#{orderId}</span>
               </p>
-            )}
 
-            <div className="mt-4">
-              <button
-                onClick={forceCheckStatus}
-                disabled={checking || expired}
-                className={`py-2 px-4 rounded-md ${
-                  checking ? "bg-gray-400" : "bg-[#51bb1a] hover:bg-[#3d8b14]"
-                } text-white transition-colors`}
-              >
-                {checking ? "Đang kiểm tra..." : "Kiểm tra thanh toán thủ công"}
-              </button>
+            </div>
+            <div className="bg-yellow-50 rounded-md mt-1 p-2">
+              <p className="text-yellow-600 text-[14px] font-medium">
+                Mã QR sẽ hết hạn sau:{" "}
+                <span className="font-bold">{formatTime(timeLeft)}</span>
+              </p>
             </div>
           </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Left Side: QR Code and Payment Info */}
+            <div className="space-y-3">
+              {/* QR Code */}
+              <div className="flex flex-col items-center">
+                <div className="p-2 border-2 border-gray-200 rounded-lg bg-white relative">
+                  <div className="absolute -top-2 -left-2 w-4 h-4 border-t-2 border-l-2 border-[#51bb1a]"></div>
+                  <div className="absolute -top-2 -right-2 w-4 h-4 border-t-2 border-r-2 border-[#51bb1a]"></div>
+                  <div className="absolute -bottom-2 -left-2 w-4 h-4 border-b-2 border-l-2 border-[#51bb1a]"></div>
+                  <div className="absolute -bottom-2 -right-2 w-4 h-4 border-b-2 border-r-2 border-[#51bb1a]"></div>
+                  <img
+                    src={qrCode}
+                    alt="QR Code Thanh Toán"
+                    className="w-40 h-40 object-contain"
+                  />
+                </div>
+                <div className="mt-2 text-center">
+                  <button
+                    onClick={forceCheckStatus}
+                    disabled={checking || expired}
+                    className={`py-1.5 px-3 rounded-md ${
+                      checking
+                        ? "bg-gray-400"
+                        : "bg-[#51bb1a] hover:bg-[#3d8b14]"
+                    } text-white transition-colors text-xs font-medium`}
+                  >
+                    {checking ? "Đang kiểm tra..." : "Kiểm tra thanh toán"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Payment Info */}
+              <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                <h3 className="font-semibold text-gray-800 mb-2 text-xs uppercase tracking-wide flex items-center">
+                  <span className=" w-5 h-5 bg-[#51bb1a] text-white rounded-full text-xs flex items-center justify-center mr-2">
+                    1
+                  </span>
+                  Thông tin chuyển khoản
+                </h3>
+
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center">
+                    <div className="w-1/3">
+                      <p className="text-xs text-gray-500">Ngân hàng</p>
+                    </div>
+                    <div className="w-2/3">
+                      <p className="font-medium text-sm">
+                        {decodeURIComponent(
+                          bankName || "MBBank - Ngân hàng TMCP Quân đội"
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center">
+                    <div className="w-1/3">
+                      <p className="text-xs text-gray-500">Số tài khoản</p>
+                    </div>
+                    <div className="w-2/3 flex items-center justify-between">
+                      <p className="font-medium text-sm">{accountNumber}</p>
+                      <button
+                        onClick={() => copyToClipboard(accountNumber)}
+                        className="text-[#51bb1a] p-1 hover:bg-gray-200 rounded-full"
+                        title="Sao chép"
+                      >
+                        <FaCopy size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center">
+                    <div className="w-1/3">
+                      <p className="text-xs text-gray-500">Chủ tài khoản</p>
+                    </div>
+                    <div className="w-2/3">
+                      <p className="font-medium text-sm">
+                        {decodeURIComponent(
+                          accountName || "NGUYEN TRONG KHIEM"
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center">
+                    <div className="w-1/3">
+                      <p className="text-xs text-gray-500">Số tiền</p>
+                    </div>
+                    <div className="w-2/3">
+                      <p className="font-medium text-sm">
+                        {formatCurrency(amount)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start">
+                    <div className="w-1/3">
+                      <p className="text-xs text-gray-500">Nội dung CK</p>
+                    </div>
+                    <div className="w-2/3">
+                      <div className="flex items-center justify-between">
+                        <p className="font-medium text-sm">{orderId}</p>
+                        <button
+                          onClick={() => copyToClipboard(orderId)}
+                          className="text-[#51bb1a] p-1 hover:bg-gray-200 rounded-full"
+                          title="Sao chép"
+                        >
+                          <FaCopy size={14} />
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Chỉ điền mã đơn hàng, không thêm ký tự khác
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side: Payment Steps */}
+            <div className="bg-blue-50 p-3 rounded-md border border-blue-100 h-full">
+              <h3 className="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide flex items-center">
+                <span className="w-5 h-5 bg-blue-500 text-white rounded-full text-xs flex items-center justify-center mr-2">
+                  2
+                </span>
+                Hướng dẫn thanh toán
+              </h3>
+
+              <div className="space-y-4 text-[14px] ">
+                <ol className="space-y-3 pl-2 flex flex-col gap-1">
+                  <li className="text-xs text-gray-700 flex">
+                    <span className=" w-4 h-4 bg-blue-100 text-blue-500 rounded-full text-xs flex items-center justify-center mr-2 flex-shrink-0">
+                      1
+                    </span>
+                    <span>
+                      Mở ứng dụng ngân hàng hoặc ví điện tử trên điện thoại
+                    </span>
+                  </li>
+                  <li className="text-xs text-gray-700 flex">
+                    <span className=" w-4 h-4 bg-blue-100 text-blue-500 rounded-full text-xs flex items-center justify-center mr-2 flex-shrink-0">
+                      2
+                    </span>
+                    <span>
+                      Quét mã QR hoặc chuyển khoản thủ công với thông tin bên
+                      trái
+                    </span>
+                  </li>
+                  <li className="text-xs text-gray-700 flex">
+                    <span className=" w-4 h-4 bg-blue-100 text-blue-500 rounded-full text-xs flex items-center justify-center mr-2 flex-shrink-0">
+                      3
+                    </span>
+                    <span>
+                      Nhập chính xác số tiền <b>{formatCurrency(amount)}</b>
+                    </span>
+                  </li>
+                  <li className="text-xs text-gray-700 flex">
+                    <span className=" w-4 h-4 bg-blue-100 text-blue-500 rounded-full text-xs flex items-center justify-center mr-2 flex-shrink-0">
+                      4
+                    </span>
+                    <span>
+                      Nhập đúng nội dung chuyển khoản: <b>{orderId}</b>
+                    </span>
+                  </li>
+                  <li className="text-xs text-gray-700 flex">
+                    <span className=" w-4 h-4 bg-blue-100 text-blue-500 rounded-full text-xs flex items-center justify-center mr-2 flex-shrink-0">
+                      5
+                    </span>
+                    <span>Xác nhận và hoàn tất thanh toán</span>
+                  </li>
+                </ol>
+
+                <div className="mt-4 pt-3 border-t border-blue-100">
+                  <div className="bg-white p-3 rounded-md">
+                    <h4 className="text-xs font-medium text-gray-700 mb-2">
+                      Lưu ý quan trọng:
+                    </h4>
+                    <ul className="space-y-1 text-xs text-gray-600 pl-4 list-disc">
+                      <li>Mã QR chỉ có hiệu lực trong thời gian giới hạn</li>
+                      <li>
+                        Nhập chính xác nội dung chuyển khoản để hệ thống xác
+                        nhận tự động
+                      </li>
+                      <li>Không tắt trang này trong quá trình thanh toán</li>
+                      <li>
+                        Hệ thống sẽ cập nhật tự động sau khi nhận được thanh
+                        toán
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center text-xs text-gray-500 mt-3 pt-2 border-t">
+          <p className="flex items-center justify-center p-2">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                checking ? "bg-green-500 animate-pulse" : "bg-gray-300"
+              } mr-1.5`}
+            ></span>
+            Hệ thống tự động xác nhận sau khi bạn chuyển khoản thành công
+            {checking && (
+              <span className="text-[#51bb1a] ml-1">(đang kiểm tra...)</span>
+            )}
+          </p>
         </div>
       </div>
     </div>

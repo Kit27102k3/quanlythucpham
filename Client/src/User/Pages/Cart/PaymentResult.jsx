@@ -11,6 +11,7 @@ const PaymentResult = () => {
   const [loading, setLoading] = useState(true);
   const [orderData, setOrderData] = useState(null);
   const [checkCount, setCheckCount] = useState(0);
+  const [branchInfo, setBranchInfo] = useState(null);
   const MAX_CHECKS = 10; // Số lần kiểm tra tối đa
   const CHECK_INTERVAL = 3000; // Thời gian giữa các lần kiểm tra (3 giây)
 
@@ -37,45 +38,81 @@ const PaymentResult = () => {
   };
 
   useEffect(() => {
-    // Parse query parameters
-    const searchParams = new URLSearchParams(location.search);
-    const orderId = searchParams.get("orderId");
-    const status = searchParams.get("status") || searchParams.get("vnp_ResponseCode");
-    const amount = searchParams.get("amount");
+    const params = new URLSearchParams(location.search);
+    const orderId = params.get("orderId");
+    const status = params.get("status");
+    const amount = params.get("amount");
     
-    // Create a minimal order object from URL parameters
-    setOrderData({
-      orderId: orderId || "Unknown",
-      amount: amount ? parseFloat(amount) : 0,
-      status: status === "success" || status === "00" ? "completed" : "pending"
-    });
-
-    // Nếu có orderId và trạng thái chưa hoàn thành, bắt đầu kiểm tra định kỳ
-    if (orderId && status !== "success" && status !== "00") {
+    const fetchOrderDetails = async () => {
+      if (orderId) {
+        try {
+          // Lấy thông tin đơn hàng
+          const response = await axios.get(`/api/orders/${orderId}`);
+          if (response.data) {
+            setOrderData({
+              orderId,
+              status: status || response.data.status,
+              amount: amount || response.data.totalAmount,
+              orderCode: response.data.orderCode,
+              createdAt: response.data.createdAt,
+              paymentMethod: response.data.paymentMethod,
+              products: response.data.products,
+              shippingInfo: response.data.shippingInfo,
+              branchId: response.data.branchId
+            });
+            
+            // Nếu có branchId, lấy thông tin chi nhánh
+            if (response.data.branchId) {
+              try {
+                const branchResponse = await axios.get(`/api/branches/${response.data.branchId}`);
+                if (branchResponse.data && branchResponse.data.success) {
+                  setBranchInfo(branchResponse.data.branch);
+                }
+              } catch (branchError) {
+                console.error("Error fetching branch info:", branchError);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching order details:", error);
+          // Nếu không thể lấy thông tin từ API, sử dụng dữ liệu từ URL
+          setOrderData({
+            orderId,
+            status: status || "pending",
+            amount: amount || 0
+          });
+        }
+        
+        setLoading(false);
+      } else {
+        // Nếu không có orderId, chuyển hướng về trang chủ
+        navigate("/");
+      }
+    };
+    
+    fetchOrderDetails();
+    
+    // Nếu trạng thái là chờ thanh toán, kiểm tra trạng thái sau mỗi khoảng thời gian
+    if (status === "awaiting_payment" && orderId) {
       const intervalId = setInterval(async () => {
         setCheckCount(prev => {
-          // Nếu đã kiểm tra đủ số lần, dừng lại
-          if (prev >= MAX_CHECKS) {
+          const newCount = prev + 1;
+          // Dừng kiểm tra sau số lần tối đa
+          if (newCount >= MAX_CHECKS) {
             clearInterval(intervalId);
-            setLoading(false);
-            return prev;
           }
-          return prev + 1;
+          return newCount;
         });
-
-        const isComplete = await checkPaymentStatus(orderId);
-        if (isComplete) {
+        
+        const statusResolved = await checkPaymentStatus(orderId);
+        if (statusResolved) {
           clearInterval(intervalId);
-          setLoading(false);
         }
       }, CHECK_INTERVAL);
-
-      // Cleanup interval khi component unmount
+      
       return () => clearInterval(intervalId);
-    } else {
-      setLoading(false);
     }
-  }, [location]);
+  }, [location.search, navigate, MAX_CHECKS, CHECK_INTERVAL]);
 
   const handleContinueShopping = () => {
     navigate("/");
@@ -118,30 +155,63 @@ const PaymentResult = () => {
             </p>
           </div>
 
-          <div className="mt-8 border-t border-gray-200 pt-4">
-            <dl className="divide-y divide-gray-200">
-              <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                <dt className="text-sm font-medium text-gray-500">Mã đơn hàng</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {orderData.orderId}
-                </dd>
-              </div>
-              {orderData.amount > 0 && (
-                <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                  <dt className="text-sm font-medium text-gray-500">Tổng tiền</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {formatCurrency(orderData.amount)}
+          {isSuccess && (
+            <div className="mt-6 border-t border-gray-200 pt-4">
+              <h3 className="text-lg font-medium text-gray-900">Thông tin đơn hàng</h3>
+              <dl className="mt-3 space-y-3 text-sm text-gray-600">
+                {orderData?.orderCode && (
+                  <div className="flex justify-between">
+                    <dt>Mã đơn hàng:</dt>
+                    <dd className="font-medium text-gray-900">{orderData.orderCode}</dd>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <dt>Tổng tiền:</dt>
+                  <dd className="font-medium text-gray-900">{formatCurrency(orderData?.amount || 0)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt>Phương thức thanh toán:</dt>
+                  <dd className="font-medium text-gray-900">
+                    {orderData?.paymentMethod === "cod" ? "Thanh toán khi nhận hàng (COD)" : "Thanh toán trực tuyến"}
                   </dd>
                 </div>
-              )}
-              <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4">
-                <dt className="text-sm font-medium text-gray-500">Trạng thái</dt>
-                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                  {isSuccess ? "Đã đặt hàng thành công" : "Đặt hàng thất bại"}
-                </dd>
+                {orderData?.createdAt && (
+                  <div className="flex justify-between">
+                    <dt>Ngày đặt:</dt>
+                    <dd className="font-medium text-gray-900">
+                      {new Date(orderData.createdAt).toLocaleDateString('vi-VN')}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
+
+          {/* Hiển thị chi nhánh phục vụ nếu có */}
+          {isSuccess && branchInfo && (
+            <div className="mt-6 border-t border-gray-200 pt-4">
+              <h3 className="text-lg font-medium text-gray-900">Chi nhánh phục vụ</h3>
+              <div className="mt-3 bg-gray-50 p-3 rounded-md">
+                <div className="space-y-2">
+                  <p className="font-medium text-gray-800">{branchInfo.name}</p>
+                  <p className="text-sm text-gray-600 flex items-center">
+                    <i className="pi pi-map-marker mr-2 text-green-600"></i>
+                    {branchInfo.address}
+                  </p>
+                  <p className="text-sm text-gray-600 flex items-center">
+                    <i className="pi pi-phone mr-2 text-green-600"></i>
+                    {branchInfo.phone}
+                  </p>
+                  {branchInfo.openingHours && (
+                    <p className="text-sm text-gray-600 flex items-center">
+                      <i className="pi pi-clock mr-2 text-green-600"></i>
+                      Giờ mở cửa: {branchInfo.openingHours}
+                    </p>
+                  )}
+                </div>
               </div>
-            </dl>
-          </div>
+            </div>
+          )}
 
           <div className="mt-8 text-sm lg:text-[16px] flex justify-center gap-4 space-x-4">
             <button

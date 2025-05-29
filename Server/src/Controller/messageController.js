@@ -1,6 +1,6 @@
 import Conversation from "../Model/Message.js";
 import User from "../Model/Register.js";
-import Admin from "../Model/Admin.js";
+import Admin from "../Model/adminModel.js";
 import { getAdminId } from "../config/admin.js";
 import dotenv from 'dotenv';
 import { sendMessageNotification } from '../Services/notificationService.js';

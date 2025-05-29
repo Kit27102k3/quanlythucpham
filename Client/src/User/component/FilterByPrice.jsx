@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { RadioButton } from "primereact/radiobutton";
 import { Scrollbars } from "react-custom-scrollbars-2";
 
@@ -12,18 +12,32 @@ const priceRanges = [
   { name: "Giá trên 1.000.000đ", key: "F", min: 1000000, max: Infinity },
 ];
 
-const typeProducts = [
-  { name: "Muối", key: "A" },
-  { name: "Nước", key: "B" },
-  { name: "Trái cây", key: "C" },
-  { name: "Rau", key: "D" },
-  { name: "Đồ ăn nhanh", key: "E" },
-  { name: "Thịt", key: "F" },
-];
+// Loại sản phẩm lấy động từ API
+import categoriesApi from '../../api/categoriesApi.jsx';
+
 
 const FilterByPrice = ({ onPriceFilterChange, onTypeFilterChange }) => {
   const [selectedPriceRange, setSelectedPriceRange] = useState(null);
   const [selectedTypeProduct, setSelectedTypeProduct] = useState(null);
+  const [typeProducts, setTypeProducts] = useState([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await categoriesApi.getAllCategories();
+        // Chuẩn hóa dữ liệu cho RadioButton (name & key)
+        setTypeProducts(
+          (Array.isArray(res) ? res : []).map((cat, idx) => ({
+            name: cat.nameCategory,
+            key: cat.codeCategory || cat._id || idx
+          }))
+        );
+      } catch (err) {
+        setTypeProducts([]);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const onPriceRangeChange = (e) => {
     setSelectedPriceRange(e.value);
@@ -105,31 +119,35 @@ const FilterByPrice = ({ onPriceFilterChange, onTypeFilterChange }) => {
               </button>
             )}
           </div>
-          <Scrollbars style={{ width: "100%", height: "240px" }}>
-            {typeProducts.map((type) => (
-              <div key={type.key} className="flex items-center gap-2 py-1">
-                <RadioButton
-                  inputId={`type-${type.key}`}
-                  name="typeProduct"
-                  value={type}
-                  onChange={onTypeProductChange}
-                  checked={selectedTypeProduct?.key === type.key}
-                  style={{
-                    transform: "scale(0.6)",
-                    transformOrigin: "left center",
-                    border: "1px solid",
-                    borderRadius: "50%",
-                    backgroundColor: "white",
-                  }}
-                />
-                <label
-                  htmlFor={`type-${type.key}`}
-                  className="cursor-pointer text-[#1c1c1c] text-sm ml-2"
-                >
-                  {type.name}
-                </label>
-              </div>
-            ))}
+           <Scrollbars style={{ width: "100%", height: "240px" }}>
+            {typeProducts.length === 0 ? (
+              <div className="text-gray-400 text-sm p-2">Không có dữ liệu loại sản phẩm</div>
+            ) : (
+              typeProducts.map((type) => (
+                <div key={type.key} className="flex items-center gap-2 py-1">
+                  <RadioButton
+                    inputId={`type-${type.key}`}
+                    name="typeProduct"
+                    value={type}
+                    onChange={onTypeProductChange}
+                    checked={selectedTypeProduct?.key === type.key}
+                    style={{
+                      transform: "scale(0.6)",
+                      transformOrigin: "left center",
+                      border: "1px solid",
+                      borderRadius: "50%",
+                      backgroundColor: "white",
+                    }}
+                  />
+                  <label
+                    htmlFor={`type-${type.key}`}
+                    className="cursor-pointer text-[#1c1c1c] text-sm ml-2"
+                  >
+                    {type.name}
+                  </label>
+                </div>
+              ))
+            )}
           </Scrollbars>
         </div>
       </div>

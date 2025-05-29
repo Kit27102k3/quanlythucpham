@@ -6,6 +6,9 @@ import dotenv from "dotenv";
 import { sendOrderConfirmationEmail, sendOrderShippingEmail } from "../utils/emailService.js";
 import BestSellingProduct from "../Model/BestSellingProduct.js";
 import { sendOrderStatusNotification } from "../Services/notificationService.js";
+import Branch from "../Model/Branch.js";
+import { findNearestBranch } from "../Services/branchService.js";
+import mongoose from "mongoose";
 
 dotenv.config();
 
@@ -180,14 +183,126 @@ export const orderGet = async (req, res) => {
 
 export const orderGetAll = async (req, res) => {
   try {
-    const orders = await Order.find()
+    const { page = 1, pageSize = 10, searchTerm, status, paymentMethod, isPaid, date, branchId } = req.query;
+    
+    console.log("orderGetAll được gọi với các tham số:");
+    console.log("Query params:", req.query);
+    
+    // Xây dựng query dựa trên các tham số
+    const query = {};
+    console.log("Query ban đầu:", JSON.stringify(query));
+    
+    // Thêm điều kiện lọc theo chi nhánh nếu có
+    if (branchId) {
+      query.branchId = branchId;
+      console.log("Thêm điều kiện branchId:", branchId);
+    }
+    
+    // Thêm điều kiện tìm kiếm nếu có
+    if (searchTerm) {
+      // Tìm kiếm theo mã đơn hàng, thông tin người dùng và thông tin giao hàng
+      query.$or = [
+        { orderCode: { $regex: searchTerm, $options: 'i' } },
+        { notes: { $regex: searchTerm, $options: 'i' } }
+      ];
+      
+      // Tìm kiếm theo thông tin người dùng (cần populate trước)
+      const usersWithSearchTerm = await mongoose.model('User').find({
+        $or: [
+          { firstName: { $regex: searchTerm, $options: 'i' } },
+          { lastName: { $regex: searchTerm, $options: 'i' } },
+          { phone: { $regex: searchTerm, $options: 'i' } },
+          { email: { $regex: searchTerm, $options: 'i' } }
+        ]
+      }).select('_id');
+      
+      if (usersWithSearchTerm.length > 0) {
+        const userIds = usersWithSearchTerm.map(user => user._id);
+        query.$or.push({ userId: { $in: userIds } });
+      }
+      
+      // Tìm kiếm trong thông tin giao hàng
+      query.$or.push({ 'shippingInfo.address': { $regex: searchTerm, $options: 'i' } });
+      query.$or.push({ 'shippingInfo.phone': { $regex: searchTerm, $options: 'i' } });
+    }
+    
+    // Thêm điều kiện lọc theo trạng thái
+    if (status) {
+      query.status = status;
+      console.log("Thêm điều kiện status:", status);
+    }
+    
+    // Thêm điều kiện lọc theo phương thức thanh toán
+    if (paymentMethod) {
+      query.paymentMethod = paymentMethod;
+      console.log("Thêm điều kiện paymentMethod:", paymentMethod);
+    }
+    
+    // Thêm điều kiện lọc theo trạng thái thanh toán
+    if (isPaid !== undefined) {
+      query.isPaid = isPaid === 'true';
+      console.log("Thêm điều kiện isPaid:", isPaid);
+    }
+    
+    // Thêm điều kiện lọc theo ngày
+    if (date) {
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      query.createdAt = { $gte: startDate, $lte: endDate };
+      console.log("Thêm điều kiện date:", date);
+    }
+    
+    console.log("Query cuối cùng:", JSON.stringify(query));
+    
+    // Tính toán phân trang
+    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    const limit = parseInt(pageSize);
+    
+    // Đếm tổng số đơn hàng thỏa mãn điều kiện
+    const totalCount = await Order.countDocuments(query);
+    console.log("Tổng số đơn hàng tìm thấy:", totalCount);
+    
+    // Lấy danh sách đơn hàng theo điều kiện và phân trang
+    const orders = await Order.find(query)
       .populate("userId")
       .populate('products.productId')
-      .sort({ createdAt: -1 });
+      .populate('branchId')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
     
-    res.json(orders);
+    console.log("Số đơn hàng trả về:", orders.length);
+    
+    // Lấy thống kê đơn hàng theo trạng thái
+    const stats = {
+      total: totalCount,
+      pending: await Order.countDocuments({ ...query, status: 'pending' }),
+      confirmed: await Order.countDocuments({ ...query, status: 'confirmed' }),
+      preparing: await Order.countDocuments({ ...query, status: 'preparing' }),
+      packaging: await Order.countDocuments({ ...query, status: 'packaging' }),
+      shipping: await Order.countDocuments({ ...query, status: 'shipping' }),
+      delivering: await Order.countDocuments({ ...query, status: 'delivering' }),
+      completed: await Order.countDocuments({ ...query, status: 'completed' }),
+      cancelled: await Order.countDocuments({ ...query, status: 'cancelled' }),
+      delivery_failed: await Order.countDocuments({ ...query, status: 'delivery_failed' }),
+      awaiting_payment: await Order.countDocuments({ ...query, status: 'awaiting_payment' }),
+    };
+    
+    res.status(200).json({
+      orders,
+      totalCount,
+      stats
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Lỗi khi lấy tất cả đơn hàng:", err);
+    res.status(500).json({ 
+      success: false,
+      error: err.message 
+    });
   }
 };
 
@@ -1822,3 +1937,327 @@ export const getDeliveryStats = async (req, res) => {
     });
   }
 }; 
+
+// Tạo đơn hàng mới
+export const createOrder = async (req, res) => {
+  try {
+    const {
+      userId,
+      products,
+      shippingAddress,
+      totalAmount,
+      paymentMethod,
+      note,
+      status,
+      branchId,
+      shippingInfo,
+    } = req.body;
+
+    // Đảm bảo đơn hàng luôn có branchId
+    let finalBranchId = branchId;
+    
+    // Nếu không có branchId, tìm chi nhánh gần nhất dựa trên địa chỉ giao hàng
+    if (!finalBranchId && shippingInfo && (shippingInfo.address || shippingAddress)) {
+      try {
+        const addressToUse = shippingInfo.address || shippingAddress;
+        const coordinates = shippingInfo?.coordinates || null;
+        
+        // Tìm chi nhánh gần nhất
+        const nearestBranch = await findNearestBranch(addressToUse, coordinates);
+        
+        if (nearestBranch) {
+          finalBranchId = nearestBranch._id;
+          console.log(`Đơn hàng được tự động gán cho chi nhánh: ${nearestBranch.name}`);
+        } else {
+          // Gán chi nhánh mặc định nếu không tìm thấy chi nhánh gần nhất
+          const defaultBranch = await Branch.findOne({});
+          if (defaultBranch) {
+            finalBranchId = defaultBranch._id;
+            console.log(`Không tìm thấy chi nhánh phù hợp, gán chi nhánh mặc định: ${defaultBranch.name}`);
+          }
+        }
+      } catch (error) {
+        console.error("Lỗi khi tìm chi nhánh gần nhất:", error);
+      }
+    }
+
+    // Kiểm tra các trường bắt buộc
+    if (!userId || !products || !totalAmount || !shippingAddress || !paymentMethod) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin cần thiết để tạo đơn hàng",
+      });
+    }
+
+    // Tạo mã đơn hàng ngẫu nhiên
+    const orderCode = generateOrderCode();
+
+    // Tạo đơn hàng mới
+    const newOrder = new Order({
+      userId,
+      products,
+      totalAmount,
+      shippingInfo: {
+        address: shippingAddress,
+        method: "standard",
+      },
+      paymentMethod,
+      status: status || "pending",
+      orderCode,
+      notes: note,
+      branchId: finalBranchId || null, // Thêm chi nhánh xử lý nếu có
+    });
+
+    // Lưu đơn hàng vào database
+    const savedOrder = await newOrder.save();
+
+    // Lấy thông tin chi tiết đơn hàng (populate userId và products.productId)
+    // Biến được sử dụng để gửi thông báo hoặc email (nếu cần)
+    await Order.findById(savedOrder._id)
+      .populate("userId", "firstName lastName email phone")
+      .populate("products.productId")
+      .populate("branchId"); // Thêm populate branchId
+
+    // Cập nhật số lượng sản phẩm và doanh số bán hàng
+    try {
+      for (const item of products) {
+        const product = await Product.findById(item.productId);
+        if (product) {
+          // Cập nhật số lượng tồn kho
+          const newStock = Math.max(0, product.productStock - item.quantity);
+          
+          // Cập nhật số lượng đã bán
+          const newSoldCount = (product.soldCount || 0) + item.quantity;
+          
+          await Product.findByIdAndUpdate(
+            item.productId,
+            { 
+              productStock: newStock,
+              soldCount: newSoldCount
+            }
+          );
+
+          // Cập nhật thống kê sản phẩm bán chạy
+          try {
+            await BestSellingProduct.updateSalesData(
+              item.productId, 
+              product, 
+              item.quantity, 
+              savedOrder._id
+            );
+          } catch (statsError) {
+            console.error("Lỗi khi cập nhật thống kê sản phẩm bán chạy:", statsError);
+          }
+        }
+      }
+    } catch (inventoryError) {
+      console.error("Lỗi khi cập nhật số lượng sản phẩm:", inventoryError);
+      // Không ảnh hưởng đến việc tạo đơn hàng
+    }
+
+    // Gửi thông báo đơn hàng mới qua Socket.IO (nếu có)
+    try {
+      sendOrderStatusNotification(
+        savedOrder._id, 
+        userId, 
+        "Đơn hàng mới", 
+        `Đơn hàng #${orderCode} đã được tạo thành công. Đơn hàng sẽ được xử lý sớm.`
+      );
+    } catch (notificationError) {
+      console.error("Lỗi khi gửi thông báo đơn hàng:", notificationError);
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Tạo đơn hàng thành công",
+      _id: savedOrder._id,
+      orderCode: savedOrder.orderCode,
+    });
+  } catch (error) {
+    console.error("Lỗi khi tạo đơn hàng:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi tạo đơn hàng",
+      error: error.message,
+    });
+  }
+};
+
+// Hàm lấy đơn hàng theo chi nhánh
+export const getOrdersByBranch = async (req, res) => {
+  try {
+    const { branchId } = req.params;
+    const { page = 1, pageSize = 10, searchTerm, status, paymentMethod, isPaid, date, nearby, radius = 10 } = req.query;
+    
+    if (!branchId) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Thiếu ID chi nhánh" 
+      });
+    }
+    
+    // Xây dựng query dựa trên các tham số
+    const query = { branchId };
+    
+    // Thêm điều kiện tìm kiếm nếu có
+    if (searchTerm) {
+      // Tìm kiếm theo mã đơn hàng, thông tin người dùng và thông tin giao hàng
+      query.$or = [
+        { orderCode: { $regex: searchTerm, $options: 'i' } },
+        { notes: { $regex: searchTerm, $options: 'i' } }
+      ];
+      
+      // Tìm kiếm theo thông tin người dùng (cần populate trước)
+      const usersWithSearchTerm = await mongoose.model('User').find({
+        $or: [
+          { firstName: { $regex: searchTerm, $options: 'i' } },
+          { lastName: { $regex: searchTerm, $options: 'i' } },
+          { phone: { $regex: searchTerm, $options: 'i' } },
+          { email: { $regex: searchTerm, $options: 'i' } }
+        ]
+      }).select('_id');
+      
+      if (usersWithSearchTerm.length > 0) {
+        const userIds = usersWithSearchTerm.map(user => user._id);
+        query.$or.push({ userId: { $in: userIds } });
+      }
+      
+      // Tìm kiếm trong thông tin giao hàng
+      query.$or.push({ 'shippingInfo.address': { $regex: searchTerm, $options: 'i' } });
+      query.$or.push({ 'shippingInfo.phone': { $regex: searchTerm, $options: 'i' } });
+    }
+    
+    // Thêm điều kiện lọc theo trạng thái
+    if (status) {
+      query.status = status;
+    }
+    
+    // Thêm điều kiện lọc theo phương thức thanh toán
+    if (paymentMethod) {
+      query.paymentMethod = paymentMethod;
+    }
+    
+    // Thêm điều kiện lọc theo trạng thái thanh toán
+    if (isPaid !== undefined) {
+      query.isPaid = isPaid === 'true';
+    }
+    
+    // Thêm điều kiện lọc theo ngày
+    if (date) {
+      const startDate = new Date(date);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date(date);
+      endDate.setHours(23, 59, 59, 999);
+      
+      query.createdAt = { $gte: startDate, $lte: endDate };
+    }
+    
+    // Xử lý lọc đơn hàng gần chi nhánh
+    if (nearby === 'true') {
+      const branch = await Branch.findById(branchId);
+      if (!branch || !branch.location || !branch.location.coordinates) {
+        return res.status(400).json({
+          success: false,
+          message: "Chi nhánh không có thông tin vị trí"
+        });
+      }
+      
+      // Tìm các đơn hàng trong bán kính (radius) km từ chi nhánh
+      const radiusInKm = parseInt(radius) || 10;
+      
+      try {
+        // Nếu đơn hàng có lưu tọa độ giao hàng
+        if (branch.location && branch.location.type === 'Point') {
+          // Sử dụng MongoDB Geospatial query nếu có lưu tọa độ
+          const ordersInRadius = await Order.find({
+            'deliveryLocation': {
+              $near: {
+                $geometry: {
+                  type: 'Point',
+                  coordinates: branch.location.coordinates
+                },
+                $maxDistance: radiusInKm * 1000 // Convert km to meters
+              }
+            }
+          }).select('_id');
+          
+          if (ordersInRadius && ordersInRadius.length > 0) {
+            const orderIds = ordersInRadius.map(order => order._id);
+            // Thêm điều kiện vào query
+            query._id = { $in: orderIds };
+          } else {
+            // Nếu không tìm thấy đơn hàng trong bán kính, trả về danh sách trống
+            return res.status(200).json({
+              orders: [],
+              totalCount: 0,
+              stats: {
+                total: 0,
+                pending: 0,
+                confirmed: 0,
+                preparing: 0,
+                packaging: 0,
+                shipping: 0,
+                delivering: 0,
+                completed: 0,
+                cancelled: 0,
+                delivery_failed: 0,
+                awaiting_payment: 0
+              }
+            });
+          }
+        } else {
+          // Nếu không có tọa độ, có thể sử dụng phương pháp khác để lọc
+          // Ví dụ: lọc theo mã bưu điện, quận/huyện, v.v.
+          console.log("Chi nhánh không có tọa độ, không thể lọc theo bán kính");
+        }
+      } catch (error) {
+        console.error("Lỗi khi lọc đơn hàng theo bán kính:", error);
+        // Không throw error, tiếp tục xử lý với query hiện tại
+      }
+    }
+    
+    // Tính toán phân trang
+    const skip = (parseInt(page) - 1) * parseInt(pageSize);
+    const limit = parseInt(pageSize);
+    
+    // Đếm tổng số đơn hàng thỏa mãn điều kiện
+    const totalCount = await Order.countDocuments(query);
+    
+    // Lấy danh sách đơn hàng theo điều kiện và phân trang
+    const orders = await Order.find(query)
+      .populate('userId')
+      .populate('products.productId')
+      .populate('branchId')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    
+    // Lấy thống kê đơn hàng theo trạng thái
+    const stats = {
+      total: totalCount,
+      pending: await Order.countDocuments({ ...query, status: 'pending' }),
+      confirmed: await Order.countDocuments({ ...query, status: 'confirmed' }),
+      preparing: await Order.countDocuments({ ...query, status: 'preparing' }),
+      packaging: await Order.countDocuments({ ...query, status: 'packaging' }),
+      shipping: await Order.countDocuments({ ...query, status: 'shipping' }),
+      delivering: await Order.countDocuments({ ...query, status: 'delivering' }),
+      completed: await Order.countDocuments({ ...query, status: 'completed' }),
+      cancelled: await Order.countDocuments({ ...query, status: 'cancelled' }),
+      delivery_failed: await Order.countDocuments({ ...query, status: 'delivery_failed' }),
+      awaiting_payment: await Order.countDocuments({ ...query, status: 'awaiting_payment' }),
+    };
+    
+    res.status(200).json({
+      orders,
+      totalCount,
+      stats
+    });
+  } catch (err) {
+    console.error("Lỗi khi lấy đơn hàng theo chi nhánh:", err);
+    res.status(500).json({ 
+      success: false,
+      error: err.message 
+    });
+  }
+};

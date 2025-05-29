@@ -1,4 +1,4 @@
-import Admin from '../Model/Admin.js';
+import Admin from '../Model/adminModel.js';
 import dotenv from 'dotenv';
 
 // Cấu hình dotenv

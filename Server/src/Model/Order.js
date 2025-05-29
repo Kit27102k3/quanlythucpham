@@ -26,7 +26,11 @@ const orderSchema = new mongoose.Schema(
     orderCode: { type: String },
     notes: { type: String },
     isPaid: { type: Boolean, default: false },
-    completedAt: { type: Date }
+    completedAt: { type: Date },
+    branchId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "Branch" 
+    }
   },
   { timestamps: true }
 );
