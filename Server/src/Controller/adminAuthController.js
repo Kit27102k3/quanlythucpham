@@ -71,6 +71,7 @@ export const adminLogin = async (req, res) => {
             role: admin.role,
             permissions: admin.permissions,
             fullName: admin.fullName,
+            branchId: admin.branchId || null,
             message: "Đăng nhập thành công"
         });
     } catch (error) {

@@ -22,9 +22,55 @@ const OrderFilters = ({
   nearbyOrdersRadius,
   setNearbyOrdersRadius,
 }) => {
-  console.log("userRole in OrderFilters:", userRole);
-  console.log("branches in OrderFilters:", branches);
-  console.log("userBranch in OrderFilters:", userBranch);
+  let branchFilterField = null;
+  
+  if (userRole === "admin") {
+    branchFilterField = (
+      <div className="flex items-center gap-3 bg-white p-2 rounded-md border border-gray-200">
+        <label className="text-sm font-medium text-gray-700 whitespace-nowrap min-w-[100px]">
+          Chi nhánh:
+        </label>
+        <Dropdown
+          value={filters.branchFilter}
+          options={branches}
+          onChange={handleBranchChange}
+          optionLabel="name"
+          optionValue="_id"
+          placeholder="Tất cả chi nhánh"
+          className="w-full"
+        />
+      </div>
+    );
+  } else if (userRole === "manager") {
+    branchFilterField = (
+      <div className="flex flex-col gap-2 bg-blue-50 p-3 rounded-md border-2 border-blue-300 shadow-md">
+        <div className="flex items-center">
+          <label className="text-sm font-bold text-blue-700 whitespace-nowrap min-w-[100px] flex items-center">
+            <i className="pi pi-shield mr-2"></i>
+            Chi nhánh:
+          </label>
+          <div className="flex-1 py-2 px-3 bg-white rounded-md text-blue-700 font-medium border border-blue-300 flex items-center">
+            <i className="pi pi-map-marker mr-2 text-blue-500"></i>
+            <span className="font-semibold">{userBranch?.name || "Chi nhánh của bạn"}</span>
+            <span className="ml-2 text-xs text-white bg-blue-500 px-2 py-1 rounded-full">
+              Manager
+            </span>
+          </div>
+        </div>
+        <div className="bg-blue-100 p-2 rounded-md border border-blue-200 text-sm text-blue-800">
+          <p className="flex items-center">
+            <i className="pi pi-info-circle mr-2"></i>
+            <span>Bạn chỉ có thể xem và quản lý đơn hàng của chi nhánh này</span>
+          </p>
+          {userBranch?.address && (
+            <p className="mt-1 pl-5 text-blue-700 italic text-xs">
+              Địa chỉ: {userBranch.address}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-6">
@@ -115,33 +161,9 @@ const OrderFilters = ({
           />
         </div>
 
-        {userRole === "admin" ? (
-          <div className="flex items-center gap-3 bg-white p-2 rounded-md border border-gray-200">
-            <label className="text-sm font-medium text-gray-700 whitespace-nowrap min-w-[100px]">
-              Chi nhánh:
-            </label>
-            <Dropdown
-              value={filters.branchFilter}
-              options={branches}
-              onChange={handleBranchChange}
-              optionLabel="name"
-              optionValue="_id"
-              placeholder="Tất cả chi nhánh"
-              className="w-full"
-            />
-          </div>
-        ) : userRole === "manager" && userBranch ? (
-          <div className="flex items-center gap-3 bg-white p-2 rounded-md border border-gray-200">
-            <label className="text-sm font-medium text-gray-700 whitespace-nowrap min-w-[100px]">
-              Chi nhánh:
-            </label>
-            <div className="flex-1 py-2 px-3 bg-gray-100 rounded-md text-blue-700 font-medium border border-blue-200">
-              {userBranch?.name || "Không rõ chi nhánh"}
-            </div>
-          </div>
-        ) : null}
+        {branchFilterField}
 
-        {userRole === "manager" && userBranch && (
+        {userRole === "manager" && (
           <div className="flex items-center gap-3 bg-white p-2 rounded-md border border-gray-200 col-span-1 md:col-span-2">
             <div className="flex flex-col w-full gap-2">
               <div className="flex items-center gap-2">

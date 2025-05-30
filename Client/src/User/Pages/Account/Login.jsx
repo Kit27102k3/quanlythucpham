@@ -260,7 +260,7 @@ const Login = () => {
       localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("userId", userId);
       localStorage.setItem("userRole", role.toLowerCase());
-
+      localStorage.setItem("branchId", userData.branchId || null);
       if (userData.isBlocked !== undefined) {
         localStorage.setItem("isBlocked", userData.isBlocked);
       }

@@ -52,6 +52,7 @@ export const adminLogin = async (req, res) => {
       role: admin.role,
       permissions: admin.permissions,
       fullName: admin.fullName,
+      branchId: admin.branchId || null,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

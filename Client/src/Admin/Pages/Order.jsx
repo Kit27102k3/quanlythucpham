@@ -43,20 +43,70 @@ StatusTransitionInfo.displayName = "StatusTransitionInfo";
 
 // Custom hook to safely access user data
 const useSafeAuth = () => {
-  const [user, setUser] = useState({ role: "admin" });
-  const [userRole, setUserRole] = useState("admin");
+  const [user, setUser] = useState({});
+  const [userRole, setUserRole] = useState("");
+  const [branchId, setBranchId] = useState(null);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   // Effect to set user data from localStorage
   useEffect(() => {
     try {
+      // Debug: log all localStorage keys for debugging
+      console.log("All localStorage keys available:");
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        console.log(`${key}: ${localStorage.getItem(key)}`);
+      }
+
       // Try to get user from localStorage
-      const localUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const localRole = localStorage.getItem("userRole") || "admin";
+      const localUserStr = localStorage.getItem("user");
+      console.log("Raw user string from localStorage:", localUserStr);
+      
+      let localUser = {};
+      try {
+        localUser = JSON.parse(localUserStr || "{}");
+      } catch (parseError) {
+        console.error("Error parsing user JSON:", parseError);
+      }
+      
+      const localRole = localStorage.getItem("userRole");
+
+      console.log("LocalUser from localStorage:", localUser);
+      console.log("UserRole from localStorage:", localRole);
+      
+      // Special handling for branch ID extraction
+      let extractedBranchId = null;
+      
+      // Case 1: branchId is an object with _id
+      if (localUser.branchId && typeof localUser.branchId === 'object' && localUser.branchId._id) {
+        extractedBranchId = localUser.branchId._id;
+        console.log("Found branchId as object in user:", extractedBranchId);
+        
+        // Also store the branch name if available
+        if (localUser.branchId.name) {
+          localStorage.setItem("branchName", localUser.branchId.name);
+          console.log("Saved branch name to localStorage:", localUser.branchId.name);
+        }
+      } 
+      // Case 2: branchId is a string
+      else if (localUser.branchId && typeof localUser.branchId === 'string') {
+        extractedBranchId = localUser.branchId;
+        console.log("Found branchId as string in user:", extractedBranchId);
+      }
+      
+      // Save the branchId to localStorage for easier access
+      if (extractedBranchId) {
+        localStorage.setItem("branchId", extractedBranchId);
+        console.log("Saved branchId to localStorage:", extractedBranchId);
+        setBranchId(extractedBranchId);
+      }
 
       if (localUser && Object.keys(localUser).length > 0) {
         setUser(localUser);
+      }
+      
+      if (localRole) {
         setUserRole(localRole);
       }
     } catch (e) {
@@ -66,12 +116,21 @@ const useSafeAuth = () => {
     }
   }, []);
 
-  return { user, userRole, hasError, errorMessage };
+  return { user, userRole, branchId, hasError, errorMessage };
 };
 
 const OrderAdmin = () => {
   // Get user data safely
-  const { user, userRole, hasError, errorMessage } = useSafeAuth();
+  const { user, userRole, branchId, hasError, errorMessage } = useSafeAuth();
+  console.log("Current userRole:", userRole, "from localStorage:", localStorage.getItem("userRole"));
+  console.log("Extracted branchId:", branchId);
+  
+  // If userRole is still empty, try reading directly from localStorage again
+  const effectiveUserRole = userRole || localStorage.getItem("userRole") || "";
+  
+  // Set initial branch filter for managers
+  const initialBranchFilter = effectiveUserRole === "manager" ? 
+    (branchId || localStorage.getItem("branchId") || "") : "";
   
   // State for orders and UI
   const [orders, setOrders] = useState([]);
@@ -104,7 +163,7 @@ const OrderAdmin = () => {
     paymentMethodFilter: "",
     paymentStatusFilter: "all",
     dateFilter: null,
-    branchFilter: "",
+    branchFilter: initialBranchFilter,
     nearbyFilter: false,
   });
 
@@ -141,48 +200,197 @@ const OrderAdmin = () => {
   // Load user's branch if manager
   useEffect(() => {
     const loadUserBranch = async () => {
-      if (userRole === "manager" && user?.branchId) {
+      if (effectiveUserRole === "manager") {
         try {
-          const response = await branchesApi.getBranchById(user.branchId);
+          // First check the extracted branchId from useSafeAuth
+          let branchIdToUse = branchId;
+          
+          if (!branchIdToUse) {
+            console.log("No branchId from useSafeAuth, checking other sources");
+            
+            // Check all possible locations for branch ID
+            console.log("Looking for manager branch ID in all possible locations");
+            
+            // Helper function to safely access nested properties
+            const getBranchId = (obj) => {
+              if (!obj) return null;
+              
+              // If branchId is directly an object with _id
+              if (obj.branchId && typeof obj.branchId === 'object' && obj.branchId._id) {
+                return obj.branchId._id;
+              }
+              
+              // If branchId is directly a string
+              if (obj.branchId && typeof obj.branchId === 'string') {
+                return obj.branchId;
+              }
+              
+              // If branch is an object with _id
+              if (obj.branch && typeof obj.branch === 'object' && obj.branch._id) {
+                return obj.branch._id;
+              }
+              
+              // If branch is directly a string
+              if (obj.branch && typeof obj.branch === 'string') {
+                return obj.branch;
+              }
+              
+              return null;
+            };
+            
+            // Check all possible sources
+            
+            // First check localStorage directly for our saved branchId
+            branchIdToUse = localStorage.getItem("branchId");
+            if (branchIdToUse) {
+              console.log("Found branchId in localStorage:", branchIdToUse);
+            }
+            
+            // Check user object
+            if (!branchIdToUse) {
+              branchIdToUse = getBranchId(user);
+              if (branchIdToUse) {
+                console.log("Found branchId in user object:", branchIdToUse);
+              }
+            }
+            
+            // Check localStorage for other keys
+            if (!branchIdToUse) {
+              // Try all possible localStorage keys
+              const possibleKeys = ["userBranchId", "branch", "userBranch"];
+              for (const key of possibleKeys) {
+                const value = localStorage.getItem(key);
+                if (value) {
+                  console.log(`Found branch ID in localStorage key '${key}':`, value);
+                  branchIdToUse = value;
+                  break;
+                }
+              }
+            }
+            
+            // Check parsed user from localStorage
+            if (!branchIdToUse) {
+              try {
+                const localStorageUser = JSON.parse(localStorage.getItem("user") || "{}");
+                branchIdToUse = getBranchId(localStorageUser);
+                if (branchIdToUse) {
+                  console.log("Found branchId in localStorage user object:", branchIdToUse);
+                }
+              } catch (e) {
+                console.error("Error parsing user from localStorage:", e);
+              }
+            }
+          } else {
+            console.log("Using branchId from useSafeAuth:", branchIdToUse);
+          }
+          
+          // If we found a branchId, load the branch data
+          if (branchIdToUse) {
+            console.log("Loading branch data for manager with ID:", branchIdToUse);
+            
+            // Check if we have a stored branch name first for immediate UI feedback
+            const storedBranchName = localStorage.getItem("branchName");
+            if (storedBranchName) {
+              console.log("Using stored branch name for immediate display:", storedBranchName);
+              const tempBranch = { _id: branchIdToUse, name: storedBranchName };
+              setUserBranch(tempBranch);
+              setBranches([tempBranch]);
+            }
+            
+            // Regardless of stored name, try to load full branch data from API
+            try {
+              const response = await branchesApi.getBranchById(branchIdToUse);
+              
+              if (response && response.data) {
+                console.log("Manager's branch loaded:", response.data.name);
           setUserBranch(response.data);
+                // Also add this branch to the branches list for the dropdown
+                setBranches([response.data]);
+                
+                // Save the branch name to localStorage for future use
+                if (response.data.name) {
+                  localStorage.setItem("branchName", response.data.name);
+                }
+                
           // Auto-set branch filter for managers
           setFilters((prev) => ({
             ...prev,
-            branchFilter: user.branchId,
-          }));
+                  branchFilter: branchIdToUse,
+                }));
+              } else {
+                console.error("Branch data is empty or invalid");
+                
+                // If the API call failed, create a placeholder branch with the ID we have
+                // This ensures managers can still see their orders even if branch details can't be loaded
+                const placeholderBranch = { _id: branchIdToUse, name: "Chi nhánh của bạn" };
+                setUserBranch(placeholderBranch);
+                setBranches([placeholderBranch]);
+                setFilters((prev) => ({
+                  ...prev,
+                  branchFilter: branchIdToUse,
+                }));
+              }
         } catch (error) {
-          console.error("Error loading user branch:", error);
+              console.error("Error loading branch data:", error);
+              
+              // If API call fails, still use a placeholder
+              const placeholderBranch = { _id: branchIdToUse, name: storedBranchName || "Chi nhánh của bạn" };
+              setUserBranch(placeholderBranch);
+              setBranches([placeholderBranch]);
+              
+              // Make sure branch filter is set even if API call fails
+              setFilters((prev) => ({
+                ...prev,
+                branchFilter: branchIdToUse,
+              }));
+            }
+          } else {
+            console.error("Could not find any branch ID for manager from any source");
+            
+            // Last resort: Use a fake branch ID for the currently logged in manager
+            // This is a fallback to make sure they can see some orders if no branch ID is found
+            console.log("Using userId as fallback branch ID for manager");
+            const userId = localStorage.getItem("userId");
+            
+            if (userId) {
+              const placeholderBranch = { _id: userId, name: "Chi nhánh của bạn" };
+              setUserBranch(placeholderBranch);
+              setBranches([placeholderBranch]);
+              setFilters((prev) => ({
+                ...prev,
+                branchFilter: userId,
+              }));
+            }
+          }
+        } catch (error) {
+          console.error("Error in manager branch loading process:", error);
+          toast.error("Không thể tải thông tin chi nhánh", {
+            description: "Đã xảy ra lỗi khi tải thông tin chi nhánh",
+            position: "top-right",
+          });
         }
-      }
-    };
-
-    const loadBranches = async () => {
-      if (userRole === "admin") {
+      } else if (effectiveUserRole === "admin") {
         try {
           const response = await branchesApi.getAllBranches();
-
-          // Check if response.data is iterable (array)
-          if (response.data && Array.isArray(response.data)) {
+          if (response && response.data && Array.isArray(response.data)) {
             setBranches([
               { _id: "", name: "Tất cả chi nhánh" },
               ...response.data,
             ]);
           } else {
-            console.warn("Branches data is not an array:", response.data);
-            // Set default empty branches list with just the "All branches" option
-            setBranches([{ _id: "", name: "Tất cả chi nhánh" }]);
+            console.error("Invalid branch data format:", response);
           }
         } catch (error) {
           console.error("Error loading branches:", error);
-          // Set default empty branches list
-          setBranches([{ _id: "", name: "Tất cả chi nhánh" }]);
         }
       }
     };
 
+    // Only run these functions if we have a userRole
+    if (effectiveUserRole) {
     loadUserBranch();
-    loadBranches();
-  }, [userRole, user]);
+    }
+  }, [effectiveUserRole, user]);
 
   // Load orders
   const loadOrders = useCallback(
@@ -192,8 +400,91 @@ const OrderAdmin = () => {
         let response;
         const pageSize = 10; // Fixed page size to 10
 
-        // Determine which API to call based on user role and filters
-        if (userRole === "manager" && filters.branchFilter) {
+        // For managers, always use their branch ID
+        if (effectiveUserRole === "manager") {
+          // Use the most reliable branch ID source - first check filters as it's the most recently set
+          let branchId = filters.branchFilter;
+          
+          // If no branch ID in filters, check userBranch
+          if (!branchId && userBranch && userBranch._id) {
+            branchId = userBranch._id;
+            console.log("Using branch ID from userBranch:", branchId);
+          }
+          
+          // If still no branch ID, try to find it from user object or localStorage
+          if (!branchId) {
+            // Function to get branch ID from an object
+            const getBranchId = (obj) => {
+              if (!obj) return null;
+              if (obj.branchId && typeof obj.branchId === 'object' && obj.branchId._id) {
+                return obj.branchId._id;
+              }
+              if (obj.branchId && typeof obj.branchId === 'string') {
+                return obj.branchId;
+              }
+              if (obj.branch && typeof obj.branch === 'object' && obj.branch._id) {
+                return obj.branch._id;
+              }
+              if (obj.branch && typeof obj.branch === 'string') {
+                return obj.branch;
+              }
+              return null;
+            };
+            
+            // Try user object
+            branchId = getBranchId(user);
+            
+            // Try localStorage keys
+            if (!branchId) {
+              const possibleKeys = ["branchId", "userBranchId", "branch", "userBranch"];
+              for (const key of possibleKeys) {
+                const value = localStorage.getItem(key);
+                if (value) {
+                  branchId = value;
+                  break;
+                }
+              }
+            }
+            
+            // Last resort - use userId
+            if (!branchId) {
+              branchId = localStorage.getItem("userId");
+              console.log("Using userId as fallback branch ID:", branchId);
+            }
+          }
+          
+          if (!branchId) {
+            console.error("Failed to find any branch ID for manager");
+            toast.error("Không thể tìm thấy chi nhánh", {
+              description: "Không thể xác định chi nhánh của bạn để tải đơn hàng",
+              position: "top-right",
+            });
+            setLoading(false);
+            return;
+          }
+          
+          console.log("Manager loading orders for branch:", branchId);
+          
+          response = await orderApi.getOrdersByBranch(
+            branchId,
+            page,
+            pageSize,
+            filters.searchTerm,
+            filters.statusFilter,
+            filters.paymentMethodFilter,
+            filters.paymentStatusFilter === "paid"
+              ? true
+              : filters.paymentStatusFilter === "unpaid"
+              ? false
+              : undefined,
+            filters.dateFilter
+              ? new Date(filters.dateFilter).toISOString()
+              : undefined,
+            filters.nearbyFilter
+          );
+        } else if (effectiveUserRole === "admin" && filters.branchFilter) {
+          // Admin filtering by specific branch
+          console.log("Admin loading orders for branch:", filters.branchFilter);
           response = await orderApi.getOrdersByBranch(
             filters.branchFilter,
             page,
@@ -212,6 +503,9 @@ const OrderAdmin = () => {
             filters.nearbyFilter
           );
         } else {
+          // Admin with no branch filter - get all orders
+          console.log("Admin loading all orders");
+          
           response = await orderApi.getAllOrders(
             page,
             pageSize,
@@ -226,7 +520,7 @@ const OrderAdmin = () => {
             filters.dateFilter
               ? new Date(filters.dateFilter).toISOString()
               : undefined,
-            filters.branchFilter || undefined
+            undefined
           );
         }
 
@@ -341,7 +635,7 @@ const OrderAdmin = () => {
         setLoading(false);
       }
     },
-    [userRole, filters]
+    [effectiveUserRole, filters]
   );
 
   // Load orders when filters change
@@ -359,27 +653,58 @@ const OrderAdmin = () => {
   // Clear filters
   const clearFilters = () => {
     // For managers, keep their branch filter
-    if (userRole === "manager") {
+    if (effectiveUserRole === "manager") {
+      // Get the most reliable branch ID from various sources
+      let managerBranchId = userBranch?._id;
+      
+      if (!managerBranchId) {
+        // Try to get from user object
+        if (user?.branchId) {
+          managerBranchId = typeof user.branchId === 'object' ? user.branchId._id : user.branchId;
+        }
+        
+        // Try localStorage
+        if (!managerBranchId) {
+          const possibleKeys = ["branchId", "userBranchId", "branch", "userBranch"];
+          for (const key of possibleKeys) {
+            const value = localStorage.getItem(key);
+            if (value) {
+              managerBranchId = value;
+              break;
+            }
+          }
+        }
+        
+        // Last resort - use userId
+        if (!managerBranchId) {
+          managerBranchId = localStorage.getItem("userId");
+        }
+      }
+      
       setFilters({
         searchTerm: "",
         statusFilter: "",
         paymentMethodFilter: "",
-        paymentStatusFilter: "",
+        paymentStatusFilter: "all",
         dateFilter: null,
-        branchFilter: user?.branchId || "",
+        branchFilter: managerBranchId || "",
         nearbyFilter: false,
       });
     } else {
+      // For admin, reset all filters including branch
       setFilters({
         searchTerm: "",
         statusFilter: "",
         paymentMethodFilter: "",
-        paymentStatusFilter: "",
+        paymentStatusFilter: "all",
         dateFilter: null,
         branchFilter: "",
         nearbyFilter: false,
       });
     }
+    
+    // Reset to first page
+    setCurrentPage(1);
   };
 
   // Handle branch filter change
@@ -673,7 +998,7 @@ const OrderAdmin = () => {
           { label: "Chưa thanh toán", value: "unpaid" },
         ]}
         clearFilters={clearFilters}
-        userRole={userRole}
+        userRole={effectiveUserRole}
         userBranch={userBranch}
         branches={branches}
         handleBranchChange={handleBranchChange}
@@ -706,11 +1031,11 @@ const OrderAdmin = () => {
         handleMarkAsPaid={handleMarkAsPaid}
         handleUpdateStatus={handleUpdateStatus}
         ORDER_STATUSES={ORDER_STATUSES}
-        showBulkActions={userRole !== "user"}
+        showBulkActions={effectiveUserRole !== "user"}
         setBulkStatus={setBulkStatus}
         bulkStatus={bulkStatus}
         openBulkConfirm={openBulkConfirm}
-        userRole={userRole}
+        userRole={effectiveUserRole}
       />
 
       {/* Các dialog */}
@@ -769,25 +1094,27 @@ const OrderAdmin = () => {
       />
 
       {/* Thông tin chi nhánh */}
+      {userBranch && (
       <div className="mt-8 p-4 bg-white rounded-xl shadow-sm border border-gray-200">
         <div className="flex items-center">
           <i className="pi pi-map-marker text-blue-500 mr-2"></i>
           <div>
-            {userRole === "manager" ? (
+              {effectiveUserRole === "manager" ? (
               <span className="font-medium">
-                Quản lý chi nhánh <strong>{userBranch?.name}</strong>
+                  Quản lý chi nhánh <strong>{userBranch?.name || "Không xác định"}</strong>
                 {userBranch?.address && ` - ${userBranch.address}`}
               </span>
             ) : (
               <div>
-                {showOnlyBranchOrders ? (
+                  {filters.branchFilter ? (
                   <span>
-                    Đang hiển thị đơn hàng của chi nhánh: {userBranch?.name}
+                      Đang hiển thị đơn hàng của chi nhánh: {
+                        branches.find(b => b._id === filters.branchFilter)?.name || filters.branchFilter
+                      }
                   </span>
                 ) : (
                   <span>
-                    Bạn đang xem các đơn hàng thuộc phạm vi chi nhánh của bạn
-                    (bán kính {nearbyOrdersRadius}km)
+                      Đang hiển thị tất cả đơn hàng trong hệ thống
                   </span>
                 )}
               </div>
@@ -795,6 +1122,7 @@ const OrderAdmin = () => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };

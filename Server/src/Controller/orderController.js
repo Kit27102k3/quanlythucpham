@@ -2095,8 +2095,7 @@ export const getOrdersByBranch = async (req, res) => {
         message: "Thiếu ID chi nhánh" 
       });
     }
-    
-    // Xây dựng query dựa trên các tham số
+    // Truy vấn branchId là string, KHÔNG convert sang ObjectId
     const query = { branchId };
     
     // Thêm điều kiện tìm kiếm nếu có
