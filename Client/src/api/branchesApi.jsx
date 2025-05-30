@@ -14,13 +14,16 @@ const branchesApi = {
       }
       const response = await axios.get(API_URL, { headers });
       
-      // If the response doesn't have data property or it's not an array, return an empty array
-      if (!response.data || !Array.isArray(response.data)) {
+      if (response.data && Array.isArray(response.data.data)) {
+        // Trả về mảng chi nhánh trực tiếp
+        return response.data.data;
+      } else if (Array.isArray(response.data)) {
+        // Trường hợp API trả về mảng trực tiếp
+        return response.data;
+      } else {
         console.warn("Branches API returned invalid data:", response.data);
-        return { data: [] };
+        return [];
       }
-      
-      return response;
     } catch (error) {
       console.error("Lỗi khi lấy danh sách chi nhánh:", error);
       // Return a structured response with empty data array instead of throwing

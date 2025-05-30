@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Trash2,
   Lock,
@@ -8,7 +8,7 @@ import {
   UserX,
   UserCheck,
 } from "lucide-react";
-import { API_BASE_URL } from '../../config/apiConfig';
+import { API_BASE_URL } from "../../config/apiConfig";
 import { Link } from "react-router-dom";
 import Pagination from "../../utils/Paginator";
 
@@ -29,8 +29,6 @@ function Customers() {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          // Thêm token xác thực nếu cần
-          // 'Authorization': `Bearer ${token}`
         },
       });
 
@@ -73,8 +71,6 @@ function Customers() {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            // Thêm token xác thực nếu cần
-            // 'Authorization': `Bearer ${token}`
           },
         });
 
@@ -98,15 +94,16 @@ function Customers() {
       const user = users.find((u) => u._id === userId);
       const isBlocked = !user.isBlocked;
 
-      const response = await fetch(`${API_BASE_URL}/auth/profile/block/${userId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          // Thêm token xác thực nếu cần
-          // 'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ isBlocked }),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/auth/profile/block/${userId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ isBlocked }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Thao tác thất bại");
@@ -160,9 +157,15 @@ function Customers() {
             <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="bg-gray-100 text-gray-600 uppercase text-xs md:text-sm leading-normal">
-                  <th className="py-2 md:py-3 px-2 md:px-4 text-left">Thông Tin</th>
-                  <th className="py-2 md:py-3 px-2 md:px-4 text-center">Trạng Thái</th>
-                  <th className="py-2 md:py-3 px-2 md:px-4 text-right">Hành Động</th>
+                  <th className="py-2 md:py-3 px-2 md:px-4 text-left">
+                    Thông Tin
+                  </th>
+                  <th className="py-2 md:py-3 px-2 md:px-4 text-center">
+                    Trạng Thái
+                  </th>
+                  <th className="py-2 md:py-3 px-2 md:px-4 text-right">
+                    Hành Động
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -215,11 +218,17 @@ function Customers() {
                         <button
                           onClick={() => handleBlock(user._id)}
                           className={`${
-                            user.isBlocked ? "text-green-500 hover:bg-green-100" : "text-yellow-500 hover:bg-yellow-100"
+                            user.isBlocked
+                              ? "text-green-500 hover:bg-green-100"
+                              : "text-yellow-500 hover:bg-yellow-100"
                           } p-1 md:p-2 rounded-full transition`}
                           title={user.isBlocked ? "Bỏ chặn" : "Chặn"}
                         >
-                          {user.isBlocked ? <Unlock className="h-4 w-4 md:h-5 md:w-5" /> : <Lock className="h-4 w-4 md:h-5 md:w-5" />}
+                          {user.isBlocked ? (
+                            <Unlock className="h-4 w-4 md:h-5 md:w-5" />
+                          ) : (
+                            <Lock className="h-4 w-4 md:h-5 md:w-5" />
+                          )}
                         </button>
                         <button
                           onClick={() => handleDelete(user._id)}
@@ -234,7 +243,10 @@ function Customers() {
                 ))}
                 {filteredUsers.length === 0 && (
                   <tr>
-                    <td colSpan="3" className="py-8 text-center text-gray-500 text-sm md:text-base">
+                    <td
+                      colSpan="3"
+                      className="py-8 text-center text-gray-500 text-sm md:text-base"
+                    >
                       Không tìm thấy khách hàng
                     </td>
                   </tr>
@@ -242,7 +254,7 @@ function Customers() {
               </tbody>
             </table>
           </div>
-          
+
           {filteredUsers.length > 0 && (
             <div className="mt-4 md:mt-6">
               <Pagination

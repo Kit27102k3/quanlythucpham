@@ -202,6 +202,10 @@ const privateRoutes = [
     page: OrderAdmin,
   },
   {
+    path: "/admin/orders/:id",
+    page: OrderAdmin,
+  },
+  {
     path: "/admin/reviews",
     page: Reviews,
   },
@@ -218,9 +222,8 @@ const privateRoutes = [
     page: Employees,
   },
   {
-    path: "/admin/customers/details/:id",
+    path: "/admin/customers/:id",
     page: CustomerDetails,
-    layout: null,
   },
 
   {

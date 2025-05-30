@@ -1,30 +1,35 @@
 import { Button } from "primereact/button";
-import PropTypes from 'prop-types';
+import PropTypes from "prop-types";
 
 // Dialog xem chi tiết đơn hàng
-export const ViewOrderDialog = ({ 
-  viewOrder, 
-  setViewOrder, 
-  formatCurrency, 
-  formatDate, 
-  getStatusColor, 
-  getStatusText, 
-  getStatusIcon, 
-  getPaymentMethodText, 
+export const ViewOrderDialog = ({
+  viewOrder,
+  setViewOrder,
+  formatCurrency,
+  formatDate,
+  getStatusColor,
+  getStatusText,
+  getStatusIcon,
+  getPaymentMethodText,
   ORDER_STATUSES,
-  openUpdateStatusDialog
+  openUpdateStatusDialog,
 }) => {
   if (!viewOrder) return null;
   return (
     <div className="fixed inset-0 bg-opacity-30 backdrop-blur-xs flex items-center justify-center z-50 overflow-y-auto">
       <div className="bg-white rounded-xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto m-4">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Chi tiết đơn hàng #{viewOrder._id.slice(-6).toUpperCase()}</h2>
-          <button onClick={() => setViewOrder(null)} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100">
+          <h2 className="text-xl font-bold">
+            Chi tiết đơn hàng #{viewOrder._id.slice(-6).toUpperCase()}
+          </h2>
+          <button
+            onClick={() => setViewOrder(null)}
+            className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
+          >
             <i className="pi pi-times"></i>
           </button>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           {/* Thông tin khách hàng */}
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
@@ -35,23 +40,33 @@ export const ViewOrderDialog = ({
             <div className="space-y-2">
               <div className="flex">
                 <span className="text-gray-500 w-32">Tên:</span>
-                <span className="font-medium">{viewOrder.userId?.firstName + ' ' + viewOrder.userId?.lastName || 'N/A'}</span>
+                <span className="font-medium">
+                  {viewOrder.userId?.firstName +
+                    " " +
+                    viewOrder.userId?.lastName || "N/A"}
+                </span>
               </div>
               <div className="flex">
                 <span className="text-gray-500 w-32">Email:</span>
-                <span className="font-medium">{viewOrder.userId?.email || 'N/A'}</span>
+                <span className="font-medium">
+                  {viewOrder.userId?.email || "N/A"}
+                </span>
               </div>
               <div className="flex">
                 <span className="text-gray-500 w-32">Số điện thoại:</span>
-                <span className="font-medium">{viewOrder.shippingInfo?.phone || 'N/A'}</span>
+                <span className="font-medium">
+                  {viewOrder.shippingInfo?.phone || "N/A"}
+                </span>
               </div>
               <div className="flex">
                 <span className="text-gray-500 w-32">Địa chỉ:</span>
-                <span className="font-medium">{viewOrder.shippingInfo?.address || 'N/A'}</span>
+                <span className="font-medium">
+                  {viewOrder.shippingInfo?.address || "N/A"}
+                </span>
               </div>
             </div>
           </div>
-          
+
           {/* Thông tin đơn hàng */}
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
             <h3 className="font-medium text-blue-700 mb-3 flex items-center">
@@ -61,34 +76,54 @@ export const ViewOrderDialog = ({
             <div className="space-y-2">
               <div className="flex">
                 <span className="text-gray-500 w-32">Mã đơn hàng:</span>
-                <span className="font-medium">#{viewOrder._id.slice(-6).toUpperCase()}</span>
+                <span className="font-medium">
+                  #{viewOrder._id.slice(-6).toUpperCase()}
+                </span>
               </div>
               <div className="flex">
                 <span className="text-gray-500 w-32">Ngày đặt:</span>
-                <span className="font-medium">{formatDate(viewOrder.createdAt)}</span>
+                <span className="font-medium">
+                  {formatDate(viewOrder.createdAt)}
+                </span>
               </div>
               <div className="flex">
                 <span className="text-gray-500 w-32">Trạng thái:</span>
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(viewOrder.status)}`}>
+                <span
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                    viewOrder.status
+                  )}`}
+                >
                   {getStatusIcon(viewOrder.status)}
                   {getStatusText(viewOrder.status)}
                 </span>
               </div>
               <div className="flex">
                 <span className="text-gray-500 w-32">Thanh toán:</span>
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${viewOrder.isPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                  <i className={`pi ${viewOrder.isPaid ? 'pi-check-circle' : 'pi-clock'} mr-1`}></i>
-                  {viewOrder.isPaid ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                <span
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    viewOrder.isPaid
+                      ? "bg-green-100 text-green-700"
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}
+                >
+                  <i
+                    className={`pi ${
+                      viewOrder.isPaid ? "pi-check-circle" : "pi-clock"
+                    } mr-1`}
+                  ></i>
+                  {viewOrder.isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
                 </span>
               </div>
               <div className="flex">
                 <span className="text-gray-500 w-32">Phương thức:</span>
-                <span className="font-medium">{getPaymentMethodText(viewOrder.paymentMethod)}</span>
+                <span className="font-medium">
+                  {getPaymentMethodText(viewOrder.paymentMethod)}
+                </span>
               </div>
             </div>
           </div>
         </div>
-        
+
         {/* Sản phẩm */}
         <div className="mb-6">
           <h3 className="font-medium text-blue-700 mb-3 flex items-center">
@@ -99,10 +134,16 @@ export const ViewOrderDialog = ({
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-2 text-left text-gray-600">Sản phẩm</th>
-                  <th className="px-4 py-2 text-right text-gray-600">Đơn giá</th>
+                  <th className="px-4 py-2 text-left text-gray-600">
+                    Sản phẩm
+                  </th>
+                  <th className="px-4 py-2 text-right text-gray-600">
+                    Đơn giá
+                  </th>
                   <th className="px-4 py-2 text-center text-gray-600">SL</th>
-                  <th className="px-4 py-2 text-right text-gray-600">Thành tiền</th>
+                  <th className="px-4 py-2 text-right text-gray-600">
+                    Thành tiền
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -110,46 +151,64 @@ export const ViewOrderDialog = ({
                   <tr key={index} className="border-t border-gray-100">
                     <td className="px-4 py-3">
                       <div className="flex items-center">
-                        {item.productId?.productImages && item.productId?.productImages[0] && (
-                          <img src={item.productId.productImages[0]} alt="" className="w-12 h-12 object-cover rounded-md mr-3" />
-                        )}
+                        {item.productId?.productImages &&
+                          item.productId?.productImages[0] && (
+                            <img
+                              src={item.productId.productImages[0]}
+                              alt=""
+                              className="w-12 h-12 object-cover rounded-md mr-3"
+                            />
+                          )}
                         <div>
-                          <div className="font-medium">{item.productId?.productName || 'Sản phẩm không có sẵn'}</div>
+                          <div className="font-medium">
+                            {item.productId?.productName ||
+                              "Sản phẩm không có sẵn"}
+                          </div>
                           {item.productId?.productCode && (
-                            <div className="text-xs text-gray-500">Mã: {item.productId.productCode}</div>
+                            <div className="text-xs text-gray-500">
+                              Mã: {item.productId.productCode}
+                            </div>
                           )}
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(item.price)}</td>
+                    <td className="px-4 py-3 text-right">
+                      {formatCurrency(item.price)}
+                    </td>
                     <td className="px-4 py-3 text-center">{item.quantity}</td>
-                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.price * item.quantity)}</td>
+                    <td className="px-4 py-3 text-right font-medium">
+                      {formatCurrency(item.price * item.quantity)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="bg-gray-50">
                 <tr className="border-t border-gray-200">
-                  <td colSpan="3" className="px-4 py-3 text-right font-medium">Tổng cộng:</td>
-                  <td className="px-4 py-3 text-right font-bold text-blue-600">{formatCurrency(viewOrder.totalAmount)}</td>
+                  <td colSpan="3" className="px-4 py-3 text-right font-medium">
+                    Tổng cộng:
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold text-blue-600">
+                    {formatCurrency(viewOrder.totalAmount)}
+                  </td>
                 </tr>
               </tfoot>
             </table>
           </div>
         </div>
-        
+
         {/* Buttons */}
         <div className="flex justify-end gap-3">
-          {viewOrder.status !== ORDER_STATUSES.COMPLETED && 
-           viewOrder.status !== ORDER_STATUSES.CANCELLED && (
-            <Button
-              label="Cập nhật trạng thái"
-              className="p-button-warning bg-[#51bb1a] text-white p-2 rounded"
-              onClick={() => {
-                setViewOrder(null);
-                openUpdateStatusDialog(viewOrder);
-              }}
-            />
-          )}
+          {viewOrder.status !== ORDER_STATUSES.COMPLETED &&
+            viewOrder.status !== ORDER_STATUSES.CANCELLED && (
+              <Button
+                label="Cập nhật trạng thái"
+                className="p-button-warning bg-[#51bb1a] text-white p-2 rounded"
+                onClick={() => {
+                  setViewOrder(null);
+                  openUpdateStatusDialog(viewOrder);
+                }}
+              />
+            )}
           <Button
             label="Đóng"
             className="p-button-secondary bg-red-500 text-white p-2 rounded px-4"
@@ -162,9 +221,13 @@ export const ViewOrderDialog = ({
 };
 
 // Dialog xác nhận xóa đơn hàng
-export const DeleteOrderDialog = ({ deleteDialog, setDeleteDialog, handleDeleteOrder }) => {
+export const DeleteOrderDialog = ({
+  deleteDialog,
+  setDeleteDialog,
+  handleDeleteOrder,
+}) => {
   if (!deleteDialog) return null;
-  
+
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 max-w-md w-full m-4">
@@ -174,10 +237,11 @@ export const DeleteOrderDialog = ({ deleteDialog, setDeleteDialog, handleDeleteO
           </div>
           <h2 className="text-xl font-bold mb-2">Xác nhận xóa</h2>
           <p className="text-gray-600">
-            Bạn có chắc chắn muốn xóa đơn hàng này không? Hành động này không thể hoàn tác.
+            Bạn có chắc chắn muốn xóa đơn hàng này không? Hành động này không
+            thể hoàn tác.
           </p>
         </div>
-        
+
         <div className="flex justify-end gap-3">
           <Button
             label="Hủy"
@@ -198,49 +262,65 @@ export const DeleteOrderDialog = ({ deleteDialog, setDeleteDialog, handleDeleteO
 };
 
 // Dialog cập nhật trạng thái đơn hàng
-export const StatusUpdateDialog = ({ 
-  statusDialogVisible, 
-  setStatusDialogVisible, 
-  selectedOrderForStatus, 
-  getNextStatuses, 
-  updateOrderStatus, 
+export const StatusUpdateDialog = ({
+  statusDialogVisible,
+  setStatusDialogVisible,
+  selectedOrderForStatus,
+  getNextStatuses,
+  updateOrderStatus,
   getStatusText,
   getStatusColor,
-  getStatusIcon
+  getStatusIcon,
 }) => {
   if (!statusDialogVisible || !selectedOrderForStatus) return null;
-  
-  const nextStatuses = getNextStatuses(selectedOrderForStatus.status, selectedOrderForStatus.isPaid);
-  
+
+  const nextStatuses = getNextStatuses(
+    selectedOrderForStatus.status,
+    selectedOrderForStatus.isPaid
+  );
+
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0  bg-opacity-30 backdrop-blur-xs flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 max-w-md w-full m-4">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">Cập nhật trạng thái</h2>
-          <button onClick={() => setStatusDialogVisible(false)} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100">
+          <button
+            onClick={() => setStatusDialogVisible(false)}
+            className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
+          >
             <i className="pi pi-times"></i>
           </button>
         </div>
-        
+
         <div className="mb-6">
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4">
             <p className="text-gray-600 mb-2">Trạng thái hiện tại:</p>
-            <div className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getStatusColor(selectedOrderForStatus.status)}`}>
+            <div
+              className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getStatusColor(
+                selectedOrderForStatus.status
+              )}`}
+            >
               {getStatusIcon(selectedOrderForStatus.status)}
               {getStatusText(selectedOrderForStatus.status)}
             </div>
           </div>
-          
+
           <p className="font-medium mb-3">Chọn trạng thái mới:</p>
           <div className="space-y-3">
             {nextStatuses.map((status) => (
               <button
                 key={status.value}
                 className="w-full p-3 flex items-center justify-between bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-colors"
-                onClick={() => updateOrderStatus(selectedOrderForStatus._id, status.value)}
+                onClick={() =>
+                  updateOrderStatus(selectedOrderForStatus._id, status.value)
+                }
               >
                 <div className="flex items-center">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${getStatusColor(status.value)}`}>
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${getStatusColor(
+                      status.value
+                    )}`}
+                  >
                     {getStatusIcon(status.value)}
                   </div>
                   <span className="font-medium">{status.label}</span>
@@ -248,7 +328,7 @@ export const StatusUpdateDialog = ({
                 <i className="pi pi-chevron-right text-gray-400"></i>
               </button>
             ))}
-            
+
             {nextStatuses.length === 0 && (
               <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
                 Không có trạng thái tiếp theo khả dụng
@@ -256,12 +336,11 @@ export const StatusUpdateDialog = ({
             )}
           </div>
         </div>
-        
+
         <div className="flex justify-end">
           <Button
             label="Đóng"
-            icon="pi pi-times"
-            className="p-button-secondary"
+            className="p-button-secondary bg-red-500 text-white p-2 rounded px-4"
             onClick={() => setStatusDialogVisible(false)}
           />
         </div>
@@ -271,11 +350,15 @@ export const StatusUpdateDialog = ({
 };
 
 // Dialog xác nhận thanh toán
-export const PaymentDialog = ({ paymentDialog, setPaymentDialog, handleMarkAsPaid }) => {
+export const PaymentDialog = ({
+  paymentDialog,
+  setPaymentDialog,
+  handleMarkAsPaid,
+}) => {
   if (!paymentDialog) return null;
-  
+
   return (
-    <div className="fixed inset-0 bg-gray-500 bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-opacity-30 backdrop-blur-xs flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 max-w-md w-full m-4">
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -286,18 +369,16 @@ export const PaymentDialog = ({ paymentDialog, setPaymentDialog, handleMarkAsPai
             Bạn có chắc chắn muốn đánh dấu đơn hàng này là đã thanh toán không?
           </p>
         </div>
-        
+
         <div className="flex justify-end gap-3">
           <Button
             label="Hủy"
-            icon="pi pi-times"
-            className="p-button-text"
+            className="p-button-text bg-red-500 text-white p-2 rounded px-4"
             onClick={() => setPaymentDialog(false)}
           />
           <Button
             label="Xác nhận"
-            icon="pi pi-check"
-            className="p-button-success"
+            className="p-button-success bg-[#51bb1a] text-white p-2 rounded px-4"
             onClick={handleMarkAsPaid}
           />
         </div>
@@ -307,16 +388,16 @@ export const PaymentDialog = ({ paymentDialog, setPaymentDialog, handleMarkAsPai
 };
 
 // Dialog cập nhật hàng loạt
-export const BulkActionDialog = ({ 
-  bulkConfirmVisible, 
-  setBulkConfirmVisible, 
-  bulkStatus = '', 
-  selectedOrders, 
-  getStatusText, 
-  executeBulkUpdate 
+export const BulkActionDialog = ({
+  bulkConfirmVisible,
+  setBulkConfirmVisible,
+  bulkStatus = "",
+  selectedOrders,
+  getStatusText,
+  executeBulkUpdate,
 }) => {
   if (!bulkConfirmVisible) return null;
-  
+
   return (
     <div className="fixed inset-0 bg-opacity-30 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 max-w-md w-full m-4">
@@ -328,16 +409,16 @@ export const BulkActionDialog = ({
           <p className="text-gray-600">
             {bulkStatus ? (
               <>
-                Bạn có chắc chắn muốn cập nhật <strong>{selectedOrders.length}</strong> đơn hàng sang trạng thái <strong>{getStatusText(bulkStatus)}</strong>?
+                Bạn có chắc chắn muốn cập nhật{" "}
+                <strong>{selectedOrders.length}</strong> đơn hàng sang trạng
+                thái <strong>{getStatusText(bulkStatus)}</strong>?
               </>
             ) : (
-              <>
-                Vui lòng chọn trạng thái để cập nhật đơn hàng
-              </>
+              <>Vui lòng chọn trạng thái để cập nhật đơn hàng</>
             )}
           </p>
         </div>
-        
+
         <div className="flex justify-end gap-3">
           <Button
             label="Hủy"
@@ -357,38 +438,45 @@ export const BulkActionDialog = ({
 };
 
 // Dialog cài đặt tự động chuyển trạng thái
-export const AutoTransitionSettingsDialog = ({ 
-  autoTransitionSettingsVisible, 
-  setAutoTransitionSettingsVisible, 
-  autoTransitionEnabled, 
-  setAutoTransitionEnabled, 
-  transitionDelays, 
-  setTransitionDelays 
+export const AutoTransitionSettingsDialog = ({
+  autoTransitionSettingsVisible,
+  setAutoTransitionSettingsVisible,
+  autoTransitionEnabled,
+  setAutoTransitionEnabled,
+  transitionDelays,
+  setTransitionDelays,
 }) => {
   if (!autoTransitionSettingsVisible) return null;
-  
+
   const handleDelayChange = (key, value) => {
     setTransitionDelays({
       ...transitionDelays,
-      [key]: value
+      [key]: value,
     });
   };
-  
+
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-xl p-6 max-w-lg w-full m-4">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Cài đặt tự động chuyển trạng thái</h2>
-          <button onClick={() => setAutoTransitionSettingsVisible(false)} className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100">
+          <h2 className="text-xl font-bold">
+            Cài đặt tự động chuyển trạng thái
+          </h2>
+          <button
+            onClick={() => setAutoTransitionSettingsVisible(false)}
+            className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
+          >
             <i className="pi pi-times"></i>
           </button>
         </div>
-        
+
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4 p-3 bg-blue-50 rounded-lg">
             <div>
               <h3 className="font-medium">Bật tự động chuyển trạng thái</h3>
-              <p className="text-sm text-gray-600">Cho phép hệ thống tự động cập nhật trạng thái đơn hàng</p>
+              <p className="text-sm text-gray-600">
+                Cho phép hệ thống tự động cập nhật trạng thái đơn hàng
+              </p>
             </div>
             <div className="flex items-center">
               <input
@@ -398,58 +486,95 @@ export const AutoTransitionSettingsDialog = ({
                 onChange={(e) => setAutoTransitionEnabled(e.target.checked)}
                 className="w-4 h-4"
               />
-              <label htmlFor="autoTransitionEnabled" className="ml-2 cursor-pointer">
-                {autoTransitionEnabled ? 'Bật' : 'Tắt'}
+              <label
+                htmlFor="autoTransitionEnabled"
+                className="ml-2 cursor-pointer"
+              >
+                {autoTransitionEnabled ? "Bật" : "Tắt"}
               </label>
             </div>
           </div>
-          
-          <div className={autoTransitionEnabled ? '' : 'opacity-50 pointer-events-none'}>
-            <h3 className="font-medium mb-3">Thời gian chuyển trạng thái (phút)</h3>
-            
+
+          <div
+            className={
+              autoTransitionEnabled ? "" : "opacity-50 pointer-events-none"
+            }
+          >
+            <h3 className="font-medium mb-3">
+              Thời gian chuyển trạng thái (phút)
+            </h3>
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <label className="text-gray-600">Chờ xử lý → Đã xác nhận:</label>
+                <label className="text-gray-600">
+                  Chờ xử lý → Đã xác nhận:
+                </label>
                 <input
                   type="number"
                   value={transitionDelays.pending_to_confirmed}
-                  onChange={(e) => handleDelayChange('pending_to_confirmed', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleDelayChange(
+                      "pending_to_confirmed",
+                      parseInt(e.target.value)
+                    )
+                  }
                   className="w-20 px-3 py-2 border border-gray-300 rounded-lg"
                   min="1"
                   max="1440"
                 />
               </div>
-              
+
               <div className="flex items-center justify-between">
-                <label className="text-gray-600">Đã xác nhận → Đang chuẩn bị:</label>
+                <label className="text-gray-600">
+                  Đã xác nhận → Đang chuẩn bị:
+                </label>
                 <input
                   type="number"
                   value={transitionDelays.confirmed_to_preparing}
-                  onChange={(e) => handleDelayChange('confirmed_to_preparing', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleDelayChange(
+                      "confirmed_to_preparing",
+                      parseInt(e.target.value)
+                    )
+                  }
                   className="w-20 px-3 py-2 border border-gray-300 rounded-lg"
                   min="1"
                   max="1440"
                 />
               </div>
-              
+
               <div className="flex items-center justify-between">
-                <label className="text-gray-600">Đang chuẩn bị → Đã đóng gói:</label>
+                <label className="text-gray-600">
+                  Đang chuẩn bị → Đã đóng gói:
+                </label>
                 <input
                   type="number"
                   value={transitionDelays.preparing_to_packaging}
-                  onChange={(e) => handleDelayChange('preparing_to_packaging', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleDelayChange(
+                      "preparing_to_packaging",
+                      parseInt(e.target.value)
+                    )
+                  }
                   className="w-20 px-3 py-2 border border-gray-300 rounded-lg"
                   min="1"
                   max="1440"
                 />
               </div>
-              
+
               <div className="flex items-center justify-between">
-                <label className="text-gray-600">Đã đóng gói → Đang vận chuyển:</label>
+                <label className="text-gray-600">
+                  Đã đóng gói → Đang vận chuyển:
+                </label>
                 <input
                   type="number"
                   value={transitionDelays.packaging_to_shipping}
-                  onChange={(e) => handleDelayChange('packaging_to_shipping', parseInt(e.target.value))}
+                  onChange={(e) =>
+                    handleDelayChange(
+                      "packaging_to_shipping",
+                      parseInt(e.target.value)
+                    )
+                  }
                   className="w-20 px-3 py-2 border border-gray-300 rounded-lg"
                   min="1"
                   max="1440"
@@ -458,7 +583,7 @@ export const AutoTransitionSettingsDialog = ({
             </div>
           </div>
         </div>
-        
+
         <div className="flex justify-end gap-3">
           <Button
             label="Hủy"
@@ -489,13 +614,13 @@ ViewOrderDialog.propTypes = {
   getStatusIcon: PropTypes.func.isRequired,
   getPaymentMethodText: PropTypes.func.isRequired,
   ORDER_STATUSES: PropTypes.object.isRequired,
-  openUpdateStatusDialog: PropTypes.func.isRequired
+  openUpdateStatusDialog: PropTypes.func.isRequired,
 };
 
 DeleteOrderDialog.propTypes = {
   deleteDialog: PropTypes.bool.isRequired,
   setDeleteDialog: PropTypes.func.isRequired,
-  handleDeleteOrder: PropTypes.func.isRequired
+  handleDeleteOrder: PropTypes.func.isRequired,
 };
 
 StatusUpdateDialog.propTypes = {
@@ -506,13 +631,13 @@ StatusUpdateDialog.propTypes = {
   updateOrderStatus: PropTypes.func.isRequired,
   getStatusText: PropTypes.func.isRequired,
   getStatusColor: PropTypes.func.isRequired,
-  getStatusIcon: PropTypes.func.isRequired
+  getStatusIcon: PropTypes.func.isRequired,
 };
 
 PaymentDialog.propTypes = {
   paymentDialog: PropTypes.bool.isRequired,
   setPaymentDialog: PropTypes.func.isRequired,
-  handleMarkAsPaid: PropTypes.func.isRequired
+  handleMarkAsPaid: PropTypes.func.isRequired,
 };
 
 BulkActionDialog.propTypes = {
@@ -521,7 +646,7 @@ BulkActionDialog.propTypes = {
   bulkStatus: PropTypes.string.isRequired,
   selectedOrders: PropTypes.array.isRequired,
   getStatusText: PropTypes.func.isRequired,
-  executeBulkUpdate: PropTypes.func.isRequired
+  executeBulkUpdate: PropTypes.func.isRequired,
 };
 
 AutoTransitionSettingsDialog.propTypes = {
@@ -530,5 +655,5 @@ AutoTransitionSettingsDialog.propTypes = {
   autoTransitionEnabled: PropTypes.bool.isRequired,
   setAutoTransitionEnabled: PropTypes.func.isRequired,
   transitionDelays: PropTypes.object.isRequired,
-  setTransitionDelays: PropTypes.func.isRequired
+  setTransitionDelays: PropTypes.func.isRequired,
 };

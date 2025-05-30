@@ -11,7 +11,6 @@ const OrderTable = ({
   orders,
   selectedOrders,
   setSelectedOrders,
-  loading,
   first,
   totalRecords,
   onPage,
@@ -258,7 +257,6 @@ const OrderTable = ({
         totalRecords={totalRecords}
         lazy
         first={(first-1) * 10}
-        loading={loading}
         header={header}
         footer={footerTemplate}
         emptyMessage="Không tìm thấy đơn hàng nào"
@@ -268,7 +266,11 @@ const OrderTable = ({
         showGridlines
         style={{ width: "100%" }}
       >
-        <Column selectionMode="multiple" headerStyle={{ width: "3rem", padding: "1rem" }} />
+        <Column 
+          selectionMode="multiple" 
+          headerStyle={{ width: "3rem", padding: "1rem" }} 
+          bodyClassName="border border-gray-200 rounded"
+        />
         <Column
           field="_id"
           header="Mã đơn"
@@ -333,7 +335,6 @@ OrderTable.propTypes = {
   orders: PropTypes.array.isRequired,
   selectedOrders: PropTypes.array.isRequired,
   setSelectedOrders: PropTypes.func.isRequired,
-  loading: PropTypes.bool.isRequired,
   first: PropTypes.number.isRequired,
   totalRecords: PropTypes.number.isRequired,
   onPage: PropTypes.func.isRequired,

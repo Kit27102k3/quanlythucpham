@@ -560,7 +560,7 @@ export const updateOrder = async (req, res) => {
     if (newStatus && newStatus !== previousStatus && updatedOrder.userId) {
       try {
         await sendOrderStatusNotification(updatedOrder.userId, updatedOrder, getStatusText(updatedOrder.status));
-        console.log(`Đã gửi thông báo cập nhật trạng thái đơn hàng ${updatedOrder.orderCode} đến user ${updatedOrder.userId}`);
+        // console.log(`Đã gửi thông báo cập nhật trạng thái đơn hàng ${updatedOrder.orderCode} đến user ${updatedOrder.userId}`);
       } catch (notificationError) {
         console.error('Lỗi khi gửi thông báo cập nhật trạng thái đơn hàng:', notificationError);
       }
@@ -1376,7 +1376,7 @@ export const updateOrderPaymentStatus = async (req, res) => {
         (isPaid !== undefined && isPaid !== oldIsPaid))) {
       try {
         await sendOrderStatusNotification(updatedOrder.userId, updatedOrder, getStatusText(updatedOrder.status));
-        console.log(`Đã gửi thông báo cập nhật trạng thái thanh toán đơn hàng ${updatedOrder.orderCode} đến user ${updatedOrder.userId}`);
+        // console.log(`Đã gửi thông báo cập nhật trạng thái thanh toán đơn hàng ${updatedOrder.orderCode} đến user ${updatedOrder.userId}`);
       } catch (notificationError) {
         console.error('Lỗi khi gửi thông báo cập nhật trạng thái thanh toán:', notificationError);
       }

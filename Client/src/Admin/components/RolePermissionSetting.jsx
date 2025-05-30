@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-
-// Map key quyền sang label tiếng Việt
+/* eslint-disable no-unused-vars */
+/* eslint-disable react/prop-types */
+import { useState } from "react";
 const PERMISSION_LABELS = {
   employees: "Quản lý nhân viên",
   reviews: "Quản lý đánh giá",

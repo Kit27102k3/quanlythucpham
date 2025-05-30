@@ -12,7 +12,14 @@ const suppliersApi = {
         headers["Authorization"] = `Bearer ${token}`;
       }
       const response = await axios.get(API_URL, { headers });
-      return response.data;
+      if (response.data && Array.isArray(response.data.data)) {
+        return response.data.data;
+      } else if (Array.isArray(response.data)) {
+        return response.data;
+      } else {
+        console.warn("Suppliers API returned invalid data:", response.data);
+        return [];
+      }
     } catch (error) {
       console.error("Lỗi khi lấy danh sách nhà cung cấp:", error);
       throw error;

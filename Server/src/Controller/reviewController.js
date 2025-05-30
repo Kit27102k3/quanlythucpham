@@ -581,8 +581,6 @@ export const replyToReview = async (req, res) => {
         try {
           await sendReviewReplyNotification(review.userId, review, text)
             .catch(error => console.error('Error sending review reply notification:', error));
-          
-          console.log(`Đã gửi thông báo phản hồi đánh giá đến user ${review.userId}`);
         } catch (notificationError) {
           console.error('Lỗi khi gửi thông báo phản hồi đánh giá:', notificationError);
           // Không ảnh hưởng đến việc trả về response
@@ -673,8 +671,6 @@ export const replyToReview = async (req, res) => {
       try {
         await sendReviewReplyNotification(review.userId, review, text)
           .catch(error => console.error('Error sending review reply notification:', error));
-        
-        console.log(`Đã gửi thông báo phản hồi đánh giá đến user ${review.userId}`);
       } catch (notificationError) {
         console.error('Lỗi khi gửi thông báo phản hồi đánh giá:', notificationError);
         // Không ảnh hưởng đến việc trả về response

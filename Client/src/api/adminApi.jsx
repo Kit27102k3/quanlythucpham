@@ -7,21 +7,7 @@ const API_URL = `${API_BASE_URL}/api`;
 const adminApi = {
   createAdmin: async (adminData) => {
     try {
-      console.log("Đang gửi dữ liệu tạo admin:", JSON.stringify(adminData, null, 2));
-      
-      // Thêm sample data để so sánh
-      console.log("Ví dụ dữ liệu mẫu (sẽ thành công):", JSON.stringify({
-        userName: "sample_user",
-        username: "sample_user",
-        fullName: "Nguyễn Văn Sample",
-        email: "sample@example.com",
-        phone: "0123456789",
-        password: "Password123",
-        role: "employee",
-        branchId: "68374aed10562d7b04a9ac80"
-      }, null, 2));
-      
-      // Sử dụng fetch thay vì axios
+    
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/admin/create`, {
         method: 'POST',

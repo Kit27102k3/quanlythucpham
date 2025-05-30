@@ -7,26 +7,26 @@ import {
   deleteSupplier, 
   searchSuppliers 
 } from '../Controller/supplierController.js';
-import { verifyToken, isAdmin } from '../Middleware/authMiddleware.js';
+import { verifyToken, verifyAdmin } from '../Middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Tất cả routes đều được bảo vệ, chỉ admin mới có quyền truy cập
+// Tất cả routes đều được bảo vệ, chỉ admin và manager mới có quyền truy cập
 router.use(verifyToken);
 
 // GET /api/suppliers - Lấy tất cả nhà cung cấp
 router.route('/')
-  .get(isAdmin, getAllSuppliers)
-  .post(isAdmin, createSupplier);
+  .get(verifyAdmin, getAllSuppliers)
+  .post(verifyAdmin, createSupplier);
 
 // GET /api/suppliers/search - Tìm kiếm nhà cung cấp
 router.route('/search')
-  .get(isAdmin, searchSuppliers);
+  .get(verifyAdmin, searchSuppliers);
 
 // GET, PUT, DELETE /api/suppliers/:id - Lấy, cập nhật, xóa nhà cung cấp theo ID
 router.route('/:id')
-  .get(isAdmin, getSupplierById)
-  .put(isAdmin, updateSupplier)
-  .delete(isAdmin, deleteSupplier);
+  .get(verifyAdmin, getSupplierById)
+  .put(verifyAdmin, updateSupplier)
+  .delete(verifyAdmin, deleteSupplier);
 
 export default router; 

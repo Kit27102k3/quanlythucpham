@@ -1,36 +1,33 @@
 import axios from "axios";
 import { API_URLS } from "../config/apiConfig";
 
-// Lấy token từ localStorage với nhiều trường hợp
 const getAuthHeader = () => {
-  // Thử lấy token từ nhiều chỗ khác nhau
-  const token = 
-    localStorage.getItem("accessToken") || 
-    localStorage.getItem("token") || 
+  const token =
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("token") ||
     localStorage.getItem("access_token");
-  
+
   const userRole = localStorage.getItem("userRole");
-  const isAdmin = userRole === "admin";
-  
+  const isAdmin = userRole === "admin" || userRole === "manager";
+
   const headers = {};
-  
+
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
-  
+
   if (isAdmin) {
     headers["admin-token"] = "admin-token-for-TKhiem";
   }
-  
+
   return headers;
 };
 
 const messagesApi = {
-  // Lấy tất cả liên hệ (người dùng đã nhắn tin)
   getAllContacts: async () => {
     try {
       const response = await axios.get(`${API_URLS.MESSAGES}/contacts`, {
-        headers: getAuthHeader()
+        headers: getAuthHeader(),
       });
       return response.data;
     } catch (error) {
@@ -39,21 +36,19 @@ const messagesApi = {
     }
   },
 
-  // Lấy lịch sử tin nhắn với một người dùng
   getMessagesByUserId: async (userId) => {
     try {
-      // Lấy userId từ localStorage
       const currentUserId = localStorage.getItem("userId");
-      
-      // Sử dụng currentUserId nếu không có userId được truyền vào
-      const targetUserId = userId === "admin" ? "admin" : (userId || currentUserId);
-      
-      const headers = getAuthHeader();
-      
-      const response = await axios.get(`${API_URLS.MESSAGES}/user/${targetUserId}`, {
-        headers: headers
-      });
-      
+      const targetUserId =
+        userId === "admin" ? "admin" : userId || currentUserId;
+
+      const response = await axios.get(
+        `${API_URLS.MESSAGES}/user/${targetUserId}`,
+        {
+          headers: getAuthHeader(),
+        }
+      );
+
       return response.data;
     } catch (error) {
       console.error("Lỗi khi lấy tin nhắn:", error);
@@ -61,7 +56,6 @@ const messagesApi = {
     }
   },
 
-  // Gửi tin nhắn mới
   sendMessage: async (data) => {
     try {
       const response = await axios.post(`${API_URLS.MESSAGES}/send`, data, {
@@ -77,7 +71,6 @@ const messagesApi = {
     }
   },
 
-  // Đánh dấu tin nhắn đã đọc
   markAsRead: async (messageId) => {
     try {
       const response = await axios.patch(
@@ -97,7 +90,6 @@ const messagesApi = {
     }
   },
 
-  // Đánh dấu tất cả tin nhắn của một người dùng là đã đọc
   markAllAsRead: async (userId) => {
     try {
       const response = await axios.patch(
@@ -117,18 +109,17 @@ const messagesApi = {
     }
   },
 
-  // Lấy số lượng tin nhắn chưa đọc
   getUnreadCount: async () => {
     try {
       const response = await axios.get(`${API_URLS.MESSAGES}/unread-count`, {
-        headers: getAuthHeader()
+        headers: getAuthHeader(),
       });
       return response.data;
     } catch (error) {
       console.error("Lỗi khi lấy số lượng tin nhắn chưa đọc:", error);
       throw error;
     }
-  }
+  },
 };
 
-export default messagesApi; 
+export default messagesApi;

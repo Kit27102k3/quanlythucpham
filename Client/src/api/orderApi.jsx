@@ -47,9 +47,7 @@ export const checkOrderStatus = async (orderId) => {
   try {
     // Thêm timestamp để tránh cache
     const timestamp = new Date().getTime();
-    const response = await axios.get(
-      `${API_URL}/${orderId}?_t=${timestamp}`
-    );
+    const response = await axios.get(`${API_URL}/${orderId}?_t=${timestamp}`);
     return response.data;
   } catch (error) {
     console.error("Lỗi khi kiểm tra trạng thái đơn hàng:", error);
@@ -92,7 +90,16 @@ const orderApi = {
     }
   },
   // Thêm phương thức getAllOrders để lấy tất cả đơn hàng (cho admin)
-  getAllOrders: async (page = 1, pageSize = 10, searchTerm = '', statusFilter = '', paymentMethodFilter = '', isPaid, dateFilter, branchFilter) => {
+  getAllOrders: async (
+    page = 1,
+    pageSize = 10,
+    searchTerm = "",
+    statusFilter = "",
+    paymentMethodFilter = "",
+    isPaid,
+    dateFilter,
+    branchFilter
+  ) => {
     try {
       const params = {
         page,
@@ -101,16 +108,16 @@ const orderApi = {
         status: statusFilter,
         paymentMethod: paymentMethodFilter,
       };
-      
+
       // Thêm các tham số tùy chọn nếu có
       if (isPaid !== undefined) params.isPaid = isPaid;
       if (dateFilter) params.date = dateFilter;
       if (branchFilter) params.branchId = branchFilter;
-      
+
       const response = await axios.get(`${API_URL}`, { params });
       return response;
     } catch (error) {
-      console.error('Lỗi khi lấy tất cả đơn hàng:', error);
+      console.error("Lỗi khi lấy tất cả đơn hàng:", error);
       throw error;
     }
   },
@@ -137,9 +144,7 @@ const orderApi = {
   getOrderTracking: async (orderCode) => {
     try {
       // Gọi API server để lấy thông tin tracking từ GHN
-      const response = await axios.get(
-        `${API_URL}/tracking/${orderCode}`
-      );
+      const response = await axios.get(`${API_URL}/tracking/${orderCode}`);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi lấy thông tin vận chuyển:", error);
@@ -194,9 +199,9 @@ const orderApi = {
     branchId,
     page = 1,
     pageSize = 10,
-    searchTerm = '',
-    statusFilter = '',
-    paymentMethodFilter = '',
+    searchTerm = "",
+    statusFilter = "",
+    paymentMethodFilter = "",
     isPaid,
     dateFilter,
     nearbyFilter = false
@@ -218,7 +223,7 @@ const orderApi = {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      
+
       const params = {
         page,
         pageSize,
@@ -226,14 +231,14 @@ const orderApi = {
         status: statusFilter,
         paymentMethod: paymentMethodFilter,
       };
-      
+
       // Thêm các tham số tùy chọn nếu có
       if (isPaid !== undefined) params.isPaid = isPaid;
       if (dateFilter) params.date = dateFilter;
-      
+
       // Xử lý tham số nearbyFilter cải tiến
       if (nearbyFilter) {
-        if (typeof nearbyFilter === 'object' && nearbyFilter.enabled) {
+        if (typeof nearbyFilter === "object" && nearbyFilter.enabled) {
           params.nearby = true;
           params.radius = nearbyFilter.radius || 10; // Mặc định là 10km nếu không được chỉ định
         } else {
@@ -241,17 +246,17 @@ const orderApi = {
           params.radius = 10; // Mặc định là 10km cho tương thích ngược
         }
       }
-      
+
       console.log("Params gửi lên API:", params);
       console.log("URL API:", `${API_URL}/branch/${branchId}`);
-      
+
       const response = await axios.get(`${API_URL}/branch/${branchId}`, {
         headers,
-        params
+        params,
       });
-      
+
       console.log("Kết quả từ API:", response.data);
-      
+
       return response;
     } catch (error) {
       console.error("Lỗi khi lấy đơn hàng theo chi nhánh:", error);
@@ -269,18 +274,16 @@ const orderApi = {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      
+
       // Cập nhật trạng thái và isPaid nếu là trạng thái completed
-      const updateData = { 
+      const updateData = {
         status: newStatus,
-        isPaid: newStatus === "completed" ? true : undefined
+        isPaid: newStatus === "completed" ? true : undefined,
       };
-      
-      const response = await axios.patch(
-        `${API_URL}/${orderId}`,
-        updateData,
-        { headers }
-      );
+
+      const response = await axios.patch(`${API_URL}/${orderId}`, updateData, {
+        headers,
+      });
       return response.data;
     } catch (error) {
       console.error("Lỗi khi cập nhật trạng thái đơn hàng:", error);
@@ -298,28 +301,24 @@ const orderApi = {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      
+
       // Cập nhật isPaid nếu là trạng thái completed
-      const updateData = { 
+      const updateData = {
         status,
-        isPaid: status === "completed" ? true : undefined
+        isPaid: status === "completed" ? true : undefined,
       };
-      
+
       // Gửi các request tuần tự để đảm bảo thành công
       let successCount = 0;
       for (const id of orderIds) {
         try {
-          await axios.patch(
-            `${API_URL}/${id}`,
-            updateData,
-            { headers }
-          );
+          await axios.patch(`${API_URL}/${id}`, updateData, { headers });
           successCount++;
         } catch (err) {
           console.log(`Lỗi khi cập nhật đơn hàng ${id}:`, err);
         }
       }
-      
+
       // Trả về kết quả giả lập để UI tiếp tục hoạt động
       return [{ success: true, count: successCount }];
     } catch (error) {
@@ -328,7 +327,7 @@ const orderApi = {
       return [{ success: false, message: error.message }];
     }
   },
-  
+
   // Thêm phương thức đánh dấu đơn hàng đã thanh toán
   markOrderAsPaid: async (orderId) => {
     try {
@@ -350,7 +349,7 @@ const orderApi = {
       throw error;
     }
   },
-  
+
   // Thêm phương thức xóa đơn hàng
   deleteOrder: async (orderId) => {
     try {
@@ -365,12 +364,12 @@ const orderApi = {
       console.error("Lỗi khi xóa đơn hàng:", error);
       throw error;
     }
-  }
+  },
 };
 
 function generateRandomOrderCode() {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "";
   for (let i = 0; i < 10; i++) {
     result += characters.charAt(Math.floor(Math.random() * characters.length));
   }
