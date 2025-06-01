@@ -59,7 +59,7 @@ class ChatBotErrorBoundary extends React.Component {
         <div className="fixed bottom-6 right-6 z-50">
           <button
             onClick={() => this.setState({ hasError: false })}
-            className="bg-green-500 text-white p-4 cursor-pointer rounded-full shadow-xl hover:bg-green-600 transition-all duration-300"
+            className="bg-[#51bb1a] text-white p-4 cursor-pointer rounded-full shadow-xl hover:bg-[#51bb1a] transition-all duration-300"
             aria-label="Khởi động lại chatbot"
           >
             <MessageCircle size={24} />
@@ -95,8 +95,6 @@ const ProductItem = React.memo(({ product, handleProductClick, getProductImageUr
           .replace(/đ/g, "d")               // Replace Vietnamese đ with d
           .replace(/[^a-z0-9]+/g, "-")      // Replace non-alphanumeric with hyphens
           .replace(/^-+|-+$/g, "");         // Remove leading/trailing hyphens
-        
-        console.log("Generated slug from product name:", productSlug);
         
         if (productSlug && productSlug.length > 0) {
           handleProductClick(productSlug);
@@ -148,7 +146,7 @@ const ProductItem = React.memo(({ product, handleProductClick, getProductImageUr
         />
       </div>
       <div className="p-2">
-        <div className="text-xs font-medium mb-1 line-clamp-2 hover:text-green-600 transition-colors">
+        <div className="text-xs font-medium mb-1 line-clamp-2 hover:text-[#51bb1a] transition-colors">
           {product.name || product.productName}
         </div>
         <div className="flex justify-between items-center mt-1">
@@ -171,7 +169,7 @@ const ProductItem = React.memo(({ product, handleProductClick, getProductImageUr
             )}
           </div>
           <button 
-            className="text-xs text-white bg-green-500 p-1 rounded hover:bg-green-600 transition-colors"
+            className="text-xs text-white bg-[#51bb1a] p-1 rounded hover:bg-[#51bb1a] transition-colors"
             onClick={(e) => {
               e.stopPropagation(); // Prevent triggering the parent div's onClick
               handleClick();
@@ -798,7 +796,7 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-green-500 text-white p-4 cursor-pointer rounded-full shadow-xl hover:bg-green-600 transition-all duration-300 animate-bounce"
+          className="bg-[#51bb1a] text-white p-4 cursor-pointer rounded-full shadow-xl hover:bg-[#51bb1a] transition-all duration-300 animate-bounce"
           aria-label="Mở chat"
         >
           <MessageCircle size={isMobile ? 20 : 24} />
@@ -807,11 +805,11 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
 
       {isOpen && (
         <div className={`${isMobile ? 'w-[92vw] max-w-[350px]' : 'w-96'} bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col`}>
-          <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-t-xl flex justify-between items-center">
+          <div className="bg-[#51bb1a] text-white p-4 rounded-t-xl flex justify-between items-center">
             <h2 className="text-lg font-semibold">Hỗ Trợ DNC FOOD</h2>
             <button
               onClick={() => setIsOpen(false)}
-              className="hover:bg-green-700 p-1 rounded-full transition-colors"
+              className="hover:bg-[#51bb1a] p-1 rounded-full transition-colors"
               aria-label="Thu nhỏ chat"
             >
               <Minus size={20} />
@@ -825,9 +823,9 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
               <div className="flex justify-start">
                 <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl">
                   <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                    <div className="w-2 h-2 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
+                    <div className="w-2 h-2 bg-[#51bb1a] rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></div>
+                    <div className="w-2 h-2 bg-[#51bb1a] rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></div>
+                    <div className="w-2 h-2 bg-[#51bb1a] rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></div>
                   </div>
                 </div>
               </div>
@@ -866,10 +864,10 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
               <button
                 onClick={handleSendMessage}
                 disabled={isLoading || !input.trim()}
-                className={`bg-green-500 text-white p-2 rounded-full transition-all duration-300 ${
+                className={`bg-[#51bb1a] text-white p-2 rounded-full transition-all duration-300 ${
                   isLoading || !input.trim()
                     ? "opacity-50 cursor-not-allowed"
-                    : "hover:bg-green-600 active:scale-95"
+                    : "hover:bg-[#51bb1a] active:scale-95"
                 }`}
                 aria-label="Gửi tin nhắn"
               >

@@ -276,6 +276,8 @@ class RagChatbot:
             response = self.llm.predict(prompt)
             # Thêm thông tin về nguồn dữ liệu
             response += "\n\n💡 Thông tin được cung cấp bởi chuyên gia ẩm thực AI"
+            # Thêm gợi ý tìm kiếm nguyên liệu
+            response += "\n\n🔍 Bạn có thể gõ \"Tìm các nguyên liệu như trên\" để kiểm tra xem cửa hàng có sẵn những nguyên liệu này không."
             return response
         except Exception as e:
             print(f"Error getting cooking recipe: {str(e)}")

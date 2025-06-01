@@ -110,21 +110,33 @@ const Cart = () => {
       }
     }, [userId]);
 
-    const handleUpdateQuantity = async (productId, newQuantity) => {
+    const handleUpdateQuantity = async (productId, newQuantity, item) => {
       if (newQuantity < 1) return;
 
       try {
         // Optimistic update
         setCart((prevCart) => ({
           ...prevCart,
-          items: prevCart.items.map((item) =>
-            item.productId._id === productId
-              ? { ...item, quantity: newQuantity }
-              : item
+          items: prevCart.items.map((cartItem) =>
+            cartItem.productId._id === productId
+              ? { ...cartItem, quantity: newQuantity }
+              : cartItem
           ),
         }));
 
-        await cartApi.updateCartItem(userId, productId, newQuantity);
+        // Tạo options với thông tin đơn vị đo nếu có
+        const options = {
+          quantity: newQuantity
+        };
+        
+        // Nếu có thông tin item được truyền vào, thêm các thông tin về đơn vị đo
+        if (item) {
+          if (item.unit) options.unit = item.unit;
+          if (item.unitPrice) options.unitPrice = item.unitPrice;
+          if (item.conversionRate) options.conversionRate = item.conversionRate;
+        }
+
+        await cartApi.updateCartItem(userId, productId, options);
 
         // Kích hoạt sự kiện cập nhật giỏ hàng
         triggerCartUpdateEvent();
@@ -377,6 +389,17 @@ const Cart = () => {
                         >
                           {item?.productId?.productName}
                         </a>
+                        
+                        {/* Hiển thị đơn vị đo */}
+                        {item?.unit && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Đơn vị: {item.unit}
+                            {item.conversionRate && item.conversionRate > 1 && 
+                              ` (1 ${item.unit} = ${item.conversionRate} ${item.productId?.unit || 'đơn vị'})`
+                            }
+                          </div>
+                        )}
+                        
                         <div className="md:hidden mt-1 flex justify-between text-sm">
                           <span className="text-[#51bb1a] font-medium">
                             {formatCurrency(itemPrice)}đ
@@ -396,10 +419,11 @@ const Cart = () => {
                       <div className="flex justify-center w-full md:w-32">
                         <div className="flex items-center border border-gray-300 rounded-md">
                           <button
-                            onClick={() =>
+                            onClick={(e) =>
                               handleUpdateQuantity(
                                 item.productId._id,
-                                Math.max(1, item.quantity - 1)
+                                Math.max(1, item.quantity - 1),
+                                item
                               )
                             }
                             className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#51bb1a] transition-colors"
@@ -414,16 +438,17 @@ const Cart = () => {
                             onChange={(e) => {
                               const val = parseInt(e.target.value);
                               if (!isNaN(val) && val > 0) {
-                                handleUpdateQuantity(item.productId._id, val);
+                                handleUpdateQuantity(item.productId._id, val, item);
                               }
                             }}
                             min="1"
                           />
                           <button
-                            onClick={() =>
+                            onClick={(e) =>
                               handleUpdateQuantity(
                                 item.productId._id,
-                                item.quantity + 1
+                                item.quantity + 1,
+                                item
                               )
                             }
                             className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#51bb1a] transition-colors"

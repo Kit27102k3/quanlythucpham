@@ -39,9 +39,13 @@ const EditProduct = ({
   const [suppliers, setSuppliers] = useState([]);
   const [editedProduct, setEditedProduct] = useState({
     ...product,
-    productDescription: product.productDescription
-      ? product.productDescription.join(". ")
-      : "",
+    productPrice: product.productPrice?.toString() || "0",
+    productDiscount: product.productDiscount?.toString() || "0",
+    productStock: product.productStock?.toString() || "0",
+    productWeight: product.productWeight?.toString() || "0",
+    productPromoPrice: product.productPromoPrice?.toString() || "0",
+    productWarranty: product.productWarranty?.toString() || "0",
+    productDescription: product.productDescription?.join(". ") || "",
     discountStartDate: product.discountStartDate ? new Date(product.discountStartDate) : null,
     discountEndDate: product.discountEndDate ? new Date(product.discountEndDate) : null,
     expiryDate: product.expiryDate ? new Date(product.expiryDate) : null,
@@ -56,6 +60,25 @@ const EditProduct = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [hasDiscount, setHasDiscount] = useState(parseFloat(product.productDiscount) > 0);
+
+  // Thêm state quản lý đơn vị đo
+  const [unitOptionsList, setUnitOptionsList] = useState(
+    product.unitOptions?.length > 0
+      ? product.unitOptions.map(opt => ({
+          unit: opt.unit || 'gram',
+          price: opt.price?.toString() || product.productPrice?.toString() || "0",
+          conversionRate: opt.conversionRate || 1,
+          inStock: opt.inStock?.toString() || product.productStock?.toString() || "0",
+          isDefault: opt.isDefault || false
+        }))
+      : [{ 
+          unit: product.productUnit || 'gram', 
+          price: product.productPrice?.toString() || "0", 
+          conversionRate: 1, 
+          inStock: product.productStock?.toString() || "0", 
+          isDefault: true 
+        }]
+  );
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -319,11 +342,73 @@ const EditProduct = ({
     }
   };
 
+  // Thêm hàm xử lý thay đổi đơn vị đo
+  const handleUnitOptionChange = (index, field, value) => {
+    const updatedOptions = [...unitOptionsList];
+    updatedOptions[index][field] = value;
+    setUnitOptionsList(updatedOptions);
+  };
+
+  // Thêm hàm để thêm đơn vị đo mới
+  const addUnitOption = () => {
+    setUnitOptionsList([
+      ...unitOptionsList,
+      { unit: "", price: "", conversionRate: 1, inStock: 0, isDefault: false }
+    ]);
+  };
+
+  // Thêm hàm để xóa đơn vị đo
+  const removeUnitOption = (index) => {
+    const updatedOptions = [...unitOptionsList];
+    updatedOptions.splice(index, 1);
+    
+    // Nếu xóa đơn vị mặc định, đặt đơn vị đầu tiên là mặc định
+    if (unitOptionsList[index].isDefault && updatedOptions.length > 0) {
+      updatedOptions[0].isDefault = true;
+    }
+    
+    setUnitOptionsList(updatedOptions);
+  };
+
+  // Thêm hàm để đặt đơn vị mặc định
+  const setDefaultUnit = (index) => {
+    const updatedOptions = unitOptionsList.map((option, i) => ({
+      ...option,
+      isDefault: i === index
+    }));
+    setUnitOptionsList(updatedOptions);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      // Chuẩn bị dữ liệu unitOptions
+      const preparedUnitOptions = unitOptionsList.map(option => ({
+        unit: option.unit,
+        price: parseFloat(option.price) || parseFloat(editedProduct.productPrice),
+        conversionRate: parseFloat(option.conversionRate) || 1,
+        inStock: parseInt(option.inStock) || parseInt(editedProduct.productStock) || 0,
+        isDefault: option.isDefault
+      }));
+      
+      // Validate thông tin unitOptions
+      if (preparedUnitOptions.length > 0) {
+        const hasDefault = preparedUnitOptions.some(opt => opt.isDefault);
+        if (!hasDefault) {
+          preparedUnitOptions[0].isDefault = true;
+        }
+      }
+      
+      // Cập nhật giá và đơn vị mặc định từ unitOptions
+      const defaultOption = preparedUnitOptions.find(opt => opt.isDefault);
+      if (defaultOption) {
+        editedProduct.productPrice = defaultOption.price.toString();
+        editedProduct.productUnit = defaultOption.unit;
+        editedProduct.productStock = defaultOption.inStock.toString();
+      }
+
       // Validate required fields
       if (
         !editedProduct.productName ||
@@ -385,6 +470,7 @@ const EditProduct = ({
         productSupplierId: editedProduct.productSupplierId,
         keepImages: keepImages,
         newImageUrls: newImages,
+        unitOptions: preparedUnitOptions
       };
       
       // Format dates for API
@@ -1068,6 +1154,118 @@ const EditProduct = ({
             <small className="text-gray-500 mt-2 block p-1">
               Hình ảnh tốt nhất ở định dạng JPG, PNG với tỷ lệ 1:1
             </small>
+          </Card>
+
+          <Card className="mb-4 shadow-sm">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-200">
+              Đơn vị đo <span className="text-red-500">*</span>
+            </h3>
+            <div className="border border-gray-300 rounded-md p-3 mb-2">
+              <div className="mb-3">
+                <div className="text-sm font-semibold mb-2">Các đơn vị đo cho sản phẩm này</div>
+                
+                {unitOptionsList.map((option, index) => (
+                  <div key={index} className="border border-gray-200 rounded-md p-3 mb-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-medium text-sm">Đơn vị #{index + 1}</div>
+                      <div className="flex items-center">
+                        <label className="inline-flex items-center mr-3">
+                          <input 
+                            type="checkbox"
+                            checked={option.isDefault}
+                            onChange={() => setDefaultUnit(index)}
+                            className="form-checkbox h-4 w-4 text-[#51bb1a]"
+                          />
+                          <span className="ml-2 text-sm">Đơn vị mặc định</span>
+                        </label>
+                        {unitOptionsList.length > 1 && (
+                          <button 
+                            type="button"
+                            onClick={() => removeUnitOption(index)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <i className="pi pi-trash text-sm"></i>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mb-2">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Đơn vị</label>
+                        <Dropdown
+                          value={option.unit}
+                          options={MEASUREMENT_UNITS}
+                          onChange={(e) => handleUnitOptionChange(index, 'unit', e.value)}
+                          className="w-full border border-gray-300 rounded-md"
+                          optionLabel="label"
+                          optionValue="value"
+                          placeholder="Chọn đơn vị"
+                          appendTo="self"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Giá ({option.unit})</label>
+                        <InputNumber
+                          value={parseFloat(option.price) || 0}
+                          onValueChange={(e) => handleUnitOptionChange(index, 'price', e.value)}
+                          className="w-full"
+                          placeholder="Nhập giá"
+                          min={0}
+                          mode="currency"
+                          currency="VND"
+                          locale="vi-VN"
+                          inputClassName="w-full h-10 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Tỷ lệ quy đổi</label>
+                        <InputNumber
+                          value={parseFloat(option.conversionRate) || 1}
+                          onValueChange={(e) => handleUnitOptionChange(index, 'conversionRate', e.value)}
+                          className="w-full"
+                          placeholder="1"
+                          min={0.01}
+                          step={0.01}
+                          inputClassName="w-full h-10 border border-gray-300 rounded-md"
+                        />
+                        <small className="text-gray-500 text-xs">1 {option.unit} = {option.conversionRate} {editedProduct.productUnit}</small>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Số lượng tồn kho</label>
+                        <InputNumber
+                          value={parseInt(option.inStock) || 0}
+                          onValueChange={(e) => handleUnitOptionChange(index, 'inStock', e.value)}
+                          className="w-full"
+                          placeholder="0"
+                          min={0}
+                          inputClassName="w-full h-10 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                <button
+                  type="button"
+                  onClick={addUnitOption}
+                  className="flex items-center text-[#51bb1a] hover:text-[#45a011] text-sm font-medium"
+                >
+                  <i className="pi pi-plus mr-1"></i> Thêm đơn vị đo
+                </button>
+              </div>
+              
+              <div className="text-xs text-gray-500">
+                <p>- <strong>Đơn vị mặc định</strong>: Đơn vị hiển thị chính khi khách hàng xem sản phẩm</p>
+                <p>- <strong>Tỷ lệ quy đổi</strong>: Dùng để tính giữa các đơn vị (vd: 1 kg = 1000 gram, 1 thùng = 24 chai)</p>
+                <p>- <strong>Ví dụ</strong>: Nước có thể bán theo chai, lốc, thùng; thịt có thể bán theo gram, kg; trái cây có thể bán theo kg, thùng</p>
+              </div>
+            </div>
           </Card>
 
           <div className="flex justify-end gap-3 mt-4">

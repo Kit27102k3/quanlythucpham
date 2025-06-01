@@ -117,6 +117,24 @@ export const createProduct = async (req, res) => {
       }
     }
 
+    // Validate và chuẩn bị unitOptions nếu có
+    let unitOptions = [];
+    if (req.body.unitOptions && Array.isArray(req.body.unitOptions)) {
+      unitOptions = req.body.unitOptions.map((option) => ({
+        unit: option.unit,
+        price: option.price,
+        conversionRate: option.conversionRate || 1,
+        inStock: option.inStock || 0,
+        isDefault: option.isDefault || false,
+      }));
+
+      // Đảm bảo có ít nhất một đơn vị mặc định
+      const hasDefault = unitOptions.some((opt) => opt.isDefault);
+      if (!hasDefault && unitOptions.length > 0) {
+        unitOptions[0].isDefault = true;
+      }
+    }
+
     const newProduct = new Product({
       ...req.body,
       productImages: uploadedUrls,
@@ -131,6 +149,7 @@ export const createProduct = async (req, res) => {
       discountEndDate,
       expiryDate,
       productStatus,
+      unitOptions: unitOptions,
     });
 
     // Tính productPromoPrice từ productPrice và productDiscount
@@ -375,22 +394,43 @@ export const updateProduct = async (req, res) => {
       expiryDate = null;
     }
 
+    // Validate và chuẩn bị unitOptions nếu có
+    let unitOptions = product.unitOptions || [];
+    if (req.body.unitOptions && Array.isArray(req.body.unitOptions)) {
+      unitOptions = req.body.unitOptions.map((option) => ({
+        unit: option.unit,
+        price: option.price,
+        conversionRate: option.conversionRate || 1,
+        inStock: option.inStock || 0,
+        isDefault: option.isDefault || false,
+      }));
+
+      // Đảm bảo có ít nhất một đơn vị mặc định
+      const hasDefault = unitOptions.some((opt) => opt.isDefault);
+      if (!hasDefault && unitOptions.length > 0) {
+        unitOptions[0].isDefault = true;
+      }
+    }
+
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
       {
         ...req.body,
         productImages: [...existingImages, ...newImageUrls],
         productDescription,
-        productPrice: Number(req.body.productPrice),
-        productDiscount: Number(req.body.productDiscount) || 0,
-        productStock: Number(req.body.productStock) || 0,
-        productWeight: Number(req.body.productWeight) || 0,
-        productWarranty: Number(req.body.productWarranty) || 0,
+        productPrice: Number(req.body.productPrice) || product.productPrice,
+        productDiscount:
+          Number(req.body.productDiscount) ?? product.productDiscount,
+        productStock: Number(req.body.productStock) ?? product.productStock,
+        productWeight: Number(req.body.productWeight) ?? product.productWeight,
+        productWarranty:
+          Number(req.body.productWarranty) ?? product.productWarranty,
         productUnit: req.body.productUnit || product.productUnit || "gram",
         discountStartDate,
         discountEndDate,
         expiryDate,
         productStatus,
+        unitOptions: unitOptions,
       },
       { new: true }
     );
@@ -628,82 +668,93 @@ export const getBestSellingProducts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 4;
     const period = req.query.period || "all";
 
-    
-
     // Tự xử lý lấy sản phẩm thường thay vì dùng Model.getBestSellers
     let bestSellingProducts = [];
-    
+
     try {
       bestSellingProducts = await BestSellingProduct.find()
         .sort({ soldCount: -1 })
         .limit(limit)
         .populate({
-          path: 'productId',
-          select: 'productName productPrice productStatus productImages productDiscount productStock productCategory'
+          path: "productId",
+          select:
+            "productName productPrice productStatus productImages productDiscount productStock productCategory",
         });
-      
-     
     } catch (modelError) {
-      console.error("[getBestSellingProducts] Lỗi khi truy vấn model BestSellingProduct:", modelError);
+      console.error(
+        "[getBestSellingProducts] Lỗi khi truy vấn model BestSellingProduct:",
+        modelError
+      );
     }
-    
+
     // Nếu không có sản phẩm bán chạy, lấy sản phẩm thông thường
     if (!bestSellingProducts || bestSellingProducts.length === 0) {
-      console.log('[getBestSellingProducts] Không có dữ liệu sản phẩm bán chạy, lấy sản phẩm thông thường...');
-      
+      console.log(
+        "[getBestSellingProducts] Không có dữ liệu sản phẩm bán chạy, lấy sản phẩm thông thường..."
+      );
+
       try {
         const normalProducts = await Product.find({
-          productStatus: { $ne: 'Hết hàng' },
-          productStock: { $gt: 0 }
+          productStatus: { $ne: "Hết hàng" },
+          productStock: { $gt: 0 },
         })
-        .sort({ createdAt: -1 })
-        .limit(limit);
-        
-        console.log(`[getBestSellingProducts] Tìm thấy ${normalProducts.length} sản phẩm thông thường để thay thế`);
-        
+          .sort({ createdAt: -1 })
+          .limit(limit);
+
+        console.log(
+          `[getBestSellingProducts] Tìm thấy ${normalProducts.length} sản phẩm thông thường để thay thế`
+        );
+
         return res.status(200).json({
           success: true,
           message: "Trả về sản phẩm thông thường thay thế",
-          data: normalProducts
+          data: normalProducts,
         });
       } catch (productError) {
-        console.error("[getBestSellingProducts] Lỗi khi lấy sản phẩm thông thường:", productError);
+        console.error(
+          "[getBestSellingProducts] Lỗi khi lấy sản phẩm thông thường:",
+          productError
+        );
         return res.status(200).json({
           success: true,
           message: "Không tìm thấy sản phẩm nào",
-          data: []
+          data: [],
         });
       }
     }
 
     // Format dữ liệu trả về
-    const formattedProducts = bestSellingProducts.map(item => {
-      // Nếu sản phẩm đã được populate đầy đủ
-      if (item.productId && typeof item.productId === 'object') {
-        const product = {
-          ...item.productId.toObject(),
-          soldCount: item.soldCount,
-          totalRevenue: item.totalRevenue
-        };
-        return product;
-      } 
-      // Trường hợp productId chỉ là id, không được populate
-      return item;
-    }).filter(item => item !== null && item !== undefined);
+    const formattedProducts = bestSellingProducts
+      .map((item) => {
+        // Nếu sản phẩm đã được populate đầy đủ
+        if (item.productId && typeof item.productId === "object") {
+          const product = {
+            ...item.productId.toObject(),
+            soldCount: item.soldCount,
+            totalRevenue: item.totalRevenue,
+          };
+          return product;
+        }
+        // Trường hợp productId chỉ là id, không được populate
+        return item;
+      })
+      .filter((item) => item !== null && item !== undefined);
 
-    console.log(`[getBestSellingProducts] Trả về ${formattedProducts.length} sản phẩm bán chạy đã định dạng`);
-    
+    console.log(
+      `[getBestSellingProducts] Trả về ${formattedProducts.length} sản phẩm bán chạy đã định dạng`
+    );
+
     return res.status(200).json({
       success: true,
       message: "Lấy danh sách sản phẩm bán chạy thành công",
-      data: formattedProducts
+      data: formattedProducts,
     });
   } catch (error) {
-    console.error('[getBestSellingProducts] Lỗi:', error.message);
-    return res.status(200).json({ 
+    console.error("[getBestSellingProducts] Lỗi:", error.message);
+    return res.status(200).json({
       success: true,
       message: "Đã xảy ra lỗi khi lấy sản phẩm bán chạy",
-      data: [] // Trả về mảng rỗng thay vì lỗi 500
+      data: [], // Trả về mảng rỗng thay vì lỗi 500
     });
   }
 };
@@ -712,59 +763,53 @@ export const getBestSellingProducts = async (req, res) => {
 export const getTopRatedProducts = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 4;
-    
+
     // Tìm sản phẩm có đánh giá cao nhất
     const topRatedProducts = await Product.find({
-      productStatus: { $ne: 'Hết hàng' },
+      productStatus: { $ne: "Hết hàng" },
       productStock: { $gt: 0 },
-      averageRating: { $gt: 0 } // Chỉ lấy sản phẩm có đánh giá
+      averageRating: { $gt: 0 }, // Chỉ lấy sản phẩm có đánh giá
     })
-    .sort({ averageRating: -1, numOfReviews: -1 }) // Sắp xếp theo đánh giá cao nhất, ưu tiên sản phẩm có nhiều đánh giá
-    .limit(limit)
-    .select('productName productPrice productStatus productImages productDiscount productStock productCategory averageRating numOfReviews');
-    
+      .sort({ averageRating: -1, numOfReviews: -1 }) // Sắp xếp theo đánh giá cao nhất, ưu tiên sản phẩm có nhiều đánh giá
+      .limit(limit)
+      .select(
+        "productName productPrice productStatus productImages productDiscount productStock productCategory averageRating numOfReviews"
+      );
+
     // Nếu không có sản phẩm có đánh giá, lấy sản phẩm thông thường
     if (!topRatedProducts || topRatedProducts.length === 0) {
-      console.log('[getTopRatedProducts] Không có dữ liệu sản phẩm có đánh giá, lấy sản phẩm thông thường...');
-      
       try {
         const normalProducts = await Product.find({
-          productStatus: { $ne: 'Hết hàng' },
-          productStock: { $gt: 0 }
+          productStatus: { $ne: "Hết hàng" },
+          productStock: { $gt: 0 },
         })
-        .sort({ createdAt: -1 })
-        .limit(limit);
-        
-        console.log(`[getTopRatedProducts] Tìm thấy ${normalProducts.length} sản phẩm thông thường để thay thế`);
-        
+          .sort({ createdAt: -1 })
+          .limit(limit);
+
         return res.status(200).json({
           success: true,
           message: "Trả về sản phẩm thông thường thay thế",
-          data: normalProducts
+          data: normalProducts,
         });
       } catch (productError) {
-        console.error("[getTopRatedProducts] Lỗi khi lấy sản phẩm thông thường:", productError);
         return res.status(200).json({
           success: true,
           message: "Không tìm thấy sản phẩm nào",
-          data: []
+          data: [],
         });
       }
     }
-    
-    console.log(`[getTopRatedProducts] Trả về ${topRatedProducts.length} sản phẩm có đánh giá cao nhất`);
-    
+
     return res.status(200).json({
       success: true,
       message: "Lấy danh sách sản phẩm có đánh giá cao nhất thành công",
-      data: topRatedProducts
+      data: topRatedProducts,
     });
   } catch (error) {
-    console.error('[getTopRatedProducts] Lỗi:', error.message);
-    return res.status(200).json({ 
+    return res.status(200).json({
       success: true,
       message: "Đã xảy ra lỗi khi lấy sản phẩm có đánh giá cao",
-      data: [] // Trả về mảng rỗng thay vì lỗi 500
+      data: [], // Trả về mảng rỗng thay vì lỗi 500
     });
   }
 };

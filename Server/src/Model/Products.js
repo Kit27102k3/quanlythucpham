@@ -23,6 +23,16 @@ const productSchema = new mongoose.Schema(
     productOrigin: { type: String, trim: true },
     productIntroduction: { type: String, trim: true },
     productUnit: { type: String, default: "gram", trim: true },
+    unitOptions: {
+      type: [{
+        unit: { type: String, required: true, trim: true },
+        price: { type: Number, required: true },
+        conversionRate: { type: Number, required: true, default: 1 },
+        inStock: { type: Number, default: 0 },
+        isDefault: { type: Boolean, default: false }
+      }],
+      default: []
+    },
     discountStartDate: { type: Date, default: null },
     discountEndDate: { type: Date, default: null },
     expiryDate: { type: Date, default: null },

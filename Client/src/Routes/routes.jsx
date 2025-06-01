@@ -43,6 +43,11 @@ import Suppliers from "../Admin/Pages/Suppliers";
 import Brands from "../Admin/Pages/Brands";
 import Branches from "../Admin/Pages/Branches";
 import Delivery from "../Admin/Pages/Delivery";
+import WarehouseTrackingPage from "../User/Pages/Profile/OrderDetail/WarehouseTrackingPage";
+import RecipesPage from "../User/Pages/Recipes/RecipesPage";
+import RecipeDetailPage from "../User/Pages/Recipes/RecipeDetailPage";
+import RecipePage from "../User/Pages/Recipes/RecipePage";
+
 const publicRoutes = [
   {
     path: "/",
@@ -59,6 +64,14 @@ const publicRoutes = [
       {
         path: "don-hang/:orderId",
         page: OrderDetail,
+      },
+      {
+        path: "don-hang/:orderId/kho-trung-chuyen",
+        page: WarehouseTrackingPage,
+      },
+      {
+        path: "don-hang/:orderId/theo-doi-kho",
+        page: WarehouseTrackingPage,
       },
       {
         path: "",
@@ -169,6 +182,18 @@ const publicRoutes = [
   {
     path: "/cua-hang",
     page: StoreLocations,
+  },
+  {
+    path: "/recipes",
+    page: RecipesPage,
+  },
+  {
+    path: "/recipe-detail/:id",
+    page: RecipeDetailPage,
+  },
+  {
+    path: "/vao-bep",
+    page: RecipePage,
   },
 ];
 

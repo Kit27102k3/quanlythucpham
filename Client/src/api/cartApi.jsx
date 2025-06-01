@@ -14,20 +14,34 @@ const cartApi = {
     }
   },
 
-  addToCart: async (userId, productId, quantity = 1) => {
+  addToCart: async (params) => {
     try {
-      // Đảm bảo productId là string hợp lệ
+      const { productId, userId, quantity = 1, unit, unitPrice, conversionRate } = params;
+      
       if (!productId) {
         console.error("Invalid product ID:", productId);
         throw new Error("Product ID is required");
       }
       
-      // Ghi log cho dễ debug
-      console.log("Gọi API thêm vào giỏ hàng:", { userId, productId, quantity });
+      console.log("Gọi API thêm vào giỏ hàng:", { 
+        userId, 
+        productId, 
+        quantity,
+        unit,
+        unitPrice,
+        conversionRate
+      });
       
       const response = await axios.post(
         `${API_URL}/add-to-cart`,
-        { userId, productId, quantity },
+        { 
+          userId, 
+          productId, 
+          quantity,
+          unit,
+          unitPrice,
+          conversionRate
+        },
         {
           headers: {
             "Content-Type": "application/json",
@@ -68,11 +82,20 @@ const cartApi = {
     }
   },
 
-  updateCartItem: async (userId, productId, quantity) => {
+  updateCartItem: async (userId, productId, options = {}) => {
     try {
+      const { quantity, unit, unitPrice, conversionRate } = options;
+      
       const response = await axios.put(
         `${API_URL}/update-cart-item`,
-        { userId, productId, quantity },
+        { 
+          userId, 
+          productId, 
+          quantity,
+          unit,
+          unitPrice,
+          conversionRate
+        },
         {
           headers: {
             "Content-Type": "application/json",

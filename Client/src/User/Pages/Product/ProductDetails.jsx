@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState, useRef, lazy, Suspense } from "react";
 import { DotFilledIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Card, CardContent } from "../../component/ui/card";
@@ -10,7 +11,8 @@ import formatCurrency from "../../Until/FotmatPrice";
 import "../../../index.css";
 import RelatedProducts from "./RelatedProducts";
 import { Star, StarHalf } from "lucide-react";
-import { toast, Toaster } from 'sonner';
+import { toast, Toaster } from "sonner";
+import cartApi from "../../../api/cartApi";
 
 const Kitchen = lazy(() => import("./Kitchen"));
 
@@ -37,25 +39,22 @@ export default function ProductDetails() {
   const { slug } = useParams();
   const topElementRef = useRef(null);
   const navigate = useNavigate();
-
-  // Kiểm tra xem người dùng đã đăng nhập chưa
+  const [selectedUnit, setSelectedUnit] = useState(null);
+  const [availableUnits, setAvailableUnits] = useState([]);
+  const [unitPrice, setUnitPrice] = useState(0);
   const checkIsAuthenticated = () => {
-    const accessToken = localStorage.getItem('accessToken');
-    const access_token = localStorage.getItem('access_token');
-    const token = localStorage.getItem('token');
-    const userAccessToken = localStorage.getItem('userAccessToken');
-    const adminAccessToken = localStorage.getItem('adminAccessToken');
-    
-    // Log để debug
-    console.log('Authentication tokens:', {
-      accessToken,
-      access_token,
-      token,
-      userAccessToken,
+    const accessToken = localStorage.getItem("accessToken");
+    const access_token = localStorage.getItem("access_token");
+    const token = localStorage.getItem("token");
+    const userAccessToken = localStorage.getItem("userAccessToken");
+    const adminAccessToken = localStorage.getItem("adminAccessToken");
+    return !!(
+      accessToken ||
+      access_token ||
+      token ||
+      userAccessToken ||
       adminAccessToken
-    });
-    
-    return !!(accessToken || access_token || token || userAccessToken || adminAccessToken); // Chuyển token thành boolean
+    ); // Chuyển token thành boolean
   };
 
   useEffect(() => {
@@ -75,21 +74,40 @@ export default function ProductDetails() {
           setProducts(product);
           setProductImages(product.productImages);
           setSelectedImage(product.productImages[0] || null);
-          
-          // Lưu productId vào sessionStorage để chatbot có thể sử dụng
-          sessionStorage.setItem('currentProductId', product._id);
-          console.log('Đã lưu productId vào sessionStorage:', product._id);
-          
-          // Lấy đánh giá từ API
+          sessionStorage.setItem("currentProductId", product._id);
           fetchProductReviews(product._id);
+          if (product) {
+            if (product.unitOptions && product.unitOptions.length > 0) {
+              setAvailableUnits(product.unitOptions);
+              const defaultUnit = product.unitOptions.find(
+                (opt) => opt.isDefault
+              );
+              if (defaultUnit) {
+                setSelectedUnit(defaultUnit);
+                setUnitPrice(defaultUnit.price);
+              } else {
+                setSelectedUnit(product.unitOptions[0]);
+                setUnitPrice(product.unitOptions[0].price);
+              }
+            } else {
+              const defaultUnit = {
+                unit: product.productUnit || "gram",
+                price: product.productPrice,
+                conversionRate: 1,
+                inStock: product.productStock,
+                isDefault: true,
+              };
+              setAvailableUnits([defaultUnit]);
+              setSelectedUnit(defaultUnit);
+              setUnitPrice(product.productPrice);
+            }
+          }
         }
       } catch (error) {
         console.error("Lỗi khi lấy thông tin sản phẩm:", error);
       }
     };
     fetchProduct();
-
-    // Cleanup function
     return () => {
       if (reviewsInterval) {
         clearInterval(reviewsInterval);
@@ -97,25 +115,19 @@ export default function ProductDetails() {
     };
   }, [slug]);
 
-  // Tham chiếu đến interval để refresh đánh giá
   const [reviewsInterval, setReviewsInterval] = useState(null);
-
-  // Hàm lấy đánh giá sản phẩm
   const fetchProductReviews = async (productId) => {
     try {
-      console.log("Fetching reviews for product ID:", productId);
       const reviewData = await reviewsApi.getProductReviews(productId);
-      console.log("Reviews data received:", reviewData);
-      
-      // Đảm bảo reviews là mảng
-      const reviewsList = Array.isArray(reviewData?.reviews) ? reviewData.reviews : [];
+
+      const reviewsList = Array.isArray(reviewData?.reviews)
+        ? reviewData.reviews
+        : [];
       const ratingAvg = reviewData?.averageRating || 0;
-      
-      console.log("Setting reviews:", reviewsList.length, "items");
+
       setReviews(reviewsList);
       setRating(ratingAvg);
-      
-      // Thiết lập auto-refresh cho đánh giá (cứ 10 giây refresh một lần)
+
       if (!reviewsInterval) {
         const intervalId = setInterval(() => {
           refreshReviews(productId);
@@ -123,31 +135,32 @@ export default function ProductDetails() {
         setReviewsInterval(intervalId);
       }
     } catch (error) {
-      console.error("Lỗi khi lấy đánh giá:", error);
-      // Khởi tạo mặc định nếu có lỗi
+      console.error("Lỗi khi lấy đánh giá sản phẩm:", error);
       setReviews([]);
       setRating(0);
     }
   };
-  
+
   // Hàm refresh đánh giá
   const refreshReviews = async (productId) => {
     try {
-      console.log("Refreshing reviews for product ID:", productId);
       const reviewData = await reviewsApi.getProductReviews(productId);
-      console.log("Refreshed review data:", reviewData);
-      
+
       // Đảm bảo reviews là mảng
-      const refreshedReviews = Array.isArray(reviewData?.reviews) ? reviewData.reviews : [];
+      const refreshedReviews = Array.isArray(reviewData?.reviews)
+        ? reviewData.reviews
+        : [];
       const refreshedRating = reviewData?.averageRating || 0;
-      
+
       // Kiểm tra nếu có thay đổi mới cập nhật state để tránh re-render không cần thiết
       const currentReviewCount = reviews.length;
       const newReviewCount = refreshedReviews.length;
-      
+
       // Nếu số lượng đánh giá thay đổi hoặc rating thay đổi
-      if (currentReviewCount !== newReviewCount || Math.abs(rating - refreshedRating) > 0.01) {
-        console.log("Đã phát hiện thay đổi trong đánh giá, cập nhật giao diện");
+      if (
+        currentReviewCount !== newReviewCount ||
+        Math.abs(rating - refreshedRating) > 0.01
+      ) {
         setReviews(refreshedReviews);
         setRating(refreshedRating);
       }
@@ -174,7 +187,7 @@ export default function ProductDetails() {
 
   // Nếu có fullName trong localStorage, sử dụng nó làm username
   useEffect(() => {
-    const storedName = localStorage.getItem('fullName');
+    const storedName = localStorage.getItem("fullName");
     if (storedName) {
       setUserName(storedName);
     }
@@ -192,23 +205,6 @@ export default function ProductDetails() {
     setIntroduce(!introduce);
   };
 
-  const handleBuyNow = () => {
-    if (products) {
-      // Tạo đối tượng sản phẩm để thêm vào giỏ hàng
-      const cartItem = {
-        product: products,
-        quantity: count,
-        price: products.productPrice,
-      };
-
-      // Lưu thông tin sản phẩm vào localStorage để truy cập trong trang thanh toán
-      localStorage.setItem("checkoutItems", JSON.stringify([cartItem]));
-
-      // Chuyển hướng đến trang thanh toán
-      navigate("/checkout");
-    }
-  };
-
   const descriptionArray =
     typeof products?.productDescription === "string"
       ? products.productDescription.includes("[")
@@ -222,56 +218,53 @@ export default function ProductDetails() {
   const toggleReviews = () => {
     setReviewsVisible(!reviewsVisible);
   };
-  
+
   const handleSubmitReview = async (e) => {
     e.preventDefault();
-    
+
     // Đảm bảo token được lưu ở cả hai vị trí
-    const accessToken = localStorage.getItem('accessToken');
-    const access_token = localStorage.getItem('access_token');
-    
+    const accessToken = localStorage.getItem("accessToken");
+    const access_token = localStorage.getItem("access_token");
+
     // Đồng bộ token nếu một trong hai tồn tại
     if (accessToken && !access_token) {
-      localStorage.setItem('access_token', accessToken);
-      console.log('Đã sao chép accessToken sang access_token');
+      localStorage.setItem("access_token", accessToken);
     } else if (!accessToken && access_token) {
-      localStorage.setItem('accessToken', access_token);
-      console.log('Đã sao chép access_token sang accessToken');
+      localStorage.setItem("accessToken", access_token);
     }
-    
+
     if (!checkIsAuthenticated()) {
       toast.error("Vui lòng đăng nhập để đánh giá sản phẩm");
       return;
     }
-    
+
     if (!userReview.trim()) {
       toast.error("Vui lòng nhập nội dung đánh giá");
       return;
     }
-    
+
     try {
-      const userId = localStorage.getItem('userId');
+      const userId = localStorage.getItem("userId");
       if (!userId) {
-        toast.error("Không tìm thấy thông tin người dùng, vui lòng đăng nhập lại");
+        toast.error(
+          "Không tìm thấy thông tin người dùng, vui lòng đăng nhập lại"
+        );
         return;
       }
-      
-      const displayName = userName || localStorage.getItem('fullName') || 'Người dùng';
-      
+
+      const displayName =
+        userName || localStorage.getItem("fullName") || "Người dùng";
+
       const reviewData = {
         productId: products._id,
         rating: userRating,
         comment: userReview.trim(),
         userName: displayName,
-        userId: userId
+        userId: userId,
       };
-      
-      console.log("Đang gửi đánh giá với dữ liệu:", reviewData);
-      
+
       const response = await reviewsApi.addReview(reviewData);
-      console.log("Kết quả từ server:", response);
-      
-      // Thêm đánh giá mới vào state để hiển thị ngay
+
       const newReview = {
         _id: response._id || Date.now().toString(), // Dùng ID từ response nếu có, nếu không dùng timestamp
         productId: products._id,
@@ -280,54 +273,71 @@ export default function ProductDetails() {
         userName: displayName,
         userId: userId,
         createdAt: new Date().toISOString(),
-        replies: []
+        replies: [],
       };
-      
+
       // Tính lại rating trung bình
       const allReviews = [...reviews, newReview];
-      const avgRating = allReviews.reduce((sum, r) => sum + Number(r.rating), 0) / allReviews.length;
-      
+      const avgRating =
+        allReviews.reduce((sum, r) => sum + Number(r.rating), 0) /
+        allReviews.length;
+
       // Cập nhật state
       setReviews(allReviews);
       setRating(avgRating);
-      
+
       // Reset form
       setUserReview("");
       setUserRating(5);
-      
+
       toast.success("Cảm ơn bạn đã đánh giá sản phẩm!");
-      
+
       // Cập nhật lại đánh giá từ server sau khi thêm thành công
       setTimeout(() => {
         fetchProductReviews(products._id);
       }, 1000);
     } catch (error) {
       console.error("Lỗi khi gửi đánh giá:", error);
-      const errorMessage = error.response?.data?.message || 
-                          "Không thể gửi đánh giá. Vui lòng thử lại sau.";
+      const errorMessage =
+        error.response?.data?.message ||
+        "Không thể gửi đánh giá. Vui lòng thử lại sau.";
       toast.error(errorMessage);
     }
   };
-  
+
   // Hàm hiển thị sao dựa trên rating
   const renderStars = (rating) => {
     const stars = [];
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
-    
+
     for (let i = 0; i < fullStars; i++) {
-      stars.push(<Star key={`star-${i}`} className="fill-yellow-400 text-yellow-400" size={16} />);
+      stars.push(
+        <Star
+          key={`star-${i}`}
+          className="fill-yellow-400 text-yellow-400"
+          size={16}
+        />
+      );
     }
-    
+
     if (hasHalfStar) {
-      stars.push(<StarHalf key="half-star" className="fill-yellow-400 text-yellow-400" size={16} />);
+      stars.push(
+        <StarHalf
+          key="half-star"
+          className="fill-yellow-400 text-yellow-400"
+          size={16}
+        />
+      );
     }
-    
+
     const emptyStars = 5 - stars.length;
     for (let i = 0; i < emptyStars; i++) {
-      stars.push(<Star key={`empty-star-${i}`} className="text-gray-300" size={16} />);
+      stars.push(
+        <Star key={`empty-star-${i}`} className="text-gray-300" size={16} />
+      );
     }
-    
+
     return stars;
   };
 
@@ -340,27 +350,27 @@ export default function ProductDetails() {
   // Tạo giao diện đánh giá half-star hover
   const renderRatingInput = () => {
     const stars = [];
-    
+
     for (let i = 0; i < 5; i++) {
       const wholeStar = i + 1;
       const halfStar = i + 0.5;
-      
+
       stars.push(
         <div key={`rating-${i}`} className="relative inline-block">
           {/* Phần nửa sao đầu tiên */}
-          <div 
-            className="absolute left-0 top-0 w-1/2 h-full cursor-pointer z-10" 
+          <div
+            className="absolute left-0 top-0 w-1/2 h-full cursor-pointer z-10"
             onClick={() => handleStarClick(i, true)}
             title={`${halfStar} sao`}
           ></div>
-          
+
           {/* Phần nửa sao thứ hai */}
-          <div 
-            className="absolute right-0 top-0 w-1/2 h-full cursor-pointer z-10" 
+          <div
+            className="absolute right-0 top-0 w-1/2 h-full cursor-pointer z-10"
             onClick={() => handleStarClick(i, false)}
             title={`${wholeStar} sao`}
           ></div>
-          
+
           {/* Hiển thị sao */}
           {userRating >= wholeStar ? (
             <Star className="fill-yellow-400 text-yellow-400" size={24} />
@@ -372,12 +382,10 @@ export default function ProductDetails() {
         </div>
       );
     }
-    
+
     return (
       <div className="flex items-center gap-2">
-        <div className="flex gap-1">
-          {stars}
-        </div>
+        <div className="flex gap-1">{stars}</div>
         <span className="text-sm font-medium">{userRating.toFixed(1)}</span>
       </div>
     );
@@ -386,130 +394,130 @@ export default function ProductDetails() {
   // Hàm xử lý gửi phản hồi cho đánh giá
   const handleSubmitReply = async (reviewId) => {
     // Đảm bảo token được lưu ở cả hai vị trí
-    const accessToken = localStorage.getItem('accessToken');
-    const access_token = localStorage.getItem('access_token');
-    
+    const accessToken = localStorage.getItem("accessToken");
+    const access_token = localStorage.getItem("access_token");
+
     // Đồng bộ token nếu một trong hai tồn tại
     if (accessToken && !access_token) {
-      localStorage.setItem('access_token', accessToken);
-      console.log('Đã sao chép accessToken sang access_token');
+      localStorage.setItem("access_token", accessToken);
     } else if (!accessToken && access_token) {
-      localStorage.setItem('accessToken', access_token);
-      console.log('Đã sao chép access_token sang accessToken');
+      localStorage.setItem("accessToken", access_token);
     }
-    
+
     if (!checkIsAuthenticated()) {
       toast.error("Vui lòng đăng nhập để trả lời đánh giá");
       return;
     }
-    
+
     if (!replyText.trim()) {
       toast.error("Vui lòng nhập nội dung phản hồi");
       return;
     }
-    
+
     setSubmitting(true);
-    
+
     try {
       await reviewsApi.addReplyToReview(reviewId, replyText);
-      
+
       // Cập nhật danh sách đánh giá
       await refreshReviews(products._id);
-      
+
       // Reset form
       setReplyText("");
       setReplyingTo(null);
-      
+
       toast.success("Đã gửi phản hồi thành công!");
     } catch (error) {
       console.error("Lỗi khi gửi phản hồi:", error);
-      toast.error(error.response?.data?.message || "Không thể gửi phản hồi. Vui lòng thử lại sau.");
+      toast.error(
+        error.response?.data?.message ||
+          "Không thể gửi phản hồi. Vui lòng thử lại sau."
+      );
     } finally {
       setSubmitting(false);
     }
   };
-  
+
   // Hàm xử lý cập nhật phản hồi
   const handleUpdateReply = async (reviewId, replyId) => {
     if (!editReplyText.trim()) {
       toast.error("Vui lòng nhập nội dung phản hồi");
       return;
     }
-    
+
     setSubmitting(true);
-    
+
     try {
       await reviewsApi.updateReply(reviewId, replyId, editReplyText);
-      
+
       // Cập nhật danh sách đánh giá
       await refreshReviews(products._id);
-      
+
       // Reset form
       setEditReplyText("");
       setEditingReply(null);
-      
+
       toast.success("Đã cập nhật phản hồi thành công!");
     } catch (error) {
       console.error("Lỗi khi cập nhật phản hồi:", error);
-      toast.error(error.response?.data?.message || "Không thể cập nhật phản hồi. Vui lòng thử lại sau.");
+      toast.error(
+        error.response?.data?.message ||
+          "Không thể cập nhật phản hồi. Vui lòng thử lại sau."
+      );
     } finally {
       setSubmitting(false);
     }
   };
-  
+
   // Hàm xử lý xóa phản hồi
   const handleDeleteReply = async (reviewId, replyId) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa phản hồi này?")) {
       return;
     }
-    
+
     setSubmitting(true);
-    
+
     try {
       await reviewsApi.deleteReply(reviewId, replyId);
-      
+
       // Cập nhật danh sách đánh giá
       await refreshReviews(products._id);
-      
+
       toast.success("Đã xóa phản hồi thành công!");
     } catch (error) {
       console.error("Lỗi khi xóa phản hồi:", error);
-      toast.error(error.response?.data?.message || "Không thể xóa phản hồi. Vui lòng thử lại sau.");
+      toast.error(
+        error.response?.data?.message ||
+          "Không thể xóa phản hồi. Vui lòng thử lại sau."
+      );
     } finally {
       setSubmitting(false);
     }
   };
-  
+
   // Hàm kiểm tra quyền chỉnh sửa hoặc xóa phản hồi
   const canModifyReply = (reply) => {
     if (!checkIsAuthenticated()) return false;
-    
-    console.log("Checking permissions for reply:", reply);
-    console.log("Current user tokens:", {
-      userId: localStorage.getItem('userId'),
-      role: localStorage.getItem('role'),
-      isAdmin: localStorage.getItem('isAdmin')
-    });
-    
-    const userId = localStorage.getItem('userId');
-    const isAdmin = localStorage.getItem('role') === 'admin' || localStorage.getItem('isAdmin') === 'true';
-    
-    console.log(`Reply userId: ${reply.userId}, Current userId: ${userId}, isAdmin: ${isAdmin}`);
-    
+
+    const userId = localStorage.getItem("userId");
+    const isAdmin =
+      localStorage.getItem("role") === "admin" ||
+      localStorage.getItem("isAdmin") === "true";
+
     return isAdmin || reply.userId === userId;
   };
 
   // Tính tổng số đánh giá + phản hồi
   const getTotalReviewsAndReplies = () => {
     let total = reviews.length;
-    
+
     // Cộng thêm số lượng replies từ mỗi review
-    reviews.forEach(review => {
+    reviews.forEach((review) => {
       if (review.replies && review.replies.length > 0) {
         total += review.replies.length;
       }
     });
-    
+
     return total;
   };
 
@@ -517,55 +525,52 @@ export default function ProductDetails() {
   const saveProductInfoToChat = () => {
     try {
       // Lấy URL đầy đủ của hình ảnh sản phẩm (đảm bảo là URL hoàn chỉnh)
-      let imageUrl = selectedImage || (products?.productImages && products.productImages.length > 0 ? products.productImages[0] : "");
-      
-      console.log("URL hình ảnh Cloudinary:", imageUrl);
-      
-      // Kiểm tra và xử lý URL hình ảnh - CHỈ xử lý nếu không phải URL Cloudinary
-      if (imageUrl && !imageUrl.includes('cloudinary.com')) {
+      let imageUrl =
+        selectedImage ||
+        (products?.productImages && products.productImages.length > 0
+          ? products.productImages[0]
+          : "");
+
+      if (imageUrl && !imageUrl.includes("cloudinary.com")) {
         // Xóa các tham số URL không cần thiết (nếu có)
-        imageUrl = imageUrl.split('?')[0];
-        
+        imageUrl = imageUrl.split("?")[0];
+
         // Kiểm tra nếu URL không phải là http/https, thêm origin vào trước
-        if (!imageUrl.startsWith('http')) {
+        if (!imageUrl.startsWith("http")) {
           // Đảm bảo không có nhiều dấu gạch chéo (/) trùng lặp
-          if (imageUrl.startsWith('/')) {
+          if (imageUrl.startsWith("/")) {
             imageUrl = window.location.origin + imageUrl;
           } else {
-            imageUrl = window.location.origin + '/' + imageUrl;
+            imageUrl = window.location.origin + "/" + imageUrl;
           }
         }
       }
-      
-      // Hiển thị URL hình ảnh sau khi xử lý
-      console.log("URL hình ảnh sản phẩm cuối cùng:", imageUrl);
-      
+
       // Tạo đối tượng hình ảnh để kiểm tra tải
       const img = new Image();
       img.src = imageUrl;
-      
+
       // Lưu thông tin sản phẩm vào localStorage
       const productInfo = {
         id: products?._id || "",
         name: products?.productName || "Sản phẩm",
         price: products?.productPrice || 0,
         image: imageUrl,
-        url: window.location.href
+        url: window.location.href,
       };
-      
+
       // Đánh dấu thời gian lưu để tránh sử dụng dữ liệu quá cũ
       productInfo.timestamp = Date.now();
-      
-      console.log("Lưu thông tin sản phẩm vào localStorage:", productInfo);
-      localStorage.setItem('chatProduct', JSON.stringify(productInfo));
-      
+
+      localStorage.setItem("chatProduct", JSON.stringify(productInfo));
+
       // Thêm sự kiện lỗi cho hình ảnh
       img.onerror = () => {
-        console.log("Lỗi tải hình ảnh, sử dụng placeholder");
-        productInfo.image = "https://via.placeholder.com/250x250.png?text=No+Image";
-        localStorage.setItem('chatProduct', JSON.stringify(productInfo));
+        productInfo.image =
+          "https://via.placeholder.com/250x250.png?text=No+Image";
+        localStorage.setItem("chatProduct", JSON.stringify(productInfo));
       };
-      
+
       return true;
     } catch (error) {
       console.error("Lỗi khi lưu thông tin sản phẩm:", error);
@@ -579,7 +584,7 @@ export default function ProductDetails() {
       if (saveProductInfoToChat()) {
         // Thông báo cho người dùng
         toast.success("Bạn đang trao đổi với Người bán về sản phẩm này");
-        
+
         // Chuyển hướng đến trang tin nhắn
         navigate("/tai-khoan/tin-nhan");
       } else {
@@ -589,6 +594,75 @@ export default function ProductDetails() {
       console.error("Lỗi khi chuẩn bị chat với sản phẩm:", error);
       toast.error("Có lỗi xảy ra. Vui lòng thử lại sau.");
     }
+  };
+
+  // Thêm hàm xử lý thay đổi đơn vị đo
+  const handleUnitChange = (unit) => {
+    setSelectedUnit(unit);
+    setUnitPrice(unit.price);
+    // Reset số lượng về 1 khi thay đổi đơn vị
+    setCount(1);
+  };
+
+  // Cập nhật hàm thêm vào giỏ hàng để sử dụng đơn vị đo đã chọn
+  const handleAddToCart = async () => {
+    if (!checkIsAuthenticated()) {
+      toast.error("Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      // Lấy userId từ localStorage
+      let userId = localStorage.getItem("userId");
+      
+      if (!userId) {
+        // Nếu không có userId trực tiếp, thử lấy từ user object
+        try {
+          const user = JSON.parse(localStorage.getItem("user"));
+          if (user && user._id) {
+            userId = user._id;
+          }
+        } catch (e) {
+          console.error("Lỗi khi parse user từ localStorage:", e);
+        }
+      }
+      
+      // Kiểm tra lại userId
+      if (!userId) {
+        toast.error("Không thể xác định người dùng, vui lòng đăng nhập lại");
+        navigate("/login");
+        return;
+      }
+
+      const unitToAdd = selectedUnit || {
+        unit: products.productUnit,
+        price: products.productPrice,
+        conversionRate: 1,
+      };
+
+      console.log("Đang thêm vào giỏ hàng với userId:", userId);
+      
+      await cartApi.addToCart({
+        userId: userId,
+        productId: products._id,
+        quantity: count,
+        unit: unitToAdd.unit,
+        unitPrice: unitToAdd.price,
+        conversionRate: unitToAdd.conversionRate,
+      });
+
+      toast.success("Thêm vào giỏ hàng thành công!");
+      triggerCartUpdateEvent();
+    } catch (error) {
+      console.error("Lỗi khi thêm vào giỏ hàng:", error);
+      toast.error("Có lỗi xảy ra khi thêm vào giỏ hàng");
+    }
+  };
+
+  // Add triggerCartUpdateEvent function
+  const triggerCartUpdateEvent = () => {
+    window.dispatchEvent(new Event("cart-updated"));
   };
 
   return (
@@ -640,9 +714,63 @@ export default function ProductDetails() {
                     </span>
                   </p>
                 </div>
-                <p className="lg:text-[24px] lg:font-medium">
-                  {formatCurrency(products?.productPrice)}đ
-                </p>
+                <div className="mt-2 flex items-center">
+                  <span className="font-medium text-gray-700 mr-2">
+                    Đơn vị:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {availableUnits.map((unit, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleUnitChange(unit)}
+                        className={`px-3 py-1 border rounded-md text-sm ${
+                          selectedUnit && selectedUnit.unit === unit.unit
+                            ? "bg-[#51bb1a] text-white border-[#51bb1a]"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-[#51bb1a]"
+                        }`}
+                      >
+                        {unit.unit}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <span className="text-gray-700 font-medium">Giá:</span>
+                  {products && products.productDiscount > 0 ? (
+                    <div className="flex items-center mt-1">
+                      <span className="text-3xl font-bold text-[#51bb1a]">
+                        {formatCurrency(
+                          unitPrice -
+                            (unitPrice * products.productDiscount) / 100
+                        )}
+                        đ
+                      </span>
+                      <span className="ml-2 text-gray-500 line-through">
+                        {formatCurrency(unitPrice)}đ
+                      </span>
+                      <span className="ml-2 bg-red-500 text-white text-xs px-2 py-1 rounded-md">
+                        -{products.productDiscount}%
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="mt-1">
+                      <span className="text-3xl font-bold text-[#51bb1a]">
+                        {formatCurrency(unitPrice)}đ
+                      </span>
+                    </div>
+                  )}
+                  {selectedUnit && (
+                    <div className="text-sm text-gray-500 mt-1">
+                      Giá theo {selectedUnit.unit}{" "}
+                      {selectedUnit.conversionRate > 1
+                        ? `(1 ${selectedUnit.unit} = ${
+                            selectedUnit.conversionRate
+                          } ${products?.productUnit || "đơn vị"})`
+                        : ""}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="lg:mt-1">
@@ -699,7 +827,7 @@ export default function ProductDetails() {
                             {products?.productInfo}
                           </span>{" "}
                           <span className="text-[12px]">
-                           {products?.productIntroduction}
+                            {products?.productIntroduction}
                           </span>
                         </CardContent>
                       </motion.div>
@@ -754,7 +882,7 @@ export default function ProductDetails() {
                 </div>
                 {products?.productStock === 0 ||
                 products?.productStatus === "Hết hàng" ? (
-                  <button 
+                  <button
                     className="bg-gray-400 w-full text-white text-sm p-2 mt-4 flex flex-col cursor-not-allowed"
                     disabled
                   >
@@ -763,12 +891,12 @@ export default function ProductDetails() {
                   </button>
                 ) : (
                   <button
-                    onClick={handleBuyNow}
+                    onClick={handleAddToCart}
                     className="bg-[#51bb1a] w-full cursor-pointer text-white text-sm p-2 mt-4 flex flex-col hover:opacity-90"
                   >
                     <span className="uppercase">
                       {" "}
-                      MUA NGAY VỚI GIÁ {formatCurrency(products?.productPrice)}đ
+                      MUA NGAY VỚI GIÁ {formatCurrency(unitPrice)}đ
                     </span>
                     <span className="text-[12px]">
                       Đặt mua giao hàng tận nơi
@@ -871,7 +999,7 @@ export default function ProductDetails() {
               )}
             </AnimatePresence>
           </Card>
-          
+
           {/* Card đánh giá cho mobile */}
           <Card className="w-full mb-4 md:hidden">
             <div
@@ -903,75 +1031,111 @@ export default function ProductDetails() {
                 >
                   <CardContent className="border-t border-t-gray-400 text-[12px]">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className="flex">
-                        {renderStars(rating)}
-                      </div>
-                      <span className="text-[12px] font-medium">{rating.toFixed(1)}/5</span>
-                      <span className="text-[12px] text-gray-500">({getTotalReviewsAndReplies()} đánh giá)</span>
+                      <div className="flex">{renderStars(rating)}</div>
+                      <span className="text-[12px] font-medium">
+                        {rating.toFixed(1)}/5
+                      </span>
+                      <span className="text-[12px] text-gray-500">
+                        ({getTotalReviewsAndReplies()} đánh giá)
+                      </span>
                     </div>
-                    
+
                     {/* Danh sách đánh giá */}
                     <div className="space-y-3 max-h-40 overflow-y-auto pr-1 custom-scrollbar">
                       {reviews.length > 0 ? (
                         reviews.map((review) => (
-                          <div key={review._id || review.id} className="border-b pb-2">
+                          <div
+                            key={review._id || review.id}
+                            className="border-b pb-2"
+                          >
                             <div className="flex justify-between items-center">
-                              <h3 className="font-medium text-[12px]">{review.userName}</h3>
-                              <span className="text-[10px] text-gray-500">{new Date(review.createdAt || review.date).toLocaleDateString('vi-VN')}</span>
+                              <h3 className="font-medium text-[12px]">
+                                {review.userName}
+                              </h3>
+                              <span className="text-[10px] text-gray-500">
+                                {new Date(
+                                  review.createdAt || review.date
+                                ).toLocaleDateString("vi-VN")}
+                              </span>
                             </div>
                             <div className="flex my-1">
                               {renderStars(review.rating)}
                             </div>
                             <p className="text-[12px] mt-1">{review.comment}</p>
-                            
+
                             {/* Phần phản hồi */}
                             {review.replies && review.replies.length > 0 && (
                               <div className="ml-4 mt-2 space-y-2 border-l-2 border-green-200 pl-2">
                                 <div className="text-[10px] text-green-600 font-medium">
-                                  {review.replies.length} phản hồi cho đánh giá này
+                                  {review.replies.length} phản hồi cho đánh giá
+                                  này
                                 </div>
                                 {review.replies.map((reply) => (
                                   <div key={reply._id} className="text-[11px]">
                                     <div className="flex justify-between items-center">
-                                      <span className={`font-medium ${reply.isAdmin ? 'text-green-600' : ''}`}>
-                                        {reply.isAdmin ? 'Admin' : reply.userName}:
-                    </span>
+                                      <span
+                                        className={`font-medium ${
+                                          reply.isAdmin ? "text-green-600" : ""
+                                        }`}
+                                      >
+                                        {reply.isAdmin
+                                          ? "Admin"
+                                          : reply.userName}
+                                        :
+                                      </span>
                                       <div className="flex gap-1">
                                         {canModifyReply(reply) && (
                                           <>
-                                            <Edit2 
-                                              size={10} 
-                                              className="cursor-pointer text-blue-500" 
+                                            <Edit2
+                                              size={10}
+                                              className="cursor-pointer text-blue-500"
                                               onClick={() => {
-                                                setEditingReply({reviewId: review._id, replyId: reply._id});
+                                                setEditingReply({
+                                                  reviewId: review._id,
+                                                  replyId: reply._id,
+                                                });
                                                 setEditReplyText(reply.text);
-                                              }} 
+                                              }}
                                             />
-                                            <Trash2 
-                                              size={10} 
-                                              className="cursor-pointer text-red-500" 
-                                              onClick={() => handleDeleteReply(review._id, reply._id)} 
+                                            <Trash2
+                                              size={10}
+                                              className="cursor-pointer text-red-500"
+                                              onClick={() =>
+                                                handleDeleteReply(
+                                                  review._id,
+                                                  reply._id
+                                                )
+                                              }
                                             />
                                           </>
                                         )}
                                       </div>
                                     </div>
-                                    
-                                    {editingReply && editingReply.reviewId === review._id && editingReply.replyId === reply._id ? (
+
+                                    {editingReply &&
+                                    editingReply.reviewId === review._id &&
+                                    editingReply.replyId === reply._id ? (
                                       <div className="mt-1">
                                         <textarea
                                           value={editReplyText}
-                                          onChange={(e) => setEditReplyText(e.target.value)}
+                                          onChange={(e) =>
+                                            setEditReplyText(e.target.value)
+                                          }
                                           className="w-full p-1 border rounded-md text-[11px]"
                                           rows={2}
                                         ></textarea>
                                         <div className="flex gap-1 mt-1">
                                           <button
-                                            onClick={() => handleUpdateReply(review._id, reply._id)}
+                                            onClick={() =>
+                                              handleUpdateReply(
+                                                review._id,
+                                                reply._id
+                                              )
+                                            }
                                             className="bg-blue-500 text-white py-0.5 px-2 rounded-md text-[10px]"
                                             disabled={submitting}
                                           >
-                                            {submitting ? 'Đang lưu...' : 'Lưu'}
+                                            {submitting ? "Đang lưu..." : "Lưu"}
                                           </button>
                                           <button
                                             onClick={() => {
@@ -991,7 +1155,7 @@ export default function ProductDetails() {
                                 ))}
                               </div>
                             )}
-                            
+
                             {/* Form trả lời */}
                             {checkIsAuthenticated() && (
                               <div className="mt-1">
@@ -999,18 +1163,22 @@ export default function ProductDetails() {
                                   <div>
                                     <textarea
                                       value={replyText}
-                                      onChange={(e) => setReplyText(e.target.value)}
+                                      onChange={(e) =>
+                                        setReplyText(e.target.value)
+                                      }
                                       className="w-full p-1 border rounded-md text-[11px]"
                                       rows={2}
                                       placeholder="Nhập phản hồi của bạn..."
                                     ></textarea>
                                     <div className="flex gap-1 mt-1">
                                       <button
-                                        onClick={() => handleSubmitReply(review._id)}
+                                        onClick={() =>
+                                          handleSubmitReply(review._id)
+                                        }
                                         className="bg-[#51bb1a] text-white py-0.5 px-2 rounded-md text-[10px]"
                                         disabled={submitting}
                                       >
-                                        {submitting ? 'Đang gửi...' : 'Gửi'}
+                                        {submitting ? "Đang gửi..." : "Gửi"}
                                       </button>
                                       <button
                                         onClick={() => {
@@ -1045,14 +1213,23 @@ export default function ProductDetails() {
                     {/* Form đánh giá */}
                     {checkIsAuthenticated() ? (
                       <div className="mt-3 pt-2 border-t">
-                        <h3 className="font-medium text-[12px] mb-2">Viết đánh giá</h3>
-                        <form onSubmit={handleSubmitReview} className="space-y-3">
+                        <h3 className="font-medium text-[12px] mb-2">
+                          Viết đánh giá
+                        </h3>
+                        <form
+                          onSubmit={handleSubmitReview}
+                          className="space-y-3"
+                        >
                           <div>
-                            <label className="block text-[11px] mb-1">Đánh giá của bạn</label>
+                            <label className="block text-[11px] mb-1">
+                              Đánh giá của bạn
+                            </label>
                             {renderRatingInput()}
                           </div>
                           <div>
-                            <label className="block text-sm mb-1">Nhận xét của bạn *</label>
+                            <label className="block text-sm mb-1">
+                              Nhận xét của bạn *
+                            </label>
                             <textarea
                               value={userReview}
                               onChange={(e) => setUserReview(e.target.value)}
@@ -1071,9 +1248,11 @@ export default function ProductDetails() {
                       </div>
                     ) : (
                       <div className="mt-3 pt-2 border-t text-center">
-                        <p className="text-[12px] text-gray-600 mb-2">Bạn cần đăng nhập để đánh giá</p>
+                        <p className="text-[12px] text-gray-600 mb-2">
+                          Bạn cần đăng nhập để đánh giá
+                        </p>
                         <button
-                          onClick={() => navigate('/login')}
+                          onClick={() => navigate("/login")}
                           className="bg-blue-500 text-white py-1 px-3 rounded-md hover:bg-blue-600 text-[12px] transition-colors duration-200"
                         >
                           Đăng nhập
@@ -1196,27 +1375,36 @@ export default function ProductDetails() {
             ) : (
               <div className="flex flex-col gap-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="flex">
-                    {renderStars(rating)}
-                  </div>
-                  <span className="text-sm font-medium">{rating.toFixed(1)}/5</span>
-                  <span className="text-sm text-gray-500">({getTotalReviewsAndReplies()} đánh giá)</span>
+                  <div className="flex">{renderStars(rating)}</div>
+                  <span className="text-sm font-medium">
+                    {rating.toFixed(1)}/5
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    ({getTotalReviewsAndReplies()} đánh giá)
+                  </span>
                 </div>
-                
+
                 {/* Danh sách đánh giá */}
                 <div className="space-y-4 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
                   {reviews.length > 0 ? (
                     reviews.map((review) => (
-                      <div key={review._id || review.id} className="border-b pb-3">
+                      <div
+                        key={review._id || review.id}
+                        className="border-b pb-3"
+                      >
                         <div className="flex justify-between items-center">
                           <h3 className="font-medium">{review.userName}</h3>
-                          <span className="text-xs text-gray-500">{new Date(review.createdAt || review.date).toLocaleDateString('vi-VN')}</span>
+                          <span className="text-xs text-gray-500">
+                            {new Date(
+                              review.createdAt || review.date
+                            ).toLocaleDateString("vi-VN")}
+                          </span>
                         </div>
                         <div className="flex my-1">
                           {renderStars(review.rating)}
                         </div>
                         <p className="text-sm mt-1">{review.comment}</p>
-                        
+
                         {/* Phần phản hồi */}
                         {review.replies && review.replies.length > 0 && (
                           <div className="ml-5 mt-3 space-y-3 border-l-2 border-green-200 pl-3">
@@ -1226,45 +1414,66 @@ export default function ProductDetails() {
                             {review.replies.map((reply) => (
                               <div key={reply._id} className="text-sm">
                                 <div className="flex justify-between items-center">
-                                  <span className={`font-medium ${reply.isAdmin ? 'text-green-600' : ''}`}>
-                                    {reply.isAdmin ? 'Admin' : reply.userName}:
+                                  <span
+                                    className={`font-medium ${
+                                      reply.isAdmin ? "text-green-600" : ""
+                                    }`}
+                                  >
+                                    {reply.isAdmin ? "Admin" : reply.userName}:
                                   </span>
                                   <div className="flex gap-2">
                                     {canModifyReply(reply) && (
                                       <>
-                                        <Edit2 
-                                          size={14} 
-                                          className="cursor-pointer text-blue-500" 
+                                        <Edit2
+                                          size={14}
+                                          className="cursor-pointer text-blue-500"
                                           onClick={() => {
-                                            setEditingReply({reviewId: review._id, replyId: reply._id});
+                                            setEditingReply({
+                                              reviewId: review._id,
+                                              replyId: reply._id,
+                                            });
                                             setEditReplyText(reply.text);
-                                          }} 
+                                          }}
                                         />
-                                        <Trash2 
-                                          size={14} 
-                                          className="cursor-pointer text-red-500" 
-                                          onClick={() => handleDeleteReply(review._id, reply._id)} 
+                                        <Trash2
+                                          size={14}
+                                          className="cursor-pointer text-red-500"
+                                          onClick={() =>
+                                            handleDeleteReply(
+                                              review._id,
+                                              reply._id
+                                            )
+                                          }
                                         />
                                       </>
                                     )}
                                   </div>
                                 </div>
-                                
-                                {editingReply && editingReply.reviewId === review._id && editingReply.replyId === reply._id ? (
+
+                                {editingReply &&
+                                editingReply.reviewId === review._id &&
+                                editingReply.replyId === reply._id ? (
                                   <div className="mt-2">
                                     <textarea
                                       value={editReplyText}
-                                      onChange={(e) => setEditReplyText(e.target.value)}
+                                      onChange={(e) =>
+                                        setEditReplyText(e.target.value)
+                                      }
                                       className="w-full p-2 border rounded-md text-sm"
                                       rows={2}
                                     ></textarea>
                                     <div className="flex gap-2 mt-2">
                                       <button
-                                        onClick={() => handleUpdateReply(review._id, reply._id)}
+                                        onClick={() =>
+                                          handleUpdateReply(
+                                            review._id,
+                                            reply._id
+                                          )
+                                        }
                                         className="bg-blue-500 text-white py-0.5 px-2 rounded-md text-sm"
                                         disabled={submitting}
                                       >
-                                        {submitting ? 'Đang lưu...' : 'Lưu'}
+                                        {submitting ? "Đang lưu..." : "Lưu"}
                                       </button>
                                       <button
                                         onClick={() => {
@@ -1284,7 +1493,7 @@ export default function ProductDetails() {
                             ))}
                           </div>
                         )}
-                        
+
                         {/* Form trả lời */}
                         {checkIsAuthenticated() && (
                           <div className="mt-2">
@@ -1299,16 +1508,19 @@ export default function ProductDetails() {
                                 ></textarea>
                                 <div className="flex gap-2 mt-2">
                                   <button
-                                    onClick={() => handleSubmitReply(review._id)}
+                                    onClick={() =>
+                                      handleSubmitReply(review._id)
+                                    }
                                     className="bg-[#51bb1a] text-white py-1 px-3 rounded-md text-sm"
                                     disabled={submitting}
                                   >
                                     {submitting ? (
                                       <span className="flex items-center gap-1">
-                                        <span className="animate-spin">↻</span> Đang gửi...
+                                        <span className="animate-spin">↻</span>{" "}
+                                        Đang gửi...
                                       </span>
                                     ) : (
-                                      'Gửi phản hồi'
+                                      "Gửi phản hồi"
                                     )}
                                   </button>
                                   <button
@@ -1344,14 +1556,20 @@ export default function ProductDetails() {
                 {/* Form đánh giá sản phẩm */}
                 {checkIsAuthenticated() ? (
                   <div className="mt-4 border-t pt-4">
-                    <h3 className="font-medium mb-2">Viết đánh giá cho sản phẩm này</h3>
+                    <h3 className="font-medium mb-2">
+                      Viết đánh giá cho sản phẩm này
+                    </h3>
                     <form onSubmit={handleSubmitReview} className="space-y-3">
                       <div>
-                        <label className="block text-sm mb-1">Đánh giá của bạn</label>
+                        <label className="block text-sm mb-1">
+                          Đánh giá của bạn
+                        </label>
                         {renderRatingInput()}
                       </div>
                       <div>
-                        <label className="block text-sm mb-1">Nhận xét của bạn *</label>
+                        <label className="block text-sm mb-1">
+                          Nhận xét của bạn *
+                        </label>
                         <textarea
                           value={userReview}
                           onChange={(e) => setUserReview(e.target.value)}
@@ -1370,9 +1588,11 @@ export default function ProductDetails() {
                   </div>
                 ) : (
                   <div className="mt-4 border-t pt-4 text-center">
-                    <p className="text-gray-600 mb-2">Bạn cần đăng nhập để đánh giá sản phẩm này</p>
+                    <p className="text-gray-600 mb-2">
+                      Bạn cần đăng nhập để đánh giá sản phẩm này
+                    </p>
                     <button
-                      onClick={() => navigate('/login')}
+                      onClick={() => navigate("/login")}
                       className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition-colors duration-200"
                     >
                       Đăng nhập

@@ -23,6 +23,18 @@ const cartSchema = mongoose.Schema({
         required: true,
         default: 0
       },
+      unit: {
+        type: String,
+        default: "gram"
+      },
+      unitPrice: {
+        type: Number,
+        default: 0
+      },
+      conversionRate: {
+        type: Number,
+        default: 1
+      },
       createdAt: {
         type: Date,
         default: Date.now(),

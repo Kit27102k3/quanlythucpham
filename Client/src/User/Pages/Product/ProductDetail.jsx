@@ -6,18 +6,46 @@ import { motion, AnimatePresence } from "framer-motion";
 import PropTypes from 'prop-types';
 import "../../../App.css";
 import "../../../index.css";
+import { Button, Box, Typography, ButtonGroup } from '@mui/material';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import useCartAndNavigation from "../../Until/useCartAndNavigation";
 
-function ProductDetail({ isVisible = false }) {
+function ProductDetail({ isVisible = false, product = null }) {
   try {
     const navigate = useNavigate();
     const [isInitialRender, setIsInitialRender] = useState(true);
     const dropdownRef = useRef(null);
+    const [quantity, setQuantity] = useState(1);
+    const [selectedUnit, setSelectedUnit] = useState('');
+    const [selectedUnitPrice, setSelectedUnitPrice] = useState(0);
+    const [selectedConversionRate, setSelectedConversionRate] = useState(1);
+    const [availableUnits, setAvailableUnits] = useState([]);
     
+    const { handleAddToCart } = useCartAndNavigation();
+
     useEffect(() => {
       if (isVisible) {
         setIsInitialRender(false);
       }
     }, [isVisible]);
+
+    useEffect(() => {
+      if (product) {
+        const defaultUnit = {
+          name: product.unit,
+          price: product.price,
+          conversionRate: 1
+        };
+        
+        const units = product.measurementUnits || [];
+        const allUnits = [defaultUnit, ...units];
+        
+        setAvailableUnits(allUnits);
+        setSelectedUnit(product.unit);
+        setSelectedUnitPrice(product.price);
+        setSelectedConversionRate(1);
+      }
+    }, [product]);
 
     const handleCategoryClick = (category, e) => {
       // Ngăn sự kiện lan truyền lên thẻ li cha
@@ -35,6 +63,15 @@ function ProductDetail({ isVisible = false }) {
         .replace(/^-|-$/g, '');      // Loại bỏ dấu gạch ngang ở đầu và cuối
       
       navigate(`/san-pham/${slug}`);
+    };
+
+    const handleUnitChange = (unitName) => {
+      const unit = availableUnits.find(u => u.name === unitName);
+      if (unit) {
+        setSelectedUnit(unit.name);
+        setSelectedUnitPrice(unit.price);
+        setSelectedConversionRate(unit.conversionRate || 1);
+      }
     };
 
     // Animation variants
@@ -223,6 +260,67 @@ function ProductDetail({ isVisible = false }) {
                   </motion.ul>
                 </motion.div>
               </motion.div>
+              {product && availableUnits.length > 1 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    Đơn vị đo:
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {availableUnits.map((unit, index) => (
+                      <Button
+                        key={index}
+                        variant={selectedUnit === unit.name ? 'contained' : 'outlined'}
+                        color="primary"
+                        size="small"
+                        onClick={() => handleUnitChange(unit.name)}
+                        sx={{ mb: 1 }}
+                      >
+                        {unit.name} {unit.conversionRate > 1 ? `(${unit.conversionRate} ${product.unit})` : ''}
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+              <Box sx={{ mt: 2, display: 'flex', alignItems: 'center' }}>
+                <Typography variant="subtitle1" sx={{ mr: 2 }}>
+                  Số lượng:
+                </Typography>
+                <ButtonGroup size="small">
+                  <Button 
+                    onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                    disabled={quantity <= 1}
+                  >
+                    -
+                  </Button>
+                  <Button disabled>{quantity}</Button>
+                  <Button 
+                    onClick={() => setQuantity(prev => prev + 1)}
+                    disabled={!product?.inStock}
+                  >
+                    +
+                  </Button>
+                </ButtonGroup>
+              </Box>
+              <Button
+                variant="contained"
+                color="primary"
+                sx={{
+                  mt: 2,
+                  width: { xs: '100%', md: 'auto' },
+                  fontSize: '1rem',
+                  py: 1,
+                }}
+                disabled={!product?.inStock}
+                onClick={() => handleAddToCart(product?._id, {
+                  quantity: quantity,
+                  unit: selectedUnit || product?.unit,
+                  unitPrice: selectedUnitPrice || product?.price,
+                  conversionRate: selectedConversionRate || 1
+                })}
+                startIcon={<ShoppingCartIcon />}
+              >
+                Thêm vào giỏ
+              </Button>
             </motion.div>
           </motion.div>
         )}
@@ -235,7 +333,8 @@ function ProductDetail({ isVisible = false }) {
 }
 
 ProductDetail.propTypes = {
-  isVisible: PropTypes.bool
+  isVisible: PropTypes.bool,
+  product: PropTypes.object
 };
 
 export default ProductDetail;

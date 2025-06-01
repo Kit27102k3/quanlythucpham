@@ -8,6 +8,79 @@ const MAPBOX_API_KEY =
 // Export Mapbox access token for use in other components
 export const MAPBOX_ACCESS_TOKEN = MAPBOX_API_KEY;
 
+// Định nghĩa các thành phố lớn ở Việt Nam và tọa độ của chúng
+export const VIETNAM_MAJOR_CITIES = [
+  { name: "Hà Nội", lat: 21.0285, lng: 105.8542, region: "Bắc" },
+  { name: "TP Hồ Chí Minh", lat: 10.7758, lng: 106.7021, region: "Nam" },
+  { name: "Đà Nẵng", lat: 16.0545, lng: 108.2022, region: "Trung" },
+  { name: "Hải Phòng", lat: 20.8449, lng: 106.6881, region: "Bắc" },
+  { name: "Cần Thơ", lat: 10.0339, lng: 105.7855, region: "Nam" },
+  { name: "Nha Trang", lat: 12.2431, lng: 109.1919, region: "Trung" },
+  { name: "Huế", lat: 16.4637, lng: 107.5909, region: "Trung" },
+  { name: "Vinh", lat: 18.6734, lng: 105.6820, region: "Trung" },
+  { name: "Buôn Ma Thuột", lat: 12.6886, lng: 108.0835, region: "Tây Nguyên" },
+  { name: "Quảng Ninh", lat: 21.0063, lng: 107.2951, region: "Bắc" },
+  { name: "Quy Nhơn", lat: 13.7695, lng: 109.2235, region: "Trung" },
+  { name: "Long Xuyên", lat: 10.3866, lng: 105.4352, region: "Nam" },
+  { name: "Thái Nguyên", lat: 21.5621, lng: 105.8251, region: "Bắc" },
+  { name: "Vũng Tàu", lat: 10.3460, lng: 107.0843, region: "Nam" },
+  { name: "Thanh Hóa", lat: 19.8066, lng: 105.7855, region: "Bắc" },
+  { name: "Rạch Giá", lat: 10.0222, lng: 105.0914, region: "Nam" },
+  { name: "Hạ Long", lat: 20.9587, lng: 107.0929, region: "Bắc" },
+  { name: "Phan Thiết", lat: 10.9804, lng: 108.2622, region: "Nam" },
+  { name: "Biên Hòa", lat: 10.9455, lng: 106.8245, region: "Nam" },
+  { name: "Mỹ Tho", lat: 10.3601, lng: 106.2809, region: "Nam" },
+  { name: "Nam Định", lat: 20.4196, lng: 106.1684, region: "Bắc" },
+  { name: "Pleiku", lat: 13.9879, lng: 108.0134, region: "Tây Nguyên" },
+  { name: "Cà Mau", lat: 9.1769, lng: 105.1526, region: "Nam" },
+  { name: "Bắc Giang", lat: 21.2731, lng: 106.1947, region: "Bắc" },
+  { name: "Vinh Long", lat: 10.2537, lng: 105.9722, region: "Nam" },
+  { name: "Sóc Trăng", lat: 9.6037, lng: 105.9747, region: "Nam" }
+];
+
+// Định nghĩa các chi nhánh cửa hàng
+export const SHOP_BRANCHES = [
+  {
+    id: "cantho",
+    name: "Chi nhánh Cần Thơ",
+    lat: 10.0339,
+    lng: 105.7855,
+    address: "123 Nguyễn Văn Cừ, Ninh Kiều, Cần Thơ",
+    isMainBranch: true
+  },
+  {
+    id: "soctrang",
+    name: "Chi nhánh Sóc Trăng",
+    lat: 9.6037,
+    lng: 105.9747,
+    address: "456 Lê Hồng Phong, TP. Sóc Trăng, Sóc Trăng",
+    isMainBranch: false
+  }
+];
+
+// Lấy vị trí cửa hàng mặc định (chi nhánh chính)
+export const SHOP_LOCATION = SHOP_BRANCHES.find(branch => branch.isMainBranch) || SHOP_BRANCHES[0];
+
+// Lấy chi nhánh gần nhất với một địa điểm cụ thể
+export const getNearestBranch = (lat, lng) => {
+  if (!lat || !lng) return SHOP_LOCATION;
+  
+  let nearestBranch = SHOP_BRANCHES[0];
+  let shortestDistance = calculateDistance(lat, lng, nearestBranch.lat, nearestBranch.lng);
+  
+  for (let i = 1; i < SHOP_BRANCHES.length; i++) {
+    const branch = SHOP_BRANCHES[i];
+    const distance = calculateDistance(lat, lng, branch.lat, branch.lng);
+    
+    if (distance < shortestDistance) {
+      shortestDistance = distance;
+      nearestBranch = branch;
+    }
+  }
+  
+  return nearestBranch;
+};
+
 // 🧠 Rút gọn địa chỉ Việt Nam
 function simplifyVietnameseAddress(address) {
   if (!address) return "";
@@ -267,122 +340,546 @@ export async function geocodeWithOSM(address) {
   }
 }
 
-// 📦 Fallback: OSM trước, Mapbox sau
+// Thử geocoding với Mapbox, nếu không được thì dùng OpenStreetMap
+export async function geocodeAddress(inputAddress) {
+  // Thử với Mapbox trước
+  let result = await geocodeWithMapbox(inputAddress);
+  
+  // Nếu Mapbox không trả kết quả, thử với OpenStreetMap
+  if (!result) {
+    result = await geocodeWithOSM(inputAddress);
+  }
+  
+  // Nếu cả hai đều thất bại, thử với địa chỉ đơn giản hóa
+  if (!result) {
+    const simplifiedAddress = inputAddress
+      .split(",")
+      .slice(-3)
+      .join(",")
+      .trim();
+      
+    if (simplifiedAddress && simplifiedAddress !== inputAddress) {
+      result = await geocodeWithMapbox(simplifiedAddress);
+      
+      if (!result) {
+        result = await geocodeWithOSM(simplifiedAddress);
+      }
+    }
+  }
+  
+  return result;
+}
+
+// Hàm geocoding có debounce để tránh gọi quá nhiều API
 export const geocodeAddressDebounced = (() => {
   let timeout = null;
-  const cache = new Map();
 
-  return async (address, callback) => {
+  return (address, callback, delay = 500) => {
     if (timeout) clearTimeout(timeout);
 
     timeout = setTimeout(async () => {
       try {
-        if (!address || !address.trim()) {
-          callback?.(null, "Địa chỉ trống");
-          return;
+        const result = await geocodeAddress(address);
+        if (callback && typeof callback === 'function') {
+          callback(result);
         }
-
-        const key = address.trim().toLowerCase();
-        if (cache.has(key)) {
-          callback?.(cache.get(key));
-          return cache.get(key);
-        }
-
-        // Try to use localStorage cache if available
-        try {
-          const cacheKey = key.replace(/\s+/g, "_");
-          const cachedLocations = JSON.parse(
-            localStorage.getItem("geocoding_cache") || "{}"
-          );
-          if (cachedLocations[cacheKey]) {
-            const cachedResult = cachedLocations[cacheKey];
-            // Check if cache is not too old (less than 30 days)
-            const now = Date.now();
-            if (
-              cachedResult.timestamp &&
-              now - cachedResult.timestamp < 30 * 24 * 60 * 60 * 1000
-            ) {
-              const result = {
-                lat: cachedResult.lat,
-                lng: cachedResult.lng,
-                source: "cache",
-                fullAddress: address,
-              };
-              cache.set(key, result);
-              callback?.(result);
-              return result;
-            }
-          }
-        } catch (err) {
-          console.error("Error reading from localStorage cache:", err);
-        }
-
-        // 1️⃣ Thử với OSM trước
-        let result = await geocodeWithOSM(address);
-
-        // 2️⃣ Nếu OSM fail, dùng Mapbox
-        if (!result) {
-          result = await geocodeWithMapbox(address);
-        }
-
-        // 3️⃣ Nếu cả hai đều fail, thử với địa chỉ đơn giản hóa
-        if (!result) {
-          const simplifiedAddress = address
-            .split(",")
-            .slice(-3)
-            .join(",")
-            .trim();
-          if (simplifiedAddress && simplifiedAddress !== address) {
-            result = await geocodeWithOSM(simplifiedAddress);
-
-            if (!result) {
-              result = await geocodeWithMapbox(simplifiedAddress);
-            }
-          }
-        }
-
-        if (result) {
-          cache.set(key, result);
-          callback?.(result);
-
-          // Also save to localStorage for persistent cache
-          try {
-            const cacheKey = key.replace(/\s+/g, "_");
-            const cachedLocations = JSON.parse(
-              localStorage.getItem("geocoding_cache") || "{}"
-            );
-            cachedLocations[cacheKey] = {
-              lat: result.lat,
-              lng: result.lng,
-              timestamp: Date.now(),
-            };
-            localStorage.setItem(
-              "geocoding_cache",
-              JSON.stringify(cachedLocations)
-            );
-          } catch (err) {
-            console.error("Error saving to localStorage cache:", err);
-          }
-        } else {
-          console.error("All geocoding attempts failed for address:", address);
-          callback?.(null, "Không tìm thấy tọa độ");
-        }
-
         return result;
-      } catch (err) {
-        console.error("Lỗi geocode:", err);
-        callback?.(null, err.message);
+      } catch (error) {
+        console.error('Lỗi khi geocoding địa chỉ:', error);
+        if (callback && typeof callback === 'function') {
+          callback(null);
+        }
         return null;
       }
-    }, 300); // Reduced debounce time for faster response
+    }, delay);
   };
 })();
 
-// 🏪 Địa chỉ mặc định cửa hàng
-export const SHOP_LOCATION = {
-  lat: 10.0070868,
-  lng: 105.7683238,
-  name: "DNC Food - Nông Trại Hữu Cơ",
-  address:
-    "Đại học Nam Cần Thơ, Nguyễn Văn Cừ nối dài, phường An Bình, quận Ninh Kiều, Cần Thơ",
+// Tính khoảng cách giữa hai điểm địa lý sử dụng công thức haversine
+export const calculateDistance = (lat1, lng1, lat2, lng2) => {
+  const R = 6371; // Bán kính trái đất tính bằng kilômét
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const d = R * c; // Khoảng cách tính bằng km
+  return d;
+};
+
+/**
+ * Tạo lộ trình qua các kho trung chuyển dựa vào vị trí cửa hàng và khách hàng
+ * @param {Object} shopLocation - Vị trí cửa hàng {lat, lng, address}
+ * @param {Object} customerLocation - Vị trí khách hàng {lat, lng, address}
+ * @returns {Array} - Danh sách các kho trung chuyển với thời gian
+ */
+export const generateWarehouseRoute = (shopLocation, customerLocation) => {
+  if (!customerLocation) {
+    console.error("Thiếu thông tin vị trí khách hàng");
+    return [];
+  }
+  
+  // Nếu không có shopLocation được chỉ định, chọn chi nhánh gần nhất với khách hàng
+  const sourceBranch = shopLocation || getNearestBranch(customerLocation.lat, customerLocation.lng);
+  
+  // Tính khoảng cách giữa cửa hàng và khách hàng
+  const distance = calculateDistance(
+    sourceBranch.lat, sourceBranch.lng,
+    customerLocation.lat, customerLocation.lng
+  );
+  
+  // Số lượng kho trung chuyển phụ thuộc vào khoảng cách
+  let numWarehouses;
+  if (distance < 50) {
+    numWarehouses = 1; // Dưới 50km, chỉ cần 1 kho
+  } else if (distance < 200) {
+    numWarehouses = 2; // 50-200km, cần 2 kho
+  } else if (distance < 500) {
+    numWarehouses = 3; // 200-500km, cần 3 kho
+  } else {
+    numWarehouses = 4; // Trên 500km, cần 4 kho
+  }
+  
+  // Tìm các thành phố nằm trên đường đi
+  const citiesOnRoute = findCitiesOnRoute(sourceBranch, customerLocation, numWarehouses);
+  
+  // Tạo thời gian bắt đầu (2 giờ trước)
+  const now = new Date();
+  const startTime = new Date(now);
+  startTime.setHours(startTime.getHours() - 2);
+  
+  // Tạo danh sách các kho với thời gian
+  const warehouses = citiesOnRoute.map((city, index) => {
+    const warehouseAddress = `Kho trung chuyển ${city.name}, ${city.name}`;
+    
+    // Tính toán thời gian đến và đi
+    // Mỗi chặng mất khoảng 2-4 giờ tùy thuộc vào khoảng cách
+    const hoursBetweenWarehouses = Math.ceil(distance / (numWarehouses + 1) / 30) + 1; // 30km/h trung bình
+    
+    // Thời gian ở lại kho là 1-2 giờ
+    const hoursAtWarehouse = Math.floor(Math.random() * 2) + 1;
+    
+    // Tính thời gian đến
+    const arrivalTime = new Date(startTime);
+    arrivalTime.setHours(arrivalTime.getHours() + (index + 1) * hoursBetweenWarehouses);
+    
+    // Tính thời gian đi
+    const departureTime = new Date(arrivalTime);
+    departureTime.setHours(departureTime.getHours() + hoursAtWarehouse);
+    
+    return {
+      name: `Kho ${city.name}`,
+      address: warehouseAddress,
+      lat: city.lat,
+      lng: city.lng,
+      arrivalTime: arrivalTime.toISOString(),
+      departureTime: departureTime.toISOString()
+    };
+  });
+  
+  return warehouses;
+};
+
+/**
+ * Tìm các thành phố nằm trên đường đi từ cửa hàng đến khách hàng
+ * @param {Object} origin - Vị trí cửa hàng
+ * @param {Object} destination - Vị trí khách hàng
+ * @param {Number} numWarehouses - Số lượng kho cần tìm
+ * @returns {Array} - Danh sách các thành phố làm kho trung chuyển
+ */
+export const findCitiesOnRoute = (origin, destination, numWarehouses) => {
+  // Tìm các thành phố phù hợp cho việc vận chuyển trong khu vực
+  const cities = [...VIETNAM_MAJOR_CITIES];
+  
+  // Ưu tiên các thành phố trong khu vực Nam Bộ (vì chi nhánh ở Cần Thơ và Sóc Trăng)
+  const mekongDeltaCities = cities.filter(city => 
+    city.region === "Nam" || 
+    ["Cần Thơ", "Sóc Trăng", "Vĩnh Long", "Cà Mau", "Bạc Liêu", "Kiên Giang", "An Giang"].includes(city.name)
+  );
+  
+  // Tính toán khoảng cách từ mỗi thành phố đến đường thẳng
+  const citiesWithDistance = mekongDeltaCities.map(city => {
+    const distance = distanceFromPointToLine(
+      city.lat, city.lng,
+      origin.lat, origin.lng,
+      destination.lat, destination.lng
+    );
+    
+    // Tính khoảng cách từ thành phố đến điểm xuất phát
+    const distanceFromOrigin = calculateDistance(
+      origin.lat, origin.lng,
+      city.lat, city.lng
+    );
+    
+    // Tính khoảng cách từ thành phố đến điểm đích
+    const distanceFromDestination = calculateDistance(
+      destination.lat, destination.lng,
+      city.lat, city.lng
+    );
+    
+    // Tính tổng khoảng cách đi qua thành phố
+    const totalRouteDistance = distanceFromOrigin + distanceFromDestination;
+    
+    // Khoảng cách đi trực tiếp từ xuất phát đến đích
+    const directDistance = calculateDistance(
+      origin.lat, origin.lng,
+      destination.lat, destination.lng
+    );
+    
+    // Đánh giá độ phù hợp làm điểm trung chuyển dựa trên vị trí
+    const detourFactor = totalRouteDistance / (directDistance || 1);
+    
+    return {
+      ...city,
+      distanceFromLine: distance,
+      distanceFromOrigin,
+      distanceFromDestination,
+      detourFactor
+    };
+  });
+  
+  // Lọc bỏ thành phố trùng với điểm đầu và điểm cuối và chỉ chọn các thành phố hợp lý 
+  const filteredCities = citiesWithDistance.filter(city => {
+    const isOrigin = calculateDistance(city.lat, city.lng, origin.lat, origin.lng) < 10;
+    const isDestination = calculateDistance(city.lat, city.lng, destination.lat, destination.lng) < 10;
+    
+    // Không làm tăng quãng đường quá 40% so với đường thẳng
+    return !isOrigin && !isDestination && city.detourFactor < 1.4;
+  });
+  
+  // Sắp xếp theo khoảng cách từ điểm xuất phát và độ phù hợp
+  const sortedCities = filteredCities.sort((a, b) => {
+    // Nếu khoảng cách từ nguồn tương đương, ưu tiên thành phố gần đường thẳng hơn
+    if (Math.abs(a.distanceFromOrigin - b.distanceFromOrigin) < 20) {
+      return a.distanceFromLine - b.distanceFromLine;
+    }
+    return a.distanceFromOrigin - b.distanceFromOrigin;
+  });
+  
+  // Chọn số lượng thành phố cần thiết
+  const selectedCities = sortedCities.slice(0, numWarehouses);
+  
+  // Nếu không đủ thành phố, tạo các điểm trung gian
+  if (selectedCities.length < numWarehouses) {
+    const missingCount = numWarehouses - selectedCities.length;
+    
+    for (let i = 0; i < missingCount; i++) {
+      // Tính toán vị trí trung gian dựa trên tỷ lệ
+      const ratio = (i + 1) / (missingCount + 1);
+      const lat = origin.lat + (destination.lat - origin.lat) * ratio;
+      const lng = origin.lng + (destination.lng - origin.lng) * ratio;
+      
+      // Tìm tỉnh/thành phố gần nhất trong miền Nam
+      const nearestCity = mekongDeltaCities.reduce((nearest, city) => {
+        const distance = calculateDistance(lat, lng, city.lat, city.lng);
+        if (!nearest || distance < nearest.distance) {
+          return { ...city, distance };
+        }
+        return nearest;
+      }, null);
+      
+      // Thêm kho ảo gần thành phố này
+      if (nearestCity) {
+        selectedCities.push({
+          name: `${nearestCity.name}`,
+          lat: lat,
+          lng: lng,
+          region: nearestCity.region
+        });
+      }
+    }
+    
+    // Sắp xếp lại theo khoảng cách
+    selectedCities.sort((a, b) => {
+      const distA = calculateDistance(origin.lat, origin.lng, a.lat, a.lng);
+      const distB = calculateDistance(origin.lat, origin.lng, b.lat, b.lng);
+      return distA - distB;
+    });
+  }
+  
+  return selectedCities;
+};
+
+/**
+ * Tính khoảng cách từ một điểm đến một đường thẳng
+ * @param {Number} pLat - Vĩ độ của điểm
+ * @param {Number} pLng - Kinh độ của điểm
+ * @param {Number} lineLat1 - Vĩ độ điểm đầu đường thẳng
+ * @param {Number} lineLng1 - Kinh độ điểm đầu đường thẳng
+ * @param {Number} lineLat2 - Vĩ độ điểm cuối đường thẳng
+ * @param {Number} lineLng2 - Kinh độ điểm cuối đường thẳng
+ * @returns {Number} - Khoảng cách (km) từ điểm đến đường thẳng
+ */
+export const distanceFromPointToLine = (pLat, pLng, lineLat1, lineLng1, lineLat2, lineLng2) => {
+  // Chuyển đổi sang tọa độ Cartesian đơn giản (đủ chính xác cho khoảng cách ngắn)
+  // Chuyển đổi độ sang radian
+  const pLatRad = pLat * Math.PI / 180;
+  const pLngRad = pLng * Math.PI / 180;
+  const lat1Rad = lineLat1 * Math.PI / 180;
+  const lng1Rad = lineLng1 * Math.PI / 180;
+  const lat2Rad = lineLat2 * Math.PI / 180;
+  const lng2Rad = lineLng2 * Math.PI / 180;
+  
+  // Bán kính trái đất (km)
+  const R = 6371;
+  
+  // Chuyển sang tọa độ Cartesian
+  const x = R * Math.cos(pLatRad) * Math.cos(pLngRad);
+  const y = R * Math.cos(pLatRad) * Math.sin(pLngRad);
+  const z = R * Math.sin(pLatRad);
+  
+  const x1 = R * Math.cos(lat1Rad) * Math.cos(lng1Rad);
+  const y1 = R * Math.cos(lat1Rad) * Math.sin(lng1Rad);
+  const z1 = R * Math.sin(lat1Rad);
+  
+  const x2 = R * Math.cos(lat2Rad) * Math.cos(lng2Rad);
+  const y2 = R * Math.cos(lat2Rad) * Math.sin(lng2Rad);
+  const z2 = R * Math.sin(lat2Rad);
+  
+  // Vector từ điểm 1 đến điểm 2
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const dz = z2 - z1;
+  
+  // Độ dài vector
+  const length = Math.sqrt(dx*dx + dy*dy + dz*dz);
+  
+  // Vector đơn vị
+  const ux = dx / length;
+  const uy = dy / length;
+  const uz = dz / length;
+  
+  // Vector từ điểm 1 đến điểm P
+  const px = x - x1;
+  const py = y - y1;
+  const pz = z - z1;
+  
+  // Tích vô hướng để tìm điểm chiếu
+  const dot = px*ux + py*uy + pz*uz;
+  
+  // Kiểm tra xem điểm chiếu có nằm trên đoạn thẳng không
+  if (dot < 0) {
+    // Điểm gần điểm 1 hơn
+    return calculateDistance(pLat, pLng, lineLat1, lineLng1);
+  } else if (dot > length) {
+    // Điểm gần điểm 2 hơn
+    return calculateDistance(pLat, pLng, lineLat2, lineLng2);
+  } else {
+    // Điểm chiếu nằm trên đoạn thẳng
+    const projX = x1 + ux * dot;
+    const projY = y1 + uy * dot;
+    const projZ = z1 + uz * dot;
+    
+    // Tính khoảng cách từ điểm đến điểm chiếu
+    const distance = Math.sqrt((x-projX)*(x-projX) + (y-projY)*(y-projY) + (z-projZ)*(z-projZ));
+    return distance;
+  }
+};
+
+/**
+ * Tạo một đơn hàng mẫu cho mục đích demo
+ * @param {string} orderId - Mã đơn hàng
+ * @returns {Object} Đơn hàng mẫu
+ */
+export function generateMockOrder(orderId = null) {
+  // Danh sách sản phẩm mẫu
+  const sampleProducts = [
+    {
+      _id: '1',
+      name: 'Thịt bò Wagyu A5',
+      image: 'https://via.placeholder.com/200x200?text=Wagyu',
+      unit: 'kg',
+      price: 1200000
+    },
+    {
+      _id: '2',
+      name: 'Rau cải thìa hữu cơ',
+      image: 'https://via.placeholder.com/200x200?text=Rau',
+      unit: 'bó',
+      price: 25000
+    },
+    {
+      _id: '3',
+      name: 'Cá hồi Na Uy',
+      image: 'https://via.placeholder.com/200x200?text=Ca',
+      unit: 'kg',
+      price: 350000
+    },
+    {
+      _id: '4',
+      name: 'Nấm hương rừng',
+      image: 'https://via.placeholder.com/200x200?text=Nam',
+      unit: 'hộp',
+      price: 85000
+    },
+    {
+      _id: '5',
+      name: 'Trứng gà tươi',
+      image: 'https://via.placeholder.com/200x200?text=Trung',
+      unit: 'vỉ',
+      price: 45000
+    }
+  ];
+  
+  // Ngẫu nhiên chọn 1-3 sản phẩm
+  const numProducts = Math.floor(Math.random() * 3) + 1;
+  const selectedProducts = [];
+  
+  // Không chọn lặp sản phẩm
+  const usedIndices = new Set();
+  
+  for (let i = 0; i < numProducts; i++) {
+    let randomIndex;
+    do {
+      randomIndex = Math.floor(Math.random() * sampleProducts.length);
+    } while (usedIndices.has(randomIndex));
+    
+    usedIndices.add(randomIndex);
+    const product = sampleProducts[randomIndex];
+    
+    // Tạo item với thông tin sản phẩm
+    selectedProducts.push({
+      _id: `item_${i + 1}`,
+      product: product,
+      quantity: Math.floor(Math.random() * 3) + 1,
+      price: product.price,
+      discountAmount: Math.random() > 0.7 ? Math.floor(product.price * 0.1) : 0
+    });
+  }
+  
+  // Tính tổng tiền
+  let subtotal = 0;
+  for (const item of selectedProducts) {
+    subtotal += (item.price * item.quantity - item.discountAmount);
+  }
+  
+  // Phí vận chuyển và thuế
+  const shippingFee = Math.floor(Math.random() * 50000) + 20000;
+  const tax = Math.floor(subtotal * 0.08);
+  const discount = Math.random() > 0.5 ? Math.floor(subtotal * 0.05) : 0;
+  
+  // Tổng thanh toán
+  const totalAmount = subtotal + shippingFee + tax - discount;
+  
+  // Ngày đặt hàng
+  const orderDate = new Date();
+  orderDate.setDate(orderDate.getDate() - Math.floor(Math.random() * 5));
+  
+  // Ngày giao hàng dự kiến
+  const deliveryDate = new Date(orderDate);
+  deliveryDate.setDate(deliveryDate.getDate() + Math.floor(Math.random() * 5) + 3);
+  
+  // Địa chỉ trong khu vực miền Tây Nam Bộ
+  const addresses = [
+    'Quận Ninh Kiều, Cần Thơ, Việt Nam',
+    'Quận Cái Răng, Cần Thơ, Việt Nam',
+    'Quận Bình Thủy, Cần Thơ, Việt Nam',
+    'Quận Ô Môn, Cần Thơ, Việt Nam',
+    'Huyện Kế Sách, Sóc Trăng, Việt Nam',
+    'Thành phố Sóc Trăng, Sóc Trăng, Việt Nam',
+    'Thành phố Long Xuyên, An Giang, Việt Nam',
+    'Thành phố Châu Đốc, An Giang, Việt Nam',
+    'Thành phố Rạch Giá, Kiên Giang, Việt Nam',
+    'Thành phố Vĩnh Long, Vĩnh Long, Việt Nam',
+    'Thành phố Cà Mau, Cà Mau, Việt Nam',
+    'Thành phố Bạc Liêu, Bạc Liêu, Việt Nam'
+  ];
+  
+  const randomAddressIndex = Math.floor(Math.random() * addresses.length);
+  
+  // Phương thức thanh toán
+  const paymentMethods = ['cod', 'banking', 'momo', 'zalopay', 'vnpay'];
+  const randomPaymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
+  
+  // Trạng thái đơn hàng
+  const orderStatuses = ['pending', 'confirmed', 'shipping', 'delivered', 'completed'];
+  const randomStatus = orderStatuses[Math.floor(Math.random() * (orderStatuses.length - 1))]; // Loại trừ trạng thái canceled
+  
+  // Tọa độ khách hàng dựa trên khu vực
+  let customerLat, customerLng;
+  const selectedAddress = addresses[randomAddressIndex];
+  
+  // Gán tọa độ tương đối chính xác cho từng khu vực
+  if (selectedAddress.includes('Cần Thơ')) {
+    customerLat = 10.0339 + (Math.random() * 0.05 - 0.025);
+    customerLng = 105.7855 + (Math.random() * 0.05 - 0.025);
+  } else if (selectedAddress.includes('Sóc Trăng')) {
+    customerLat = 9.6037 + (Math.random() * 0.05 - 0.025);
+    customerLng = 105.9747 + (Math.random() * 0.05 - 0.025);
+  } else if (selectedAddress.includes('An Giang')) {
+    customerLat = 10.3866 + (Math.random() * 0.05 - 0.025);
+    customerLng = 105.4352 + (Math.random() * 0.05 - 0.025);
+  } else if (selectedAddress.includes('Kiên Giang')) {
+    customerLat = 10.0222 + (Math.random() * 0.05 - 0.025);
+    customerLng = 105.0914 + (Math.random() * 0.05 - 0.025);
+  } else if (selectedAddress.includes('Vĩnh Long')) {
+    customerLat = 10.2537 + (Math.random() * 0.05 - 0.025);
+    customerLng = 105.9722 + (Math.random() * 0.05 - 0.025);
+  } else if (selectedAddress.includes('Cà Mau')) {
+    customerLat = 9.1769 + (Math.random() * 0.05 - 0.025);
+    customerLng = 105.1526 + (Math.random() * 0.05 - 0.025);
+  } else if (selectedAddress.includes('Bạc Liêu')) {
+    customerLat = 9.2941 + (Math.random() * 0.05 - 0.025);
+    customerLng = 105.7216 + (Math.random() * 0.05 - 0.025);
+        } else {
+    // Mặc định sẽ là một vị trí ngẫu nhiên trong khu vực Cần Thơ
+    customerLat = 10.0339 + (Math.random() * 0.1 - 0.05);
+    customerLng = 105.7855 + (Math.random() * 0.1 - 0.05);
+  }
+  
+  return {
+    _id: orderId || `ORDER${Math.floor(Math.random() * 900000) + 100000}`,
+    items: selectedProducts,
+    shippingAddress: selectedAddress,
+    paymentMethod: randomPaymentMethod,
+    shippingFee: shippingFee,
+    tax: tax,
+    discount: discount,
+    subtotal: subtotal,
+    totalAmount: totalAmount,
+    status: randomStatus,
+    createdAt: orderDate.toISOString(),
+    estimatedDelivery: deliveryDate.toISOString(),
+    customerLocation: {
+      lat: customerLat,
+      lng: customerLng,
+      address: selectedAddress
+    },
+    // Thêm chi nhánh xử lý đơn hàng
+    branch: selectedAddress.includes('Sóc Trăng') ? 'soctrang' : 'cantho'
+  };
+}
+
+/**
+ * Format date thành chuỗi ngày tháng tiếng Việt
+ * @param {string|Date} date - Ngày cần format
+ * @returns {string} Chuỗi ngày tháng đã được format
+ */
+export const formatDate = (date) => {
+  if (!date) return '';
+  
+  const d = new Date(date);
+  return d.toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+/**
+ * Format số tiền thành định dạng tiền tệ VND
+ * @param {number} amount - Số tiền cần format
+ * @returns {string} Chuỗi tiền tệ đã được format
+ */
+export const formatCurrency = (amount) => {
+  if (amount === undefined || amount === null) return '';
+  
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 0
+  }).format(amount);
 };

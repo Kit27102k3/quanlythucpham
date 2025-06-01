@@ -3,46 +3,38 @@ import apiClient from "./axios";
 // Hàm lấy đánh giá của một sản phẩm
 const getProductReviews = async (productId) => {
   try {
-    console.log("Fetching reviews for product:", productId);
     const response = await apiClient.get(`/api/reviews/product/${productId}`);
-    console.log("Reviews API response:", response.data);
-    
-    // Nếu dữ liệu trả về trực tiếp là mảng (không nằm trong .data)
+
     if (Array.isArray(response.data)) {
       return {
         reviews: response.data,
-        averageRating: calculateAverageRating(response.data)
+        averageRating: calculateAverageRating(response.data),
       };
     }
-    
+
     // Nếu dữ liệu nằm trong response.data.data
     if (response.data.data) {
       // Kiểm tra xem data có phải là mảng không
       if (Array.isArray(response.data.data)) {
         return {
           reviews: response.data.data,
-          averageRating: calculateAverageRating(response.data.data)
+          averageRating: calculateAverageRating(response.data.data),
         };
       }
       // Nếu data có cấu trúc reviews và averageRating
       return response.data.data;
     }
-    
+
     // Fallback nếu không có cấu trúc nào phù hợp
     return {
       reviews: [],
-      averageRating: 0
+      averageRating: 0,
     };
   } catch (error) {
     console.error("Lỗi khi lấy đánh giá sản phẩm:", error);
-    if (error.response) {
-      console.log("Error response data:", error.response.data);
-      console.log("Error status:", error.response.status);
-    }
-    // Trả về mảng rỗng nếu có lỗi
     return {
       reviews: [],
-      averageRating: 0
+      averageRating: 0,
     };
   }
 };
@@ -50,7 +42,10 @@ const getProductReviews = async (productId) => {
 // Hàm tính điểm đánh giá trung bình
 const calculateAverageRating = (reviews) => {
   if (!reviews || reviews.length === 0) return 0;
-  const sum = reviews.reduce((total, review) => total + Number(review.rating || 0), 0);
+  const sum = reviews.reduce(
+    (total, review) => total + Number(review.rating || 0),
+    0
+  );
   return sum / reviews.length;
 };
 
@@ -58,7 +53,9 @@ const calculateAverageRating = (reviews) => {
 const addReview = async (reviewData) => {
   try {
     // Kiểm tra cả hai loại token
-    const token = localStorage.getItem("access_token") || localStorage.getItem("accessToken");
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("accessToken");
     if (!token) {
       throw new Error("Bạn cần đăng nhập để đánh giá sản phẩm");
     }
@@ -72,18 +69,15 @@ const addReview = async (reviewData) => {
       throw new Error("Đánh giá phải có giá trị từ 0 đến 5");
     }
 
-    if (!reviewData.comment || reviewData.comment.trim() === '') {
+    if (!reviewData.comment || reviewData.comment.trim() === "") {
       throw new Error("Vui lòng nhập nội dung đánh giá");
     }
 
     // Chuyển rating thành số
     const formattedData = {
       ...reviewData,
-      rating: Number(reviewData.rating)
+      rating: Number(reviewData.rating),
     };
-
-    console.log("Sending review data:", formattedData);
-    console.log("Token:", token);
 
     // Sử dụng apiClient để tự động gắn token
     const response = await apiClient.post(
@@ -140,16 +134,18 @@ const deleteReview = async (reviewId) => {
 const getAllReviews = async (page = 1, limit = 10) => {
   try {
     // Kiểm tra cả token thông thường và admin-token đặc biệt
-    const token = localStorage.getItem("access_token") || 
-                  localStorage.getItem("accessToken");
-    const adminToken = localStorage.getItem("adminToken") || 
-                      (token === "admin-token-for-TKhiem" ? token : null);
-    
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("accessToken");
+    const adminToken =
+      localStorage.getItem("adminToken") ||
+      (token === "admin-token-for-TKhiem" ? token : null);
+
     if (!token && !adminToken) {
-      throw new Error("Bạn cần đăng nhập với quyền admin để xem tất cả đánh giá");
+      throw new Error(
+        "Bạn cần đăng nhập với quyền admin để xem tất cả đánh giá"
+      );
     }
-    
-    
 
     // Thêm header đặc biệt cho admin token nếu cần
     const headers = {};
@@ -172,16 +168,18 @@ const getAllReviews = async (page = 1, limit = 10) => {
 const toggleReviewStatus = async (reviewId) => {
   try {
     // Kiểm tra cả token thông thường và admin-token đặc biệt
-    const token = localStorage.getItem("access_token") || 
-                  localStorage.getItem("accessToken");
-    const adminToken = localStorage.getItem("adminToken") || 
-                      (token === "admin-token-for-TKhiem" ? token : null);
-    
-    if (!token && !adminToken) {
-      throw new Error("Bạn cần đăng nhập với quyền admin để thực hiện hành động này");
-    }
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("accessToken");
+    const adminToken =
+      localStorage.getItem("adminToken") ||
+      (token === "admin-token-for-TKhiem" ? token : null);
 
-   
+    if (!token && !adminToken) {
+      throw new Error(
+        "Bạn cần đăng nhập với quyền admin để thực hiện hành động này"
+      );
+    }
 
     // Thêm header đặc biệt cho admin token nếu cần
     const headers = {};
@@ -207,34 +205,29 @@ export const addReplyToReview = async (reviewId, text) => {
     // Lấy token từ localStorage
     const token = localStorage.getItem("access_token");
     const accessToken = localStorage.getItem("accessToken");
-    const adminToken = (token === "admin-token-for-TKhiem" || accessToken === "admin-token-for-TKhiem") 
-                        ? "admin-token-for-TKhiem" : null;
-    
+    const adminToken =
+      token === "admin-token-for-TKhiem" ||
+      accessToken === "admin-token-for-TKhiem"
+        ? "admin-token-for-TKhiem"
+        : null;
+
     // Kiểm tra nếu token tồn tại
     if (!token && !accessToken && !adminToken) {
-      throw new Error('Không tìm thấy token xác thực');
+      throw new Error("Không tìm thấy token xác thực");
     }
-    
-    console.log('[Debug] Token info:', {
-      access_token: token,
-      accessToken,
-      adminToken,
-      isAdminToken: !!adminToken
-    });
-    
     // Headers đặc biệt cho admin token
     const headers = {};
     if (adminToken) {
       headers["admin-token"] = adminToken;
     }
-    
-    console.log('[Debug] API request config:', {
+
+    console.log("[Debug] API request config:", {
       url: `/api/reviews/${reviewId}/replies`,
-      method: 'POST',
+      method: "POST",
       headers,
-      params: adminToken ? { token: adminToken } : undefined
+      params: adminToken ? { token: adminToken } : undefined,
     });
-    
+
     const response = await apiClient.post(
       `/api/reviews/${reviewId}/replies`,
       { text },
@@ -242,7 +235,7 @@ export const addReplyToReview = async (reviewId, text) => {
     );
     return response.data;
   } catch (error) {
-    console.error('Error adding reply to review:', error);
+    console.error("Error adding reply to review:", error);
     throw error;
   }
 };
@@ -253,22 +246,28 @@ export const updateReply = async (reviewId, replyId, text) => {
     // Lấy token từ localStorage
     const token = localStorage.getItem("access_token");
     const accessToken = localStorage.getItem("accessToken");
-    const adminToken = (token === "admin-token-for-TKhiem" || accessToken === "admin-token-for-TKhiem") 
-                        ? "admin-token-for-TKhiem" : null;
-    
+    const adminToken =
+      token === "admin-token-for-TKhiem" ||
+      accessToken === "admin-token-for-TKhiem"
+        ? "admin-token-for-TKhiem"
+        : null;
+
     // Kiểm tra nếu token tồn tại
     if (!token && !accessToken && !adminToken) {
-      throw new Error('Không tìm thấy token xác thực');
+      throw new Error("Không tìm thấy token xác thực");
     }
-    
-    console.log('Using token for update reply:', adminToken || token || accessToken);
-    
+
+    console.log(
+      "Using token for update reply:",
+      adminToken || token || accessToken
+    );
+
     // Headers đặc biệt cho admin token
     const headers = {};
     if (adminToken) {
       headers["admin-token"] = adminToken;
     }
-    
+
     const response = await apiClient.put(
       `/api/reviews/${reviewId}/replies/${replyId}`,
       { text },
@@ -276,7 +275,7 @@ export const updateReply = async (reviewId, replyId, text) => {
     );
     return response.data;
   } catch (error) {
-    console.error('Error updating reply:', error);
+    console.error("Error updating reply:", error);
     throw error;
   }
 };
@@ -287,29 +286,35 @@ export const deleteReply = async (reviewId, replyId) => {
     // Lấy token từ localStorage
     const token = localStorage.getItem("access_token");
     const accessToken = localStorage.getItem("accessToken");
-    const adminToken = (token === "admin-token-for-TKhiem" || accessToken === "admin-token-for-TKhiem") 
-                        ? "admin-token-for-TKhiem" : null;
-    
+    const adminToken =
+      token === "admin-token-for-TKhiem" ||
+      accessToken === "admin-token-for-TKhiem"
+        ? "admin-token-for-TKhiem"
+        : null;
+
     // Kiểm tra nếu token tồn tại
     if (!token && !accessToken && !adminToken) {
-      throw new Error('Không tìm thấy token xác thực');
+      throw new Error("Không tìm thấy token xác thực");
     }
-    
-    console.log('Using token for delete reply:', adminToken || token || accessToken);
-    
+
+    console.log(
+      "Using token for delete reply:",
+      adminToken || token || accessToken
+    );
+
     // Headers đặc biệt cho admin token
     const headers = {};
     if (adminToken) {
       headers["admin-token"] = adminToken;
     }
-    
+
     const response = await apiClient.delete(
       `/api/reviews/${reviewId}/replies/${replyId}`,
       adminToken ? { headers, params: { token: adminToken } } : undefined
     );
     return response.data;
   } catch (error) {
-    console.error('Error deleting reply:', error);
+    console.error("Error deleting reply:", error);
     throw error;
   }
 };
@@ -326,4 +331,4 @@ const reviewsApi = {
   deleteReply,
 };
 
-export default reviewsApi; 
+export default reviewsApi;

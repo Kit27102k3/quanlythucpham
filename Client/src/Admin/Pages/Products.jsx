@@ -17,7 +17,7 @@ const Products = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [editVisible, setEditVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  
+
   // Pagination states
   const [first, setFirst] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(8);
@@ -25,7 +25,7 @@ const Products = () => {
   useEffect(() => {
     fetchProducts();
   }, []);
-  
+
   useEffect(() => {
     // Filter products based on search term
     const filtered = products.filter((product) =>
@@ -33,7 +33,7 @@ const Products = () => {
         ? product?.productName?.toLowerCase().includes(searchTerm.toLowerCase())
         : true
     );
-    
+
     setFilteredProducts(filtered);
     setFirst(0);
   }, [products, searchTerm]);
@@ -55,13 +55,13 @@ const Products = () => {
 
   const handleAddProduct = async (newProduct) => {
     try {
-      setProducts(prevProducts => [newProduct, ...prevProducts]);
+      setProducts((prevProducts) => [newProduct, ...prevProducts]);
       await fetchProducts();
       toast.success("Thêm sản phẩm thành công!");
     } catch (err) {
       console.error("Lỗi khi thêm sản phẩm:", err);
-      setProducts(prevProducts => 
-        prevProducts.filter(product => product._id !== newProduct._id)
+      setProducts((prevProducts) =>
+        prevProducts.filter((product) => product._id !== newProduct._id)
       );
       toast.error("Thêm sản phẩm thất bại!");
     }
@@ -85,19 +85,22 @@ const Products = () => {
       toast.error("Có lỗi xảy ra khi cập nhật sản phẩm!");
     }
   };
-  
+
   // Handle pagination change
   const handlePageChange = ({ page, rows }) => {
     setFirst((page - 1) * rows);
     setRowsPerPage(rows);
   };
-  
+
   // Get current page products
-  const getCurrentPageProducts = () => filteredProducts.slice(first, first + rowsPerPage);
+  const getCurrentPageProducts = () =>
+    filteredProducts.slice(first, first + rowsPerPage);
 
   return (
     <div className="p-2 md:p-4">
-      <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">Quản Lý Sản Phẩm</h1>
+      <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">
+        Quản Lý Sản Phẩm
+      </h1>
       <div className="flex flex-col md:flex-row gap-2 mb-3 md:mb-5">
         <div className="w-full md:w-1/2 lg:w-3/5">
           <IconField iconPosition="left" className="w-full">
@@ -146,16 +149,36 @@ const Products = () => {
         <table className="w-full min-w-[800px]">
           <thead>
             <tr className="bg-gray-200">
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Tên sản phẩm</th>
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Thương hiệu</th>
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Loại sản phẩm</th>
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Giá sản phẩm</th>
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Tình trạng</th>
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Giảm giá</th>
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Số lượng tồn kho</th>
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Thương hiệu</th>
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">Xuất xứ</th>
-              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm w-[100px] md:w-[120px]">Chức Năng</th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                Tên sản phẩm
+              </th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                Thương hiệu
+              </th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                Loại sản phẩm
+              </th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                Giá sản phẩm
+              </th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                Tình trạng
+              </th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                Giảm giá
+              </th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                Số lượng tồn kho
+              </th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                Thương hiệu
+              </th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm">
+                Xuất xứ
+              </th>
+              <th className="border border-gray-300 p-1 md:p-2 text-xs md:text-sm w-[100px] md:w-[120px]">
+                Chức Năng
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -215,7 +238,7 @@ const Products = () => {
         header="Thêm Sản Phẩm Mới"
         visible={visible}
         onHide={() => setVisible(false)}
-        className="w-[95vw] md:w-[90vw] lg:w-[80vw] xl:w-[70vw]"
+        className="w-[95vw] md:w-[90vw] lg:w-[80vw] xl:w-[70vw] "
       >
         <AddProduct
           onHide={() => setVisible(false)}

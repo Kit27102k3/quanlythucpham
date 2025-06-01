@@ -73,20 +73,29 @@ const Brands = () => {
 
   // Hàm tạo mã thương hiệu từ tên
   const generateCodeFromName = () => {
-    if (formData.name) {
+    if (formData.name && formData.name.trim() !== "") {
       // Lấy chữ cái đầu của mỗi từ trong tên thương hiệu
-      const words = formData.name.split(" ");
+      const words = formData.name.split(" ").filter(word => word.trim() !== "");
       let generatedCode = "";
+      
+      // Đảm bảo words không rỗng
+      if (words.length === 0) {
+        toast.warning("Tên thương hiệu không hợp lệ!");
+        return;
+      }
+      
+      // Lấy chữ cái đầu của mỗi từ
       for (let i = 0; i < Math.min(words.length, 4); i++) {
-        if (words[i].length > 0) {
+        if (words[i] && words[i].length > 0 && words[i][0]) {
           generatedCode += words[i][0].toUpperCase();
         }
       }
 
       // Nếu code có ít hơn 4 ký tự, thêm chữ cái từ từ đầu tiên
       while (generatedCode.length < 4) {
-        if (words[0].length > generatedCode.length - 1) {
-          generatedCode += words[0][generatedCode.length].toUpperCase();
+        const firstWord = words[0] || "";
+        if (firstWord.length > generatedCode.length - 1 && firstWord[generatedCode.length]) {
+          generatedCode += firstWord[generatedCode.length].toUpperCase();
         } else {
           // Nếu từ đầu tiên không đủ ký tự, thêm số ngẫu nhiên
           generatedCode += Math.floor(Math.random() * 10).toString();
@@ -124,6 +133,17 @@ const Brands = () => {
     // Nếu không có mã, tự động tạo mã
     if (!formData.code) {
       generateCodeFromName();
+      // Đảm bảo code đã được tạo trước khi tiếp tục
+      if (!formData.code) {
+        // Tạo mã đơn giản nếu không thể tạo từ tên
+        const randomCode = "BR" + Math.floor(1000 + Math.random() * 9000).toString();
+        setFormData({
+          ...formData,
+          code: randomCode,
+        });
+        // Đợi state được cập nhật
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
     }
 
     try {
