@@ -13,6 +13,7 @@ import RelatedProducts from "./RelatedProducts";
 import { Star, StarHalf } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import cartApi from "../../../api/cartApi";
+import axios from "axios";
 
 const Kitchen = lazy(() => import("./Kitchen"));
 
@@ -61,6 +62,8 @@ export default function ProductDetails() {
     const fetchProduct = async () => {
       try {
         const allProducts = await productsApi.getAllProducts();
+        console.log(allProducts);
+
         const product = allProducts.find(
           (p) =>
             p.productName
@@ -615,7 +618,7 @@ export default function ProductDetails() {
     try {
       // Lấy userId từ localStorage
       let userId = localStorage.getItem("userId");
-      
+
       if (!userId) {
         // Nếu không có userId trực tiếp, thử lấy từ user object
         try {
@@ -627,7 +630,7 @@ export default function ProductDetails() {
           console.error("Lỗi khi parse user từ localStorage:", e);
         }
       }
-      
+
       // Kiểm tra lại userId
       if (!userId) {
         toast.error("Không thể xác định người dùng, vui lòng đăng nhập lại");
@@ -642,7 +645,7 @@ export default function ProductDetails() {
       };
 
       console.log("Đang thêm vào giỏ hàng với userId:", userId);
-      
+
       await cartApi.addToCart({
         userId: userId,
         productId: products._id,
@@ -657,6 +660,74 @@ export default function ProductDetails() {
     } catch (error) {
       console.error("Lỗi khi thêm vào giỏ hàng:", error);
       toast.error("Có lỗi xảy ra khi thêm vào giỏ hàng");
+    }
+  };
+
+  // Hàm mua ngay - chuyển thẳng đến trang thanh toán
+  const handleBuyNow = async () => {
+    if (!checkIsAuthenticated()) {
+      toast.error("Vui lòng đăng nhập để mua sản phẩm");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      // Lấy userId từ localStorage
+      let userId = localStorage.getItem("userId");
+
+      if (!userId) {
+        // Nếu không có userId trực tiếp, thử lấy từ user object
+        try {
+          const user = JSON.parse(localStorage.getItem("user"));
+          if (user && user._id) {
+            userId = user._id;
+          }
+        } catch (e) {
+          console.error("Lỗi khi parse user từ localStorage:", e);
+        }
+      }
+
+      // Kiểm tra lại userId
+      if (!userId) {
+        toast.error("Không thể xác định người dùng, vui lòng đăng nhập lại");
+        navigate("/login");
+        return;
+      }
+
+      const unitToAdd = selectedUnit || {
+        unit: products.productUnit,
+        price: products.productPrice,
+        conversionRate: 1,
+      };
+
+      // Tạo đối tượng sản phẩm để thanh toán
+      const productData = {
+        productId: products._id,
+        quantity: count,
+        price: unitToAdd.price,
+      };
+
+      // Tạo đối tượng payment
+      const paymentData = {
+        userId: userId,
+        products: [productData],
+        paymentMethod: "cod", // Mặc định là COD
+        amount: unitToAdd.price * count,
+      };
+
+      // Gọi API để tạo payment
+      const response = await axios.post("/api/payments", paymentData);
+      
+      // Chuyển hướng đến trang thanh toán
+      const paymentId = response.data?._id || response.data?.data?._id;
+      if (paymentId) {
+        navigate(`/thanh-toan/${paymentId}`);
+      } else {
+        toast.error("Không nhận được ID thanh toán từ server");
+      }
+    } catch (error) {
+      console.error("Lỗi khi xử lý mua ngay:", error);
+      toast.error("Có lỗi xảy ra khi xử lý đơn hàng");
     }
   };
 
@@ -714,29 +785,9 @@ export default function ProductDetails() {
                     </span>
                   </p>
                 </div>
-                <div className="mt-2 flex items-center">
-                  <span className="font-medium text-gray-700 mr-2">
-                    Đơn vị:
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {availableUnits.map((unit, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => handleUnitChange(unit)}
-                        className={`px-3 py-1 border rounded-md text-sm ${
-                          selectedUnit && selectedUnit.unit === unit.unit
-                            ? "bg-[#51bb1a] text-white border-[#51bb1a]"
-                            : "bg-white text-gray-700 border-gray-300 hover:border-[#51bb1a]"
-                        }`}
-                      >
-                        {unit.unit}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="mt-4">
-                  <span className="text-gray-700 font-medium">Giá:</span>
+
+                <div className="flex items-center gap-4">
+                  <span className="text-gray-700 font-medium text-xl">Giá:</span>
                   {products && products.productDiscount > 0 ? (
                     <div className="flex items-center mt-1">
                       <span className="text-3xl font-bold text-[#51bb1a]">
@@ -760,16 +811,7 @@ export default function ProductDetails() {
                       </span>
                     </div>
                   )}
-                  {selectedUnit && (
-                    <div className="text-sm text-gray-500 mt-1">
-                      Giá theo {selectedUnit.unit}{" "}
-                      {selectedUnit.conversionRate > 1
-                        ? `(1 ${selectedUnit.unit} = ${
-                            selectedUnit.conversionRate
-                          } ${products?.productUnit || "đơn vị"})`
-                        : ""}
-                    </div>
-                  )}
+
                 </div>
               </div>
 
@@ -880,6 +922,28 @@ export default function ProductDetails() {
                     />
                   </div>
                 </div>
+                <div className="mt-4 flex items-center">
+                  <span className="font-medium text-gray-700 mr-2">
+                    Đơn vị:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {availableUnits.map((unit, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => handleUnitChange(unit)}
+                        className={`px-3 py-1 border rounded-md text-sm ${
+                          selectedUnit && selectedUnit.unit === unit.unit
+                            ? "border text-black cursor-pointer border-[#51bb1a]"
+                            : " text-gray-700 border-gray-300 hover:border-[#51bb1a]"
+                        }`}
+                      >
+                        {unit.conversionRate}{" "}
+                        {unit.unit}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {products?.productStock === 0 ||
                 products?.productStatus === "Hết hàng" ? (
                   <button
@@ -890,18 +954,27 @@ export default function ProductDetails() {
                     <span className="text-[12px]">Vui lòng quay lại sau</span>
                   </button>
                 ) : (
-                  <button
-                    onClick={handleAddToCart}
-                    className="bg-[#51bb1a] w-full cursor-pointer text-white text-sm p-2 mt-4 flex flex-col hover:opacity-90"
-                  >
-                    <span className="uppercase">
-                      {" "}
-                      MUA NGAY VỚI GIÁ {formatCurrency(unitPrice)}đ
-                    </span>
-                    <span className="text-[12px]">
-                      Đặt mua giao hàng tận nơi
-                    </span>
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleBuyNow}
+                      className="bg-[#51bb1a] w-full cursor-pointer text-white text-sm p-2 mt-4 flex flex-col hover:opacity-90"
+                    >
+                      <span className="uppercase">
+                        {" "}
+                        MUA NGAY VỚI GIÁ {formatCurrency(unitPrice)}đ
+                      </span>
+                      <span className="text-[12px]">
+                        Đặt mua giao hàng tận nơi
+                      </span>
+                    </button>
+                    <button
+                      onClick={handleAddToCart}
+                      className="border border-[#51bb1a] w-full cursor-pointer text-[#51bb1a] text-sm p-2 mt-4 flex flex-col hover:bg-[#f0f9ed]"
+                    >
+                      <span className="uppercase">THÊM VÀO GIỎ HÀNG</span>
+                      <span className="text-[12px]">Thêm sản phẩm vào giỏ hàng của bạn</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

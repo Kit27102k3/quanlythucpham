@@ -11,8 +11,9 @@ import {
   getProductBySlug,
   getBestSellingProducts,
   getTopRatedProducts,
-  checkAndUpdateExpirations
+  checkAndUpdateExpirations,
 } from "../Controller/productsController.js";
+import { getInventory } from '../../controllers/productController.js';
 import { verifyToken, isAdmin } from "../Middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -31,6 +32,7 @@ router.get("/products/:id", getProductById);
 router.post("/products", verifyToken, isAdmin, createProduct);
 router.put("/products/:id", verifyToken, isAdmin, updateProduct);
 router.delete("/products/:id", verifyToken, isAdmin, deleteProduct);
+router.get('/inventory', getInventory);
 
 // Thêm route kiểm tra và cập nhật hạn sử dụng và giảm giá
 router.get("/check-expirations", verifyToken, isAdmin, checkAndUpdateExpirations);

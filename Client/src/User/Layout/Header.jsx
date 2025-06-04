@@ -37,9 +37,9 @@ const menuItems = [
   { name: "Trang Chủ", path: "/" },
   { name: "Giới Thiệu", path: "/gioi-thieu" },
   { name: "Sản Phẩm", path: "/san-pham" },
-  { name: "Vào Bếp", path: "/vao-bep" },
   { name: "Khuyến Mãi", path: "/khuyen-mai" },
   { name: "Voucher", path: "/voucher" },
+  { name: "Vào Bếp", path: "/vao-bep" },
   { name: "Liên Hệ", path: "/lien-he" },
   { name: "Cửa Hàng", path: "/cua-hang" },
 ];

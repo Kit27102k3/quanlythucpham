@@ -22,6 +22,7 @@ import NodeCache from 'node-cache';
 // Import models before routes
 import "./Model/Review.js";
 import "./Model/ReviewStats.js";
+import "./Model/CustomerLog.js";
 
 import authRoutes from "./routes/authRoutes.js";
 import scraperRoutes from "./routes/scraperRoutes.js";
@@ -45,6 +46,11 @@ import systemRoutes from "./routes/systemRoutes.js";
 import supplierRoutes from "./routes/supplierRoutes.js";
 import brandRoutes from "./routes/brandRoutes.js";
 import branchRoutes from "./routes/branchRoutes.js";
+import customerLogRoutes from "./routes/customerLogRoutes.js";
+import exportRoutes from "./routes/exportRoutes.js";
+
+// Import customer log middleware
+import { customerActivityLogger } from "./Middleware/customerLogMiddleware.js";
 
 // Import specific controller for direct endpoint handling
 import { getBestSellingProducts } from "./Controller/productsController.js";
@@ -130,6 +136,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add customer activity logging middleware
+app.use(customerActivityLogger);
+
 const URI = process.env.MONGOOSE_URI;
 
 const connectWithRetry = async (retries = 5, delay = 5000) => {
@@ -192,12 +201,9 @@ app.use("/api/system", systemRoutes);
 app.use("/api/suppliers", supplierRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/branches", branchRoutes);
-
-// Handle best-sellers endpoint directly to avoid route conflicts
+app.use("/api/logs", customerLogRoutes);
+app.use("/api/export", exportRoutes);
 app.get("/api/products/best-sellers", getBestSellingProducts);
-
-// Add reports direct endpoints
-// Reports API routes for traditional endpoints (no authentication required)
 app.get("/api/dashboard/stats", reportsController.getDashboardStats);
 app.get("/api/analytics/revenue", reportsController.getRevenueData);
 app.get("/api/analytics/top-products", reportsController.getTopProducts);
@@ -208,8 +214,6 @@ app.get("/api/coupons/stats", reportsController.getPromotionData);
 app.get("/api/admin/activity-logs", reportsController.getSystemActivityData);
 app.get("/api/orders/delivery-stats", reportsController.getDeliveryData);
 app.get("/api/reviews/stats", reportsController.getFeedbackData);
-
-// Reports API routes for Edge API (no authentication required)
 app.get("/api/reports/dashboard", reportsController.getDashboardStats);
 app.get("/api/reports/revenue", reportsController.getRevenueData);
 app.get("/api/reports/top-products", reportsController.getTopProducts);
@@ -220,9 +224,6 @@ app.get("/api/reports/promotions", reportsController.getPromotionData);
 app.get("/api/reports/system-activity", reportsController.getSystemActivityData);
 app.get("/api/reports/delivery", reportsController.getDeliveryData);
 app.get("/api/reports/feedback", reportsController.getFeedbackData);
-
-// Dọn dẹp các webhook handler trùng lặp
-// Đây là danh sách các đường dẫn webhook cần hỗ trợ
 const webhookPaths = [
   "/webhook",
   "/api/webhook",
@@ -232,20 +233,15 @@ const webhookPaths = [
   "/api/payments/sepay/webhook",
 ];
 
-// Đăng ký tất cả các route webhook với một handler duy nhất
 webhookPaths.forEach((path) => {
   app.post(path, async (req, res) => {
     try {
-      // Removed console.log for webhook received
-
-      // Xử lý webhook đồng bộ trước khi trả về response
       if (req.body.gateway === "MBBank" || req.body.transferAmount) {
         await handleBankWebhook(req, res);
       } else {
         await handleSepayCallback(req, res);
       }
 
-      // Chỉ trả về response nếu chưa được trả về từ các handler
       if (!res.headersSent) {
         res.status(200).json({
           success: true,
@@ -267,13 +263,11 @@ webhookPaths.forEach((path) => {
   });
 });
 
-// Thêm middleware xử lý lỗi nghiêm trọng
 app.use((req, res, next) => {
   try {
     next();
   } catch (error) {
     console.error("Uncaught error in request:", error);
-    // Đối với webhook, luôn trả về 200
     if (req.path.includes("webhook") || req.path.includes("/api/payments/")) {
       return res.status(200).json({
         success: true,
@@ -282,7 +276,6 @@ app.use((req, res, next) => {
         error: error.message,
       });
     }
-    // Đối với các request khác, trả về 500
     return res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -291,7 +284,6 @@ app.use((req, res, next) => {
   }
 });
 
-// Health check endpoint
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
@@ -300,7 +292,6 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Thêm endpoint trực tiếp cho SePay để debug lỗi 500
 app.get("/webhook", (req, res) => {
   res.status(200).json({
     success: true,
@@ -309,7 +300,6 @@ app.get("/webhook", (req, res) => {
   });
 });
 
-// Thêm handler đơn giản cho webhook test
 app.post("/webhook", (req, res) => {
   console.log("Received direct webhook POST:", req.body);
   res.status(200).json({
@@ -319,12 +309,9 @@ app.post("/webhook", (req, res) => {
   });
 });
 
-// Hàm dọn dẹp voucher hết hạn
 const scheduleExpiredVoucherCleanup = () => {
   try {
-    // Gọi function để xóa các voucher hết hạn
     deleteExpiredVouchers().then(() => {
-      // Removed console.log for expired voucher cleanup completed
     });
   } catch (error) {
     console.error("Error in scheduled expired voucher cleanup:", error);

@@ -1,3 +1,6 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable react-hooks/rules-of-hooks */
 import { useState, useEffect } from "react";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
@@ -15,7 +18,7 @@ const Delivery = () => {
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("delivering");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState(null);
   const [updateDialog, setUpdateDialog] = useState(false);
   const [currentOrder, setCurrentOrder] = useState(null);
@@ -31,27 +34,58 @@ const Delivery = () => {
   // Lấy thông tin user và chi nhánh từ localStorage
   const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
   const currentRole = localStorage.getItem("userRole");
-  const branchId = currentUser.branchId;
+  const branchId = localStorage.getItem("branchId") || currentUser.branchId;
 
   // Kiểm tra quyền truy cập
   if (!canAccess(currentRole, "delivery")) {
-    return <div className="text-center text-red-500 font-bold text-xl mt-10">Bạn không có quyền truy cập trang này.</div>;
+    return (
+      <div className="text-center text-red-500 font-bold text-xl mt-10">
+        Bạn không có quyền truy cập trang này.
+      </div>
+    );
+  }
+
+  // Hiển thị thông báo nếu không có chi nhánh
+  if (!branchId) {
+    return (
+      <div className="p-4 md:p-6">
+        <div className="bg-white shadow-md rounded-lg p-4 md:p-6">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">
+              Quản lý giao hàng
+            </h1>
+            <p className="text-red-500 font-medium">
+              Không thể tải dữ liệu. Tài khoản của bạn chưa được gán chi nhánh.
+            </p>
+            <p className="text-gray-600 mt-2">
+              Vui lòng liên hệ quản trị viên để được hỗ trợ.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Các trạng thái đơn hàng
   const orderStatusOptions = [
     { label: "Đang giao", value: "delivering" },
     { label: "Đã giao", value: "delivered" },
-    { label: "Giao thất bại", value: "delivery_failed" }
+    { label: "Giao thất bại", value: "delivery_failed" },
   ];
 
   // Filter options
   const statusFilterOptions = [
     { label: "Tất cả", value: "all" },
-    { label: "Chờ giao hàng", value: "pending_delivery" },
+    { label: "Chờ xác nhận", value: "pending" },
+    { label: "Đã xác nhận", value: "confirmed" },
+    { label: "Đang chuẩn bị", value: "preparing" },
+    { label: "Đang đóng gói", value: "packaging" },
+    { label: "Chờ giao hàng", value: "shipping" },
     { label: "Đang giao", value: "delivering" },
     { label: "Đã giao", value: "delivered" },
-    { label: "Giao thất bại", value: "delivery_failed" }
+    { label: "Giao thất bại", value: "delivery_failed" },
+    { label: "Đã hoàn thành", value: "completed" },
+    { label: "Đã hủy", value: "cancelled" },
   ];
 
   // Lấy danh sách đơn hàng khi component được mount
@@ -66,40 +100,86 @@ const Delivery = () => {
 
   // Lấy danh sách đơn hàng từ API
   const fetchOrders = async () => {
+    if (!branchId) {
+      showToast("error", "Lỗi", "Không tìm thấy thông tin chi nhánh");
+      return;
+    }
+
     try {
       setLoading(true);
-      // Lấy danh sách đơn hàng thuộc chi nhánh của shipper
       const response = await orderApi.getOrdersByBranch(branchId);
-      setOrders(response);
+      if (response && response.data) {
+        if (Array.isArray(response.data.orders)) {
+          console.log(
+            "Tìm thấy mảng orders với",
+            response.data.orders.length,
+            "đơn hàng"
+          );
+          setOrders(response.data.orders);
+          setFilteredOrders(response.data.orders); // Cập nhật luôn filteredOrders để hiển thị ngay
+          setTotalRecords(response.data.orders.length);
+        }
+        // Nếu response.data là mảng, sử dụng nó
+        else if (Array.isArray(response.data)) {
+          console.log(
+            "Tìm thấy mảng response.data với",
+            response.data.length,
+            "đơn hàng"
+          );
+          setOrders(response.data);
+          setFilteredOrders(response.data); // Cập nhật luôn filteredOrders để hiển thị ngay
+          setTotalRecords(response.data.length);
+        }
+        // Nếu response.data không phải mảng và không có thuộc tính orders
+        else {
+          setOrders([]);
+          setFilteredOrders([]);
+          setTotalRecords(0);
+        }
+      } else {
+        setOrders([]);
+        setFilteredOrders([]);
+        setTotalRecords(0);
+      }
+
       setLoading(false);
     } catch (error) {
       console.error("Error fetching orders:", error);
       showToast("error", "Lỗi", "Không thể tải danh sách đơn hàng");
+      setOrders([]);
+      setFilteredOrders([]);
+      setTotalRecords(0);
       setLoading(false);
     }
   };
 
   // Lọc đơn hàng theo trạng thái và ngày
   const filterOrders = () => {
+    // Đảm bảo orders là một mảng
+    if (!Array.isArray(orders)) {
+      setFilteredOrders([]);
+      setTotalRecords(0);
+      return;
+    }
+
+    console.log("Đang lọc đơn hàng từ:", orders.length, "đơn hàng");
     let filtered = [...orders];
 
     // Lọc theo trạng thái
     if (statusFilter !== "all") {
-      filtered = filtered.filter(order => order.status === statusFilter);
+      filtered = filtered.filter((order) => order.status === statusFilter);
     }
 
     // Lọc theo ngày
     if (dateFilter) {
       const filterDate = new Date(dateFilter);
       filterDate.setHours(0, 0, 0, 0);
-      
-      filtered = filtered.filter(order => {
+      filtered = filtered.filter((order) => {
         const orderDate = new Date(order.createdAt);
         orderDate.setHours(0, 0, 0, 0);
         return orderDate.getTime() === filterDate.getTime();
       });
     }
-
     setFilteredOrders(filtered);
     setTotalRecords(filtered.length);
     setFirst(0);
@@ -125,7 +205,7 @@ const Delivery = () => {
     if (files.length === 0) return;
 
     // Xử lý upload ảnh lên server hoặc convert sang base64
-    const promises = files.map(file => {
+    const promises = files.map((file) => {
       return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -135,7 +215,7 @@ const Delivery = () => {
       });
     });
 
-    Promise.all(promises).then(results => {
+    Promise.all(promises).then((results) => {
       setImageUrls([...imageUrls, ...results]);
     });
   };
@@ -153,11 +233,15 @@ const Delivery = () => {
         status: updateStatus,
         note: updateNote,
         images: imageUrls,
-        updatedBy: currentUser._id
+        updatedBy: currentUser._id,
       };
 
       await orderApi.updateOrderStatus(currentOrder._id, updateData);
-      showToast("success", "Thành công", "Cập nhật trạng thái đơn hàng thành công");
+      showToast(
+        "success",
+        "Thành công",
+        "Cập nhật trạng thái đơn hàng thành công"
+      );
       setUpdateDialog(false);
       fetchOrders();
     } catch (error) {
@@ -177,21 +261,34 @@ const Delivery = () => {
   // Hiển thị tag trạng thái đơn hàng
   const getStatusTag = (status) => {
     switch (status) {
-      case "pending_delivery":
+      case "pending":
+        return <Tag severity="info" value="Chờ xác nhận" />;
+      case "confirmed":
+        return <Tag severity="info" value="Đã xác nhận" />;
+      case "preparing":
+        return <Tag severity="info" value="Đang chuẩn bị" />;
+      case "packaging":
+        return <Tag severity="info" value="Đang đóng gói" />;
+      case "shipping":
         return <Tag severity="warning" value="Chờ giao hàng" />;
       case "delivering":
-        return <Tag severity="info" value="Đang giao" />;
+        return <Tag severity="warning" value="Đang giao" />;
       case "delivered":
         return <Tag severity="success" value="Đã giao" />;
       case "delivery_failed":
         return <Tag severity="danger" value="Giao thất bại" />;
+      case "completed":
+        return <Tag severity="success" value="Đã hoàn thành" />;
+      case "cancelled":
+        return <Tag severity="danger" value="Đã hủy" />;
       default:
-        return <Tag severity="secondary" value={status} />;
+        return <Tag severity="secondary" value={status || "Không xác định"} />;
     }
   };
 
   // Lấy đơn hàng cho trang hiện tại
-  const getCurrentPageOrders = () => filteredOrders.slice(first, first + rowsPerPage);
+  const getCurrentPageOrders = () =>
+    filteredOrders.slice(first, first + rowsPerPage);
 
   return (
     <div className="p-4 md:p-6">
@@ -199,7 +296,9 @@ const Delivery = () => {
 
       <div className="bg-white shadow-md rounded-lg p-4 md:p-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Quản lý giao hàng</h1>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">
+            Quản lý giao hàng
+          </h1>
           <p className="text-gray-600">
             Quản lý và cập nhật trạng thái đơn hàng đang giao
           </p>
@@ -215,7 +314,7 @@ const Delivery = () => {
               value={statusFilter}
               options={statusFilterOptions}
               onChange={(e) => setStatusFilter(e.value)}
-              className="w-full"
+              className="w-full border p-2 rounded"
               placeholder="Chọn trạng thái"
             />
           </div>
@@ -236,9 +335,9 @@ const Delivery = () => {
             <Button
               label="Làm mới"
               icon="pi pi-refresh"
-              className="p-button-outlined"
+              className="p-button-outlined border p-2 rounded"
               onClick={() => {
-                setStatusFilter("delivering");
+                setStatusFilter("all");
                 setDateFilter(null);
                 fetchOrders();
               }}
@@ -282,37 +381,46 @@ const Delivery = () => {
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-4 py-10 text-center text-gray-500">
+                  <td
+                    colSpan="6"
+                    className="px-4 py-10 text-center text-gray-500"
+                  >
                     Không có đơn hàng nào
                   </td>
                 </tr>
               ) : (
                 getCurrentPageOrders().map((order) => (
-                  <tr key={order._id} className="hover:bg-gray-50">
+                  <tr key={order._id} className="hover:bg-gray-50 border-b ">
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
                         {order.orderCode || order._id}
                       </div>
                       <div className="text-sm text-gray-500">
-                        {new Date(order.createdAt).toLocaleDateString('vi-VN')}
+                        {new Date(order.createdAt).toLocaleDateString("vi-VN")}
                       </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="text-sm font-medium text-gray-900">
-                        {order.customerName}
+                        {order?.userId?.firstName} {order?.userId?.lastName}
                       </div>
-                      <div className="text-sm text-gray-500">{order.phone}</div>
+                      <div className="text-sm text-gray-500">
+                        {order.shippingInfo?.phone ||
+                          order.phone ||
+                          "Không có SĐT"}
+                      </div>
                     </td>
                     <td className="px-4 py-4">
                       <div className="text-sm text-gray-900 max-w-xs">
-                        {order.shippingAddress}
+                        {order.shippingInfo?.address ||
+                          order.shippingAddress ||
+                          "Không có địa chỉ"}
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {new Intl.NumberFormat('vi-VN', {
-                          style: 'currency',
-                          currency: 'VND'
+                        {new Intl.NumberFormat("vi-VN", {
+                          style: "currency",
+                          currency: "VND",
                         }).format(order.totalAmount)}
                       </div>
                     </td>
@@ -324,14 +432,16 @@ const Delivery = () => {
                         <Button
                           label="Cập nhật"
                           icon="pi pi-pencil"
-                          className="p-button-sm"
+                          className="p-button-sm bg-[#51bb1a] text-white p-2 rounded px-4"
                           onClick={() => openUpdateDialog(order)}
                         />
                         <Button
                           label="Chi tiết"
                           icon="pi pi-eye"
-                          className="p-button-sm p-button-outlined"
-                          onClick={() => window.open(`/admin/orders/${order._id}`, '_blank')}
+                          className="p-button-sm p-button-outlined bg-red-500 text-white p-2 rounded px-4"
+                          onClick={() =>
+                            window.open(`/admin/orders/${order._id}`, "_blank")
+                          }
                         />
                       </div>
                     </td>
@@ -346,7 +456,7 @@ const Delivery = () => {
         <div className="mt-4">
           <Pagination
             totalRecords={filteredOrders.length}
-            rowsPerPageOptions={[10,25,50]}
+            rowsPerPageOptions={[10, 25, 50]}
             onPageChange={handlePageChange}
           />
         </div>
@@ -356,29 +466,32 @@ const Delivery = () => {
       <Dialog
         header="Cập nhật trạng thái đơn hàng"
         visible={updateDialog}
-        style={{ width: '90%', maxWidth: '600px' }}
+        style={{ width: "90%", maxWidth: "600px" }}
+        headerClassName="p-2"
         onHide={() => setUpdateDialog(false)}
         footer={
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 p-2">
             <Button
               label="Hủy"
-              icon="pi pi-times"
-              className="p-button-text"
+              className="p-button-text bg-red-500 text-white p-2 rounded px-4"
               onClick={() => setUpdateDialog(false)}
               disabled={loading}
             />
             <Button
               label="Cập nhật"
-              icon={loading ? "pi pi-spin pi-spinner" : "pi pi-check"}
+              className="p-button-text bg-[#51bb1a] text-white p-2 rounded px-4"
               onClick={handleUpdateStatus}
               disabled={loading}
             />
           </div>
         }
       >
-        <div className="p-fluid">
+        <div className="p-fluid p-2">
           <div className="mb-4">
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="status"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Trạng thái đơn hàng
             </label>
             <Dropdown
@@ -387,12 +500,15 @@ const Delivery = () => {
               options={orderStatusOptions}
               onChange={(e) => setUpdateStatus(e.value)}
               placeholder="Chọn trạng thái"
-              className="w-full"
+              className="w-full border p-2 rounded"
             />
           </div>
 
           <div className="mb-4">
-            <label htmlFor="note" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="note"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Ghi chú
             </label>
             <InputTextarea
@@ -401,7 +517,7 @@ const Delivery = () => {
               onChange={(e) => setUpdateNote(e.target.value)}
               rows={3}
               placeholder="Nhập ghi chú về việc giao hàng..."
-              className="w-full"
+              className="w-full border p-2 rounded"
             />
           </div>
 
@@ -409,14 +525,20 @@ const Delivery = () => {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Hình ảnh chứng minh đã giao hàng
             </label>
-            <div className="flex flex-wrap gap-2 mb-2">
+            <div className="flex flex-wrap gap-2 mb-2 border p-2 rounded">
               {imageUrls.map((url, index) => (
                 <div key={index} className="relative">
-                  <img src={url} alt={`delivery-${index}`} className="w-24 h-24 object-cover rounded" />
+                  <img
+                    src={url}
+                    alt={`delivery-${index}`}
+                    className="w-24 h-24 object-cover rounded"
+                  />
                   <button
                     type="button"
                     className="absolute top-0 right-0 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
-                    onClick={() => setImageUrls(imageUrls.filter((_, i) => i !== index))}
+                    onClick={() =>
+                      setImageUrls(imageUrls.filter((_, i) => i !== index))
+                    }
                   >
                     <i className="pi pi-times text-xs" />
                   </button>
@@ -426,45 +548,59 @@ const Delivery = () => {
                 <div className="text-gray-500 text-sm">Chưa có hình ảnh</div>
               )}
             </div>
-            <Button
-              label="Thêm ảnh"
-              icon="pi pi-camera"
-              className="p-button-outlined p-button-sm"
-              onClick={() => fileInputRef.current.click()}
-            />
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept="image/*"
-              multiple
-              onChange={handleFileChange}
-            />
+            <div className="flex gap-2 border p-2 rounded">
+              <Button
+                label="Thêm ảnh"
+                className="p-button-outlined p-button-sm"
+                onClick={() => fileInputRef.current.click()}
+              />
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                multiple
+                onChange={handleFileChange}
+              />
+            </div>
           </div>
 
           {currentOrder && (
             <div className="mt-4 bg-gray-50 p-3 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Thông tin đơn hàng</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">
+                Thông tin đơn hàng
+              </h3>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-gray-500">Mã đơn hàng:</span>
-                  <span className="ml-1 font-medium">{currentOrder.orderCode || currentOrder._id}</span>
+                  <span className="ml-1 font-medium">
+                    {currentOrder.orderCode || currentOrder._id}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-500">Ngày đặt:</span>
-                  <span className="ml-1">{new Date(currentOrder.createdAt).toLocaleDateString('vi-VN')}</span>
+                  <span className="ml-1">
+                    {new Date(currentOrder.createdAt).toLocaleDateString(
+                      "vi-VN"
+                    )}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-500">Khách hàng:</span>
-                  <span className="ml-1">{currentOrder.customerName}</span>
+                  <span className="ml-1">
+                    {currentOrder?.userId?.firstName}{" "}
+                    {currentOrder?.userId?.lastName}
+                  </span>
                 </div>
                 <div>
                   <span className="text-gray-500">SĐT:</span>
-                  <span className="ml-1">{currentOrder.phone}</span>
+                  <span className="ml-1">{currentOrder?.userId?.phone}</span>
                 </div>
                 <div className="col-span-2">
                   <span className="text-gray-500">Địa chỉ:</span>
-                  <span className="ml-1">{currentOrder.shippingAddress}</span>
+                  <span className="ml-1">
+                    {currentOrder?.shippingInfo?.address}
+                  </span>
                 </div>
               </div>
             </div>
@@ -475,4 +611,4 @@ const Delivery = () => {
   );
 };
 
-export default Delivery; 
+export default Delivery;

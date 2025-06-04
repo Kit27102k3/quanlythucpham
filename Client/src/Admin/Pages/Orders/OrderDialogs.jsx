@@ -1,5 +1,12 @@
 import { Button } from "primereact/button";
 import PropTypes from "prop-types";
+import { useRef, useState } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+
+// Set Mapbox access token
+const MAPBOX_ACCESS_TOKEN = "pk.eyJ1Ijoia2l0MjcxMCIsImEiOiJjbWF4bWh5YWQwc2N0MmtxM2p1M2Z5azZkIn0.navJSR4rbpRHVV3TEXelQg";
+mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
 // Dialog xem chi tiết đơn hàng
 export const ViewOrderDialog = ({
@@ -271,7 +278,16 @@ export const StatusUpdateDialog = ({
   getStatusText,
   getStatusColor,
   getStatusIcon,
+  ORDER_STATUSES,
 }) => {
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const animationRef = useRef(null);
+  const [showMap, setShowMap] = useState(false);
+  const [route, setRoute] = useState(null);
+  const [isAnimating, setIsAnimating] = useState(false);
+
   if (!statusDialogVisible || !selectedOrderForStatus) return null;
 
   const nextStatuses = getNextStatuses(
@@ -279,13 +295,275 @@ export const StatusUpdateDialog = ({
     selectedOrderForStatus.isPaid
   );
 
+  // Function to check if a status is shipping
+  const isShippingStatus = (status) => {
+    return status === "SHIPPING" || status === ORDER_STATUSES.SHIPPING;
+  };
+
+  // Animation function to move marker along the route
+  const animateMarker = (map, coordinates) => {
+    let step = 0;
+    const numSteps = 500; // Adjust this for animation speed
+
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+
+    // Create a marker with a truck icon
+    if (!markerRef.current) {
+      // Create a custom truck element
+      const el = document.createElement('div');
+      el.className = 'delivery-vehicle';
+      el.style.width = '30px';
+      el.style.height = '30px';
+      el.style.backgroundImage = 'url(https://cdn-icons-png.flaticon.com/512/3128/3128826.png)';
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundRepeat = 'no-repeat';
+      
+      markerRef.current = new mapboxgl.Marker(el)
+        .setLngLat(coordinates[0])
+        .addTo(map);
+    }
+
+    setIsAnimating(true);
+
+    function animate() {
+      if (step >= numSteps) {
+        setIsAnimating(false);
+        return;
+      }
+      
+      // Calculate the percentage of the route that should be complete
+      const percentAlongRoute = step / numSteps;
+      
+      // Find the appropriate point along the route
+      const pointIndex = Math.floor(percentAlongRoute * (coordinates.length - 1));
+      
+      // Interpolate between points for smoother animation
+      if (pointIndex < coordinates.length - 1) {
+        const nextPointIndex = pointIndex + 1;
+        const segmentPercent = (percentAlongRoute * (coordinates.length - 1)) % 1;
+        
+        const currentPoint = coordinates[pointIndex];
+        const nextPoint = coordinates[nextPointIndex];
+        
+        const lng = currentPoint[0] + (nextPoint[0] - currentPoint[0]) * segmentPercent;
+        const lat = currentPoint[1] + (nextPoint[1] - currentPoint[1]) * segmentPercent;
+        
+        // Update marker position
+        markerRef.current.setLngLat([lng, lat]);
+        
+        // Rotate marker to face direction of travel
+        const bearing = getBearing(
+          [currentPoint[0], currentPoint[1]],
+          [nextPoint[0], nextPoint[1]]
+        );
+        
+        // Update rotation of the marker's element
+        const markerEl = markerRef.current.getElement();
+        markerEl.style.transform = `${markerEl.style.transform.replace(/rotate\([^)]+\)/, '')} rotate(${bearing}deg)`;
+      }
+      
+      step += 1;
+      animationRef.current = requestAnimationFrame(animate);
+    }
+    
+    animate();
+  };
+  
+  // Calculate bearing between two points
+  const getBearing = (start, end) => {
+    const startLat = start[1] * Math.PI / 180;
+    const startLng = start[0] * Math.PI / 180;
+    const endLat = end[1] * Math.PI / 180;
+    const endLng = end[0] * Math.PI / 180;
+    
+    const y = Math.sin(endLng - startLng) * Math.cos(endLat);
+    const x = Math.cos(startLat) * Math.sin(endLat) -
+              Math.sin(startLat) * Math.cos(endLat) * Math.cos(endLng - startLng);
+              
+    const bearing = Math.atan2(y, x) * 180 / Math.PI;
+    return (bearing + 360) % 360;
+  };
+
+  // Function to create and display a map with route
+  const displayRouteMap = async (status) => {
+    if (!isShippingStatus(status)) {
+      setShowMap(false);
+      return;
+    }
+
+    setShowMap(true);
+    
+    // Wait for DOM to update
+    setTimeout(async () => {
+      if (!mapContainerRef.current) return;
+      
+      // Clean up previous map if exists
+      if (mapRef.current) {
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+          animationRef.current = null;
+        }
+        
+        if (markerRef.current) {
+          markerRef.current.remove();
+          markerRef.current = null;
+        }
+        
+        mapRef.current.remove();
+      }
+
+      // Define branch and delivery locations
+      // Use real data from order if available
+      const branchLocation = {
+        lat: 10.0339, // Chi nhánh Cần Thơ (example)
+        lng: 105.7855
+      };
+      
+      // Get delivery location from order's shipping info
+      const deliveryAddress = selectedOrderForStatus.shippingInfo?.address || "";
+      let deliveryLocation = null;
+      
+      try {
+        // Try to geocode the delivery address
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(deliveryAddress)}.json?access_token=${MAPBOX_ACCESS_TOKEN}&country=vn&limit=1`
+        );
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+          const [lng, lat] = data.features[0].center;
+          deliveryLocation = { lat, lng };
+        }
+      } catch (error) {
+        console.error("Error geocoding address:", error);
+        // Fallback to default location if geocoding fails
+        deliveryLocation = {
+          lat: 10.0252, // Default example location 
+          lng: 105.7625
+        };
+      }
+      
+      if (!deliveryLocation) {
+        // Fallback if geocoding failed
+        deliveryLocation = {
+          lat: 10.0252,
+          lng: 105.7625
+        };
+      }
+
+      // Initialize map
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v11',
+        center: [branchLocation.lng, branchLocation.lat],
+        zoom: 12
+      });
+      
+      mapRef.current = map;
+
+      // Add navigation controls
+      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+      // Add branch marker
+      new mapboxgl.Marker({ color: '#3887be' })
+        .setLngLat([branchLocation.lng, branchLocation.lat])
+        .setPopup(new mapboxgl.Popup().setHTML('<h3>Chi nhánh Cần Thơ</h3><p>Điểm xuất hàng</p>'))
+        .addTo(map);
+      
+      // Add delivery location marker
+      new mapboxgl.Marker({ color: '#f30' })
+        .setLngLat([deliveryLocation.lng, deliveryLocation.lat])
+        .setPopup(new mapboxgl.Popup().setHTML('<h3>Địa chỉ nhận hàng</h3><p>' + deliveryAddress + '</p>'))
+        .addTo(map);
+      
+      // Insert a CSS style for the marker animation
+      const styleElement = document.createElement('style');
+      styleElement.textContent = `
+        .mapboxgl-marker {
+          transition: transform 0.2s ease;
+        }
+        .delivery-vehicle {
+          transform-origin: center;
+        }
+      `;
+      document.head.appendChild(styleElement);
+
+      // Get route from branch to delivery location
+      try {
+        const directionsResponse = await fetch(
+          `https://api.mapbox.com/directions/v5/mapbox/driving/${branchLocation.lng},${branchLocation.lat};${deliveryLocation.lng},${deliveryLocation.lat}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`
+        );
+        const directionsData = await directionsResponse.json();
+        
+        if (directionsData.routes && directionsData.routes.length > 0) {
+          const routeData = directionsData.routes[0];
+          setRoute(routeData);
+          
+          // Add the route to the map
+          map.on('load', () => {
+            map.addSource('route', {
+              type: 'geojson',
+              data: {
+                type: 'Feature',
+                properties: {},
+                geometry: routeData.geometry
+              }
+            });
+            
+            map.addLayer({
+              id: 'route',
+              type: 'line',
+              source: 'route',
+              layout: {
+                'line-join': 'round',
+                'line-cap': 'round'
+              },
+              paint: {
+                'line-color': '#3887be',
+                'line-width': 5,
+                'line-opacity': 0.75
+              }
+            });
+            
+            // Fit map to route bounds
+            const bounds = new mapboxgl.LngLatBounds();
+            routeData.geometry.coordinates.forEach(coord => {
+              bounds.extend(coord);
+            });
+            map.fitBounds(bounds, { padding: 50 });
+            
+            // Start the animation after map is loaded and route is displayed
+            animateMarker(map, routeData.geometry.coordinates);
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching route:", error);
+      }
+    }, 100);
+  };
+
+  const handleStatusUpdate = (orderId, newStatus) => {
+    if (isShippingStatus(newStatus)) {
+      displayRouteMap(newStatus);
+    }
+    updateOrderStatus(orderId, newStatus);
+  };
+
   return (
-    <div className="fixed inset-0  bg-opacity-30 backdrop-blur-xs flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-6 max-w-md w-full m-4">
+    <div className="fixed inset-0 bg-opacity-30 backdrop-blur-xs flex items-center justify-center z-50">
+      <div className="bg-white rounded-xl p-6 max-w-2xl w-full m-4">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">Cập nhật trạng thái</h2>
           <button
-            onClick={() => setStatusDialogVisible(false)}
+            onClick={() => {
+              if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current);
+                animationRef.current = null;
+              }
+              setStatusDialogVisible(false);
+            }}
             className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
           >
             <i className="pi pi-times"></i>
@@ -312,7 +590,7 @@ export const StatusUpdateDialog = ({
                 key={status.value}
                 className="w-full p-3 flex items-center justify-between bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-200 transition-colors"
                 onClick={() =>
-                  updateOrderStatus(selectedOrderForStatus._id, status.value)
+                  handleStatusUpdate(selectedOrderForStatus._id, status.value)
                 }
               >
                 <div className="flex items-center">
@@ -337,11 +615,38 @@ export const StatusUpdateDialog = ({
           </div>
         </div>
 
+        {showMap && (
+          <div className="mb-6">
+            <h3 className="font-medium mb-3">Bản đồ theo dõi</h3>
+            <div 
+              ref={mapContainerRef} 
+              className="h-[300px] w-full rounded-lg border border-gray-200 overflow-hidden"
+            ></div>
+            {route && (
+              <div className="mt-2 text-sm text-gray-600">
+                <p>Khoảng cách: {(route.distance / 1000).toFixed(1)} km</p>
+                <p>Thời gian ước tính: {Math.ceil(route.duration / 60)} phút</p>
+                {isAnimating && (
+                  <p className="text-blue-600 font-medium">
+                    <i className="pi pi-spin pi-spinner mr-1"></i> Đang vận chuyển...
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-end">
           <Button
             label="Đóng"
             className="p-button-secondary bg-red-500 text-white p-2 rounded px-4"
-            onClick={() => setStatusDialogVisible(false)}
+            onClick={() => {
+              if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current);
+                animationRef.current = null;
+              }
+              setStatusDialogVisible(false);
+            }}
           />
         </div>
       </div>
@@ -632,6 +937,7 @@ StatusUpdateDialog.propTypes = {
   getStatusText: PropTypes.func.isRequired,
   getStatusColor: PropTypes.func.isRequired,
   getStatusIcon: PropTypes.func.isRequired,
+  ORDER_STATUSES: PropTypes.object.isRequired,
 };
 
 PaymentDialog.propTypes = {

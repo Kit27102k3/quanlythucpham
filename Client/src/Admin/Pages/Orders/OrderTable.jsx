@@ -62,13 +62,13 @@ const OrderTable = ({
             placeholder="Chọn trạng thái"
             className="w-40 p-2 border"
             pt={{
-              root: { className: "w-40" },
+              root: { className: "w-52" },
               panel: {
                 className:
                   "bg-white border border-gray-200 rounded-lg shadow-lg",
               },
               item: { className: "p-2 hover:bg-blue-50 cursor-pointer" },
-              trigger: { className: "p-button-outlined w-full" },
+              // trigger: { className: "p-button-outlined w-full" },
               list: { className: "p-0 max-h-60 overflow-auto" },
             }}
           />

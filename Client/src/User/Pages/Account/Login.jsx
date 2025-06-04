@@ -18,20 +18,27 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Clear localStorage on first load to ensure clean state
     localStorage.clear();
 
-    // Check if user is already logged in
     const token = localStorage.getItem("accessToken");
     const userId = localStorage.getItem("userId");
     const userRole = localStorage.getItem("userRole");
     
     if (token && userId) {
-      // User is already logged in, redirect based on role
-      if (userRole === "admin") {
-        navigate("/admin/products");
-      } else {
-      navigate("/");
+      switch(userRole?.toLowerCase()) {
+        case "admin":
+          navigate("/admin/products");
+          break;
+        case "manager":
+          navigate("/admin/supplices");
+          break;
+        case "employee":
+        case "shipper":
+          navigate("/admin/orders");
+          break;
+        default:
+          navigate("/");
+          break;
       }
     }
   }, [navigate]);
@@ -46,9 +53,7 @@ const Login = () => {
 
     setIsLoading(true);
 
-    // Xử lý đặc biệt cho tài khoản TKhiem trong MongoDB như hình đã gửi
     if (username === "TKhiem" && password === "Kit@2710") {
-
       const adminData = {
         _id: "67ee8bb1478f5c2b3a566552",
         username: "TKhiem",
@@ -60,7 +65,6 @@ const Login = () => {
         isActive: true,
       };
 
-      // Lưu thông tin đăng nhập vào localStorage
       localStorage.setItem("accessToken", "admin-token-for-TKhiem");
       localStorage.setItem("refreshToken", "admin-refresh-token-for-TKhiem");
       localStorage.setItem("userId", adminData._id);
@@ -69,9 +73,7 @@ const Login = () => {
 
       toast.success("Đăng nhập tài khoản admin thành công!");
 
-      // Chuyển hướng đến trang admin
       setTimeout(() => {
-        console.log("Chuyển hướng đến trang admin");
         navigate("/admin/products");
       }, 1000);
 
@@ -80,109 +82,75 @@ const Login = () => {
     }
 
     try {
-      console.log("Đang đăng nhập với tài khoản:", username);
-
-      // Thu thập tất cả lỗi để debug
       const allErrors = [];
       let response = null;
-      let isAdminAccount = false; // Cờ xác định xem tài khoản thuộc model Admin hay không
+      let isAdminAccount = false;
 
-      // Thử lần lượt các cách đăng nhập khác nhau
-
-      // Cách 1: Đăng nhập admin (trường username - không có chữ N viết hoa)
       try {
-        console.log("Đang thử đăng nhập với model Admin (username)");
-        // Admin.js sử dụng trường username (không có chữ N viết hoa)
         response = await authApi.adminLogin({
           username: username,
           password: password,
         });
 
         if (response && response.data) {
-          console.log("Đăng nhập Admin model thành công!");
           isAdminAccount = true;
         }
       } catch (err) {
         allErrors.push({ method: "admin", error: err });
-        console.log("Phương pháp đăng nhập Admin model thất bại:", err.message);
       }
 
-      // Cách 2: Đăng nhập User model (trường userName - có chữ N viết hoa)
       if (!response) {
         try {
-          console.log("Đang thử đăng nhập với model User (userName)");
           response = await authApi.login({
-            userName: username, // Register.js sử dụng trường userName (có chữ N viết hoa)
+            userName: username,
             password,
           });
 
           if (response && response.data) {
-            console.log("Đăng nhập User model thành công!");
             isAdminAccount = false;
           }
         } catch (err) {
           allErrors.push({ method: "user", error: err });
-          console.log(
-            "Phương pháp đăng nhập User model thất bại:",
-            err.message
-          );
         }
       }
 
-      // Cách 3: Đăng nhập với URLSearchParams (dự phòng)
       if (!response) {
         try {
-          console.log("Đang thử đăng nhập với phương thức URLSearchParams");
           response = await authApi.loginAlternative({
             userName: username,
             password,
           });
 
           if (response && response.data) {
-            // Kiểm tra xem response có role là admin không
             isAdminAccount = response.data.role === "admin";
           }
         } catch (err) {
           allErrors.push({ method: "URLSearchParams", error: err });
-          console.log(
-            "Phương pháp đăng nhập URLSearchParams thất bại:",
-            err.message
-          );
         }
       }
 
-      // Cách 4: Đăng nhập với Fetch API (dự phòng)
       if (!response) {
         try {
-       
           response = await authApi.loginWithFetch({
             userName: username,
             password,
           });
 
           if (response && response.data) {
-            // Kiểm tra xem response có role là admin không
             isAdminAccount = response.data.role === "admin";
           }
         } catch (err) {
           allErrors.push({ method: "Fetch", error: err });
-          console.log("Phương pháp đăng nhập Fetch API thất bại:", err.message);
         }
       }
 
-      // Nếu không có phương thức nào thành công
       if (!response) {
-        console.error(
-          "Tất cả các phương thức đăng nhập đều thất bại:",
-          allErrors
-        );
         if (username === "TKhiem") {
           throw new Error(
             "Mật khẩu không chính xác. Mật khẩu cho tài khoản admin TKhiem là Kit@2710"
           );
         }
 
-        // Kiểm tra xem có lỗi nào báo tài khoản không tồn tại không
         const accountNotExistError = allErrors.find(
           (e) =>
             e.error.response?.data?.message?.includes("không tồn tại") ||
@@ -193,25 +161,20 @@ const Login = () => {
           throw new Error("Tài khoản không tồn tại");
         }
 
-        // Nếu không, ném lỗi đầu tiên
         throw allErrors[0].error;
       }
 
-      // Tiếp tục phần còn lại của xử lý đăng nhập thành công
       if (!response || !response.data) {
         throw new Error("Không nhận được phản hồi từ server");
       }
 
       const { data } = response;
-      // Kiểm tra cấu trúc dữ liệu trả về
       if (data.success !== undefined && !data.success) {
         throw new Error(data.message || "Đăng nhập thất bại");
       }
 
-      // Kiểm tra xem dữ liệu người dùng có nằm trong field nào không
       const userData = data.user || data.data || data;
 
-      // Kiểm tra nếu tài khoản bị chặn
       if (userData.isBlocked) {
         toast.error(
           "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ."
@@ -219,7 +182,6 @@ const Login = () => {
         return;
       }
 
-      // Kiểm tra dữ liệu đăng nhập
       if (
         !userData.accessToken &&
         !data.accessToken &&
@@ -229,7 +191,6 @@ const Login = () => {
         throw new Error("Dữ liệu đăng nhập không hợp lệ");
       }
 
-      // Lấy các token từ đúng vị trí, thêm nhiều khả năng
       const accessToken =
         userData.accessToken ||
         data.accessToken ||
@@ -251,16 +212,20 @@ const Login = () => {
         data.id ||
         "";
 
-      // Xác định vai trò từ response hoặc từ cờ isAdminAccount
       const role =
         userData.role || data.role || (isAdminAccount ? "admin" : "user");
 
-      // Lưu dữ liệu đăng nhập
       localStorage.setItem("accessToken", accessToken);
       localStorage.setItem("refreshToken", refreshToken);
       localStorage.setItem("userId", userId);
       localStorage.setItem("userRole", role.toLowerCase());
-      localStorage.setItem("branchId", userData.branchId || null);
+      
+      if (userData.branchId) {
+        localStorage.setItem("branchId", userData.branchId);
+      } else if (data.branchId) {
+        localStorage.setItem("branchId", data.branchId);
+      }
+      
       if (userData.isBlocked !== undefined) {
         localStorage.setItem("isBlocked", userData.isBlocked);
       }
@@ -279,30 +244,28 @@ const Login = () => {
         );
       }
 
-        toast.success("Đăng nhập thành công!");
+      toast.success("Đăng nhập thành công!");
         
-      // Kiểm tra kỹ vai trò trước khi chuyển hướng
       setTimeout(() => {
-        // Lấy role từ localStorage để đảm bảo dùng đúng giá trị đã lưu
         const storedRole = localStorage.getItem("userRole");
-
-        // Chỉ cho phép role="admin" (chính xác) mới được vào trang admin
-        if (storedRole === "admin") {
-          console.log(
-            "Xác nhận là tài khoản admin, chuyển hướng đến trang admin"
-          );
-          navigate("/admin/products");
-        } else {
-          console.log(
-            "Xác nhận là tài khoản user thường, chuyển hướng đến trang chủ"
-          );
-          navigate("/");
+        
+        switch(storedRole?.toLowerCase()) {
+          case "admin":
+            navigate("/admin/products");
+            break;
+          case "manager":
+            navigate("/admin/suppliers");
+            break;
+          case "employee":
+          case "shipper":
+            navigate("/admin/orders");
+            break;
+          default:
+            navigate("/");
+            break;
         }
       }, 1000);
     } catch (error) {
-      console.error("Lỗi đăng nhập:", error);
-
-      // Xử lý đặc biệt cho lỗi tài khoản TKhiem mật khẩu sai
       if (
         error.message &&
         error.message.includes("Mật khẩu cho tài khoản admin TKhiem")
@@ -320,7 +283,6 @@ const Login = () => {
         return;
       }
 
-      // Log chi tiết lỗi để debug
       if (error.response) {
         const serverMessage =
           error.response.data?.message || error.response.data?.error;
@@ -354,7 +316,6 @@ const Login = () => {
         }
       }
 
-      // Kiểm tra nếu lỗi từ fetch API
       if (error.data && (error.data.message || error.data.error)) {
         const apiErrorMsg = error.data.message || error.data.error;
 
@@ -386,7 +347,6 @@ const Login = () => {
         return;
       }
 
-      // Xử lý các loại lỗi thông thường
       if (error.message && error.message.includes("Tài khoản không tồn tại")) {
         toast.error(
           <div>
@@ -425,11 +385,9 @@ const Login = () => {
     }
   };
 
-  // Xử lý đăng nhập với Facebook
   const handleFacebookLogin = () => {
     setIsLoading(true);
     try {
-      // Use a direct URL approach
       const appId = "991623106465060";
       const redirectUri = encodeURIComponent(`${window.location.origin}/dang-nhap/success`);
       const fbLoginUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirectUri}&scope=public_profile&response_type=token`;
@@ -441,42 +399,44 @@ const Login = () => {
     }
   };
 
-  // Hàm xử lý phản hồi từ Google
   const processGoogleLogin = async (response) => {
-    console.log("Google login response received:", response);
-    
     if (!response || !response.credential) {
-      console.error("Invalid Google response:", response);
       toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
       return;
     }
 
     try {
       setIsLoading(true);
-      console.log("Processing Google login with credential");
       
       const result = await AuthService.loginWithGoogle(response);
-      console.log("Google login API result:", result);
       
       if (result && (result.token || result.accessToken)) {
-        // Kiểm tra nếu là tài khoản admin
         const userRole = localStorage.getItem("userRole");
         
         toast.success("Đăng nhập Google thành công!");
         
-        // Chuyển hướng dựa trên vai trò
         setTimeout(() => {
-          if (userRole === "admin") {
-            navigate("/admin/products");
-          } else {
-            navigate("/");
+          switch(userRole?.toLowerCase()) {
+            case "admin":
+              navigate("/admin/products");
+              break;
+            case "manager":
+              navigate("/admin/supplices");
+              break;
+            case "employee":
+            case "shipper":
+              navigate("/admin/orders");
+              break;
+            default:
+              navigate("/");
+              break;
           }
         }, 1000);
       } else {
         throw new Error("Không nhận được token đăng nhập");
       }
     } catch (error) {
-      console.error("Lỗi xử lý đăng nhập Google:", error);
+      console.error("Google login error:", error);
       toast.error(
         error.message || "Đăng nhập Google thất bại. Vui lòng thử lại"
       );
@@ -497,7 +457,6 @@ const Login = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
-            {/* Facebook Login Button */}
             <button
               type="button"
               onClick={handleFacebookLogin}
@@ -507,7 +466,6 @@ const Login = () => {
               <FaFacebook className="mr-2 text-xl" /> Facebook
             </button>
             
-            {/* Google Login Button that shows Google's official button on click */}
             <button
               type="button"
               onClick={() => setShowDirectGoogleLogin(true)}
@@ -518,7 +476,6 @@ const Login = () => {
             </button>
           </div>
 
-          {/* Google Login component shown when button is clicked */}
           {showDirectGoogleLogin && (
             <div className="my-4">
               <p className="text-sm text-center text-gray-500 mb-2">
@@ -528,8 +485,7 @@ const Login = () => {
                 <GoogleOAuthProvider clientId="1031185116653-6sd3ambs6rmokdino3fsl9snrj7td8ae.apps.googleusercontent.com">
                   <GoogleLogin
                     onSuccess={processGoogleLogin}
-                    onError={(error) => {
-                      console.error("Direct Google login error:", error);
+                    onError={() => {
                       toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
                     }}
                     useOneTap
@@ -541,13 +497,11 @@ const Login = () => {
             </div>
           )}
 
-          {/* Hidden legacy Google auth mechanism (fallback) */}
           <div className="hidden">
             <GoogleOAuthProvider clientId="1031185116653-6sd3ambs6rmokdino3fsl9snrj7td8ae.apps.googleusercontent.com">
               <GoogleLogin
                 onSuccess={processGoogleLogin}
-                onError={(error) => {
-                  console.error("Google login error:", error);
+                onError={() => {
                   toast.error("Đăng nhập Google thất bại. Vui lòng thử lại");
                 }}
                 useOneTap

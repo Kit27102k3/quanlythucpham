@@ -241,14 +241,14 @@ const DashboardReport = ({
             {exportLoading ? "Đang xử lý..." : "Xuất PDF"}
           </button>
           <button
-            onClick={() => exportToExcel("dashboard")}
+            onClick={() => exportToExcel("dashboard", setExportLoading)}
             disabled={isLoading || hasError}
             className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded text-sm font-medium"
           >
             Xuất Excel
           </button>
           <button
-            onClick={() => sendReportEmail("dashboard")}
+            onClick={() => sendReportEmail("dashboard", setExportLoading)}
             disabled={isLoading || hasError}
             className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium"
           >

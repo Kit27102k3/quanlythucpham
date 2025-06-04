@@ -36,11 +36,58 @@ export const exportToPDF = async (reportId, setExportLoading) => {
       return;
     }
     
+    // Apply a temporary style to replace oklch colors with standard RGB
+    const tempStyle = document.createElement('style');
+    tempStyle.innerHTML = `
+      * {
+        color-scheme: light !important;
+        color: black !important;
+        background-color: white !important;
+        border-color: #e5e7eb !important;
+      }
+      .bg-green-50 { background-color: #f0fdf4 !important; }
+      .bg-blue-50 { background-color: #eff6ff !important; }
+      .bg-yellow-50 { background-color: #fefce8 !important; }
+      .bg-purple-50 { background-color: #faf5ff !important; }
+      .bg-green-100 { background-color: #dcfce7 !important; }
+      .bg-blue-100 { background-color: #dbeafe !important; }
+      .bg-yellow-100 { background-color: #fef9c3 !important; }
+      .bg-purple-100 { background-color: #f3e8ff !important; }
+      .text-green-600 { color: #16a34a !important; }
+      .text-blue-600 { color: #2563eb !important; }
+      .text-yellow-600 { color: #ca8a04 !important; }
+      .text-purple-600 { color: #9333ea !important; }
+    `;
+    document.head.appendChild(tempStyle);
+    
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
-      logging: false
+      logging: false,
+      backgroundColor: '#ffffff',
+      allowTaint: true,
+      removeContainer: true,
+      // Ignore CSS color functions that aren't supported
+      onclone: (clonedDoc) => {
+        const elements = clonedDoc.querySelectorAll('*');
+        elements.forEach(el => {
+          const style = window.getComputedStyle(el);
+          const bgColor = style.backgroundColor;
+          const color = style.color;
+          
+          // Replace any oklch colors with standard colors
+          if (bgColor.includes('oklch')) {
+            el.style.backgroundColor = '#ffffff';
+          }
+          if (color.includes('oklch')) {
+            el.style.color = '#000000';
+          }
+        });
+      }
     });
+    
+    // Remove the temporary style
+    document.head.removeChild(tempStyle);
     
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF('p', 'mm', 'a4');
@@ -73,19 +120,108 @@ export const exportToPDF = async (reportId, setExportLoading) => {
 };
 
 // Export report data to Excel
-export const exportToExcel = (data, reportId, setExportLoading) => {
+export const exportToExcel = (reportId, setExportLoading) => {
   if (setExportLoading) setExportLoading(true);
   
   try {
-    if (!data || !Array.isArray(data)) {
-      console.error('Invalid data for Excel export');
+    // Get the dashboard data
+    const dashboardElement = document.getElementById(`${reportId}-report`);
+    if (!dashboardElement) {
+      console.error(`Element with ID "${reportId}-report" not found`);
       return;
     }
     
-    // Create a new workbook
-    const ws = utils.json_to_sheet(data);
+    // Extract data from the dashboard
+    const data = [];
+    
+    // Get revenue data
+    const revenueChart = dashboardElement.querySelector('.recharts-surface');
+    if (revenueChart) {
+      const revenueData = {
+        title: 'Doanh thu theo thời gian',
+        data: []
+      };
+      
+      // Try to extract data from chart
+      const chartLabels = dashboardElement.querySelectorAll('.recharts-cartesian-axis-tick-value');
+      chartLabels.forEach((label, index) => {
+        if (index < chartLabels.length / 2) { // Only process X-axis labels
+          revenueData.data.push({
+            'Ngày': label.textContent,
+            'Doanh thu': 'Xem biểu đồ chi tiết'
+          });
+        }
+      });
+      
+      data.push(revenueData);
+    }
+    
+    // Get top products data
+    const productsTable = dashboardElement.querySelector('table');
+    if (productsTable) {
+      const topProducts = {
+        title: 'Top sản phẩm bán chạy',
+        data: []
+      };
+      
+      // Get table headers
+      const headers = [];
+      const headerCells = productsTable.querySelectorAll('thead th');
+      headerCells.forEach(cell => {
+        headers.push(cell.textContent.trim());
+      });
+      
+      // Get table rows
+      const rows = productsTable.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        const rowData = {};
+        const cells = row.querySelectorAll('td');
+        
+        cells.forEach((cell, index) => {
+          if (headers[index]) {
+            rowData[headers[index]] = cell.textContent.trim();
+          }
+        });
+        
+        if (Object.keys(rowData).length > 0) {
+          topProducts.data.push(rowData);
+        }
+      });
+      
+      data.push(topProducts);
+    }
+    
+    // Extract summary data
+    const statCards = dashboardElement.querySelectorAll('.bg-green-50, .bg-blue-50, .bg-yellow-50, .bg-purple-50');
+    const summaryData = {
+      title: 'Tổng quan',
+      data: []
+    };
+    
+    statCards.forEach(card => {
+      const title = card.querySelector('p')?.textContent;
+      const value = card.querySelector('h3')?.textContent;
+      
+      if (title && value) {
+        summaryData.data.push({
+          'Chỉ số': title,
+          'Giá trị': value
+        });
+      }
+    });
+    
+    data.push(summaryData);
+    
+    // Create a workbook with multiple sheets
     const wb = utils.book_new();
-    utils.book_append_sheet(wb, ws, `${reportId}`);
+    
+    // Add each section as a separate sheet
+    data.forEach(section => {
+      if (section.data && section.data.length > 0) {
+        const ws = utils.json_to_sheet(section.data);
+        utils.book_append_sheet(wb, ws, section.title);
+      }
+    });
     
     // Write to file
     writeFile(wb, `bao-cao-${reportId}-${new Date().toISOString().split('T')[0]}.xlsx`);

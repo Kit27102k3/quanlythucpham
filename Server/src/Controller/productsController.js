@@ -1,4 +1,4 @@
-/*************  ✨ Windsurf Command 🌟  *************/
+/* eslint-disable no-constant-binary-expression */
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-undef */
 import cloudinary from "../config/cloudinary.js";
