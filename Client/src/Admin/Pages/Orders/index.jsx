@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { useState, useEffect, useCallback, memo } from "react";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import branchesApi from "../../../api/branchesApi";
 import orderApi from "../../../api/orderApi";
 import { useSelector } from "react-redux";
@@ -31,6 +31,8 @@ import {
 } from "./OrderDialogs";
 import OrderFilters from "./OrderFilters";
 import OrderTable from "./OrderTable";
+import { Button } from "primereact/button";
+import { Checkbox } from "primereact/checkbox";
 
 OrderStats.displayName = "OrderStats";
 OrderItem.displayName = "OrderItem";
@@ -38,7 +40,7 @@ OrderAutoTransition.displayName = "OrderAutoTransition";
 StatusTransitionInfo.displayName = "StatusTransitionInfo";
 
 const OrderAdmin = () => {
-  const toast = useRef(null);
+  // const toast = useRef(null);
   const { user } = useSelector((state) => state.auth);
   const userRole = localStorage.getItem("userRole") || "user";
   
@@ -332,12 +334,16 @@ const OrderAdmin = () => {
   }, [userRole, user]);
 
   const loadOrders = useCallback(
-    async (page = 0) => {
+    async (page = 0, forceReload = false) => {
       setLoading(true);
       try {
         let response;
         const pageSize = itemsPerPage;
         const pageNumber = Math.floor(page / pageSize) + 1;
+        
+        // Thêm timestamp để tránh cache
+        const timestamp = new Date().getTime();
+        console.log(`Loading orders with timestamp: ${timestamp}, forceReload: ${forceReload}`);
 
         if (userRole === "manager") {
           let branchId = filters.branchFilter;
@@ -369,11 +375,8 @@ const OrderAdmin = () => {
                          
           if (!branchId) {
             console.error("No branch ID available for manager to load orders");
-            toast.current.show({
-              severity: "error",
-              summary: "Lỗi",
-              detail: "Không thể xác định chi nhánh của bạn để tải đơn hàng",
-              life: 3000,
+            toast.error("Không thể xác định chi nhánh của bạn để tải đơn hàng", {
+              duration: 3000,
             });
             setLoading(false);
             setOrders([]);
@@ -383,6 +386,7 @@ const OrderAdmin = () => {
           console.log("Manager loading orders for branch:", branchId);
           
           try {
+            // Thêm tham số timestamp vào API call
             response = await orderApi.getOrdersByBranch(
               branchId,
               pageNumber,
@@ -402,18 +406,17 @@ const OrderAdmin = () => {
                 ? {
                     enabled: true,
                     radius: nearbyOrdersRadius,
+                    timestamp,
+                    forceReload
                   }
-                : undefined
+                : { timestamp, forceReload }
             );
             
             console.log("Orders loaded successfully for branch:", branchId);
           } catch (error) {
             console.error("Error loading orders for branch:", branchId, error);
-            toast.current.show({
-              severity: "error",
-              summary: "Lỗi",
-              detail: "Không thể tải đơn hàng cho chi nhánh của bạn",
-              life: 3000,
+            toast.error("Không thể tải đơn hàng cho chi nhánh của bạn", {
+              duration: 3000,
             });
             setLoading(false);
             setOrders([]);
@@ -441,8 +444,10 @@ const OrderAdmin = () => {
               ? {
                   enabled: true,
                   radius: nearbyOrdersRadius,
+                  timestamp,
+                  forceReload
                 }
-              : undefined
+              : { timestamp, forceReload }
           );
         } else {
           console.log("Admin loading all orders");
@@ -461,33 +466,54 @@ const OrderAdmin = () => {
             filters.dateFilter
               ? new Date(filters.dateFilter).toISOString()
               : undefined,
-            undefined
+            undefined,
+            timestamp
           );
         }
 
-        setOrders(response.data.orders);
+        // Kiểm tra dữ liệu nhận về từ API
+        console.log("Orders data received:", response.data.orders);
+
+        // Đảm bảo trường isPaid được chuẩn hóa đúng kiểu dữ liệu boolean
+        const normalizedOrders = response.data.orders?.map(order => {
+          // Kiểm tra nhiều kiểu dữ liệu có thể có cho isPaid
+          const isPaid = order.isPaid === true || 
+                       order.isPaid === "true" || 
+                       order.isPaid === 1 || 
+                       order.isPaid === "1";
+          
+          console.log(`Đơn hàng ${order._id} có isPaid ban đầu:`, order.isPaid, "sau chuẩn hóa:", isPaid);
+          
+          return {
+            ...order,
+            isPaid: isPaid
+          };
+        }) || [];
+
+        console.log("Normalized orders:", normalizedOrders);
+
+        // Set dữ liệu orders
+        setOrders(normalizedOrders);
         setTotalPages(Math.ceil(response.data.totalCount / itemsPerPage));
 
         setOrderStats({
-          total: response.data.stats.total || 0,
-          pending: response.data.stats.pending || 0,
-          confirmed: response.data.stats.confirmed || 0,
-          preparing: response.data.stats.preparing || 0,
-          packaging: response.data.stats.packaging || 0,
-          shipping: response.data.stats.shipping || 0,
-          delivering: response.data.stats.delivering || 0,
-          completed: response.data.stats.completed || 0,
-          cancelled: response.data.stats.cancelled || 0,
-          delivery_failed: response.data.stats.delivery_failed || 0,
-          awaiting_payment: response.data.stats.awaiting_payment || 0,
+          total: response.data.stats?.total || 0,
+          pending: response.data.stats?.pending || 0,
+          confirmed: response.data.stats?.confirmed || 0,
+          preparing: response.data.stats?.preparing || 0,
+          packaging: response.data.stats?.packaging || 0,
+          shipping: response.data.stats?.shipping || 0,
+          delivering: response.data.stats?.delivering || 0,
+          completed: response.data.stats?.completed || 0,
+          cancelled: response.data.stats?.cancelled || 0,
+          delivery_failed: response.data.stats?.delivery_failed || 0,
+          awaiting_payment: response.data.stats?.awaiting_payment || 0,
+          sorting_facility: response.data.stats?.sorting_facility || 0
         });
       } catch (error) {
         console.error("Error loading orders:", error);
-        toast.current.show({
-          severity: "error",
-          summary: "Lỗi",
-          detail: "Không thể tải danh sách đơn hàng",
-          life: 3000,
+        toast.error("Không thể tải danh sách đơn hàng", {
+          duration: 3000,
         });
       } finally {
         setLoading(false);
@@ -596,7 +622,7 @@ const OrderAdmin = () => {
         ];
       case ORDER_STATUSES.PREPARING:
         return [
-          { label: "Đã đóng gói xong", value: ORDER_STATUSES.PACKAGING },
+          { label: "Hoàn tất đóng gói", value: ORDER_STATUSES.PACKAGING },
           { label: "Hủy đơn hàng", value: ORDER_STATUSES.CANCELLED },
         ];
       case ORDER_STATUSES.PACKAGING:
@@ -606,7 +632,26 @@ const OrderAdmin = () => {
         ];
       case ORDER_STATUSES.SHIPPING:
         return [
+          { label: "Chuyển đến kho phân loại", value: ORDER_STATUSES.SORTING_FACILITY },
+          { label: "Hủy đơn hàng", value: ORDER_STATUSES.CANCELLED },
+        ];
+      case ORDER_STATUSES.SORTING_FACILITY:
+        return [
+          { label: "Bắt đầu giao hàng", value: ORDER_STATUSES.DELIVERING },
+          { label: "Hủy đơn hàng", value: ORDER_STATUSES.CANCELLED },
+        ];
+      case ORDER_STATUSES.DELIVERING:
+        return [
+          { label: "Đã giao hàng", value: ORDER_STATUSES.DELIVERED },
+          { label: "Giao hàng thất bại", value: ORDER_STATUSES.DELIVERY_FAILED },
+        ];
+      case ORDER_STATUSES.DELIVERED:
+        return [
           { label: "Hoàn thành đơn hàng", value: ORDER_STATUSES.COMPLETED },
+        ];
+      case ORDER_STATUSES.DELIVERY_FAILED:
+        return [
+          { label: "Giao lại", value: ORDER_STATUSES.DELIVERING },
           { label: "Hủy đơn hàng", value: ORDER_STATUSES.CANCELLED },
         ];
       default:
@@ -627,21 +672,16 @@ const OrderAdmin = () => {
     try {
       await orderApi.deleteOrder(selectedOrderId);
 
-      toast.current.show({
-        severity: "success",
-        summary: "Thành công",
-        detail: "Đã xóa đơn hàng",
-        life: 3000,
+      toast.success("Đã xóa đơn hàng", {
+        duration: 3000,
       });
 
       loadOrders(currentPage - 1);
     } catch (error) {
       console.error("Error deleting order:", error);
-      toast.current.show({
-        severity: "error",
-        summary: "Lỗi",
-        detail: "Không thể xóa đơn hàng",
-        life: 3000,
+      toast.error("Không thể xóa đơn hàng", {
+        description: error.message,
+        duration: 3000,
       });
     } finally {
       setDeleteDialog(false);
@@ -658,21 +698,16 @@ const OrderAdmin = () => {
     try {
       await orderApi.updateOrderStatus(orderId, newStatus);
 
-      toast.current.show({
-        severity: "success",
-        summary: "Thành công",
-        detail: `Đã cập nhật trạng thái thành ${getStatusText(newStatus)}`,
-        life: 3000,
+      toast.success(`Đã cập nhật trạng thái thành ${getStatusText(newStatus)}`, {
+        duration: 3000,
       });
 
       loadOrders(currentPage - 1);
     } catch (error) {
       console.error("Error updating order status:", error);
-      toast.current.show({
-        severity: "error",
-        summary: "Lỗi",
-        detail: "Không thể cập nhật trạng thái đơn hàng",
-        life: 3000,
+      toast.error("Không thể cập nhật trạng thái đơn hàng", {
+        description: error.message,
+        duration: 3000,
       });
     } finally {
       setStatusDialogVisible(false);
@@ -687,23 +722,76 @@ const OrderAdmin = () => {
 
   const confirmMarkAsPaid = async () => {
     try {
-      await orderApi.markOrderAsPaid(paymentOrderId);
+      // Tìm đơn hàng cần cập nhật
+      const orderToUpdate = orders.find(order => order._id === paymentOrderId);
+      if (!orderToUpdate) {
+        toast.error("Không tìm thấy đơn hàng để cập nhật", {
+          duration: 3000,
+        });
+        setPaymentDialog(false);
+        setPaymentOrderId(null);
+        return;
+      }
+      
+      console.log("Đơn hàng trước khi cập nhật:", orderToUpdate);
+      
+      // Cập nhật API trước
+      const result = await orderApi.markOrderAsPaid(paymentOrderId);
+      console.log("markOrderAsPaid result:", result);
 
-      toast.current.show({
-        severity: "success",
-        summary: "Thành công",
-        detail: "Đã đánh dấu đơn hàng là đã thanh toán",
-        life: 3000,
-      });
+      // Lưu ID đơn hàng đã thanh toán vào localStorage để giải quyết vấn đề hiển thị
+      try {
+        const paidOrdersString = localStorage.getItem('paidOrders') || '[]';
+        const paidOrders = JSON.parse(paidOrdersString);
+        if (!paidOrders.includes(paymentOrderId)) {
+          paidOrders.push(paymentOrderId);
+          localStorage.setItem('paidOrders', JSON.stringify(paidOrders));
+          console.log("Đã lưu đơn hàng vào danh sách đã thanh toán:", paidOrders);
+        }
+      } catch (err) {
+        console.error("Lỗi khi lưu trạng thái thanh toán vào localStorage:", err);
+      }
 
-      loadOrders(currentPage - 1);
+      // Nếu API thành công, cập nhật UI
+      if (result && result.success) {
+        // Cập nhật local UI
+        const updatedOrders = orders.map(order => {
+          if (order._id === paymentOrderId) {
+            return { 
+              ...order, 
+              isPaid: true,
+              paymentDate: new Date().toISOString()
+            };
+          }
+          return order;
+        });
+        
+        // Cập nhật state 
+        setOrders(updatedOrders);
+        
+        toast.success("Đơn hàng đã được đánh dấu thanh toán", {
+          description: "Trạng thái thanh toán đã cập nhật thành công",
+          duration: 3000,
+        });
+      } else {
+        toast.error("Không thể cập nhật trạng thái thanh toán", { 
+          duration: 3000 
+        });
+      }
+
+      // Làm mới danh sách đơn hàng từ trang đầu tiên để đảm bảo UI được cập nhật
+      setCurrentPage(1);
+      await loadOrders(0, true); // Sử dụng force reload
+      
     } catch (error) {
       console.error("Error marking order as paid:", error);
-      toast.current.show({
-        severity: "error",
-        summary: "Lỗi",
-        detail: "Không thể cập nhật trạng thái thanh toán",
-        life: 3000,
+      
+      // Phục hồi dữ liệu ban đầu nếu có lỗi
+      await loadOrders(currentPage - 1);
+      
+      toast.error("Không thể cập nhật trạng thái thanh toán", {
+        description: error.message || "Đã xảy ra lỗi khi cập nhật",
+        duration: 3000,
       });
     } finally {
       setPaymentDialog(false);
@@ -721,24 +809,17 @@ const OrderAdmin = () => {
       const orderIds = selectedOrders.map((order) => order._id);
       await orderApi.bulkUpdateStatus(orderIds, bulkStatus);
 
-      toast.current.show({
-        severity: "success",
-        summary: "Thành công",
-        detail: `Đã cập nhật ${
-          selectedOrders.length
-        } đơn hàng sang trạng thái ${getStatusText(bulkStatus)}`,
-        life: 3000,
+      toast.success(`Đã cập nhật ${selectedOrders.length} đơn hàng sang trạng thái ${getStatusText(bulkStatus)}`, {
+        duration: 3000,
       });
 
       loadOrders(currentPage - 1);
       setSelectedOrders([]);
     } catch (error) {
       console.error("Error bulk updating orders:", error);
-      toast.current.show({
-        severity: "error",
-        summary: "Lỗi",
-        detail: "Không thể cập nhật hàng loạt đơn hàng",
-        life: 3000,
+      toast.error("Không thể cập nhật hàng loạt đơn hàng", {
+        description: error.message,
+        duration: 3000,
       });
     } finally {
       setBulkConfirmVisible(false);
@@ -754,7 +835,6 @@ const OrderAdmin = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <Toaster position="top-right" richColors />
-      <Toast ref={toast} />
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">

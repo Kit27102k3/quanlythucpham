@@ -98,7 +98,8 @@ const orderApi = {
     paymentMethodFilter = "",
     isPaid,
     dateFilter,
-    branchFilter
+    branchFilter,
+    timestamp
   ) => {
     try {
       const params = {
@@ -113,6 +114,9 @@ const orderApi = {
       if (isPaid !== undefined) params.isPaid = isPaid;
       if (dateFilter) params.date = dateFilter;
       if (branchFilter) params.branchId = branchFilter;
+      
+      // Thêm timestamp để tránh cache
+      params._t = timestamp || new Date().getTime();
 
       const response = await axios.get(`${API_URL}`, { params });
       return response;
@@ -214,9 +218,23 @@ const orderApi = {
         return {
           data: {
             orders: [],
-            totalOrders: 0,
+            totalCount: 0,
             currentPage: 1,
-            totalPages: 0
+            totalPages: 0,
+            stats: {
+              total: 0,
+              pending: 0,
+              confirmed: 0,
+              preparing: 0,
+              packaging: 0,
+              shipping: 0,
+              delivering: 0,
+              completed: 0,
+              cancelled: 0,
+              delivery_failed: 0,
+              awaiting_payment: 0,
+              sorting_facility: 0
+            }
           }
         };
       }
@@ -251,14 +269,46 @@ const orderApi = {
       if (dateFilter) params.date = dateFilter;
 
       // Xử lý tham số nearbyFilter cải tiến
+      let forceReload = false;
       if (nearbyFilter) {
-        if (typeof nearbyFilter === "object" && nearbyFilter.enabled) {
-          params.nearby = true;
-          params.radius = nearbyFilter.radius || 10; // Mặc định là 10km nếu không được chỉ định
+        if (typeof nearbyFilter === "object") {
+          if (nearbyFilter.enabled) {
+            params.nearby = true;
+            params.radius = nearbyFilter.radius || 10; // Mặc định là 10km nếu không được chỉ định
+          }
+          
+          // Thêm timestamp nếu có
+          if (nearbyFilter.timestamp) {
+            params._t = nearbyFilter.timestamp;
+          }
+          
+          // Lấy tham số forceReload
+          if (nearbyFilter.forceReload) {
+            forceReload = true;
+          }
         } else {
           params.nearby = true;
           params.radius = 10; // Mặc định là 10km cho tương thích ngược
         }
+      } else if (typeof nearbyFilter === "object") {
+        // Lấy timestamp và forceReload từ object nếu không có nearby
+        if (nearbyFilter.timestamp) {
+          params._t = nearbyFilter.timestamp;
+        }
+        if (nearbyFilter.forceReload) {
+          forceReload = true;
+        }
+      }
+      
+      // Đảm bảo luôn có timestamp để tránh cache
+      if (!params._t) {
+        params._t = new Date().getTime();
+      }
+      
+      // Nếu forceReload, thêm tham số random để tránh cache hoàn toàn
+      if (forceReload) {
+        params._r = Math.random().toString(36).substring(2, 15);
+        console.log("Force reload enabled, adding random param:", params._r);
       }
 
       console.log("Params gửi lên API:", params);
@@ -273,7 +323,22 @@ const orderApi = {
 
       // Chuẩn hóa dữ liệu trả về
       const formattedResponse = {
-        data: {}
+        data: {
+          stats: response.data.stats || {
+            total: 0,
+            pending: 0,
+            confirmed: 0,
+            preparing: 0,
+            packaging: 0,
+            shipping: 0,
+            delivering: 0,
+            completed: 0,
+            cancelled: 0,
+            delivery_failed: 0,
+            awaiting_payment: 0,
+            sorting_facility: 0
+          }
+        }
       };
 
       // Xử lý các định dạng phản hồi khác nhau
@@ -286,6 +351,10 @@ const orderApi = {
           // Nếu response.data.orders tồn tại và là một mảng
           formattedResponse.data.orders = response.data.orders;
           formattedResponse.data.totalCount = response.data.totalCount || response.data.orders.length;
+          // Sử dụng stats nếu có
+          if (response.data.stats) {
+            formattedResponse.data.stats = response.data.stats;
+          }
         } else {
           // Trường hợp khác, trả về mảng rỗng
           formattedResponse.data.orders = [];
@@ -308,7 +377,21 @@ const orderApi = {
           orders: [],
           totalCount: 0,
           currentPage: 1,
-          totalPages: 0
+          totalPages: 0,
+          stats: {
+            total: 0,
+            pending: 0,
+            confirmed: 0,
+            preparing: 0,
+            packaging: 0,
+            shipping: 0,
+            delivering: 0,
+            completed: 0,
+            cancelled: 0,
+            delivery_failed: 0,
+            awaiting_payment: 0,
+            sorting_facility: 0
+          }
         }
       };
     }
@@ -325,13 +408,31 @@ const orderApi = {
         headers["Authorization"] = `Bearer ${token}`;
       }
 
-      // Cập nhật trạng thái và isPaid nếu là trạng thái completed
-      const updateData = {
-        status: newStatus,
-        isPaid: newStatus === "completed" ? true : undefined,
-      };
+      // Kiểm tra xem newStatus có phải là object hay không
+      let updateData;
+      if (typeof newStatus === 'object') {
+        // Nếu là object (từ Delivery.jsx), sử dụng cấu trúc của nó
+        updateData = {
+          status: newStatus.status,
+          note: newStatus.note || "",
+          // Sử dụng isPaid từ đối tượng nếu có, nếu không thì kiểm tra status
+          isPaid: newStatus.isPaid !== undefined 
+            ? newStatus.isPaid 
+            : (newStatus.status === "completed" ? true : undefined),
+        };
+      } else {
+        // Nếu chỉ là string (từ các component khác), dùng cấu trúc cũ
+        updateData = {
+          status: newStatus,
+          isPaid: newStatus === "completed" ? true : undefined,
+        };
+      }
 
-      const response = await axios.patch(`${API_URL}/${orderId}`, updateData, {
+      console.log("Dữ liệu gửi lên server:", updateData);
+      
+      // Thêm timestamp để tránh cache
+      const timestamp = new Date().getTime();
+      const response = await axios.patch(`${API_URL}/${orderId}?_t=${timestamp}`, updateData, {
         headers,
       });
       return response.data;
@@ -388,14 +489,29 @@ const orderApi = {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const response = await axios.put(
-        `${API_URL}/${orderId}/mark-paid`,
-        {},
-        { headers }
-      );
+      
+      // Sử dụng endpoint payment-status chuyên dụng để cập nhật trạng thái thanh toán
+      const updateData = {
+        isPaid: true,
+        paymentStatus: 'completed'
+      };
+      
+      console.log(`Đánh dấu đơn hàng ${orderId} đã thanh toán với dữ liệu:`, updateData);
+      
+      // Thêm timestamp để tránh cache
+      const timestamp = new Date().getTime();
+      
+      // Sử dụng endpoint payment-status
+      const response = await axios.patch(`${API_URL}/${orderId}/payment-status?_t=${timestamp}`, updateData, { headers });
+      
+      console.log("Kết quả cập nhật trạng thái thanh toán:", response.data);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi đánh dấu đơn hàng đã thanh toán:", error);
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      }
       throw error;
     }
   },

@@ -6,7 +6,9 @@ export const ORDER_STATUSES = {
   PREPARING: "preparing",
   PACKAGING: "packaging",
   SHIPPING: "shipping",
+  SORTING_FACILITY: "sorting_facility",
   DELIVERING: "delivering",
+  DELIVERED: "delivered",
   COMPLETED: "completed",
   CANCELLED: "cancelled",
   DELIVERY_FAILED: "delivery_failed",
@@ -21,7 +23,9 @@ export const statusFilterOptions = [
   { label: "Đang chuẩn bị", value: "preparing" },
   { label: "Đã đóng gói", value: "packaging" },
   { label: "Đang vận chuyển", value: "shipping" },
+  { label: "Chuyển đến kho phân loại", value: "sorting_facility" },
   { label: "Đang giao hàng", value: "delivering" },
+  { label: "Đã giao hàng", value: "delivered" },
   { label: "Đã hoàn thành", value: "completed" },
   { label: "Đã hủy", value: "cancelled" },
   { label: "Giao thất bại", value: "delivery_failed" },
@@ -34,7 +38,9 @@ export const bulkActionOptions = [
   { label: "Đang chuẩn bị", value: "preparing" },
   { label: "Đã đóng gói", value: "packaging" },
   { label: "Đang vận chuyển", value: "shipping" },
+  { label: "Chuyển đến kho phân loại", value: "sorting_facility" },
   { label: "Đang giao hàng", value: "delivering" },
+  { label: "Đã giao hàng", value: "delivered" },
   { label: "Hoàn thành", value: "completed" },
   { label: "Hủy đơn hàng", value: "cancelled" },
 ];
@@ -88,27 +94,31 @@ export const formatCurrency = (amount) => {
 export const getStatusColor = (status) => {
   switch (status) {
     case ORDER_STATUSES.PENDING:
-      return "text-yellow-600 bg-yellow-100 border-yellow-200";
+      return "bg-blue-100 text-blue-800";
     case ORDER_STATUSES.CONFIRMED:
-      return "text-blue-600 bg-blue-100 border-blue-200";
+      return "bg-indigo-100 text-indigo-800";
     case ORDER_STATUSES.PREPARING:
-      return "text-indigo-600 bg-indigo-100 border-indigo-200";
+      return "bg-purple-100 text-purple-800";
     case ORDER_STATUSES.PACKAGING:
-      return "text-purple-600 bg-purple-100 border-purple-200";
+      return "bg-pink-100 text-pink-800";
     case ORDER_STATUSES.SHIPPING:
-      return "text-sky-600 bg-sky-100 border-sky-200";
+      return "bg-yellow-100 text-yellow-800";
+    case ORDER_STATUSES.SORTING_FACILITY:
+      return "bg-teal-100 text-teal-800";
     case ORDER_STATUSES.DELIVERING:
-      return "text-cyan-600 bg-cyan-100 border-cyan-200";
+      return "bg-orange-100 text-orange-800";
+    case ORDER_STATUSES.DELIVERED:
+      return "bg-green-100 text-green-800";
     case ORDER_STATUSES.COMPLETED:
-      return "text-green-600 bg-green-100 border-green-200";
+      return "bg-green-100 text-green-800";
     case ORDER_STATUSES.CANCELLED:
-      return "text-red-600 bg-red-100 border-red-200";
+      return "bg-red-100 text-red-800";
     case ORDER_STATUSES.DELIVERY_FAILED:
-      return "text-orange-600 bg-orange-100 border-orange-200";
+      return "bg-red-100 text-red-800";
     case ORDER_STATUSES.AWAITING_PAYMENT:
-      return "text-amber-600 bg-amber-100 border-amber-200";
+      return "bg-gray-100 text-gray-800";
     default:
-      return "text-gray-600 bg-gray-100 border-gray-200";
+      return "bg-gray-100 text-gray-800";
   }
 };
 
@@ -124,8 +134,12 @@ export const getStatusText = (status) => {
       return "Đã đóng gói";
     case ORDER_STATUSES.SHIPPING:
       return "Đang vận chuyển";
+    case ORDER_STATUSES.SORTING_FACILITY:
+      return "Chuyển đến kho phân loại";
     case ORDER_STATUSES.DELIVERING:
       return "Đang giao hàng";
+    case ORDER_STATUSES.DELIVERED:
+      return "Đã giao hàng";
     case ORDER_STATUSES.COMPLETED:
       return "Đã hoàn thành";
     case ORDER_STATUSES.CANCELLED:
@@ -176,10 +190,24 @@ export const getStatusIcon = (status) => {
           style={{ fontSize: "0.9rem" }}
         ></i>
       );
+    case ORDER_STATUSES.SORTING_FACILITY:
+      return (
+        <i
+          className="pi pi-building mr-1 text-teal-600"
+          style={{ fontSize: "0.9rem" }}
+        ></i>
+      );
     case ORDER_STATUSES.DELIVERING:
       return (
         <i
           className="pi pi-truck mr-1 text-cyan-600"
+          style={{ fontSize: "0.9rem" }}
+        ></i>
+      );
+    case ORDER_STATUSES.DELIVERED:
+      return (
+        <i
+          className="pi pi-check mr-1 text-green-600"
           style={{ fontSize: "0.9rem" }}
         ></i>
       );
@@ -270,13 +298,25 @@ export const getNextStatuses = (currentStatus, isPaid) => {
       break;
     case ORDER_STATUSES.SHIPPING:
       nextStatuses = [
+        { value: ORDER_STATUSES.SORTING_FACILITY, label: "Chuyển đến kho phân loại" },
+        { value: ORDER_STATUSES.CANCELLED, label: "Hủy đơn hàng" },
+      ];
+      break;
+    case ORDER_STATUSES.SORTING_FACILITY:
+      nextStatuses = [
         { value: ORDER_STATUSES.DELIVERING, label: "Đang giao hàng" },
+        { value: ORDER_STATUSES.CANCELLED, label: "Hủy đơn hàng" },
       ];
       break;
     case ORDER_STATUSES.DELIVERING:
       nextStatuses = [
-        { value: ORDER_STATUSES.COMPLETED, label: "Giao hàng thành công" },
+        { value: ORDER_STATUSES.DELIVERED, label: "Đã giao hàng" },
         { value: ORDER_STATUSES.DELIVERY_FAILED, label: "Giao hàng thất bại" },
+      ];
+      break;
+    case ORDER_STATUSES.DELIVERED:
+      nextStatuses = [
+        { value: ORDER_STATUSES.COMPLETED, label: "Hoàn thành đơn hàng" },
       ];
       break;
     case ORDER_STATUSES.DELIVERY_FAILED:

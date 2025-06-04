@@ -385,13 +385,13 @@ const AdminSidebar = () => {
         ${isMobile ? "fixed top-0 left-0 z-50" : ""}`}
     >
       {/* Sidebar Header */}
-      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-500 to-green-400 border-b">
+      <div className="flex items-center justify-between p-4 bg-[#51bb1a] border-b">
         {isSidebarOpen && (
-          <h2 className="text-xl font-bold text-white">Quản lý Siêu thị</h2>
+          <h2 className="text-xl font-bold uppercase text-white">Quản lý Siêu thị</h2>
         )}
         <button
           onClick={toggleSidebar}
-          className="p-2 hover:bg-green-400 rounded-md transition-colors text-white"
+          className="p-2 hover:opacity-80 cursor-pointer border rounded-md transition-colors text-white"
           aria-label={isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
         >
           {isSidebarOpen ? (

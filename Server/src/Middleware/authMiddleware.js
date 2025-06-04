@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // File: authMiddleware.js
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -24,7 +25,6 @@ export const verifyToken = (req, res, next) => {
   
   // Kiểm tra nếu đây là route công khai
   if (publicRoutes.some(route => req.originalUrl.includes(route) && req.method === 'GET')) {
-    console.log(`[verifyToken] Bỏ qua xác thực cho route công khai: ${req.originalUrl}`);
     return next();
   }
   
@@ -63,8 +63,7 @@ export const verifyToken = (req, res, next) => {
       
       next();
     } catch (jwtError) {
-      console.log(`[verifyToken] Lỗi verify token: ${jwtError.message}`);
-      
+     
       if (jwtError.name === 'TokenExpiredError') {
         return res.status(401).json({
           success: false, 
@@ -80,7 +79,7 @@ export const verifyToken = (req, res, next) => {
       });
     }
   } catch (error) {
-    console.error('[verifyToken] Lỗi:', error);
+
     res.status(500).json({ 
       success: false,
       message: "Lỗi máy chủ khi xác thực token" 

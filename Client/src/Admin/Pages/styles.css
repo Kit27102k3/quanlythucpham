@@ -151,3 +151,9 @@
 .reply-form {
   transition: all 0.3s ease;
 } 
+
+/* Ghi đè class mặc định */
+.custom-option-padding .p-dropdown-item {
+  padding: 12px 20px !important;
+}
+

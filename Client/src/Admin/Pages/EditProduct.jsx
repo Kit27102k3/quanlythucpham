@@ -1,4 +1,4 @@
-/* eslint-disable no-unused-vars */
+/* eslint-disable react/prop-types */
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Scrollbars } from "react-custom-scrollbars-2";
@@ -975,7 +975,7 @@ const EditProduct = ({
                   }}
                 />
                 <small className="text-gray-500 mt-1 block">
-                  Sản phẩm sẽ tự động chuyển sang trạng thái "Hết hàng" khi quá hạn sử dụng
+                  Sản phẩm sẽ tự động chuyển sang trạng thái &quot;Hết hàng&quot; khi quá hạn sử dụng
                 </small>
               </div>
 

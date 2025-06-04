@@ -33,8 +33,10 @@ const Login = () => {
           navigate("/admin/supplices");
           break;
         case "employee":
-        case "shipper":
           navigate("/admin/orders");
+          break;
+        case "shipper":
+          navigate("/admin/delivery");
           break;
         default:
           navigate("/");
@@ -257,8 +259,10 @@ const Login = () => {
             navigate("/admin/suppliers");
             break;
           case "employee":
-          case "shipper":
             navigate("/admin/orders");
+            break;
+          case "shipper":
+            navigate("/admin/delivery");
             break;
           default:
             navigate("/");
@@ -424,8 +428,10 @@ const Login = () => {
               navigate("/admin/supplices");
               break;
             case "employee":
-            case "shipper":
               navigate("/admin/orders");
+              break;
+            case "shipper":
+              navigate("/admin/delivery");
               break;
             default:
               navigate("/");

@@ -35,7 +35,7 @@ export const canAccess = (role, pageKey) => {
         "brands",
       ],
       employee: ["reviews", "contacts", "messages", "orders"],
-      shipper: ["shipper_dashboard", "orders", "delivery"],
+      shipper: ["delivery"],
     };
   }
   return permissions[role]?.includes(pageKey);

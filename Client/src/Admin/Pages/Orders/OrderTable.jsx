@@ -55,6 +55,8 @@ const OrderTable = ({
               { label: "Đang chuẩn bị", value: ORDER_STATUSES.PREPARING },
               { label: "Đã đóng gói", value: ORDER_STATUSES.PACKAGING },
               { label: "Đang vận chuyển", value: ORDER_STATUSES.SHIPPING },
+              { label: "Chuyển đến kho phân loại", value: ORDER_STATUSES.SORTING_FACILITY },
+              { label: "Đang giao hàng", value: ORDER_STATUSES.DELIVERING },
               { label: "Hoàn thành", value: ORDER_STATUSES.COMPLETED },
               { label: "Đã hủy", value: ORDER_STATUSES.CANCELLED },
             ]}
@@ -173,16 +175,42 @@ const OrderTable = ({
 
   // Template cho cột trạng thái thanh toán
   const paymentStatusTemplate = (rowData) => {
+    console.log("Rendering payment status for order:", rowData._id, "isPaid:", rowData.isPaid);
+    
+    // Đọc danh sách đơn hàng đã thanh toán từ localStorage
+    let manuallyMarkedAsPaid = [];
+    try {
+      const paidOrdersString = localStorage.getItem('paidOrders') || '[]';
+      manuallyMarkedAsPaid = JSON.parse(paidOrdersString);
+    } catch (err) {
+      console.error("Lỗi khi đọc danh sách đơn hàng đã thanh toán:", err);
+    }
+    
+    // Đảm bảo luôn sử dụng giá trị boolean
+    // Kiểm tra nhiều điều kiện vì dữ liệu có thể là boolean, string hoặc undefined
+    let isPaid = rowData.isPaid === true || 
+                rowData.isPaid === "true" || 
+                rowData.isPaid === 1 || 
+                rowData.isPaid === "1";
+                
+    // Ghi đè trạng thái nếu đơn hàng nằm trong danh sách đã đánh dấu thủ công
+    if (manuallyMarkedAsPaid.includes(rowData._id)) {
+      isPaid = true;
+      console.log(`Đơn hàng ${rowData._id} được đánh dấu thủ công là đã thanh toán`);
+    }
+    
+    console.log("Đã xác định isPaid:", isPaid, "cho đơn hàng:", rowData._id);
+    
     return (
       <div className="p-2">
         <span
           className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-medium ${
-            rowData.isPaid
+            isPaid
               ? "bg-green-100 text-green-700"
               : "bg-yellow-100 text-yellow-700"
           }`}
         >
-          {rowData.isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
+          {isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
         </span>
       </div>
     );
@@ -265,6 +293,7 @@ const OrderTable = ({
         stripedRows
         showGridlines
         style={{ width: "100%" }}
+        key={JSON.stringify(orders)}
       >
         <Column 
           selectionMode="multiple" 
