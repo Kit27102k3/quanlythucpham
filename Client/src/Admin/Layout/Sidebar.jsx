@@ -113,6 +113,12 @@ const AdminSidebar = () => {
       key: "employees",
     },
     {
+      icon: <PersonIcon className="size-5 md:size-6" />,
+      text: "Hồ sơ",
+      path: "/admin/profile",
+      key: "profile",
+    },
+    {
       icon: <ReaderIcon className="size-5 md:size-6" />,
       text: "Báo cáo",
       path: "/admin/reports",
@@ -347,24 +353,37 @@ const AdminSidebar = () => {
                 <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-100">
                   <div className="flex items-center space-x-3">
                     <img
-                      src="/images/avatar.png"
+                      src={localStorage.getItem("userAvatar") || "/images/avatar.png"}
                       alt="Admin"
                       className="w-10 h-10 rounded-full object-cover border-2 border-green-200"
                     />
                     <div className="flex flex-col">
-                      <span className="font-semibold text-gray-700">Admin</span>
-                      <span className="text-xs text-gray-500">
-                        Quản trị viên
-                      </span>
+                      <span className="font-semibold text-gray-700">{localStorage.getItem("userName") || "Admin"}</span>
+                      <span className="text-xs text-gray-500">{localStorage.getItem("userRole") || "Quản trị viên"}</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleNavigation("/dang-nhap", "logout")}
-                    className="flex items-center justify-center mt-3 p-2 w-full bg-red-50 text-red-500 hover:bg-red-100 rounded-md transition-colors"
-                  >
-                    <ExitIcon className="size-5 mr-2" />
-                    <span className="font-medium">Đăng xuất</span>
-                  </button>
+                  <div className="">
+                    <button
+                      onClick={() => handleNavigation("/admin/profile", "profile")}
+                      className="flex items-center p-2 flex-1 text-blue-500 hover:bg-blue-50 rounded-md transition-colors"
+                    >
+                      <PersonIcon className="size-6" />
+                      {isSidebarOpen && (
+                        <span className="ml-3 font-medium">Hồ sơ</span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleNavigation("/dang-nhap", "logout")}
+                      className="flex items-center p-2 flex-1 text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                    >
+                      <ExitIcon className="size-6" />
+                      {isSidebarOpen && (
+                        <span className="ml-3 font-medium">
+                          Đăng xuất
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -449,28 +468,39 @@ const AdminSidebar = () => {
       <div className="p-4 bg-gray-50 border-t border-gray-200">
         <div className="flex items-center space-x-3">
           <img
-            src="/images/avatar.png"
+            src={localStorage.getItem("userAvatar") || "/images/avatar.png"}
             alt="Admin"
             className="w-10 h-10 rounded-full object-cover border-2 border-green-200"
           />
           {isSidebarOpen && (
             <div className="flex flex-col">
-              <span className="font-semibold text-gray-700">Admin</span>
-              <span className="text-xs text-gray-500">Quản trị viên</span>
+              <span className="font-semibold text-gray-700">{localStorage.getItem("userName") || "Admin"}</span>
+              <span className="text-xs text-gray-500">{localStorage.getItem("userRole") || "Quản trị viên"}</span>
             </div>
           )}
         </div>
-        <button
-          onClick={() => handleNavigation("/logout", "logout")}
-          className="flex items-center mt-4 p-2 w-full text-red-500 hover:bg-red-50 rounded-md transition-colors"
-        >
-          <ExitIcon className="size-6" />
-          {isSidebarOpen && (
-            <a href="/dang-nhap" className="ml-3 font-medium">
-              Đăng xuất
-            </a>
-          )}
-        </button>
+        <div className="mt-4 flex flex-col gap-2">
+          <button
+            onClick={() => handleNavigation("/admin/profile", "profile")}
+            className="flex w-full cursor-pointer border items-center p-2 flex-1 text-white bg-[#51bb1a] hover:opacity-90 rounded-md transition-colors"
+          >
+            <PersonIcon className="size-6" />
+            {isSidebarOpen && (
+              <span className="ml-3 font-medium">Hồ sơ</span>
+            )}
+          </button>
+          <button
+            onClick={() => handleNavigation("/dang-nhap", "logout")}
+            className="flex w-full cursor-pointer border items-center p-2 flex-1 text-white bg-red-500 hover:bg-red-600 rounded-md transition-colors"
+          >
+            <ExitIcon className="size-6" />
+            {isSidebarOpen && (
+              <span className="ml-3 font-medium">
+                Đăng xuất
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Overlay for mobile sidebar */}

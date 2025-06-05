@@ -6,7 +6,10 @@ import {
     deleteAdmin,
     adminLogin,
     getAdminById,
-    updateRolePermissions
+    updateRolePermissions,
+    getAdminProfile,
+    updateAdminProfile,
+    changeAdminPassword
 } from "../Controller/adminController.js";
 import { verifyToken, isAdmin } from "../Middleware/authMiddleware.js";
 
@@ -14,6 +17,11 @@ const router = express.Router();
 
 // Public routes
 router.post("/login", adminLogin);
+
+// Admin profile routes (protected)
+router.get("/admin/profile", verifyToken, getAdminProfile);
+router.put("/admin/profile", verifyToken, updateAdminProfile);
+router.put("/admin/change-password", verifyToken, changeAdminPassword);
 
 // Admin management routes
 router.post("/admin/create", createAdmin);

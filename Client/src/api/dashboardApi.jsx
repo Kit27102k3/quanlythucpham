@@ -6,19 +6,18 @@ const API_URL = API_BASE_URL;
 // Try multiple endpoints sequentially until one succeeds
 const tryEndpoints = async (endpoints) => {
   // Lấy token xác thực
-  const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+  const token =
+    localStorage.getItem("accessToken") || localStorage.getItem("token");
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
   for (const endpoint of endpoints) {
     try {
-     
       const response = await axios.get(endpoint, { headers });
-      
+
       // Kiểm tra cấu trúc dữ liệu trả về
       const data = response.data.data || response.data;
-      
+
       if (data) {
-        
         return data;
       }
     } catch (error) {
@@ -32,12 +31,36 @@ const dashboardApi = {
   // Fetch dashboard statistics
   getDashboardStats: async () => {
     try {
+      // Lấy token xác thực
+      const token =
+        localStorage.getItem("accessToken") || localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
       const endpoints = [
-        `${API_URL}/admin/dashboard`,
-        `${API_URL}/api/dashboard`,
         `${API_URL}/api/reports/dashboard`,
+        `${API_URL}/api/dashboard`,
+        `${API_URL}/admin/dashboard`,
       ];
-      return await tryEndpoints(endpoints);
+
+      // Thử lần lượt các endpoint
+      for (const endpoint of endpoints) {
+        try {
+          const response = await axios.get(endpoint, { headers });
+          
+          const data = response.data.data || response.data;
+
+          if (data && typeof data === "object") {
+            return data;
+          }
+        } catch (endpointError) {
+          console.warn(
+            `Failed to fetch from ${endpoint}:`,
+            endpointError.message
+          );
+        }
+      }
+
+      throw new Error("All endpoints failed");
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
       throw error;
@@ -47,10 +70,13 @@ const dashboardApi = {
   // Fetch basic statistics with fallback to dashboard stats
   getBasicStats: async () => {
     try {
-      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+      const token =
+        localStorage.getItem("accessToken") || localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
-      const response = await axios.get(`${API_URL}/api/dashboard/basic-stats`, { headers });
+
+      const response = await axios.get(`${API_URL}/api/dashboard/basic-stats`, {
+        headers,
+      });
       return response.data;
     } catch {
       const dashboardData = await dashboardApi.getDashboardStats();
@@ -65,7 +91,6 @@ const dashboardApi = {
     }
   },
 
-  // Fetch complete dashboard data with fallback to individual stats
   getCompleteDashboardData: async () => {
     try {
       const dashboardStats = await dashboardApi.getDashboardStats();
@@ -162,12 +187,34 @@ const dashboardApi = {
   // Fetch revenue data for a given time range
   getRevenueData: async (timeRange = "week") => {
     try {
+      // Lấy token xác thực
+      const token =
+        localStorage.getItem("accessToken") || localStorage.getItem("token");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
       const endpoints = [
+        `${API_URL}/api/reports/revenue?timeRange=${timeRange}`,
+        `${API_URL}/api/revenue?timeRange=${timeRange}`,
         `${API_URL}/admin/reports/revenue?timeRange=${timeRange}`,
-        `${API_URL}/api/reports/revenue?timeRange=${timeRange}`,
-        `${API_URL}/api/reports/revenue?timeRange=${timeRange}`,
       ];
-      return await tryEndpoints(endpoints);
+
+      // Thử lần lượt các endpoint
+      for (const endpoint of endpoints) {
+        try {
+          const response = await axios.get(endpoint, { headers });
+          const data = response.data.data || response.data;
+          if (data && (Array.isArray(data) || typeof data === "object")) {
+            return data;
+          }
+        } catch (endpointError) {
+          console.warn(
+            `Failed to fetch from ${endpoint}:`,
+            endpointError.message
+          );
+        }
+      }
+
+      throw new Error("All endpoints failed");
     } catch (error) {
       console.error("Error fetching revenue data:", error);
       throw error;
@@ -178,10 +225,12 @@ const dashboardApi = {
   getTopProducts: async (limit = 5) => {
     try {
       // Lấy token xác thực
-      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+      const token =
+        localStorage.getItem("accessToken") || localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const endpoints = [
+        `${API_URL}/api/best-selling-products?limit=${limit}`,
         `${API_URL}/api/reports/top-products?limit=${limit}`,
         `${API_URL}/api/top-products?limit=${limit}`,
         `${API_URL}/reports/top-products?limit=${limit}`,
@@ -189,30 +238,35 @@ const dashboardApi = {
 
       // Thử lần lượt các endpoint
       for (const endpoint of endpoints) {
-        try {  
+        try {
           const response = await axios.get(endpoint, { headers });
+
           const data = response.data.data || response.data;
-          
+
           if (Array.isArray(data) && data.length > 0) {
-           
             return data
               .map((product) => ({
                 name: product.name || product.productName || "Không xác định",
                 category: product.category || "Không phân loại",
-                sold: product.sold || product.soldCount || product.quantity || 0,
+                sold:
+                  product.sold || product.soldCount || product.quantity || 0,
                 revenue: product.revenue || product.totalRevenue || 0,
+                image: product.image || product.productImage || "",
               }))
               .slice(0, limit);
           }
         } catch (endpointError) {
-          console.warn(`Failed to fetch from ${endpoint}:`, endpointError.message);
+          console.warn(
+            `Failed to fetch from ${endpoint}:`,
+            endpointError.message
+          );
         }
       }
 
-      // Fallback data when all API calls fail
       try {
-       
-        const response = await axios.get(`${API_URL}/api/products`, { headers });
+        const response = await axios.get(`${API_URL}/api/products`, {
+          headers,
+        });
 
         if (
           response.data &&
@@ -220,15 +274,24 @@ const dashboardApi = {
           (response.data.products || response.data).length > 0
         ) {
           const products = response.data.products || response.data;
-          
+
           return products
-            .sort((a, b) => (b.price || b.productPrice || 0) - (a.price || a.productPrice || 0))
+            .sort(
+              (a, b) =>
+                (b.price || b.productPrice || 0) -
+                (a.price || a.productPrice || 0)
+            )
             .map((product) => ({
               name: product.name || product.productName || "Sản phẩm",
-              category: product.category || product.productCategory || product.categoryName || "Không phân loại",
+              category:
+                product.category ||
+                product.productCategory ||
+                product.categoryName ||
+                "Không phân loại",
               sold: Math.floor(Math.random() * 50) + 10, // Random sales number between 10-60
               revenue:
-                (product.price || product.productPrice || 100) * (Math.floor(Math.random() * 50) + 10),
+                (product.price || product.productPrice || 100) *
+                (Math.floor(Math.random() * 50) + 10),
             }))
             .slice(0, limit);
         }
@@ -236,65 +299,62 @@ const dashboardApi = {
         console.log(`Product API fallback failed: ${productsError.message}`);
       }
 
-      console.log("All API attempts failed. Using mock data.");
-      // If all else fails, provide mock data
-      return [
-        { name: "Thịt heo", category: "Thịt tươi", sold: 120, revenue: 12000000 },
-        { name: "Thịt bò", category: "Thịt tươi", sold: 85, revenue: 17000000 },
-        { name: "Cá thu", category: "Hải sản", sold: 67, revenue: 6700000 },
-        { name: "Rau muống", category: "Rau củ", sold: 55, revenue: 1100000 },
-        { name: "Trứng gà", category: "Trứng", sold: 45, revenue: 900000 }
-      ].slice(0, limit);
+      return [];
     } catch (error) {
       console.error("Error in getTopProducts:", error);
-      // Final fallback - never throw, always return something
-      return [
-        { name: "Thịt heo", category: "Thịt tươi", sold: 120, revenue: 12000000 },
-        { name: "Thịt bò", category: "Thịt tươi", sold: 85, revenue: 17000000 },
-        { name: "Cá thu", category: "Hải sản", sold: 67, revenue: 6700000 },
-        { name: "Rau muống", category: "Rau củ", sold: 55, revenue: 1100000 },
-        { name: "Trứng gà", category: "Trứng", sold: 45, revenue: 900000 }
-      ].slice(0, limit);
+      return [];
     }
   },
 
-  // Fetch low stock products
-  getLowStockProducts: async (limit = 5, criticalStock = 20) => {
+  // Fetch products with low stock
+  getLowStockProducts: async (limit = 5) => {
     try {
       // Lấy token xác thực
-      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+      const token =
+        localStorage.getItem("accessToken") || localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       const endpoints = [
+        `${API_URL}/api/products/low-stock?limit=${limit}`,
         `${API_URL}/api/products/inventory?limit=${limit}`,
-        `${API_URL}/api/reports/inventory?limit=${limit}`,
-        `${API_URL}/api/products/low-stock?limit=${limit}&criticalStock=${criticalStock}`,
+        `${API_URL}/api/inventory/low-stock?limit=${limit}`,
+        `${API_URL}/api/reports/low-stock?limit=${limit}`,
       ];
 
       // Thử lần lượt các endpoint
       for (const endpoint of endpoints) {
         try {
           const response = await axios.get(endpoint, { headers });
-          
-          // Kiểm tra cấu trúc dữ liệu trả về
+
           const data = response.data.data || response.data;
-          
+
           if (Array.isArray(data) && data.length > 0) {
-           
             return data
-              .filter((product) => (product.stock ?? 100) <= criticalStock)
-              .sort((a, b) => (a.stock ?? 100) - (b.stock ?? 100))
+              .map((product) => ({
+                name: product.name || product.productName || "Không xác định",
+                category: product.category || "Không phân loại",
+                stock: product.stock || product.inventory || 0,
+                status:
+                  product.status ||
+                  (product.stock <= 5 ? "Sắp hết" : "Còn hàng"),
+                image: product.image || product.productImage || "",
+                sku: product.sku || product.productSku || "",
+                price: product.price || product.productPrice || 0,
+              }))
               .slice(0, limit);
           }
         } catch (endpointError) {
-          console.warn(`Failed to fetch from ${endpoint}:`, endpointError.message);
+          console.warn(
+            `Failed to fetch from ${endpoint}:`,
+            endpointError.message
+          );
         }
       }
 
-      // Try to get all products and filter out the ones with low stock
       try {
-       
-        const response = await axios.get(`${API_URL}/api/products`, { headers });
+        const response = await axios.get(`${API_URL}/api/products`, {
+          headers,
+        });
 
         if (
           response.data &&
@@ -302,49 +362,48 @@ const dashboardApi = {
           (response.data.products || response.data).length > 0
         ) {
           const products = response.data.products || response.data;
-          
+
           const lowStockProducts = products
             .filter((product) => {
               const stock = product.stock || product.productStock;
-              return typeof stock === 'number' && stock <= criticalStock;
+              return typeof stock === "number" && stock <= 5;
             })
-            .sort((a, b) => (a.stock || a.productStock || 0) - (b.stock || b.productStock || 0));
+            .sort(
+              (a, b) =>
+                (a.stock || a.productStock || 0) -
+                (b.stock || b.productStock || 0)
+            );
 
           if (lowStockProducts.length > 0) {
-            console.log(`Found ${lowStockProducts.length} products with low stock`);
             return lowStockProducts
               .map((product) => ({
                 name: product.name || product.productName || "Sản phẩm",
-                category: product.category || product.productCategory || "Không phân loại",
-                stock: product.stock || product.productStock || Math.floor(Math.random() * 10),
-                status: (product.stock || product.productStock || 0) <= 5 ? "Sắp hết" : "Còn hàng",
+                category:
+                  product.category ||
+                  product.productCategory ||
+                  "Không phân loại",
+                stock:
+                  product.stock ||
+                  product.productStock ||
+                  Math.floor(Math.random() * 10),
+                status:
+                  (product.stock || product.productStock || 0) <= 5
+                    ? "Sắp hết"
+                    : "Còn hàng",
               }))
               .slice(0, limit);
           }
         }
       } catch (productsError) {
-        console.log(`Product API fallback failed for low stock: ${productsError.message}`);
+        console.log(
+          `Product API fallback failed for low stock: ${productsError.message}`
+        );
       }
-
-      console.log("All API attempts failed for low stock. Using mock data.");
-      // Mock data for low stock products
-      return [
-        { name: "Trứng vịt", category: "Trứng", stock: 3, status: "Sắp hết" },
-        { name: "Cá hồi", category: "Hải sản", stock: 5, status: "Sắp hết" },
-        { name: "Bơ", category: "Rau củ", stock: 8, status: "Còn hàng" },
-        { name: "Tôm", category: "Hải sản", stock: 10, status: "Còn hàng" },
-        { name: "Thịt gà", category: "Thịt tươi", stock: 15, status: "Còn hàng" }
-      ].slice(0, limit);
+      return [];
     } catch (error) {
       console.error("Error in getLowStockProducts:", error);
       // Final fallback with mock data
-      return [
-        { name: "Trứng vịt", category: "Trứng", stock: 3, status: "Sắp hết" },
-        { name: "Cá hồi", category: "Hải sản", stock: 5, status: "Sắp hết" },
-        { name: "Bơ", category: "Rau củ", stock: 8, status: "Còn hàng" },
-        { name: "Tôm", category: "Hải sản", stock: 10, status: "Còn hàng" },
-        { name: "Thịt gà", category: "Thịt tươi", stock: 15, status: "Còn hàng" }
-      ].slice(0, limit);
+      return [];
     }
   },
 
@@ -372,9 +431,10 @@ const dashboardApi = {
       const data = await tryEndpoints(endpoints);
       return data.count || data.totalProducts || 0;
     } catch {
-      const token = localStorage.getItem("accessToken") || localStorage.getItem("token");
+      const token =
+        localStorage.getItem("accessToken") || localStorage.getItem("token");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
+
       const response = await axios.get(`${API_URL}/api/products`, { headers });
       return response.data?.products?.length || 0;
     }

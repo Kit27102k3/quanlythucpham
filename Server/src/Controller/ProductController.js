@@ -39,9 +39,7 @@ export const getTopSellingProducts = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
     
-    console.log(`Fetching top ${limit} selling products`);
-    
-    // Try to get real data from database
+   
     const topProducts = await Order.aggregate([
       { $match: { status: "completed" } },
       { $unwind: "$products" },
@@ -128,9 +126,6 @@ export const getLowStockProducts = async (req, res) => {
     const limit = parseInt(req.query.limit) || 5;
     const criticalStock = parseInt(req.query.criticalStock) || 20;
 
-    console.log(`Fetching ${limit} products with stock under ${criticalStock}`);
-
-    // Try to get data from database
     const products = await Product.find({ 
       productStock: { 
         $lt: criticalStock
@@ -152,7 +147,6 @@ export const getLowStockProducts = async (req, res) => {
       status: product.productStock <= 5 ? 'Sắp hết' : (product.productStock <= 10 ? 'Cảnh báo' : 'Thấp')
     }));
 
-    console.log(`Found ${result.length} low stock products`);
     return res.json(result);
   } catch (error) {
     console.error('Error in getLowStockProducts:', error);

@@ -10,6 +10,8 @@ export const adminLogin = async (req, res) => {
     try {
         const { userName, password } = req.body;
 
+        console.log("Admin login attempt for:", userName);
+
         // Tìm admin theo username
         const admin = await Admin.findOne({ userName });
         if (!admin) {
@@ -27,10 +29,11 @@ export const adminLogin = async (req, res) => {
             return res.status(403).json({ message: "Tài khoản đã bị khóa" });
         }
 
-        // Tạo access token
+        // Tạo access token với cả id và userId để đảm bảo tương thích
         const accessToken = jwt.sign(
             { 
-                userId: admin._id,
+                id: admin._id,          // Add id field for compatibility
+                userId: admin._id,      // Keep userId for backward compatibility
                 role: admin.role,
                 permissions: admin.permissions
             },
@@ -40,7 +43,10 @@ export const adminLogin = async (req, res) => {
 
         // Tạo refresh token
         const refreshToken = jwt.sign(
-            { userId: admin._id },
+            { 
+                id: admin._id,
+                userId: admin._id 
+            },
             process.env.JWT_REFRESH_SECRET,
             { expiresIn: "7d" }
         );
@@ -63,11 +69,14 @@ export const adminLogin = async (req, res) => {
         admin.lastLogin = new Date();
         await admin.save();
 
+        console.log("Admin login successful for:", userName);
+
         // Trả về thông tin admin và token
         res.status(200).json({
             accessToken,
             refreshToken,
             userId: admin._id,
+            id: admin._id,
             role: admin.role,
             permissions: admin.permissions,
             fullName: admin.fullName,

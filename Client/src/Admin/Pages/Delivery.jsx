@@ -121,14 +121,19 @@ const Delivery = () => {
             response.data.orders.length,
             "đơn hàng"
           );
-          
+
           // Lọc đơn hàng theo vai trò shipper - chỉ hiển thị đơn hàng có trạng thái "sorting_facility"
           if (currentRole === "shipper") {
-            const filteredOrders = response.data.orders.filter(order => order.status === "sorting_facility");
+            const filteredOrders = response.data.orders.filter(
+              (order) => order.status === "sorting_facility"
+            );
             setOrders(filteredOrders);
             setFilteredOrders(filteredOrders);
             setTotalRecords(filteredOrders.length);
-            console.log("Vai trò shipper: Lọc đơn hàng trạng thái 'sorting_facility':", filteredOrders.length);
+            console.log(
+              "Vai trò shipper: Lọc đơn hàng trạng thái 'sorting_facility':",
+              filteredOrders.length
+            );
           } else {
             setOrders(response.data.orders);
             setFilteredOrders(response.data.orders);
@@ -142,14 +147,15 @@ const Delivery = () => {
             response.data.length,
             "đơn hàng"
           );
-          
+
           // Lọc đơn hàng theo vai trò shipper - chỉ hiển thị đơn hàng có trạng thái "sorting_facility"
           if (currentRole === "shipper") {
-            const filteredOrders = response.data.filter(order => order.status === "sorting_facility");
+            const filteredOrders = response.data.filter(
+              (order) => order.status === "sorting_facility"
+            );
             setOrders(filteredOrders);
             setFilteredOrders(filteredOrders);
             setTotalRecords(filteredOrders.length);
-            console.log("Vai trò shipper: Lọc đơn hàng trạng thái 'sorting_facility':", filteredOrders.length);
           } else {
             setOrders(response.data);
             setFilteredOrders(response.data);
@@ -199,7 +205,9 @@ const Delivery = () => {
 
     // Nếu là shipper, chỉ hiển thị đơn hàng có trạng thái "sorting_facility"
     if (currentRole === "shipper") {
-      filtered = filtered.filter((order) => order.status === "sorting_facility");
+      filtered = filtered.filter(
+        (order) => order.status === "sorting_facility"
+      );
     }
     // Nếu không phải shipper, lọc theo trạng thái người dùng chọn
     else if (statusFilter !== "all") {
@@ -233,15 +241,11 @@ const Delivery = () => {
 
   // Mở dialog chi tiết đơn hàng
   const openDetailDialog = (order) => {
-    console.log("Order detail:", order);
-    console.log("Products:", order.products);
-    
-    // Ensure we have product data in a standard format
     const enhancedOrder = { ...order };
     if (!enhancedOrder.products && enhancedOrder.items) {
       enhancedOrder.products = enhancedOrder.items;
     }
-    
+
     setCurrentOrder(enhancedOrder);
     setDetailDialog(true);
   };
@@ -279,30 +283,30 @@ const Delivery = () => {
 
     try {
       setLoading(true);
-      
+
       // Kiểm tra xem trạng thái thanh toán có thay đổi không
       const isPaidChanged = isPaidCheckbox !== currentOrder.isPaid;
-      
+
       // Nếu chỉ thay đổi trạng thái thanh toán, sử dụng API payment-status
       if (isPaidChanged && updateStatus === currentOrder.status) {
         await orderApi.markOrderAsPaid(currentOrder._id);
         toast.success("Cập nhật trạng thái thanh toán thành công", {
           duration: 3000,
         });
-      } 
+      }
       // Nếu thay đổi cả trạng thái đơn hàng và trạng thái thanh toán
       else if (isPaidChanged) {
         // Cập nhật trạng thái thanh toán trước
         if (isPaidCheckbox) {
           await orderApi.markOrderAsPaid(currentOrder._id);
         }
-        
+
         // Sau đó cập nhật trạng thái đơn hàng
         const updateData = {
           status: updateStatus,
-          note: updateNote || ""
+          note: updateNote || "",
         };
-        
+
         await orderApi.updateOrderStatus(currentOrder._id, updateData);
         toast.success("Cập nhật trạng thái đơn hàng thành công", {
           duration: 3000,
@@ -313,19 +317,13 @@ const Delivery = () => {
         // Gửi đúng định dạng dữ liệu để API xử lý
         const updateData = {
           status: updateStatus,
-          note: updateNote || ""
+          note: updateNote || "",
         };
 
         await orderApi.updateOrderStatus(currentOrder._id, updateData);
         toast.success("Cập nhật trạng thái đơn hàng thành công", {
           duration: 3000,
         });
-      }
-
-      // Nếu có ảnh, xử lý riêng hoặc bỏ qua (tùy theo yêu cầu)
-      if (imageUrls.length > 0) {
-        console.log("Có", imageUrls.length, "ảnh nhưng không gửi đi để tránh lỗi");
-        // Có thể thêm code xử lý ảnh ở đây nếu cần
       }
 
       setUpdateDialog(false);
@@ -577,11 +575,17 @@ const Delivery = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Mã đơn hàng:</span>
-                    <span className="font-medium">{currentOrder.orderCode || currentOrder._id}</span>
+                    <span className="font-medium">
+                      {currentOrder.orderCode || currentOrder._id}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Ngày đặt:</span>
-                    <span>{new Date(currentOrder.createdAt).toLocaleDateString("vi-VN")}</span>
+                    <span>
+                      {new Date(currentOrder.createdAt).toLocaleDateString(
+                        "vi-VN"
+                      )}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Trạng thái:</span>
@@ -607,23 +611,30 @@ const Delivery = () => {
                   <div className="flex justify-between">
                     <span className="text-gray-600">Họ tên:</span>
                     <span className="font-medium">
-                      {currentOrder?.userId?.firstName} {currentOrder?.userId?.lastName}
+                      {currentOrder?.userId?.firstName}{" "}
+                      {currentOrder?.userId?.lastName}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Số điện thoại:</span>
                     <span>
-                      {currentOrder.shippingInfo?.phone || currentOrder.phone || "Không có SĐT"}
+                      {currentOrder.shippingInfo?.phone ||
+                        currentOrder.phone ||
+                        "Không có SĐT"}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Email:</span>
-                    <span>{currentOrder?.userId?.email || "Không có email"}</span>
+                    <span>
+                      {currentOrder?.userId?.email || "Không có email"}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Địa chỉ:</span>
                     <span className="text-right">
-                      {currentOrder.shippingInfo?.address || currentOrder.shippingAddress || "Không có địa chỉ"}
+                      {currentOrder.shippingInfo?.address ||
+                        currentOrder.shippingAddress ||
+                        "Không có địa chỉ"}
                     </span>
                   </div>
                 </div>
@@ -670,7 +681,8 @@ const Delivery = () => {
                             )}
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                {item.productId?.productName || "Sản phẩm không xác định"}
+                                {item.productId?.productName ||
+                                  "Sản phẩm không xác định"}
                               </div>
                               {item.productId?.productCode && (
                                 <div className="text-xs text-gray-500">
@@ -697,9 +709,13 @@ const Delivery = () => {
                         </td>
                       </tr>
                     ))}
-                    {!currentOrder.products || currentOrder.products.length === 0 ? (
+                    {!currentOrder.products ||
+                    currentOrder.products.length === 0 ? (
                       <tr>
-                        <td colSpan="4" className="px-4 py-4 text-center text-gray-500">
+                        <td
+                          colSpan="4"
+                          className="px-4 py-4 text-center text-gray-500"
+                        >
                           Không có sản phẩm nào trong đơn hàng
                         </td>
                       </tr>
@@ -711,7 +727,9 @@ const Delivery = () => {
               {/* Tổng tiền */}
               <div className="mt-4 border-t pt-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600 font-medium">Tổng tiền sản phẩm:</span>
+                  <span className="text-gray-600 font-medium">
+                    Tổng tiền sản phẩm:
+                  </span>
                   <span className="font-medium">
                     {new Intl.NumberFormat("vi-VN", {
                       style: "currency",
@@ -734,7 +752,8 @@ const Delivery = () => {
                   <div className="flex justify-between items-center mt-1">
                     <span className="text-gray-600">Giảm giá:</span>
                     <span className="text-red-500">
-                      -{new Intl.NumberFormat("vi-VN", {
+                      -
+                      {new Intl.NumberFormat("vi-VN", {
                         style: "currency",
                         currency: "VND",
                       }).format(currentOrder.discount)}
@@ -742,7 +761,9 @@ const Delivery = () => {
                   </div>
                 )}
                 <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
-                  <span className="text-gray-800 font-bold">Tổng thanh toán:</span>
+                  <span className="text-gray-800 font-bold">
+                    Tổng thanh toán:
+                  </span>
                   <span className="text-xl font-bold text-green-600">
                     {new Intl.NumberFormat("vi-VN", {
                       style: "currency",
@@ -753,23 +774,25 @@ const Delivery = () => {
                 <div className="flex justify-between items-center mt-2">
                   <span className="text-gray-600">Phương thức thanh toán:</span>
                   <span className="font-medium">
-                    {currentOrder.paymentMethod === "cod" 
-                     ? "Thanh toán khi nhận hàng" 
-                     : currentOrder.paymentMethod === "vnpay" 
-                       ? "VNPay" 
-                       : currentOrder.paymentMethod === "momo" 
-                         ? "MoMo" 
-                         : currentOrder.paymentMethod === "sepay" 
-                           ? "Ví SePay" 
-                           : currentOrder.paymentMethod || "Không xác định"}
+                    {currentOrder.paymentMethod === "cod"
+                      ? "Thanh toán khi nhận hàng"
+                      : currentOrder.paymentMethod === "vnpay"
+                      ? "VNPay"
+                      : currentOrder.paymentMethod === "momo"
+                      ? "MoMo"
+                      : currentOrder.paymentMethod === "sepay"
+                      ? "Ví SePay"
+                      : currentOrder.paymentMethod || "Không xác định"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
                   <span className="text-gray-600">Trạng thái thanh toán:</span>
-                  <span className={`font-medium ${currentOrder.isPaid ? 'text-green-600' : 'text-red-600'}`}>
-                    {currentOrder.isPaid 
-                      ? "Đã thanh toán" 
-                      : "Chưa thanh toán"}
+                  <span
+                    className={`font-medium ${
+                      currentOrder.isPaid ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {currentOrder.isPaid ? "Đã thanh toán" : "Chưa thanh toán"}
                   </span>
                 </div>
               </div>
@@ -777,7 +800,9 @@ const Delivery = () => {
 
             {currentOrder.note && (
               <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                <h3 className="text-lg font-medium text-gray-800 mb-2">Ghi chú từ khách hàng</h3>
+                <h3 className="text-lg font-medium text-gray-800 mb-2">
+                  Ghi chú từ khách hàng
+                </h3>
                 <p className="text-gray-700 italic">{currentOrder.note}</p>
               </div>
             )}

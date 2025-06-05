@@ -67,18 +67,122 @@ const RevenueReport = ({
         try {
           // Thử lấy từ reportsApi
           const reportData = await reportsApi.getRevenueData(timeRange);
+          console.log("Raw report data from API:", reportData);
+          
           if (
             reportData &&
             Array.isArray(reportData) &&
             reportData.length > 0
           ) {
-           
-            const formattedData = reportData.map((item) => ({
-              date: formatDateString(item.date),
-              doanh_thu: item.doanh_thu || 0,
-              don_hang: item.don_hang || 0,
-            }));
+            // Kiểm tra xem dữ liệu có chứa trường createdAt không
+            const hasCreatedAt = reportData.some(item => item.createdAt);
+            console.log("Data contains createdAt fields:", hasCreatedAt);
+            
+            // Nếu có dữ liệu MongoDB, xử lý theo ngày tạo đơn hàng
+            if (hasCreatedAt) {
+              console.log("Processing MongoDB data with createdAt fields");
+              
+              // Tạo mảng các ngày trong khoảng thời gian
+              const daysInRange = [];
+              const today = new Date();
+              
+              if (timeRange === "week") {
+                for (let i = 6; i >= 0; i--) {
+                  const date = new Date(today);
+                  date.setDate(today.getDate() - i);
+                  daysInRange.push({
+                    date: date,
+                    dateString: date.toLocaleDateString("vi-VN"),
+                    doanh_thu: 0
+                  });
+                }
+              }
+              
+              // Xử lý từng bản ghi MongoDB
+              reportData.forEach(item => {
+                if (item.createdAt) {
+                  const orderDate = new Date(item.createdAt);
+                  console.log(`Processing order with createdAt: ${item.createdAt}, parsed as: ${orderDate}`);
+                  
+                  if (!isNaN(orderDate.getTime())) {
+                    // Tìm ngày tương ứng trong mảng ngày
+                    const dayIndex = daysInRange.findIndex(day => 
+                      day.date.getDate() === orderDate.getDate() && 
+                      day.date.getMonth() === orderDate.getMonth() && 
+                      day.date.getFullYear() === orderDate.getFullYear()
+                    );
+                    
+                    if (dayIndex !== -1) {
+                      console.log(`Found matching day at index ${dayIndex} for order date ${orderDate.toLocaleDateString("vi-VN")}`);
+                      daysInRange[dayIndex].doanh_thu += (item.totalAmount || item.amount || item.doanh_thu || 0);
+                    } else {
+                      console.log(`No matching day found for order date ${orderDate.toLocaleDateString("vi-VN")}`);
+                    }
+                  }
+                }
+              });
+              
+              // Chuyển đổi thành định dạng dữ liệu cần thiết
+              const formattedData = daysInRange.map((day, index) => {
+                // Chuyển đổi sang tên thứ nếu cần
+                const dayOfWeek = day.date.getDay();
+                const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+                const displayName = dayNames[dayOfWeek];
+                
+                const result = {
+                  date: day.dateString,
+                  displayName: displayName,
+                  doanh_thu: day.doanh_thu,
+                  don_hang: 0,
+                  createdAt: day.date.toISOString()
+                };
+                
+                console.log(`Processed day ${index}:`, result);
+                return result;
+              });
+              
+              console.log("Final formatted data:", formattedData);
+              setRevenueData(formattedData);
+              return;
+            }
+            
+            // Xử lý dữ liệu thông thường nếu không phải dữ liệu MongoDB
+            const formattedData = reportData.map((item, index) => {
+              // Ưu tiên sử dụng createdAt nếu có (từ MongoDB)
+              let formattedDate;
+              if (item.createdAt) {
+                const date = new Date(item.createdAt);
+                console.log(`Item ${index} createdAt:`, item.createdAt, "parsed as:", date);
+                if (!isNaN(date.getTime())) {
+                  formattedDate = date.toLocaleDateString("vi-VN");
+                } else {
+                  formattedDate = formatDateString(item.date);
+                }
+              } else {
+                formattedDate = formatDateString(item.date);
+              }
+              
+              // Xử lý trường hợp ngày không hợp lệ
+              if (formattedDate === "N/A" || !formattedDate || (typeof formattedDate === 'string' && formattedDate.includes('Invalid'))) {
+                const currentDate = new Date();
+                const newDate = new Date(currentDate);
+                newDate.setDate(currentDate.getDate() - (reportData.length - 1 - index));
+                formattedDate = newDate.toLocaleDateString("vi-VN");
+                console.log(`Fixed invalid date for item ${index}, using:`, formattedDate);
+              }
+              
+              const result = {
+                date: formattedDate,
+                doanh_thu: item.doanh_thu || item.amount || item.totalAmount || 0,
+                don_hang: item.don_hang || 0,
+                createdAt: item.createdAt || null,
+              };
+              
+              console.log(`Processed item ${index}:`, result);
+              return result;
+            });
 
+            console.log("Final formatted data:", formattedData);
             setRevenueData(formattedData);
             return;
           }
@@ -89,6 +193,8 @@ const RevenueReport = ({
         // Thử lấy từ dashboardApi
         try {
           const dashboardData = await dashboardApi.getRevenueData(timeRange);
+          console.log("Raw dashboard data from API:", dashboardData);
+          
           if (
             dashboardData &&
             Array.isArray(dashboardData) &&
@@ -97,12 +203,42 @@ const RevenueReport = ({
             console.log("Revenue data from dashboard API:", dashboardData);
 
             // Chuẩn hóa dữ liệu để đảm bảo ngày hiển thị đúng
-            const formattedData = dashboardData.map((item) => ({
-              date: formatDateString(item.date),
-              doanh_thu: item.doanh_thu || 0,
-              don_hang: item.don_hang || 0,
-            }));
+            const formattedData = dashboardData.map((item, index) => {
+              // Ưu tiên sử dụng createdAt nếu có (từ MongoDB)
+              let formattedDate;
+              if (item.createdAt) {
+                const date = new Date(item.createdAt);
+                console.log(`Item ${index} createdAt:`, item.createdAt, "parsed as:", date);
+                if (!isNaN(date.getTime())) {
+                  formattedDate = date.toLocaleDateString("vi-VN");
+                } else {
+                  formattedDate = formatDateString(item.date);
+                }
+              } else {
+                formattedDate = formatDateString(item.date);
+              }
+              
+              // Xử lý trường hợp ngày không hợp lệ
+              if (formattedDate === "N/A" || !formattedDate || (typeof formattedDate === 'string' && formattedDate.includes('Invalid'))) {
+                const currentDate = new Date();
+                const newDate = new Date(currentDate);
+                newDate.setDate(currentDate.getDate() - (dashboardData.length - 1 - index));
+                formattedDate = newDate.toLocaleDateString("vi-VN");
+                console.log(`Fixed invalid date for item ${index}, using:`, formattedDate);
+              }
+              
+              const result = {
+                date: formattedDate,
+                doanh_thu: item.doanh_thu || item.amount || item.totalAmount || 0,
+                don_hang: item.don_hang || 0,
+                createdAt: item.createdAt || null,
+              };
+              
+              console.log(`Processed item ${index}:`, result);
+              return result;
+            });
 
+            console.log("Final formatted data:", formattedData);
             setRevenueData(formattedData);
             return;
           }
@@ -156,7 +292,7 @@ const RevenueReport = ({
                   year: "numeric",
                 })
               ),
-              doanh_thu: Math.floor(Math.random() * 100000000), // Random value
+              doanh_thu: Math.floor(Math.random() * 100000000),
             });
           }
         }
@@ -180,94 +316,230 @@ const RevenueReport = ({
 
   useEffect(() => {
     if (revenueData && revenueData.length > 0) {
+      console.log("Processing best day from revenue data:", revenueData);
+      
       // Lọc dữ liệu có doanh thu > 0
       const validData = revenueData.filter((item) => item.doanh_thu > 0);
+      console.log("Valid data (doanh_thu > 0):", validData);
     
-
       if (validData.length > 0) {
         // Tìm ngày có doanh thu cao nhất
         let best = validData.reduce(
           (max, current) => (current.doanh_thu > max.doanh_thu ? current : max),
           validData[0]
         );
+        console.log("Initial best day:", best);
 
-        // Nếu date là N/A, tìm dữ liệu thật từ revenueData với cùng doanh thu
-        if (best.date === "N/A" || !best.date) {
+        // Ưu tiên sử dụng displayName nếu có
+        if (best.displayName) {
+          console.log("Best day has displayName:", best.displayName);
+          // Không cần xử lý thêm vì displayName đã là tên thứ
+        }
+        // Xử lý trường hợp ngày hiển thị là tên thứ (CN, Thứ 2, etc.)
+        else if (best.date && typeof best.date === 'string') {
+          const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+          if (dayNames.includes(best.date)) {
+            console.log("Best day date is already a day name:", best.date);
+            best.displayName = best.date;
+          } else {
+            // Xử lý định dạng ngày Việt Nam (dd/MM/yyyy)
+            const vietnameseDatePattern = /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/;
+            const match = best.date.match(vietnameseDatePattern);
+            
+            if (match) {
+              // Chuyển đổi từ dd/MM/yyyy sang Date object
+              const day = parseInt(match[1], 10);
+              const month = parseInt(match[2], 10) - 1; // Tháng trong JS là 0-11
+              const year = parseInt(match[3], 10);
+              
+              const dateObj = new Date(year, month, day);
+              if (!isNaN(dateObj.getTime())) {
+                const dayOfWeek = dateObj.getDay();
+                best.displayName = dayNames[dayOfWeek];
+                console.log(`Converted Vietnamese date format to day name: ${best.displayName} for date ${best.date}`);
+              }
+            }
+            // Nếu có createdAt, sử dụng nó để xác định tên thứ
+            else if (best.createdAt) {
+              try {
+                const createdDate = new Date(best.createdAt);
+                if (!isNaN(createdDate.getTime())) {
+                  const dayOfWeek = createdDate.getDay();
+                  best.displayName = dayNames[dayOfWeek];
+                  console.log(`Determined day name from createdAt: ${best.displayName}`);
+                }
+              } catch (error) {
+                console.error("Error parsing createdAt for best day:", error);
+              }
+            } else {
+              // Thử chuyển đổi date thành ngày
+              try {
+                const dateObj = new Date(best.date);
+                if (!isNaN(dateObj.getTime())) {
+                  const dayOfWeek = dateObj.getDay();
+                  best.displayName = dayNames[dayOfWeek];
+                  console.log(`Converted date to day name: ${best.displayName}`);
+                }
+              } catch (error) {
+                console.error("Error converting date to day name:", error);
+              }
+            }
+          }
+        }
+        
+        // Nếu date là N/A hoặc Invalid, tạo ngày hợp lệ
+        if (!best.displayName || best.date === "N/A" || !best.date || (typeof best.date === 'string' && best.date.includes('Invalid'))) {
+          console.log("Best day has invalid date or missing displayName:", best.date);
+          
           // Tìm item trong dữ liệu gốc có cùng doanh thu và có date hợp lệ
           const matchingItem = revenueData.find(
             (item) =>
               item.doanh_thu === best.doanh_thu &&
-              item.date &&
-              item.date !== "N/A"
+              ((item.displayName && item.displayName !== "N/A") || 
+               (item.date && item.date !== "N/A" && !(typeof item.date === 'string' && item.date.includes('Invalid'))))
           );
 
           if (matchingItem) {
-            best = { ...best, date: matchingItem.date };
+            console.log("Found matching item with valid date:", matchingItem);
+            best = { 
+              ...best, 
+              date: matchingItem.date,
+              displayName: matchingItem.displayName || null
+            };
           } else {
             // Nếu không tìm thấy, gán ngày thủ công dựa vào index
             const index = revenueData.findIndex(
               (item) => item.doanh_thu === best.doanh_thu
             );
             if (index !== -1) {
+              console.log(`Generating date based on index ${index}`);
               const currentDate = new Date();
               const newDate = new Date(currentDate);
               newDate.setDate(
                 currentDate.getDate() - (revenueData.length - 1 - index)
               );
-              best = { ...best, date: newDate.toLocaleDateString("vi-VN") };
+              
+              // Chuyển đổi thành tên thứ
+              const dayOfWeek = newDate.getDay();
+              const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+              
+              best = { 
+                ...best, 
+                date: newDate.toLocaleDateString("vi-VN"),
+                displayName: dayNames[dayOfWeek]
+              };
+              console.log("Generated date and day name:", best);
             }
           }
         }
 
-  
+        // Đảm bảo date không phải là Invalid Date
+        if (typeof best.date === 'string' && best.date.includes('Invalid')) {
+          console.log("Best day still has invalid date after processing:", best.date);
+          const currentDate = new Date();
+          const dayOfWeek = currentDate.getDay();
+          const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+          
+          best = { 
+            ...best, 
+            date: currentDate.toLocaleDateString("vi-VN"),
+            displayName: dayNames[dayOfWeek]
+          };
+          console.log("Fallback to current date and day name:", best);
+        }
+    
+        console.log("Final best day:", best);
         setBestDay(best);
       } else {
-  
-        setBestDay(null);
+        console.log("No valid data with doanh_thu > 0");
+        // Nếu không có dữ liệu hợp lệ, tạo một ngày mặc định
+        const currentDate = new Date();
+        const dayOfWeek = currentDate.getDay();
+        const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+        
+        const defaultBestDay = {
+          date: currentDate.toLocaleDateString("vi-VN"),
+          displayName: dayNames[dayOfWeek],
+          doanh_thu: 0
+        };
+        console.log("Using default best day:", defaultBestDay);
+        setBestDay(defaultBestDay);
       }
     } else {
-     
-      setBestDay(null);
+      console.log("No revenue data available");
+      // Nếu không có dữ liệu, tạo một ngày mặc định
+      const currentDate = new Date();
+      const dayOfWeek = currentDate.getDay();
+      const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+      
+      const defaultBestDay = {
+        date: currentDate.toLocaleDateString("vi-VN"),
+        displayName: dayNames[dayOfWeek],
+        doanh_thu: 0
+      };
+      console.log("Using default best day:", defaultBestDay);
+      setBestDay(defaultBestDay);
     }
   }, [revenueData]);
 
-  // Hàm để chuẩn hóa định dạng ngày
+  // Cải thiện hàm formatDateString để xử lý tốt hơn định dạng ngày Việt Nam
   const formatDateString = (dateString) => {
     if (!dateString) return "N/A";
 
     try {
-      // Kiểm tra xem dateString có phải là định dạng ISO không
-      if (dateString.includes("T") && dateString.includes("Z")) {
+      // Xử lý trường hợp đã là Invalid Date
+      if (typeof dateString === 'string' && dateString.includes('Invalid')) {
+        return "N/A";
+      }
+
+      // Kiểm tra xem dateString có phải là định dạng ISO không (từ MongoDB)
+      if (typeof dateString === 'string' && dateString.includes("T")) {
         const date = new Date(dateString);
-        if (isNaN(date.getTime())) return dateString; // Nếu không phải date hợp lệ, trả về nguyên bản
+        if (isNaN(date.getTime())) return "N/A"; // Nếu không phải date hợp lệ
         return date.toLocaleDateString("vi-VN");
       }
 
       // Xử lý các định dạng khác nhau của chuỗi ngày Việt Nam
-      // VD: 25/05/2023, 25-05-2023, 25.05.2023
-      const datePatterns = [
-        /(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})/, // DD/MM/YYYY
-        /(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})/, // YYYY/MM/DD
-        /Tháng (\d{1,2})\/(\d{4})/, // Tháng MM/YYYY
-      ];
+      if (typeof dateString === 'string') {
+        // Kiểm tra định dạng dd/MM/yyyy
+        const ddMMyyyyPattern = /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/;
+        const match = dateString.match(ddMMyyyyPattern);
+        
+        if (match) {
+          // Đã là định dạng Việt Nam, trả về nguyên bản
+          return dateString;
+        }
+        
+        const datePatterns = [
+          /(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})/, // DD/MM/YYYY
+          /(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})/, // YYYY/MM/DD
+          /Tháng (\d{1,2})\/(\d{4})/, // Tháng MM/YYYY
+        ];
 
-      for (const pattern of datePatterns) {
-        if (pattern.test(dateString)) {
-          return dateString; // Nếu đúng định dạng, trả về nguyên bản
+        for (const pattern of datePatterns) {
+          if (pattern.test(dateString)) {
+            return dateString; // Nếu đúng định dạng, trả về nguyên bản
+          }
         }
       }
 
-      // Nếu chuỗi không khớp định dạng nào, có thể là ngày không hợp lệ
+      // Nếu là Date object
+      if (dateString instanceof Date && !isNaN(dateString.getTime())) {
+        return dateString.toLocaleDateString("vi-VN");
+      }
+
       // Thử phân tích cú pháp làm date object
       const date = new Date(dateString);
       if (!isNaN(date.getTime())) {
         return date.toLocaleDateString("vi-VN");
       }
 
-      return dateString; // Trả về nguyên bản nếu không thể chuyển đổi
+      // Nếu không thể xác định định dạng ngày
+      console.warn("Unrecognized date format:", dateString);
+      return "N/A";
     } catch (error) {
       console.warn("Error formatting date:", error, dateString);
-      return dateString; // Trả về nguyên bản nếu có lỗi xảy ra
+      return "N/A"; // Trả về N/A nếu có lỗi xảy ra
     }
   };
 
@@ -293,9 +565,10 @@ const RevenueReport = ({
         return parsedDate.toLocaleDateString("vi-VN");
       }
 
-      return dateStr || "Không có";
-    } catch {
-      return dateStr || "Không có";
+      return "Không có";
+    } catch (error) {
+      console.error("Error formatting best day:", error, dateStr);
+      return "Không có";
     }
   };
 
@@ -528,18 +801,22 @@ const RevenueReport = ({
                       component="h2"
                       className="font-bold"
                     >
-                      {bestDay && bestDay.date
+                      {bestDay && bestDay.displayName 
+                        ? (bestDay.date && !bestDay.date.includes('Invalid') 
+                           ? `${bestDay.displayName} (${bestDay.date})` 
+                           : bestDay.displayName)
+                        : bestDay && bestDay.date
                         ? formatBestDay(bestDay.date)
-                        : "Không có"}
+                        : new Date().toLocaleDateString("vi-VN")}
                     </Typography>
-                    {bestDay && bestDay.doanh_thu > 0 && (
+                    {bestDay && (
                       <Typography
                         variant="body2"
                         color="textSecondary"
                         component="p"
-                        className="text-green-600 font-semibold"
+                        className={bestDay.doanh_thu > 0 ? "text-green-600 font-semibold" : "text-gray-500"}
                       >
-                        {formatCurrency(bestDay.doanh_thu)}
+                        {formatCurrency(bestDay.doanh_thu || 0)}
                       </Typography>
                     )}
                   </div>
@@ -654,19 +931,97 @@ const RevenueReport = ({
                       {revenueData.map((item, index) => {
                         // Đảm bảo ngày hiển thị đúng
                         let displayDate = item.date;
-                        if (!displayDate || displayDate === "N/A") {
+                        let originalDate = item.date; // Lưu lại ngày gốc
+                        
+                        // Xử lý định dạng ngày Việt Nam (dd/MM/yyyy)
+                        if (displayDate && typeof displayDate === 'string') {
+                          const vietnameseDatePattern = /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/;
+                          const match = displayDate.match(vietnameseDatePattern);
+                          
+                          if (match) {
+                            // Đã là định dạng ngày/tháng/năm, giữ nguyên
+                            originalDate = displayDate;
+                            
+                            // Chuyển đổi từ dd/MM/yyyy sang Date object để lấy tên thứ
+                            const day = parseInt(match[1], 10);
+                            const month = parseInt(match[2], 10) - 1; // Tháng trong JS là 0-11
+                            const year = parseInt(match[3], 10);
+                            
+                            const dateObj = new Date(year, month, day);
+                            if (!isNaN(dateObj.getTime())) {
+                              const dayOfWeek = dateObj.getDay();
+                              const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+                              const dayName = dayNames[dayOfWeek];
+                              displayDate = `${dayName}, ${displayDate}`;
+                            }
+                          }
+                        }
+                        
+                        // Kiểm tra xem có phải là tên thứ không (CN, Thứ 2, etc.)
+                        const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+                        if (item.displayName && dayNames.includes(item.displayName)) {
+                          // Nếu đã có displayName và là tên thứ, kết hợp với ngày gốc
+                          if (originalDate && originalDate !== item.displayName) {
+                            displayDate = `${item.displayName}, ${originalDate}`;
+                          } else {
+                            displayDate = item.displayName;
+                          }
+                        }
+                        
+                        // Ưu tiên sử dụng createdAt nếu có
+                        if (item.createdAt) {
+                          try {
+                            const date = new Date(item.createdAt);
+                            if (!isNaN(date.getTime())) {
+                              // Định dạng ngày đầy đủ
+                              const formattedDate = date.toLocaleDateString("vi-VN");
+                              
+                              // Chuyển đổi sang tên thứ
+                              const dayOfWeek = date.getDay();
+                              if (dayNames[dayOfWeek]) {
+                                displayDate = `${dayNames[dayOfWeek]}, ${formattedDate}`;
+                              } else {
+                                displayDate = formattedDate;
+                              }
+                            }
+                          } catch {
+                            console.error("Error parsing createdAt for item:", item.createdAt);
+                          }
+                        }
+                        
+                        // Xử lý các trường hợp ngày không hợp lệ
+                        if (!displayDate || displayDate === "N/A" || (typeof displayDate === 'string' && displayDate.includes('Invalid'))) {
                           // Tạo ngày dựa vào index
                           const currentDate = new Date();
                           const newDate = new Date(currentDate);
                           newDate.setDate(
-                            currentDate.getDate() -
-                              (revenueData.length - 1 - index)
+                            currentDate.getDate() - (revenueData.length - 1 - index)
                           );
-                          displayDate = newDate.toLocaleDateString("vi-VN");
+                          
+                          // Định dạng ngày đầy đủ
+                          const formattedDate = newDate.toLocaleDateString("vi-VN");
+                          
+                          // Chuyển đổi sang tên thứ
+                          const dayOfWeek = newDate.getDay();
+                          displayDate = `${dayNames[dayOfWeek]}, ${formattedDate}`;
                         }
 
                         // Kiểm tra và đảm bảo displayDate là chuỗi hợp lệ
                         if (typeof displayDate !== "string") {
+                          try {
+                            if (displayDate instanceof Date && !isNaN(displayDate.getTime())) {
+                              const formattedDate = displayDate.toLocaleDateString("vi-VN");
+                              const dayOfWeek = displayDate.getDay();
+                              displayDate = `${dayNames[dayOfWeek]}, ${formattedDate}`;
+                            } else {
+                              displayDate = String(displayDate);
+                            }
+                          } catch {
+                            displayDate = `Ngày ${index + 1}`;
+                          }
+                        }
+                        
+                        if (typeof displayDate === 'string' && displayDate.includes('Invalid')) {
                           displayDate = `Ngày ${index + 1}`;
                         }
 
@@ -674,7 +1029,8 @@ const RevenueReport = ({
                         const isBestDay =
                           bestDay &&
                           (item.doanh_thu === bestDay.doanh_thu ||
-                            displayDate === formatBestDay(bestDay.date));
+                            (bestDay.displayName && displayDate.includes(bestDay.displayName)) ||
+                            (bestDay.date && displayDate.includes(bestDay.date)));
 
                         return (
                           <TableRow

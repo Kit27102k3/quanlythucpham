@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import BestSellingProduct from '../src/Model/BestSellingProduct.js';
 
 export const config = {
   runtime: 'edge',
@@ -18,7 +17,7 @@ export default async function handler(request) {
     const limit = parseInt(url.searchParams.get('limit') || '5', 10);
     
     // Dữ liệu mẫu cho sản phẩm bán chạy
-    const bestSellingProducts = [
+    const topProducts = [
       { 
         name: "Thịt heo", 
         category: "Thịt tươi", 
@@ -85,13 +84,13 @@ export default async function handler(request) {
     ];
     
     // Trả về số lượng sản phẩm theo limit
-    const limitedProducts = bestSellingProducts.slice(0, limit);
+    const limitedProducts = topProducts.slice(0, limit);
     
     return new Response(
       JSON.stringify({
         data: limitedProducts,
         success: true,
-        total: bestSellingProducts.length,
+        total: topProducts.length,
         limit: limit
       }),
       {
@@ -106,7 +105,7 @@ export default async function handler(request) {
       }
     );
   } catch (error) {
-    console.error(`Error in best-selling-products API: ${error.message}`);
+    console.error(`Error in top-products API: ${error.message}`);
     
     return new Response(
       JSON.stringify({ 

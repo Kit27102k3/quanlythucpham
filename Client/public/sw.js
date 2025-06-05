@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-undef */
 // Service Worker for Web Push Notifications
 
 // Listen for the 'install' event

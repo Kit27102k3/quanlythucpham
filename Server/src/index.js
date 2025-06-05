@@ -48,6 +48,7 @@ import brandRoutes from "./routes/brandRoutes.js";
 import branchRoutes from "./routes/branchRoutes.js";
 import customerLogRoutes from "./routes/customerLogRoutes.js";
 import exportRoutes from "./routes/exportRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 // Import customer log middleware
 import { customerActivityLogger } from "./Middleware/customerLogMiddleware.js";
@@ -185,6 +186,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/logout", authRoutes);
 app.use("/api", scraperRoutes);
 app.use("/api", productsRoutes);
+app.use("/api", uploadRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/payments", paymentRoutes);

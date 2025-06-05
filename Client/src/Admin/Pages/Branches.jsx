@@ -52,7 +52,7 @@ const Branches = () => {
   ];
 
   useEffect(() => {
-    setIsBrowser(typeof window !== 'undefined');
+    setIsBrowser(typeof window !== "undefined");
     fetchBranches();
   }, []);
 
@@ -73,8 +73,8 @@ const Branches = () => {
   useEffect(() => {
     if ((visible || editVisible) && isBrowser) {
       setMapPosition([
-        formData.latitude || 10.8231, 
-        formData.longitude || 106.6297
+        formData.latitude || 10.8231,
+        formData.longitude || 106.6297,
       ]);
       setMapKey(Date.now()); // Force re-render map
     }
@@ -105,11 +105,11 @@ const Branches = () => {
     });
 
     // If address is changed, try to geocode after a delay
-    if (name === 'address') {
+    if (name === "address") {
       if (geocodeTimeoutRef.current) {
         clearTimeout(geocodeTimeoutRef.current);
       }
-      
+
       geocodeTimeoutRef.current = setTimeout(() => {
         geocodeAddress(value);
       }, 500);
@@ -120,7 +120,7 @@ const Branches = () => {
   const searchAddress = async (event) => {
     const query = event.query.trim();
     setAddressQuery(query);
-    
+
     if (query.length < 2) {
       setAddressSuggestions([]);
       return;
@@ -129,18 +129,20 @@ const Branches = () => {
     try {
       console.log("Đang tìm kiếm địa chỉ:", query);
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&countrycodes=vn&addressdetails=1&accept-language=vi`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          query
+        )}&limit=5&countrycodes=vn&addressdetails=1&accept-language=vi`
       );
       const data = await response.json();
       console.log("Kết quả tìm kiếm:", data);
-      
+
       if (data && data.length > 0) {
-        const suggestions = data.map(item => ({
+        const suggestions = data.map((item) => ({
           name: item.display_name,
           lat: parseFloat(item.lat),
-          lon: parseFloat(item.lon)
+          lon: parseFloat(item.lon),
         }));
-        
+
         console.log("Gợi ý:", suggestions);
         setAddressSuggestions(suggestions);
       } else {
@@ -156,16 +158,16 @@ const Branches = () => {
   const onAddressSelect = (e) => {
     const selectedAddress = e.value;
     console.log("Địa chỉ đã chọn:", selectedAddress);
-    
+
     if (selectedAddress && selectedAddress.lat && selectedAddress.lon) {
       // Cập nhật form data
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         address: selectedAddress.name,
         latitude: selectedAddress.lat,
-        longitude: selectedAddress.lon
+        longitude: selectedAddress.lon,
       }));
-      
+
       // Cập nhật vị trí bản đồ
       const newPosition = [selectedAddress.lat, selectedAddress.lon];
       console.log("Cập nhật vị trí bản đồ:", newPosition);
@@ -177,22 +179,26 @@ const Branches = () => {
   // Geocode address to get coordinates
   const geocodeAddress = async (address) => {
     if (!address || address.length < 3) return;
-    
+
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=vn`);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          address
+        )}&limit=1&countrycodes=vn`
+      );
       const data = await response.json();
-      
+
       if (data && data.length > 0) {
         const { lat, lon } = data[0];
         const newLat = parseFloat(lat);
         const newLon = parseFloat(lon);
-        
-        setFormData(prev => ({
+
+        setFormData((prev) => ({
           ...prev,
           latitude: newLat,
-          longitude: newLon
+          longitude: newLon,
         }));
-        
+
         setMapPosition([newLat, newLon]);
         setMapKey(Date.now()); // Force re-render map
       }
@@ -204,15 +210,17 @@ const Branches = () => {
   // Reverse geocode to get address from coordinates
   const reverseGeocode = async (lat, lng) => {
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+      );
       const data = await response.json();
-      
+
       if (data && data.display_name) {
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           address: data.display_name,
           latitude: lat,
-          longitude: lng
+          longitude: lng,
         }));
         setAddressQuery(data.display_name);
       }
@@ -285,10 +293,7 @@ const Branches = () => {
       longitude: branch.longitude || 106.6297,
     });
     setAddressQuery(branch.address || "");
-    setMapPosition([
-      branch.latitude || 10.8231, 
-      branch.longitude || 106.6297
-    ]);
+    setMapPosition([branch.latitude || 10.8231, branch.longitude || 106.6297]);
     setEditVisible(true);
   };
 
@@ -360,9 +365,9 @@ const Branches = () => {
   const onAddressInputChange = (e) => {
     const value = e.value;
     setAddressQuery(value);
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      address: value
+      address: value,
     }));
     if (geocodeTimeoutRef.current) {
       clearTimeout(geocodeTimeoutRef.current);
@@ -408,7 +413,7 @@ const Branches = () => {
             onChange={onAddressInputChange}
             onSelect={onAddressSelect}
             appendTo={document.body}
-            panelStyle={{ position: 'fixed', zIndex: 2147483000 }}
+            panelStyle={{ position: "fixed", zIndex: 2147483000 }}
             panelClassName="border border-blue-200 shadow-lg rounded-md z-[9999] p-2 space-y-2"
             dropdown
             dropdownMode="current"
@@ -429,10 +434,13 @@ const Branches = () => {
       {/* Map Component */}
       <div className="mb-8 transition-all duration-300 hover:shadow-lg rounded-lg overflow-hidden bg-white p-4">
         <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Chọn vị trí trên bản đồ <span className="text-sm text-blue-600 font-normal">(Di chuyển chấm đỏ để chọn vị trí chính xác)</span>
+          Chọn vị trí trên bản đồ{" "}
+          <span className="text-sm text-blue-600 font-normal">
+            (Di chuyển chấm đỏ để chọn vị trí chính xác)
+          </span>
         </label>
         <div className="h-[350px] w-full border border-blue-200 shadow-md rounded-md overflow-hidden transition-all duration-300 hover:shadow-lg">
-          <MapWrapper 
+          <MapWrapper
             key={mapKey}
             mapKey={mapKey}
             mapPosition={mapPosition}
@@ -443,11 +451,17 @@ const Branches = () => {
         <div className="mt-3 text-xs text-gray-600 flex justify-between bg-blue-50 p-3 rounded-md shadow-sm">
           <span className="flex items-center">
             <i className="pi pi-map-marker text-blue-600 mr-2"></i>
-            Vĩ độ: <span className="font-medium ml-1 text-blue-800">{mapPosition[0].toFixed(6)}</span>
+            Vĩ độ:{" "}
+            <span className="font-medium ml-1 text-blue-800">
+              {mapPosition[0].toFixed(6)}
+            </span>
           </span>
           <span className="flex items-center">
             <i className="pi pi-map-marker text-blue-600 mr-2"></i>
-            Kinh độ: <span className="font-medium ml-1 text-blue-800">{mapPosition[1].toFixed(6)}</span>
+            Kinh độ:{" "}
+            <span className="font-medium ml-1 text-blue-800">
+              {mapPosition[1].toFixed(6)}
+            </span>
           </span>
         </div>
       </div>
@@ -795,10 +809,12 @@ const Branches = () => {
               Bạn có chắc chắn muốn xóa chi nhánh &quot;
               <span className="font-bold text-red-700">
                 {branchToDelete?.name || ""}
-              </span>&quot;?
+              </span>
+              &quot;?
             </p>
             <p className="text-sm text-gray-600">
-              Hành động này không thể hoàn tác và sẽ xóa vĩnh viễn dữ liệu chi nhánh.
+              Hành động này không thể hoàn tác và sẽ xóa vĩnh viễn dữ liệu chi
+              nhánh.
             </p>
           </div>
         </div>

@@ -61,13 +61,48 @@ export const adminLogin = async (req, res) => {
 
 export const getAdminProfile = async (req, res) => {
   try {
-    const admin = await Admin.findById(req.user.id).select("-password");
-    if (!admin) {
-      return res.status(404).json({ message: "Admin không tồn tại" });
+    // Use either id or userId from the user object
+    const adminId = req.user.id || req.user.userId;
+    
+    console.log("Request user object:", req.user);
+    console.log("Admin ID for profile lookup:", adminId);
+    
+    if (!adminId) {
+      console.error("No admin ID found in token");
+      return res.status(400).json({
+        success: false,
+        message: "Không tìm thấy ID người dùng trong token"
+      });
     }
-    res.status(200).json(admin);
+    
+    console.log("Finding admin with ID:", adminId);
+    
+    const admin = await Admin.findById(adminId)
+      .select("-password")
+      .populate('branchId', 'name address phone');
+      
+    if (!admin) {
+      console.error(`Admin with ID ${adminId} not found`);
+      return res.status(404).json({
+        success: false,
+        message: "Admin không tồn tại"
+      });
+    }
+    
+    console.log("Found admin:", admin);
+    
+    return res.status(200).json({
+      success: true,
+      message: "Lấy thông tin admin thành công",
+      data: admin
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Lỗi khi lấy thông tin admin:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy thông tin admin",
+      error: error.message
+    });
   }
 };
 
@@ -272,5 +307,149 @@ export const updateRolePermissions = async (req, res) => {
   } catch (error) {
     console.error("Error updating role permissions:", error);
     res.status(500).json({ message: "Lỗi server khi cập nhật quyền vai trò" });
+  }
+};
+
+export const updateAdminProfile = async (req, res) => {
+  try {
+    // Use either id or userId from the user object
+    const adminId = req.user.id || req.user.userId;
+    
+    if (!adminId) {
+      return res.status(400).json({
+        success: false,
+        message: "Không tìm thấy ID người dùng trong token"
+      });
+    }
+    
+    const { fullName, email, phone, userName, birthday, avatar, branchId } = req.body;
+
+    console.log("Updating admin profile with data:", req.body);
+    console.log("Admin ID:", adminId);
+
+    // Kiểm tra xem admin có tồn tại không
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy thông tin người dùng"
+      });
+    }
+
+    // Kiểm tra email đã tồn tại chưa (nếu thay đổi)
+    if (email && email !== admin.email) {
+      const existingEmail = await Admin.findOne({ email, _id: { $ne: adminId } });
+      if (existingEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "Email đã được sử dụng bởi tài khoản khác"
+        });
+      }
+    }
+
+    // Kiểm tra username đã tồn tại chưa (nếu thay đổi)
+    if (userName && userName !== admin.userName) {
+      const existingUsername = await Admin.findOne({ userName, _id: { $ne: adminId } });
+      if (existingUsername) {
+        return res.status(400).json({
+          success: false,
+          message: "Tên đăng nhập đã được sử dụng bởi tài khoản khác"
+        });
+      }
+    }
+
+    // Cập nhật thông tin
+    if (fullName) admin.fullName = fullName;
+    if (email) admin.email = email;
+    if (phone) admin.phone = phone;
+    if (userName) admin.userName = userName;
+    if (birthday) admin.birthday = birthday;
+    if (avatar !== undefined) admin.avatar = avatar;
+    if (branchId) admin.branchId = branchId;
+
+    console.log("Updated admin object before save:", admin);
+
+    // Lưu thay đổi
+    const updatedAdmin = await admin.save({ validateModifiedOnly: true });
+
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật thông tin thành công",
+      data: updatedAdmin
+    });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật thông tin cá nhân:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi cập nhật thông tin cá nhân",
+      error: error.message
+    });
+  }
+};
+
+export const changeAdminPassword = async (req, res) => {
+  try {
+    // Use either id or userId from the user object
+    const adminId = req.user.id || req.user.userId;
+    
+    if (!adminId) {
+      return res.status(400).json({
+        success: false,
+        message: "Không tìm thấy ID người dùng trong token"
+      });
+    }
+    
+    const { oldPassword, newPassword } = req.body;
+
+    // Kiểm tra các trường bắt buộc
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng cung cấp mật khẩu cũ và mật khẩu mới"
+      });
+    }
+
+    // Kiểm tra mật khẩu mới có đủ độ dài không
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu mới phải có ít nhất 6 ký tự"
+      });
+    }
+
+    // Tìm admin
+    const admin = await Admin.findById(adminId);
+    if (!admin) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy thông tin người dùng"
+      });
+    }
+
+    // Kiểm tra mật khẩu cũ
+    const isMatch = await admin.comparePassword(oldPassword);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Mật khẩu hiện tại không chính xác"
+      });
+    }
+
+    // Cập nhật mật khẩu mới
+    const salt = await bcrypt.genSalt(10);
+    admin.password = await bcrypt.hash(newPassword, salt);
+    await admin.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Đổi mật khẩu thành công"
+    });
+  } catch (error) {
+    console.error("Lỗi khi đổi mật khẩu:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi đổi mật khẩu",
+      error: error.message
+    });
   }
 };

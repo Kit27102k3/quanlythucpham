@@ -1,35 +1,28 @@
+/* eslint-disable no-undef */
 /* eslint-disable no-unused-vars */
-// File: authMiddleware.js
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
-// Khởi tạo biến môi trường
-dotenv.config();
+dotenv.config({ path: ".env" });
 
-/* eslint-disable no-undef */
-// Khóa bí mật từ biến môi trường hoặc giá trị mặc định
 const JWT_SECRET =
-  process.env.JWT_SECRET ||
   process.env.JWT_SECRET_ACCESS ||
+  process.env.JWT_SECRET ||
   "QUANLYTHUCPHAM_MERN";
 const ADMIN_SECRET_TOKEN = "admin-token-for-TKhiem";
-/* eslint-enable no-undef */
 
 export const verifyToken = (req, res, next) => {
-  // Kiểm tra nếu là một route không yêu cầu xác thực
   const publicRoutes = [
     '/api/products/best-sellers',
     '/api/products',
     '/api/categories'
   ];
-  
-  // Kiểm tra nếu đây là route công khai
+
   if (publicRoutes.some(route => req.originalUrl.includes(route) && req.method === 'GET')) {
     return next();
   }
-  
+
   try {
-    // Lấy token từ header hoặc cookie
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.startsWith('Bearer ') 
       ? authHeader.substring(7) 
@@ -42,28 +35,24 @@ export const verifyToken = (req, res, next) => {
       });
     }
 
-    // Kiểm tra xem có phải là token đặc biệt cho admin không
     if (token === ADMIN_SECRET_TOKEN) {
-      // Cho phép đặc biệt cho admin
       req.user = {
-        id: "65f62e09ac3ea4ad23023293", // ID của admin
+        id: "65f62e09ac3ea4ad23023293",
         role: "admin",
         username: "Admin",
       };
       return next();
     }
 
-    // Verify token
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      req.user = decoded;
-      
-      // Thêm token vào request để sử dụng trong các middleware khác
+      req.user = {
+        ...decoded,
+        id: decoded.id || decoded.userId
+      };
       req.token = token;
-      
       next();
     } catch (jwtError) {
-     
       if (jwtError.name === 'TokenExpiredError') {
         return res.status(401).json({
           success: false, 
@@ -71,7 +60,7 @@ export const verifyToken = (req, res, next) => {
           error: "TOKEN_EXPIRED"
         });
       }
-      
+
       return res.status(401).json({ 
         success: false,
         message: "Token không hợp lệ hoặc đã hết hạn",
@@ -79,7 +68,6 @@ export const verifyToken = (req, res, next) => {
       });
     }
   } catch (error) {
-
     res.status(500).json({ 
       success: false,
       message: "Lỗi máy chủ khi xác thực token" 
@@ -87,35 +75,26 @@ export const verifyToken = (req, res, next) => {
   }
 };
 
-// Middleware kiểm tra quyền admin
 export const isAdmin = (req, res, next) => {
   try {
-    // Kiểm tra xem user đã được xác thực chưa
     if (!req.user) {
-      console.log("No user found in request");
       return res.status(401).json({ message: "Chưa xác thực người dùng" });
     }
 
-    // Kiểm tra quyền
     if (req.user.role !== "admin") {
-      console.log("User role:", req.user.role);
       return res
         .status(403)
         .json({ message: "Không có quyền thực hiện hành động này" });
     }
 
-    // Nếu là admin, cho phép tiếp tục
     next();
   } catch (error) {
-    console.error("Error in isAdmin middleware:", error);
     return res.status(500).json({ message: "Lỗi máy chủ nội bộ" });
   }
 };
 
-// Middleware kiểm tra quyền admin
 export const verifyAdmin = (req, res, next) => {
   try {
-    // Lấy token từ header
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.startsWith('Bearer ') 
       ? authHeader.substring(7) 
@@ -128,34 +107,31 @@ export const verifyAdmin = (req, res, next) => {
       });
     }
 
-    // Kiểm tra xem có phải là token đặc biệt cho admin không
     if (token === ADMIN_SECRET_TOKEN) {
-      // Cho phép đặc biệt cho admin
       req.user = {
-        id: "65f62e09ac3ea4ad23023293", // ID của admin
+        id: "65f62e09ac3ea4ad23023293",
         role: "admin",
         username: "Admin",
       };
       return next();
     }
 
-    // Verify token
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
-      req.user = decoded;
-      
-      // Kiểm tra quyền admin hoặc manager
+      req.user = {
+        ...decoded,
+        id: decoded.id || decoded.userId
+      };
+
       if (req.user.role !== "admin" && req.user.role !== "manager") {
         return res.status(403).json({
           success: false,
           message: "Không có quyền thực hiện hành động này"
         });
       }
-      
+
       next();
     } catch (jwtError) {
-      console.log(`[verifyAdmin] Lỗi verify token: ${jwtError.message}`);
-      
       return res.status(401).json({ 
         success: false,
         message: "Token không hợp lệ hoặc đã hết hạn",
@@ -163,7 +139,6 @@ export const verifyAdmin = (req, res, next) => {
       });
     }
   } catch (error) {
-    console.error('[verifyAdmin] Lỗi:', error);
     res.status(500).json({ 
       success: false,
       message: "Lỗi máy chủ khi xác thực quyền admin" 

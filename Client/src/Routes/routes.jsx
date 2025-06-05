@@ -47,6 +47,7 @@ import WarehouseTrackingPage from "../User/Pages/Profile/OrderDetail/WarehouseTr
 import RecipesPage from "../User/Pages/Recipes/RecipesPage";
 import RecipeDetailPage from "../User/Pages/Recipes/RecipeDetailPage";
 import RecipePage from "../User/Pages/Recipes/RecipePage";
+import AdminProfile from "../Admin/Pages/Profile/AdminProfile";
 
 const publicRoutes = [
   {
@@ -250,7 +251,10 @@ const privateRoutes = [
     path: "/admin/customers/:id",
     page: CustomerDetails,
   },
-
+  {
+    path: "/admin/profile",
+    page: AdminProfile,
+  },
   {
     path: "/admin/contacts",
     page: ContactList,

@@ -18,8 +18,6 @@ import {
   Legend,
 } from "recharts";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
-
 const Dashboard = () => {
   const [dashboardStats, setDashboardStats] = useState({
     totalOrders: 0,

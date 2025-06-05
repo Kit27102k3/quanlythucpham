@@ -1217,8 +1217,7 @@ export const facebookTokenLogin = async (req, res) => {
 export const getUserAvatar = async (req, res) => {
   try {
     const userId = req.params.id;
-    console.log("Fetching avatar for user ID:", userId);
-
+    
     const user = await User.findById(userId).select(
       "userImage firstName lastName email authProvider facebookId"
     );

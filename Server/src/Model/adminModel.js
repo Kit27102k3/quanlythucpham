@@ -48,6 +48,10 @@ const Admin = mongoose.models.Admin || (() => {
           "Email không hợp lệ",
         ],
       },
+      avatar: {
+        type: String,
+        default: "/images/avatar.png"
+      },
       birthday: {
         type: Date,
         validate: {
@@ -104,6 +108,9 @@ const Admin = mongoose.models.Admin || (() => {
           "settings",
           "delivery",
           "branches",
+          "profile",
+          "suppliers",
+          "brands",
         ],
         default: ["Xem"],
       },
