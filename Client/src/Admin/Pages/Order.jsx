@@ -81,9 +81,7 @@ const useSafeAuth = () => {
       // Case 1: branchId is an object with _id
       if (localUser.branchId && typeof localUser.branchId === 'object' && localUser.branchId._id) {
         extractedBranchId = localUser.branchId._id;
-        console.log("Found branchId as object in user:", extractedBranchId);
-        
-        // Also store the branch name if available
+       
         if (localUser.branchId.name) {
           localStorage.setItem("branchName", localUser.branchId.name);
           console.log("Saved branch name to localStorage:", localUser.branchId.name);
@@ -92,7 +90,7 @@ const useSafeAuth = () => {
       // Case 2: branchId is a string
       else if (localUser.branchId && typeof localUser.branchId === 'string') {
         extractedBranchId = localUser.branchId;
-        console.log("Found branchId as string in user:", extractedBranchId);
+        
       }
       
       // Save the branchId to localStorage for easier access
@@ -242,9 +240,7 @@ const OrderAdmin = () => {
             
             // First check localStorage directly for our saved branchId
             branchIdToUse = localStorage.getItem("branchId");
-            if (branchIdToUse) {
-              console.log("Found branchId in localStorage:", branchIdToUse);
-            }
+            
             
             // Check user object
             if (!branchIdToUse) {

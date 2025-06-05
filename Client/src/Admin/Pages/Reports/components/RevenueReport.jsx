@@ -72,9 +72,7 @@ const RevenueReport = ({
             Array.isArray(reportData) &&
             reportData.length > 0
           ) {
-            console.log("Revenue data from reports API:", reportData);
-
-            // Chuẩn hóa dữ liệu để đảm bảo ngày hiển thị đúng
+           
             const formattedData = reportData.map((item) => ({
               date: formatDateString(item.date),
               doanh_thu: item.doanh_thu || 0,
@@ -184,7 +182,7 @@ const RevenueReport = ({
     if (revenueData && revenueData.length > 0) {
       // Lọc dữ liệu có doanh thu > 0
       const validData = revenueData.filter((item) => item.doanh_thu > 0);
-      console.log("Valid data for best day calculation:", validData);
+    
 
       if (validData.length > 0) {
         // Tìm ngày có doanh thu cao nhất
@@ -221,14 +219,14 @@ const RevenueReport = ({
           }
         }
 
-        console.log("Selected best day:", best);
+  
         setBestDay(best);
       } else {
-        console.log("No valid data for best day");
+  
         setBestDay(null);
       }
     } else {
-      console.log("No revenue data for best day");
+     
       setBestDay(null);
     }
   }, [revenueData]);

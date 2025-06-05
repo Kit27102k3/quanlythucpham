@@ -4,6 +4,7 @@ import { getDashboardStats } from "../Controller/dashboardController.js";
 
 const router = express.Router();
 
-router.get("/stats",  getDashboardStats);
+router.get("/stats", getDashboardStats);
+router.get("/", getDashboardStats); // Add root path for /api/dashboard
 
 export default router; 

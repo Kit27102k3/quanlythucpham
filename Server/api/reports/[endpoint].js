@@ -4,6 +4,7 @@ export const config = {
 };
 
 import reportsController from '../../controllers/reportsController.js';
+import BestSellingProduct from '../../src/Model/BestSellingProduct.js';
 
 /**
  * Serverless function to handle all report-related API requests
@@ -19,12 +20,16 @@ export default async function handler(request, context) {
   const timeRange = url.searchParams.get('timeRange') || 'week';
   const paymentMethod = url.searchParams.get('paymentMethod') || 'all';
   const region = url.searchParams.get('region') || 'all';
+  const limit = parseInt(url.searchParams.get('limit') || '5', 10);
   
-  // Mock authentication check - in a real app, this would validate auth tokens
-  // const isAuthenticated = request.headers.get('Authorization') === 'Bearer valid-token';
-  const isAuthenticated = true; // For demo purposes
+  // Kiểm tra xác thực
+  const authHeader = request.headers.get('Authorization');
+  const isAuthenticated = authHeader && authHeader.startsWith('Bearer ');
   
-  if (!isAuthenticated) {
+  // Bỏ qua xác thực cho môi trường phát triển hoặc test
+  const isDevelopment = true; // Tạm thời bỏ qua xác thực cho tất cả môi trường
+  
+  if (!isAuthenticated && !isDevelopment) {
     return new Response(
       JSON.stringify({ error: 'Unauthorized access' }),
       {
@@ -48,7 +53,27 @@ export default async function handler(request, context) {
         responseData = await mockControllerResponse(reportsController.getRevenueData, { timeRange, paymentMethod, region });
         break;
       case 'top-products':
-        responseData = await mockControllerResponse(reportsController.getTopProducts);
+        try {
+          // Trực tiếp sử dụng model BestSellingProduct
+          const bestSellingProducts = await BestSellingProduct.getBestSellers(limit);
+          
+          if (bestSellingProducts && bestSellingProducts.length > 0) {
+            responseData = bestSellingProducts.map(product => ({
+              name: product.productName,
+              category: product.productCategory,
+              sold: product.soldCount,
+              revenue: product.totalRevenue,
+              image: product.productImage,
+              id: product.productId
+            }));
+          } else {
+            // Fallback to controller if no products found
+            responseData = await mockControllerResponse(reportsController.getTopProducts, { limit });
+          }
+        } catch (error) {
+          console.error('Error fetching top products:', error);
+          responseData = await mockControllerResponse(reportsController.getTopProducts, { limit });
+        }
         break;
       case 'inventory':
         responseData = await mockControllerResponse(reportsController.getInventoryData);

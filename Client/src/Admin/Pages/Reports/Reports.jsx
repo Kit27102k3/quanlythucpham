@@ -59,7 +59,6 @@ const Reports = () => {
     try {
       const data = await fetchFunction();
       if (data) {
-        console.log('Using API data');
         setter(data);
       } else {
         console.warn('API returned empty or null data');
@@ -135,11 +134,9 @@ const Reports = () => {
           // System activity data
           fetchData(
             () => {
-              console.log("Fetching system activity data");
               return reportsApi.getSystemActivityData(timeRange);
             },
             (data) => {
-              console.log("Setting system activity data:", data);
               setSystemActivityData(data);
             }
           ),

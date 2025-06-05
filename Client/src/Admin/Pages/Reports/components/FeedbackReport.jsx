@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react/prop-types */
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { Typography, Card, Space, Row, Col, Divider, Rate, Progress, Table, Avatar, Tag, Skeleton, Empty, Alert } from 'antd';
@@ -24,7 +26,6 @@ const FeedbackReport = () => {
         setFeedbackData(data);
         setError(null);
       } catch (err) {
-        console.error('Error fetching feedback data:', err);
         setError('Không thể tải dữ liệu phản hồi. Vui lòng thử lại sau.');
       } finally {
         setLoading(false);
@@ -59,7 +60,6 @@ const FeedbackReport = () => {
     return <Empty description="Không có dữ liệu phản hồi" />;
   }
 
-  // Dữ liệu mẫu cho trường hợp API chưa trả về đúng cấu trúc
   const sampleData = {
     totalReviews: feedbackData.totalReviews || 0,
     averageRating: feedbackData.averageRating ? parseFloat(feedbackData.averageRating.toFixed(1)) : 0,
@@ -77,21 +77,18 @@ const FeedbackReport = () => {
 
   const { totalReviews, averageRating, ratingDistribution, recentReviews, topReviewedProducts, reviewsOverTime } = sampleData;
 
-  // Format data for rating distribution chart
   const chartData = ratingDistribution.map(item => ({
     name: `${item.rating} sao`,
     count: item.count,
     percentage: totalReviews > 0 ? Math.round((item.count / totalReviews) * 100) : 0
   }));
 
-  // Format data for reviews over time chart
   const timeChartData = reviewsOverTime?.map(item => ({
     date: formatDate(item.date, { dateOnly: true }),
     'Số lượng': item.count,
     'Đánh giá TB': item.avgRating || 0
   })) || [];
 
-  // Configure columns for recent reviews table
   const recentReviewColumns = [
     {
       title: 'Khách hàng',
@@ -147,7 +144,6 @@ const FeedbackReport = () => {
     },
   ];
 
-  // Custom tooltip for rating distribution chart
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;

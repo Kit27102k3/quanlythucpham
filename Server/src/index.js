@@ -224,6 +224,7 @@ app.get("/api/reports/promotions", reportsController.getPromotionData);
 app.get("/api/reports/system-activity", reportsController.getSystemActivityData);
 app.get("/api/reports/delivery", reportsController.getDeliveryData);
 app.get("/api/reports/feedback", reportsController.getFeedbackData);
+app.get("/admin/dashboard", reportsController.getDashboardStats);
 const webhookPaths = [
   "/webhook",
   "/api/webhook",

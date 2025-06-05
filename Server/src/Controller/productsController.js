@@ -42,10 +42,11 @@ export const updateProductExpirations = async () => {
 
     for (const product of expiryDateProducts) {
       product.productStatus = "Hết hàng";
-      product.productStock = 0;
+      // Không đặt lại số lượng tồn kho về 0
+      // Giữ nguyên số lượng tồn kho hiện tại
       await product.save();
       console.log(
-        `Đã cập nhật trạng thái "Hết hàng" cho sản phẩm: ${product.productName}`
+        `Đã cập nhật trạng thái "Hết hàng" cho sản phẩm: ${product.productName} (giữ nguyên số lượng tồn kho: ${product.productStock})`
       );
     }
 
@@ -681,17 +682,12 @@ export const getBestSellingProducts = async (req, res) => {
             "productName productPrice productStatus productImages productDiscount productStock productCategory",
         });
     } catch (modelError) {
-      console.error(
-        "[getBestSellingProducts] Lỗi khi truy vấn model BestSellingProduct:",
-        modelError
-      );
+      console.error(modelError);
     }
 
     // Nếu không có sản phẩm bán chạy, lấy sản phẩm thông thường
     if (!bestSellingProducts || bestSellingProducts.length === 0) {
-      console.log(
-        "[getBestSellingProducts] Không có dữ liệu sản phẩm bán chạy, lấy sản phẩm thông thường..."
-      );
+      console.log("Không tìm thấy sản phẩm bán chạy");
 
       try {
         const normalProducts = await Product.find({
@@ -701,20 +697,13 @@ export const getBestSellingProducts = async (req, res) => {
           .sort({ createdAt: -1 })
           .limit(limit);
 
-        console.log(
-          `[getBestSellingProducts] Tìm thấy ${normalProducts.length} sản phẩm thông thường để thay thế`
-        );
-
         return res.status(200).json({
           success: true,
           message: "Trả về sản phẩm thông thường thay thế",
           data: normalProducts,
         });
       } catch (productError) {
-        console.error(
-          "[getBestSellingProducts] Lỗi khi lấy sản phẩm thông thường:",
-          productError
-        );
+        console.error(productError);
         return res.status(200).json({
           success: true,
           message: "Không tìm thấy sản phẩm nào",
@@ -740,17 +729,13 @@ export const getBestSellingProducts = async (req, res) => {
       })
       .filter((item) => item !== null && item !== undefined);
 
-    console.log(
-      `[getBestSellingProducts] Trả về ${formattedProducts.length} sản phẩm bán chạy đã định dạng`
-    );
-
     return res.status(200).json({
       success: true,
       message: "Lấy danh sách sản phẩm bán chạy thành công",
       data: formattedProducts,
     });
   } catch (error) {
-    console.error("[getBestSellingProducts] Lỗi:", error.message);
+    console.error(error.message);
     return res.status(200).json({
       success: true,
       message: "Đã xảy ra lỗi khi lấy sản phẩm bán chạy",

@@ -5,6 +5,7 @@ import Product from "../Model/Product.js";
 import Review from "../Model/Review.js";
 import SystemLog from "../Model/SystemLog.js";
 import Coupon from "../Model/Coupon.js";
+import mongoose from "mongoose";
 
 /**
  * Reports controller to handle API requests for generating various reports
@@ -90,28 +91,35 @@ const reportsController = {
     }
   },
 
-  // Top products
+  // Top selling products
   getTopProducts: async (req, res) => {
     try {
-      const limit = parseInt(req.query.limit) || 5;
-      const bestSellingProducts = await BestSellingProduct.getBestSellers(
-        limit,
-        "month"
-      );
-
-      res.json(
-        bestSellingProducts.map((product) => ({
-          name: product.productName,
-          category: product.productCategory,
-          sold: product.soldCount,
-          revenue: product.totalRevenue,
-        }))
-      );
+      const { limit = 5, period = 'all' } = req.query;
+      
+      // Lấy danh sách sản phẩm bán chạy
+      const topProducts = await BestSellingProduct.getBestSellers(parseInt(limit, 10), period);
+      
+      if (!topProducts || topProducts.length === 0) {
+        // Nếu không có dữ liệu, trả về dữ liệu trống
+        return res.json([]);
+      }
+      
+      // Chuyển đổi dữ liệu thành định dạng cần thiết
+      const formattedProducts = topProducts.map(product => {
+        return {
+          name: product.productName || (product.productId ? product.productId.productName : 'Không xác định'),
+          category: product.productCategory || (product.productId ? product.productId.productCategory : 'Không phân loại'),
+          sold: product.soldCount || 0,
+          revenue: product.totalRevenue || 0,
+          image: product.productImage || (product.productId && product.productId.productImages && product.productId.productImages.length > 0 ? product.productId.productImages[0] : ''),
+          id: product.productId ? product.productId._id : product._id
+        };
+      });
+      
+      res.json(formattedProducts);
     } catch (error) {
       console.error("Error in getTopProducts:", error);
-      res
-        .status(500)
-        .json({ message: "Lỗi khi lấy dữ liệu sản phẩm bán chạy" });
+      res.status(500).json({ message: "Lỗi khi lấy danh sách sản phẩm bán chạy" });
     }
   },
 

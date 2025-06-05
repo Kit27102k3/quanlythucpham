@@ -102,7 +102,7 @@ const DashboardReport = ({
         // Use the dashboardApi to get complete dashboard data
         const dashboardResponse = await dashboardApi.getCompleteDashboardData();
         if (dashboardResponse) {
-          console.log("Dashboard data loaded:", dashboardResponse);
+          
           setDashboardData(dashboardResponse);
         } else {
           throw new Error("Không thể tải dữ liệu tổng quan");
@@ -110,9 +110,8 @@ const DashboardReport = ({
         
         // Get revenue data for charts in a separate try-catch
         try {
-          console.log("Fetching revenue data...");
+         
           const revenueResponse = await dashboardApi.getRevenueData("week");
-          console.log("Revenue data received:", revenueResponse);
           
           if (revenueResponse && Array.isArray(revenueResponse) && revenueResponse.length > 0) {
             // Make sure revenue data has the right format
@@ -122,7 +121,6 @@ const DashboardReport = ({
                         (typeof item.revenue === 'number' ? item.revenue : 0)
             }));
             
-            console.log("Processed revenue data:", processedData);
             setRevenueData(processedData);
           } else {
             console.warn("Revenue data is empty or not an array:", revenueResponse);
@@ -155,7 +153,6 @@ const DashboardReport = ({
               doanh_thu: Math.floor(Math.random() * 5000000)
             });
           }
-          console.log("Using dummy revenue data after error:", dummyData);
           setRevenueData(dummyData);
         }
         
@@ -182,7 +179,6 @@ const DashboardReport = ({
         }
         
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
         setHasError(true);
         setErrorMessage(error.message || "Không thể kết nối đến máy chủ");
         
@@ -320,7 +316,9 @@ const DashboardReport = ({
                 Doanh thu theo thời gian
               </h3>
               <MuiTooltip title="Doanh thu 7 ngày gần nhất">
-                <FaChartLine className="text-gray-500" />
+                <div>
+                  <FaChartLine className="text-gray-500" />
+                </div>
               </MuiTooltip>
             </div>
             <div className="chart-container">
@@ -346,7 +344,9 @@ const DashboardReport = ({
                 Top 5 sản phẩm bán chạy
               </h3>
               <MuiTooltip title="Sản phẩm bán chạy nhất">
-                <FaShoppingBasket className="text-gray-500" />
+                <div>
+                  <FaShoppingBasket className="text-gray-500" />
+                </div>
               </MuiTooltip>
             </div>
             <ErrorBoundary>
@@ -432,7 +432,9 @@ const DashboardReport = ({
                   </svg>
                 </button>
                 <MuiTooltip title="Hàng tồn kho thấp">
-                  <FaWarehouse className="text-gray-500" />
+                  <div>
+                    <FaWarehouse className="text-gray-500" />
+                  </div>
                 </MuiTooltip>
               </div>
             </div>
@@ -550,7 +552,9 @@ const DashboardReport = ({
                 Hoạt động gần đây
               </h3>
               <MuiTooltip title="Các hoạt động của hệ thống">
-                <FiActivity className="text-gray-500" />
+                <div>
+                  <FiActivity className="text-gray-500" />
+                </div>
               </MuiTooltip>
             </div>
             <div className="bg-gray-50 rounded-lg p-4">

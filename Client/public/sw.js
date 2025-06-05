@@ -66,49 +66,14 @@ self.addEventListener('notificationclick', (event) => {
       // Check if there is already a window/tab open with the target URL
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
-        // console.log('[Service Worker] Found client:', client.url);
         
-        // If so, just focus it.
         if (client.url === url && 'focus' in client) {
-          // console.log('[Service Worker] Focusing existing client');
           return client.focus();
         }
       }
-      
-      // If not, open a new window/tab
-      // console.log('[Service Worker] Opening new client');
+
       return clients.openWindow(url);
     })
   );
 });
 
-// Optional: Cache static assets (basic example)
-// self.addEventListener('install', (event) => {
-//   event.waitUntil(
-//     caches.open('static-cache-v1').then((cache) => {
-//       return cache.addAll([
-//         '/',
-//         '/index.html',
-//         '/styles.css',
-//         '/script.js'
-//         // Add other static assets here
-//       ]);
-//     })
-//   );
-// });
-
-// Optional: Clean up old caches
-// self.addEventListener('activate', (event) => {
-//   const cacheWhitelist = ['static-cache-v1'];
-//   event.waitUntil(
-//     caches.keys().then((cacheNames) => {
-//       return Promise.all(
-//         cacheNames.map((cacheName) => {
-//           if (cacheWhitelist.indexOf(cacheName) === -1) {
-//             return caches.delete(cacheName);
-//           }
-//         })
-//       );
-//     })
-//   );
-// }); 

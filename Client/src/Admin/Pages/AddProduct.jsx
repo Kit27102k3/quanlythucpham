@@ -219,12 +219,9 @@ const AddProduct = ({ onHide, onAddSuccess }) => {
     if (name === "productCategory") {
       const categoryId = e.value;
 
-      console.log("Selected category ID:", categoryId);
-
       // Tìm tên danh mục dựa vào ID
       const selectedCat = categories.find((cat) => cat._id === categoryId);
       if (selectedCat) {
-        console.log("Found category:", selectedCat);
 
         setProduct((prev) => ({
           ...prev,

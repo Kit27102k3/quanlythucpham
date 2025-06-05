@@ -297,8 +297,7 @@ const EditProduct = ({
       // Tìm tên danh mục dựa vào ID
       const selectedCat = categories.find(cat => cat._id === categoryId);
       if (selectedCat) {
-        console.log("Found category:", selectedCat);
-        
+       
         setEditedProduct(prev => ({
           ...prev,
           productCategory: selectedCat.nameCategory,
