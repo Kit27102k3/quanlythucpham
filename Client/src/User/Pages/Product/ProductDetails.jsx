@@ -14,6 +14,7 @@ import { Star, StarHalf } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import cartApi from "../../../api/cartApi";
 import axios from "axios";
+import { API_BASE_URL } from "../../../config/apiConfig";
 
 const Kitchen = lazy(() => import("./Kitchen"));
 
@@ -62,7 +63,6 @@ export default function ProductDetails() {
     const fetchProduct = async () => {
       try {
         const allProducts = await productsApi.getAllProducts();
-        console.log(allProducts);
 
         const product = allProducts.find(
           (p) =>
@@ -74,6 +74,23 @@ export default function ProductDetails() {
               .replace(/(^-|-$)/g, "") === slug
         );
         if (product) {
+          // Fetch branch name if branchId exists
+          if (product.branchId) {
+            try {
+              const token = localStorage.getItem("accessToken");
+              const headers = token ? { Authorization: `Bearer ${token}` } : {};
+              const branchResponse = await axios.get(
+                `${API_BASE_URL}/api/branches/${product.branchId}`,
+                { headers }
+              );
+              if (branchResponse.data && branchResponse.data.branch) {
+                product.branchName = branchResponse.data.branch.name;
+              }
+            } catch (branchError) {
+              console.error("Error fetching branch info:", branchError);
+            }
+          }
+
           setProducts(product);
           setProductImages(product.productImages);
           setSelectedImage(product.productImages[0] || null);
@@ -717,7 +734,7 @@ export default function ProductDetails() {
 
       // Gọi API để tạo payment
       const response = await axios.post("/api/payments", paymentData);
-      
+
       // Chuyển hướng đến trang thanh toán
       const paymentId = response.data?._id || response.data?.data?._id;
       if (paymentId) {
@@ -786,8 +803,18 @@ export default function ProductDetails() {
                   </p>
                 </div>
 
+                {/* Chi nhánh */}
+                <p className="text-[12px] text-left mt-1">
+                  Chi nhánh:{" "}
+                  <span className="text-[#51bb1a]">
+                    {products?.branchName || "Chi nhánh chính"}
+                  </span>
+                </p>
+
                 <div className="flex items-center gap-4">
-                  <span className="text-gray-700 font-medium text-xl">Giá:</span>
+                  <span className="text-gray-700 font-medium text-xl">
+                    Giá:
+                  </span>
                   {products && products.productDiscount > 0 ? (
                     <div className="flex items-center mt-1">
                       <span className="text-3xl font-bold text-[#51bb1a]">
@@ -811,7 +838,6 @@ export default function ProductDetails() {
                       </span>
                     </div>
                   )}
-
                 </div>
               </div>
 
@@ -938,8 +964,7 @@ export default function ProductDetails() {
                             : " text-gray-700 border-gray-300 hover:border-[#51bb1a]"
                         }`}
                       >
-                        {unit.conversionRate}{" "}
-                        {unit.unit}
+                        {unit.conversionRate} {unit.unit}
                       </button>
                     ))}
                   </div>
@@ -972,7 +997,9 @@ export default function ProductDetails() {
                       className="border border-[#51bb1a] w-full cursor-pointer text-[#51bb1a] text-sm p-2 mt-4 flex flex-col hover:bg-[#f0f9ed]"
                     >
                       <span className="uppercase">THÊM VÀO GIỎ HÀNG</span>
-                      <span className="text-[12px]">Thêm sản phẩm vào giỏ hàng của bạn</span>
+                      <span className="text-[12px]">
+                        Thêm sản phẩm vào giỏ hàng của bạn
+                      </span>
                     </button>
                   </div>
                 )}
