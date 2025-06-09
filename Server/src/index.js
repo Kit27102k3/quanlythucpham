@@ -54,8 +54,8 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 import { customerActivityLogger } from "./Middleware/customerLogMiddleware.js";
 
 // Import specific controller for direct endpoint handling
-import { getBestSellingProducts } from "./Controller/productsController.js";
-import { updateProductExpirations } from "./Controller/productsController.js";
+import { getBestSellingProducts } from "./Controller/Products/ProductRankingController.js";
+import { updateProductExpirations } from "./Controller/Products/ProductUtilsController.js";
 
 dotenv.config({ path: ".env" });
 const app = express();

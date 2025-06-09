@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from "react";
 import { toast, Toaster } from 'sonner';
 import reviewsApi from "../../api/reviewsApi";
 import productsApi from "../../api/productsApi";
+import { useState, useEffect } from "react";
 import {
   Star,
   StarHalf,
   Eye,
   EyeOff,
-  CheckCircle,
   XCircle,
   MessageCircle,
   Save,
@@ -18,7 +17,7 @@ import {
 import Pagination from "../../utils/Paginator";
 import "./styles.css";
 
- function Reviews() {
+const Reviews = () => {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

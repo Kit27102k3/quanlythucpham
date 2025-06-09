@@ -10,7 +10,11 @@ const productSchema = new mongoose.Schema(
     productBrand: { type: String, trim: true },
     productBrandId: { type: mongoose.Schema.Types.ObjectId, ref: "Brand" },
     productSupplier: { type: String, trim: true },
-    productSupplierId: { type: mongoose.Schema.Types.ObjectId, ref: "Supplier" },
+    productSupplierId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Supplier",
+    },
+    branchId: { type: mongoose.Schema.Types.ObjectId, ref: "Branch" },
     productStatus: { type: String, trim: true },
     productDiscount: { type: Number, default: 0 },
     productInfo: { type: String, trim: true },
@@ -24,14 +28,16 @@ const productSchema = new mongoose.Schema(
     productIntroduction: { type: String, trim: true },
     productUnit: { type: String, default: "gram", trim: true },
     unitOptions: {
-      type: [{
-        unit: { type: String, required: true, trim: true },
-        price: { type: Number, required: true },
-        conversionRate: { type: Number, required: true, default: 1 },
-        inStock: { type: Number, default: 0 },
-        isDefault: { type: Boolean, default: false }
-      }],
-      default: []
+      type: [
+        {
+          unit: { type: String, required: true, trim: true },
+          price: { type: Number, required: true },
+          conversionRate: { type: Number, required: true, default: 1 },
+          inStock: { type: Number, default: 0 },
+          isDefault: { type: Boolean, default: false },
+        },
+      ],
+      default: [],
     },
     discountStartDate: { type: Date, default: null },
     discountEndDate: { type: Date, default: null },
@@ -43,31 +49,31 @@ const productSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-productSchema.methods.isDiscountActive = function() {
+productSchema.methods.isDiscountActive = function () {
   if (!this.discountStartDate || !this.discountEndDate) {
     return this.productDiscount > 0;
   }
-  
+
   const now = new Date();
   return (
-    this.productDiscount > 0 && 
-    now >= this.discountStartDate && 
+    this.productDiscount > 0 &&
+    now >= this.discountStartDate &&
     now <= this.discountEndDate
   );
 };
 
-productSchema.methods.toJSON = function() {
+productSchema.methods.toJSON = function () {
   const productObject = this.toObject();
-  
+
   if (!this.isDiscountActive()) {
     productObject.productDiscount = 0;
     productObject.productPromoPrice = 0;
   }
-  
+
   return productObject;
 };
 
-productSchema.methods.updateSoldCount = async function(quantity) {
+productSchema.methods.updateSoldCount = async function (quantity) {
   this.soldCount += quantity;
   await this.save();
 };

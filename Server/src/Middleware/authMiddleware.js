@@ -81,7 +81,7 @@ export const isAdmin = (req, res, next) => {
       return res.status(401).json({ message: "Chưa xác thực người dùng" });
     }
 
-    if (req.user.role !== "admin") {
+    if (req.user.role !== "admin" && req.user.role !== "manager") {
       return res
         .status(403)
         .json({ message: "Không có quyền thực hiện hành động này" });

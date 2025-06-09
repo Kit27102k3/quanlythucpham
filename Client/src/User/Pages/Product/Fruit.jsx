@@ -94,93 +94,93 @@ function Fruit() {
   const [isLoading, setIsLoading] = useState(true);
   const { handleAddToCart, handleClick, getPrice } = useCartAndNavigation();
   const [isMobile, setIsMobile] = useState(false);
-  
+
   // State cho hiệu ứng fade của hình ảnh trên mobile
   const [activeImage, setActiveImage] = useState(0);
   const [isChangingBanner, setIsChangingBanner] = useState(false);
-  
+
   // State để theo dõi trang hiện tại của sản phẩm trên mobile và PC
   const [currentPage, setCurrentPage] = useState(0);
   const itemsPerPage = isMobile ? 2 : 4; // Hiển thị 2 sản phẩm mỗi trang trên mobile, 4 trên PC
-  
+
   // Danh sách hình ảnh
   const bannerImages = [
     {
       src: "https://images.pexels.com/photos/68525/soap-colorful-color-fruit-68525.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-      alt: "Khuyến mãi đặc biệt cho trái cây"
+      alt: "Khuyến mãi đặc biệt cho trái cây",
     },
     {
       src: "https://images.pexels.com/photos/1092730/pexels-photo-1092730.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
-      alt: "Ưu đãi trái cây nhập khẩu"
-    }
+      alt: "Ưu đãi trái cây nhập khẩu",
+    },
   ];
-  
+
   // Tính toán số trang dựa trên số lượng sản phẩm
   const getTotalPages = (items) => {
     return Math.ceil(items.length / itemsPerPage);
   };
-  
+
   // Xử lý chuyển trang sản phẩm
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
   };
-  
+
   // Lấy các sản phẩm cho trang hiện tại
   const getPaginatedProducts = (items, page) => {
     const startIndex = page * itemsPerPage;
     return items.slice(startIndex, startIndex + itemsPerPage);
   };
-  
+
   // Xử lý swipe gesture cho sản phẩm trên mobile
   const swipeRef = useRef(null);
   const [touchStart, setTouchStart] = useState(0);
   const [touchEnd, setTouchEnd] = useState(0);
-  
+
   const handleTouchStart = (e) => {
     setTouchStart(e.targetTouches[0].clientX);
   };
-  
+
   const handleTouchMove = (e) => {
     setTouchEnd(e.targetTouches[0].clientX);
   };
-  
+
   const handleTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
-    
+
     const distance = touchStart - touchEnd;
     const isLeftSwipe = distance > 50;
     const isRightSwipe = distance < -50;
-    
+
     if (isLeftSwipe && currentPage < getTotalPages(products) - 1) {
       handlePageChange(currentPage + 1);
     }
-    
+
     if (isRightSwipe && currentPage > 0) {
       handlePageChange(currentPage - 1);
     }
-    
+
     // Reset values
     setTouchStart(0);
     setTouchEnd(0);
   };
-  
+
   // Đổi hình mỗi 5 giây trên mobile
   useEffect(() => {
     if (isMobile) {
       const interval = setInterval(() => {
         setIsChangingBanner(true);
         setTimeout(() => {
-          setActiveImage(prev => (prev === 0 ? 1 : 0));
+          setActiveImage((prev) => (prev === 0 ? 1 : 0));
           setTimeout(() => {
             setIsChangingBanner(false);
           }, 500);
         }, 300);
       }, 5000);
-      
+
       return () => clearInterval(interval);
     }
   }, [isMobile]);
-  
+
   // Xử lý khi người dùng click vào dots
   const handleBannerDotClick = (index) => {
     if (index !== activeImage && !isChangingBanner) {
@@ -215,21 +215,21 @@ function Fruit() {
       }
     };
     fetchProductCategory();
-    
+
     // Kiểm tra kích thước màn hình khi component mount
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 1024);
     };
-    
+
     // Chạy lần đầu
     checkIsMobile();
 
     // Thêm listener
-    window.addEventListener('resize', checkIsMobile);
-    
+    window.addEventListener("resize", checkIsMobile);
+
     // Cleanup
     return () => {
-      window.removeEventListener('resize', checkIsMobile);
+      window.removeEventListener("resize", checkIsMobile);
     };
   }, []);
 
@@ -256,7 +256,7 @@ function Fruit() {
         >
           Trái cây nhập khẩu
         </motion.h2>
-        
+
         {/* Banner đầu trang - thống nhất cho cả mobile và desktop */}
         <div className="w-full mb-6 hide-on-pc">
           <div className="w-full h-[150px] relative rounded-lg overflow-hidden shadow-md">
@@ -268,22 +268,25 @@ function Fruit() {
                 loading="lazy"
                 className="w-full h-[150px] object-cover absolute top-0 left-0"
                 initial={{ opacity: 0 }}
-                animate={{ 
+                animate={{
                   opacity: activeImage === index ? 1 : 0,
                   scale: activeImage === index ? 1 : 0.95,
-                  filter: isChangingBanner && activeImage === index ? 'brightness(1.2)' : 'brightness(1)'
+                  filter:
+                    isChangingBanner && activeImage === index
+                      ? "brightness(1.2)"
+                      : "brightness(1)",
                 }}
-                transition={{ 
+                transition={{
                   duration: 0.8,
                   ease: "easeInOut",
                   scale: {
                     duration: 1.2,
-                    ease: "easeOut"
-                  }
+                    ease: "easeOut",
+                  },
                 }}
               />
             ))}
-            
+
             {/* Dots điều khiển cho banner images */}
             <div className="absolute bottom-2 left-0 right-0 flex justify-center space-x-2 z-10">
               {bannerImages.map((_, index) => (
@@ -322,7 +325,7 @@ function Fruit() {
               >
                 {/* Hiển thị sản phẩm với hiệu ứng slide */}
                 <AnimatePresence mode="wait">
-                  <motion.div 
+                  <motion.div
                     key={currentPage}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -334,22 +337,24 @@ function Fruit() {
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                   >
-                    {getPaginatedProducts(products, currentPage).map((product) => (
-                      <ProductItem
-                        key={product._id}
-                        product={product}
-                        handleAddToCart={handleAddToCart}
-                        handleClick={handleClick}
-                        getPrice={getPrice}
-                      />
-                    ))}
+                    {getPaginatedProducts(products, currentPage).map(
+                      (product) => (
+                        <ProductItem
+                          key={product._id}
+                          product={product}
+                          handleAddToCart={handleAddToCart}
+                          handleClick={handleClick}
+                          getPrice={getPrice}
+                        />
+                      )
+                    )}
                   </motion.div>
                 </AnimatePresence>
               </motion.div>
             )}
           </div>
         </motion.div>
-        
+
         {/* Điều hướng trang sản phẩm - hiển thị trên cả mobile và PC */}
         {products.length > itemsPerPage && (
           <div className="w-full flex flex-col items-center mt-4">
@@ -361,7 +366,9 @@ function Fruit() {
                     key={index}
                     onClick={() => handlePageChange(index)}
                     className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                      currentPage === index ? 'bg-[#51aa1b] w-3.5' : 'bg-gray-300'
+                      currentPage === index
+                        ? "bg-[#51aa1b] w-3.5"
+                        : "bg-gray-300"
                     }`}
                     aria-label={`Đến trang ${index + 1}`}
                   />

@@ -15,7 +15,7 @@ import Address from "../User/Pages/Profile/Address";
 import Payment from "../User/Pages/Cart/Payment";
 import ResetPassword from "../User/Pages/Account/ResetPassword";
 import Dashboard from "../Admin/Pages/Dashboard";
-import Products from "../Admin/Pages/Products";
+import Products from "../Admin/Pages/Products/Products";
 import Categories from "../Admin/Pages/Categories";
 import Customers from "../Admin/Pages/Customers";
 import CustomerDetails from "../Admin/Pages/CustomerDetails";

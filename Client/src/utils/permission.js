@@ -32,6 +32,8 @@ export const canAccess = (role, pageKey) => {
         "messages",
         "orders",
         "suppliers",
+        "products",
+        "categories",
         "brands",
       ],
       employee: ["reviews", "contacts", "messages", "orders"],

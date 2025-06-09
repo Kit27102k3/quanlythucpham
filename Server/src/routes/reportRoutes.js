@@ -5,7 +5,7 @@ import Product from "../Model/Products.js";
 import User from "../Model/Register.js";
 import Category from "../Model/Category.js"; // Added missing import
 import { verifyToken as authMiddleware } from "../Middleware/authMiddleware.js";
-import { getLowStockProducts, getTopSellingProducts } from "../Controller/ProductController.js";
+import { getLowStockProducts, getTopSellingProducts } from "../Controller/Products/ProductAnalyticsController.js";
 
 const router = express.Router();
 

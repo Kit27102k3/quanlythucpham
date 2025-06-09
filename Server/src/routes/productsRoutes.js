@@ -1,40 +1,31 @@
 // server/routes/productsRoutes.js
 import express from "express";
-import {
-  createProduct,
-  getAllProducts,
-  updateProduct,
-  getProductById,
-  deleteProduct,
-  searchProducts,
-  getProductByCategory,
-  getProductBySlug,
-  getBestSellingProducts,
-  getTopRatedProducts,
-  checkAndUpdateExpirations,
-} from "../Controller/productsController.js";
-import { getInventory } from '../../controllers/productController.js';
+import * as ProductController from "../Controller/Products/index.js";
 import { verifyToken, isAdmin } from "../Middleware/authMiddleware.js";
+import { getInventory, getProductsByBranch } from "../Controller/Products/ProductQueryController.js";
 
 const router = express.Router();
 
 // Public routes
-router.get("/products", getAllProducts);
-router.get("/products/search", searchProducts);
-router.get("/products/best-selling", getBestSellingProducts);
-router.get("/products/best-sellers", getBestSellingProducts);
-router.get("/products/top-rated", getTopRatedProducts);
-router.get("/products/category/:category", getProductByCategory);
-router.get("/products/slug/:slug", getProductBySlug);
-router.get("/products/:id", getProductById);
+router.get("/products", ProductController.getAllProducts);
+router.get("/products/search", ProductController.searchProducts);
+router.get("/products/best-selling", ProductController.getBestSellingProductsCustom);
+router.get("/products/best-sellers", ProductController.getBestSellingProductsCustom);
+router.get("/products/top-rated", ProductController.getTopRatedProducts);
+router.get("/products/category/:category", ProductController.getProductByCategory);
+router.get("/products/slug/:slug", ProductController.getProductBySlug);
+router.get("/products/:id", ProductController.getProductById);
+router.get("/inventory", ProductController.getInventory);
 
 // Protected routes (require authentication)
-router.post("/products", verifyToken, isAdmin, createProduct);
-router.put("/products/:id", verifyToken, isAdmin, updateProduct);
-router.delete("/products/:id", verifyToken, isAdmin, deleteProduct);
-router.get('/inventory', getInventory);
+router.post("/products", verifyToken, isAdmin, ProductController.createProduct);
+router.put("/products/:id", verifyToken, isAdmin, ProductController.updateProduct);
+router.delete("/products/:id", verifyToken, isAdmin, ProductController.deleteProduct);
 
 // Thêm route kiểm tra và cập nhật hạn sử dụng và giảm giá
-router.get("/check-expirations", verifyToken, isAdmin, checkAndUpdateExpirations);
+router.get("/check-expirations", verifyToken, isAdmin, ProductController.checkAndUpdateExpirations);
+
+// Add the route for getting products by branch
+router.get("/branch/:branchId", getProductsByBranch);
 
 export default router;

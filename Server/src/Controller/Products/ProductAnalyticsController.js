@@ -1,6 +1,6 @@
-import BestSellingProduct from "../Model/BestSellingProduct.js";
-import Product from "../Model/Products.js";
-import Order from "../Model/Order.js";
+import BestSellingProduct from "../../Model/BestSellingProduct.js";
+import Product from "../../Model/Products.js";
+import Order from "../../Model/Order.js";
 
 // Get best selling products
 export const getBestSellingProducts = async (req, res) => {
@@ -153,4 +153,4 @@ export const getLowStockProducts = async (req, res) => {
     // Return empty array instead of mock data
     return res.json([]);
   }
-};
+}; 
