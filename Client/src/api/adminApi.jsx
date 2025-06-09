@@ -1,5 +1,5 @@
 import axios from "axios";
-import { API_BASE_URL } from '../config/apiConfig';
+import { API_BASE_URL } from "../config/apiConfig";
 import { instance as axiosInstance } from "./authApi";
 
 const API_URL = `${API_BASE_URL}/api`;
@@ -7,17 +7,16 @@ const API_URL = `${API_BASE_URL}/api`;
 const adminApi = {
   createAdmin: async (adminData) => {
     try {
-    
       const token = localStorage.getItem("accessToken");
       const response = await fetch(`${API_URL}/admin/create`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : ''
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
         },
-        body: JSON.stringify(adminData)
+        body: JSON.stringify(adminData),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Lỗi tạo admin từ server:", errorData);
@@ -25,28 +24,30 @@ const adminApi = {
           response: {
             status: response.status,
             statusText: response.statusText,
-            data: errorData
-          }
+            data: errorData,
+          },
         };
       }
-      
+
       const data = await response.json();
       return data;
     } catch (error) {
       console.error("Lỗi khi tạo admin:", error);
-      
+
       // Log chi tiết về lỗi
       if (error.response) {
         // Server trả về lỗi với mã trạng thái
         console.error("Chi tiết lỗi từ server:", {
           status: error.response.status,
           statusText: error.response.statusText,
-          data: error.response.data
+          data: error.response.data,
         });
-        
+
         // Nếu là lỗi 500, có thể là vấn đề ở phía server
         if (error.response.status === 500) {
-          console.error("Lỗi máy chủ 500, kiểm tra log phía server để biết thêm chi tiết");
+          console.error(
+            "Lỗi máy chủ 500, kiểm tra log phía server để biết thêm chi tiết"
+          );
         }
       } else if (error.request) {
         // Request đã được gửi nhưng không nhận được response
@@ -55,7 +56,7 @@ const adminApi = {
         // Lỗi khi thiết lập request
         console.error("Lỗi khi thiết lập request:", error.message);
       }
-      
+
       throw error;
     }
   },
@@ -76,12 +77,14 @@ const adminApi = {
       const headers = {
         "Content-Type": "application/json",
       };
-      
+
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      
-      const response = await axios.put(`${API_URL}/admin/${id}`, data, { headers });
+
+      const response = await axios.put(`${API_URL}/admin/${id}`, data, {
+        headers,
+      });
       return response.data;
     } catch (error) {
       console.error("Lỗi khi cập nhật admin:", error);
@@ -111,13 +114,16 @@ const adminApi = {
 
   updateRolePermissions: async (roleKey, permissions) => {
     try {
-      const response = await axiosInstance.put(`${API_URL}/roles/${roleKey}/permissions`, { permissions });
+      const response = await axiosInstance.put(
+        `${API_URL}/roles/${roleKey}/permissions`,
+        { permissions }
+      );
       return response.data;
     } catch (error) {
       console.error("Lỗi khi cập nhật quyền vai trò:", error);
       throw error;
     }
-  }
+  },
 };
 
 export default adminApi;

@@ -1,4 +1,6 @@
 import apiClient from "./axios";
+import axios from "axios";
+import { API_BASE_URL } from "../config/apiConfig";
 
 // Hàm lấy đánh giá của một sản phẩm
 const getProductReviews = async (productId) => {
@@ -205,37 +207,77 @@ export const addReplyToReview = async (reviewId, text) => {
     // Lấy token từ localStorage
     const token = localStorage.getItem("access_token");
     const accessToken = localStorage.getItem("accessToken");
-    const adminToken =
-      token === "admin-token-for-TKhiem" ||
-      accessToken === "admin-token-for-TKhiem"
-        ? "admin-token-for-TKhiem"
-        : null;
+    const adminToken = "admin-token-for-TKhiem";
+    
+    // Kiểm tra nếu user là admin hoặc manager
+    const userRole = localStorage.getItem("userRole");
+    const isAdmin = userRole === "admin" || userRole === "manager";
+    
+    // Sử dụng admin token nếu có quyền admin, ngược lại sử dụng token thông thường
+    const useAdminToken = isAdmin;
+    const effectiveToken = useAdminToken ? adminToken : (token || accessToken);
 
     // Kiểm tra nếu token tồn tại
-    if (!token && !accessToken && !adminToken) {
+    if (!effectiveToken) {
       throw new Error("Không tìm thấy token xác thực");
     }
-    // Headers đặc biệt cho admin token
-    const headers = {};
-    if (adminToken) {
+
+    // Lấy thông tin người dùng từ localStorage
+    const userId = localStorage.getItem("userId");
+    const userName = localStorage.getItem("userName") || localStorage.getItem("fullName") || "User";
+
+    console.log("[Debug] User info:", { userId, userName, userRole, isAdmin });
+    console.log("[Debug] Token info:", { 
+      useAdminToken,
+      effectiveToken: effectiveToken.substring(0, 10) + "..." 
+    });
+
+    // Tạo URL endpoint
+    const endpoint = `${API_BASE_URL}/api/reviews/${reviewId}/replies`;
+    
+    // Headers cho request
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${effectiveToken}`
+    };
+    
+    // Thêm admin-token header nếu sử dụng admin token
+    if (useAdminToken) {
       headers["admin-token"] = adminToken;
     }
 
+    // Tạo payload phù hợp với cấu trúc API server
+    const payload = {
+      text: text,
+      isAdmin: isAdmin
+    };
+
     console.log("[Debug] API request config:", {
-      url: `/api/reviews/${reviewId}/replies`,
+      url: endpoint,
       method: "POST",
-      headers,
-      params: adminToken ? { token: adminToken } : undefined,
+      headers: {
+        ...headers,
+        Authorization: headers.Authorization.substring(0, 20) + "..."
+      },
+      body: payload,
     });
 
-    const response = await apiClient.post(
-      `/api/reviews/${reviewId}/replies`,
-      { text },
-      adminToken ? { headers, params: { token: adminToken } } : undefined
-    );
+    // Sử dụng axios trực tiếp thay vì apiClient
+    const response = await axios({
+      method: 'post',
+      url: endpoint,
+      headers: headers,
+      data: payload
+    });
+    
+    console.log("[Debug] API response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error adding reply to review:", error);
+    if (error.response) {
+      console.error("Error status:", error.response.status);
+      console.error("Error data:", error.response.data);
+    }
     throw error;
   }
 };
@@ -246,36 +288,51 @@ export const updateReply = async (reviewId, replyId, text) => {
     // Lấy token từ localStorage
     const token = localStorage.getItem("access_token");
     const accessToken = localStorage.getItem("accessToken");
-    const adminToken =
-      token === "admin-token-for-TKhiem" ||
-      accessToken === "admin-token-for-TKhiem"
-        ? "admin-token-for-TKhiem"
-        : null;
+    const adminToken = "admin-token-for-TKhiem";
+    
+    // Kiểm tra nếu user là admin hoặc manager
+    const userRole = localStorage.getItem("userRole");
+    const isAdmin = userRole === "admin" || userRole === "manager";
+    
+    // Sử dụng admin token nếu có quyền admin, ngược lại sử dụng token thông thường
+    const useAdminToken = isAdmin;
+    const effectiveToken = useAdminToken ? adminToken : (token || accessToken);
 
     // Kiểm tra nếu token tồn tại
-    if (!token && !accessToken && !adminToken) {
+    if (!effectiveToken) {
       throw new Error("Không tìm thấy token xác thực");
     }
 
     console.log(
       "Using token for update reply:",
-      adminToken || token || accessToken
+      useAdminToken ? "admin-token" : "user-token"
     );
 
-    // Headers đặc biệt cho admin token
-    const headers = {};
-    if (adminToken) {
+    // Headers cho request
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${effectiveToken}`
+    };
+    
+    // Thêm admin-token header nếu sử dụng admin token
+    if (useAdminToken) {
       headers["admin-token"] = adminToken;
     }
 
-    const response = await apiClient.put(
-      `/api/reviews/${reviewId}/replies/${replyId}`,
-      { text },
-      adminToken ? { headers, params: { token: adminToken } } : undefined
-    );
+    const response = await axios({
+      method: 'put',
+      url: `${API_BASE_URL}/api/reviews/${reviewId}/replies/${replyId}`,
+      headers: headers,
+      data: { text }
+    });
+    
     return response.data;
   } catch (error) {
     console.error("Error updating reply:", error);
+    if (error.response) {
+      console.error("Error status:", error.response.status);
+      console.error("Error data:", error.response.data);
+    }
     throw error;
   }
 };
@@ -286,35 +343,50 @@ export const deleteReply = async (reviewId, replyId) => {
     // Lấy token từ localStorage
     const token = localStorage.getItem("access_token");
     const accessToken = localStorage.getItem("accessToken");
-    const adminToken =
-      token === "admin-token-for-TKhiem" ||
-      accessToken === "admin-token-for-TKhiem"
-        ? "admin-token-for-TKhiem"
-        : null;
+    const adminToken = "admin-token-for-TKhiem";
+    
+    // Kiểm tra nếu user là admin hoặc manager
+    const userRole = localStorage.getItem("userRole");
+    const isAdmin = userRole === "admin" || userRole === "manager";
+    
+    // Sử dụng admin token nếu có quyền admin, ngược lại sử dụng token thông thường
+    const useAdminToken = isAdmin;
+    const effectiveToken = useAdminToken ? adminToken : (token || accessToken);
 
     // Kiểm tra nếu token tồn tại
-    if (!token && !accessToken && !adminToken) {
+    if (!effectiveToken) {
       throw new Error("Không tìm thấy token xác thực");
     }
 
     console.log(
       "Using token for delete reply:",
-      adminToken || token || accessToken
+      useAdminToken ? "admin-token" : "user-token"
     );
 
-    // Headers đặc biệt cho admin token
-    const headers = {};
-    if (adminToken) {
+    // Headers cho request
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${effectiveToken}`
+    };
+    
+    // Thêm admin-token header nếu sử dụng admin token
+    if (useAdminToken) {
       headers["admin-token"] = adminToken;
     }
 
-    const response = await apiClient.delete(
-      `/api/reviews/${reviewId}/replies/${replyId}`,
-      adminToken ? { headers, params: { token: adminToken } } : undefined
-    );
+    const response = await axios({
+      method: 'delete',
+      url: `${API_BASE_URL}/api/reviews/${reviewId}/replies/${replyId}`,
+      headers: headers
+    });
+    
     return response.data;
   } catch (error) {
     console.error("Error deleting reply:", error);
+    if (error.response) {
+      console.error("Error status:", error.response.status);
+      console.error("Error data:", error.response.data);
+    }
     throw error;
   }
 };

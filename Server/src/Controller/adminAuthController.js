@@ -1,5 +1,5 @@
+/* eslint-disable no-undef */
 import Admin from "../Model/adminModel.js";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import RefreshToken from "../Model/RefreshToken.js";
