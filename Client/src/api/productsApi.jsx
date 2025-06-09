@@ -1,5 +1,5 @@
 import axios from "axios";
-import { API_BASE_URL } from '../config/apiConfig';
+import { API_BASE_URL } from "../config/apiConfig";
 // import { canAccess } from '../utils/permission';
 
 const API_URL = `${API_BASE_URL}/api/products`;
@@ -22,21 +22,23 @@ export const productsApi = {
     try {
       const token = localStorage.getItem("accessToken");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
+
       try {
-        // Thử gọi API endpoint chuyên biệt cho branch
-        const response = await axios.get(`${API_URL}/branch/${branchId}`, { headers });
+        const response = await axios.get(`${API_URL}/branch/${branchId}`, {
+          headers,
+        });
         return response.data;
       } catch (error) {
         // Nếu endpoint không tồn tại (404), lấy tất cả sản phẩm và lọc theo branchId
         if (error.response && error.response.status === 404) {
-          console.log(`API endpoint /branch/${branchId} không tồn tại, lọc sản phẩm từ danh sách đầy đủ`);
+          
           const allProductsResponse = await axios.get(API_URL, { headers });
           const allProducts = allProductsResponse.data;
-          
+
           if (Array.isArray(allProducts)) {
-            // Lọc sản phẩm có branchId trùng khớp
-            return allProducts.filter(product => product.branchId === branchId);
+            return allProducts.filter(
+              (product) => product.branchId === branchId
+            );
           }
           return [];
         }
@@ -63,34 +65,19 @@ export const productsApi = {
 
   createProduct: async (data) => {
     try {
-      console.log("API_URL used for creating product:", API_URL);
-      
-      // Log the data being sent for debugging
-      console.log("Data being sent:", data);
-      
       const token = localStorage.getItem("accessToken");
       const headers = {
         "Content-Type": "application/json",
       };
-      
+
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      
-      // Log the API request details
-      console.log("Making API request to:", API_URL);
-      console.log("With headers:", headers);
-      
+
       const response = await axios.post(API_URL, data, { headers });
-      console.log("Thêm sản phẩm thành công:", response.data);
       return response.data;
     } catch (error) {
       console.error("Lỗi khi thêm sản phẩm:", error);
-      if (error.response) {
-        console.error("Status:", error.response.status);
-        console.error("Headers:", error.response.headers);
-        console.error("Data:", error.response.data);
-      }
       throw error;
     }
   },
@@ -409,7 +396,7 @@ export const productsApi = {
 
   getProductByCategory: async (category, excludeId = null) => {
     try {
-      const url = excludeId 
+      const url = excludeId
         ? `${API_URL}/category/${encodeURIComponent(
             category
           )}?excludeId=${excludeId}`
@@ -460,7 +447,7 @@ export const productsApi = {
   testProductCreation: async (categoryId) => {
     try {
       console.log("Testing product creation with category ID:", categoryId);
-      
+
       // Trước tiên, lấy thông tin danh mục từ ID
       let categoryName = "";
       try {
@@ -469,44 +456,27 @@ export const productsApi = {
         console.log("Danh mục được chọn:", categoryName);
       } catch (error) {
         console.error("Không thể lấy thông tin danh mục:", error);
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: { message: "Không thể lấy thông tin danh mục" },
         };
       }
-      
-      // Create a simple test product with minimal fields
+
       const testData = new FormData();
-      testData.append("productName", "Test Product");
-      testData.append("productPrice", "10000");
-      testData.append("productCategory", categoryName); // Sử dụng tên danh mục thay vì ID
-      testData.append("productTypeName", categoryName); // Thêm cả productTypeName
-      
-      // Create a simple test image
       const blob = new Blob(["test image content"], { type: "image/png" });
       const file = new File([blob], "test-image.png", { type: "image/png" });
       testData.append("productImages", file);
-      
-      console.log("Test data being sent");
-      for (let [key, value] of testData.entries()) {
-        console.log(`${key}: ${value instanceof File ? "(File)" : value}`);
-      }
-      
       const headers = {
         "Content-Type": "multipart/form-data",
       };
-      
+
       const response = await axios.post(API_URL, testData, { headers });
-      console.log("Test succeeded:", response.data);
+
       return { success: true, data: response.data };
     } catch (error) {
       console.error("Test failed:", error);
-      if (error.response) {
-        console.error("Status:", error.response.status);
-        console.error("Data:", error.response.data);
-      }
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error.response?.data || error.message,
       };
     }

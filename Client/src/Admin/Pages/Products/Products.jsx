@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from "react";
 import { Button, Dialog, InputText, Dropdown } from "primereact";
 import { toast } from "sonner";
@@ -395,7 +396,8 @@ const Products = () => {
         header="Chỉnh Sửa Sản Phẩm"
         visible={editVisible}
         onHide={() => setEditVisible(false)}
-        className="w-[95vw] md:w-[90vw] lg:w-[80vw] xl:w-[70vw]"
+        className="w-[95vw] md:w-[90vw] lg:w-[80vw] xl:w-[70vw] p-6"
+        headerClassName="p-4"
       >
         {editingProduct && (
           <EditProduct

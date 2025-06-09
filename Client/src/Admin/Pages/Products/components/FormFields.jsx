@@ -534,7 +534,7 @@ export const ExpiryDateField = ({ product, handleDateChange }) => (
     </label>
     <Calendar
       id="expiryDate"
-      value={product.expiryDate}
+      value={product.expiryDate instanceof Date ? product.expiryDate : (product.expiryDate ? new Date(product.expiryDate) : null)}
       onChange={(e) => handleDateChange(e.value, "expiryDate")}
       showIcon
       className="w-full"
@@ -588,6 +588,8 @@ export const DescriptionFields = ({
         value={
           typeof productDescription === "string"
             ? productDescription
+            : Array.isArray(productDescription)
+            ? productDescription.join('\n')
             : product.productDescription || ""
         }
         onChange={(e) => setProductDescription(e.target.value)}
@@ -894,20 +896,29 @@ DiscountDateFields.propTypes = {
 
 ExpiryDateField.propTypes = {
   product: PropTypes.shape({
-    expiryDate: PropTypes.instanceOf(Date),
+    expiryDate: PropTypes.oneOfType([
+      PropTypes.instanceOf(Date),
+      PropTypes.string
+    ])
   }).isRequired,
-  handleDateChange: PropTypes.func.isRequired,
+  handleDateChange: PropTypes.func.isRequired
 };
 
 DescriptionFields.propTypes = {
   product: PropTypes.shape({
-    productDescription: PropTypes.string,
+    productDescription: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.array
+    ]),
     productIntroduction: PropTypes.string,
     productDetails: PropTypes.string,
     productInfo: PropTypes.string,
   }).isRequired,
   handleInputChange: PropTypes.func.isRequired,
-  productDescription: PropTypes.string,
+  productDescription: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.array
+  ]),
   setProductDescription: PropTypes.func.isRequired,
 };
 

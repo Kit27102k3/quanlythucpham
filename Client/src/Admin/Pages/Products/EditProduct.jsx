@@ -57,10 +57,21 @@ const EditProduct = ({ currentUser, product: initialProduct, setVisible, onUpdat
             axios.get(`${API_BASE_URL}/api/suppliers`, { headers }),
           ]);
           
+          // Convert expiryDate to Date object if it's a string
+          const productWithDateFixed = {
+            ...initialProduct,
+            expiryDate: initialProduct.expiryDate ? new Date(initialProduct.expiryDate) : null
+          };
+          
           // Set product data from props
-          setProduct(initialProduct);
+          setProduct(productWithDateFixed);
           setSelectedCategory(initialProduct.productCategory?._id || initialProduct.productCategory);
-          setProductDescription(Array.isArray(initialProduct.productDescription) ? initialProduct.productDescription.join('\n') : initialProduct.productDescription || "");
+          
+          // Ensure productDescription is a string
+          const descriptionText = Array.isArray(initialProduct.productDescription) 
+            ? initialProduct.productDescription.join('\n') 
+            : (initialProduct.productDescription || "");
+          setProductDescription(descriptionText);
           
           // Set images
           if (initialProduct.productImages && initialProduct.productImages.length > 0) {
@@ -113,10 +124,20 @@ const EditProduct = ({ currentUser, product: initialProduct, setVisible, onUpdat
           
           const productData = productRes.data;
           
+          // Convert expiryDate to Date object if it's a string
+          if (productData.expiryDate && typeof productData.expiryDate === 'string') {
+            productData.expiryDate = new Date(productData.expiryDate);
+          }
+          
           // Set product data
           setProduct(productData);
           setSelectedCategory(productData.productCategory?._id);
-          setProductDescription(productData.productDescription || "");
+          
+          // Ensure productDescription is a string
+          const descriptionText = Array.isArray(productData.productDescription) 
+            ? productData.productDescription.join('\n') 
+            : (productData.productDescription || "");
+          setProductDescription(descriptionText);
           
           // Set images
           if (productData.productImages && productData.productImages.length > 0) {

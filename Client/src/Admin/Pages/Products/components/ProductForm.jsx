@@ -51,15 +51,20 @@ const ProductForm = ({
   return (
     <div className="w-full max-w-7xl mx-auto">
       <ConfirmDialog
+        headerClassName="p-2"
+        contentClassName="p-2"
         visible={confirmDialog.visible}
         onHide={() => setConfirmDialog({ ...confirmDialog, visible: false })}
         message={confirmDialog.message}
         header={confirmDialog.header}
-        icon="pi pi-exclamation-triangle"
+        icon="pi pi-exclamation-triangle text-red-500"
         accept={confirmDialog.accept}
         reject={confirmDialog.reject}
         acceptLabel="Đồng ý"
         rejectLabel="Hủy"
+        className="p-6"
+        rejectClassName="bg-red-600 mb-2 hover:bg-red-700 text-white transition-colors px-5 py-2.5 rounded-md text-sm font-medium"
+        acceptClassName="bg-[#51bb1a] mb-2 ml-3 mr-3 hover:bg-[#409114] text-white transition-colors px-5 py-2.5 rounded-md text-sm font-medium"
       />
 
       <form onSubmit={handleSubmit} className="space-y-8">
