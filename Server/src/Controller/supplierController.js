@@ -1,21 +1,85 @@
 import Supplier from "../Model/Supplier.js";
 import { asyncHandler } from "../Middleware/asyncHandler.js";
+import mongoose from "mongoose";
 
 // @desc    Get all suppliers
 // @route   GET /api/suppliers
 // @access  Private/Admin
 export const getAllSuppliers = asyncHandler(async (req, res) => {
-  const suppliers = await Supplier.find({}).sort({ createdAt: -1 });
+  const { branchId, role } = req.user;
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = (page - 1) * limit;
+
+  // Admin mặc định xem tất cả hoặc theo filter branchId
+  // Manager chỉ xem theo branchId của mình
+  const requestedBranchId = req.query.branchId;
   
-  return res.status(200).json(suppliers);
+  let filter = {};
+  
+  if (role === 'admin') {
+    // Admin có thể lọc theo chi nhánh cụ thể hoặc xem tất cả
+    if (requestedBranchId) {
+      filter.branchId = requestedBranchId;
+    }
+  } else {
+    // Manager chỉ xem được nhà cung cấp của chi nhánh mình
+    if (!branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Không tìm thấy thông tin chi nhánh của bạn",
+      });
+    }
+    filter.branchId = branchId;
+  }
+
+  let query = Supplier.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit);
+  
+  // Luôn populate thông tin chi nhánh để dễ hiển thị
+  query = query.populate({
+    path: 'branchId',
+    select: 'name',
+    model: 'Branch'
+  });
+
+  const [suppliers, total] = await Promise.all([
+    query,
+    Supplier.countDocuments(filter),
+  ]);
+
+  // Format response để bao gồm tên chi nhánh
+  const formattedSuppliers = suppliers.map(supplier => {
+    const plainSupplier = supplier.toObject();
+    if (plainSupplier.branchId && plainSupplier.branchId.name) {
+      plainSupplier.branchName = plainSupplier.branchId.name;
+    }
+    return plainSupplier;
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: formattedSuppliers,
+    pagination: { page, limit, total },
+  });
 });
 
 // @desc    Get a single supplier
 // @route   GET /api/suppliers/:id
 // @access  Private/Admin
 export const getSupplierById = asyncHandler(async (req, res) => {
-  const supplier = await Supplier.findById(req.params.id);
+  const { branchId, role } = req.user;
   
+  // Admin có thể xem bất kỳ nhà cung cấp nào, manager chỉ xem của chi nhánh mình
+  const filter = role === 'admin' 
+    ? { _id: req.params.id } 
+    : { _id: req.params.id, branchId };
+  
+  const supplier = await Supplier.findOne(filter).populate({
+    path: 'branchId',
+    select: 'name',
+    model: 'Branch'
+  });
+
   if (!supplier) {
     return res.status(404).json({
       success: false,
@@ -23,15 +87,24 @@ export const getSupplierById = asyncHandler(async (req, res) => {
     });
   }
   
-  return res.status(200).json(supplier);
+  // Format response để bao gồm tên chi nhánh
+  const formattedSupplier = supplier.toObject();
+  if (formattedSupplier.branchId && formattedSupplier.branchId.name) {
+    formattedSupplier.branchName = formattedSupplier.branchId.name;
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: formattedSupplier
+  });
 });
 
 // @desc    Create a new supplier
 // @route   POST /api/suppliers
 // @access  Private/Admin
 export const createSupplier = asyncHandler(async (req, res) => {
-  const { name, phone } = req.body;
-  let { code } = req.body;
+  const { name, phone, code: supplierCode, branchId: targetBranchId } = req.body;
+  const { branchId: userBranchId, _id: adminId, role } = req.user;
 
   // Kiểm tra thông tin bắt buộc
   if (!name || !phone) {
@@ -41,32 +114,53 @@ export const createSupplier = asyncHandler(async (req, res) => {
     });
   }
 
-  // Nếu không có mã, tự động tạo mã ngẫu nhiên 6 chữ số
-  if (!code) {
-    code = Math.floor(100000 + Math.random() * 900000).toString();
-    req.body.code = code;
+  // Determine which branch to use
+  // For admin, use the branch specified in request or default to user's branch
+  // For manager, always use their own branch
+  const finalBranchId = role === 'admin' && targetBranchId 
+    ? targetBranchId 
+    : userBranchId;
+    
+  if (!finalBranchId) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Vui lòng chọn chi nhánh cho nhà cung cấp" });
   }
 
-  // Kiểm tra xem code đã tồn tại chưa
-  const existingSupplier = await Supplier.findOne({ code });
-  if (existingSupplier) {
+  // Nếu không có mã, tự động tạo mã ngẫu nhiên 6 chữ số
+  let finalCode = supplierCode;
+  if (!finalCode) {
+    finalCode = "SUP" + Math.floor(1000 + Math.random() * 9000).toString();
+  }
+
+  // Kiểm tra mã nhà cung cấp đã tồn tại TRONG CÙNG CHI NHÁNH
+  const existing = await Supplier.findOne({ 
+    code: finalCode,
+    branchId: finalBranchId  // Chỉ kiểm tra trong cùng chi nhánh
+  });
+  
+  if (existing) {
     return res.status(400).json({
       success: false,
-      message: "Mã nhà cung cấp đã tồn tại",
+      message: "Mã nhà cung cấp đã tồn tại trong chi nhánh này",
     });
   }
 
-  // Thêm thông tin người tạo nếu có
-  if (req.user && req.user._id) {
-    req.body.createdBy = req.user._id;
-  }
+  // Remove branchId from request body to avoid conflicts
+  const supplierData = { ...req.body };
+  delete supplierData.branchId;
 
-  const supplier = await Supplier.create(req.body);
+  const supplier = await Supplier.create({
+    ...supplierData,
+    code: finalCode,
+    branchId: finalBranchId,
+    createdBy: adminId,
+  });
 
   return res.status(201).json({
     success: true,
     message: "Thêm nhà cung cấp thành công",
-    supplier,
+    data: supplier,
   });
 });
 
@@ -74,7 +168,15 @@ export const createSupplier = asyncHandler(async (req, res) => {
 // @route   PUT /api/suppliers/:id
 // @access  Private/Admin
 export const updateSupplier = asyncHandler(async (req, res) => {
-  let supplier = await Supplier.findById(req.params.id);
+  const { branchId: userBranchId, _id: adminId, role } = req.user;
+  const { branchId: targetBranchId } = req.body;
+  
+  // Admin có thể cập nhật bất kỳ nhà cung cấp nào, manager chỉ cập nhật của chi nhánh mình
+  const filter = role === 'admin' 
+    ? { _id: req.params.id } 
+    : { _id: req.params.id, branchId: userBranchId };
+    
+  const supplier = await Supplier.findOne(filter);
 
   if (!supplier) {
     return res.status(404).json({
@@ -91,48 +193,88 @@ export const updateSupplier = asyncHandler(async (req, res) => {
     });
   }
 
-  // Nếu không có mã, tự động tạo mã ngẫu nhiên 6 chữ số
-  if (!req.body.code) {
-    req.body.code = Math.floor(100000 + Math.random() * 900000).toString();
+  // Determine which branch to use
+  const finalBranchId = role === 'admin' && targetBranchId 
+    ? targetBranchId 
+    : userBranchId;
+
+  if (!finalBranchId) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Vui lòng chọn chi nhánh cho nhà cung cấp" });
   }
 
-  // Nếu cập nhật mã nhà cung cấp (code), phải kiểm tra xem mã đã tồn tại chưa
+  // Nếu không có mã, tự động tạo mã ngẫu nhiên
+  let finalCode = req.body.code;
+  if (!finalCode) {
+    finalCode = "SUP" + Math.floor(1000 + Math.random() * 9000).toString();
+    req.body.code = finalCode;
+  }
+
+  // Nếu cập nhật mã nhà cung cấp (code), phải kiểm tra xem mã đã tồn tại trong cùng chi nhánh chưa
   if (req.body.code && req.body.code !== supplier.code) {
     const existingSupplier = await Supplier.findOne({
       code: req.body.code,
+      branchId: finalBranchId,
       _id: { $ne: req.params.id },
     });
 
     if (existingSupplier) {
       return res.status(400).json({
         success: false,
-        message: "Mã nhà cung cấp đã tồn tại",
+        message: "Mã nhà cung cấp đã tồn tại trong chi nhánh này",
       });
     }
   }
 
-  // Thêm thông tin người cập nhật nếu có
-  if (req.user && req.user._id) {
-    req.body.updatedBy = req.user._id;
+  // Remove branchId from request body to avoid conflicts
+  const updateData = { ...req.body };
+  delete updateData.branchId;
+  
+  // Add the final values
+  updateData.branchId = finalBranchId;
+  updateData.updatedBy = adminId;
+
+  try {
+    // Sử dụng findOneAndUpdate thay vì findByIdAndUpdate để có thể bỏ qua validation
+    const updated = await Supplier.findOneAndUpdate(
+      { _id: supplier._id },
+      updateData,
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Cập nhật nhà cung cấp thành công",
+      data: updated,
+    });
+  } catch (error) {
+    console.error("Lỗi khi cập nhật nhà cung cấp:", error);
+    return res
+      .status(500)
+      .json({ 
+        success: false, 
+        message: "Lỗi khi cập nhật nhà cung cấp", 
+        error: error.message 
+      });
   }
-
-  supplier = await Supplier.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  });
-
-  return res.status(200).json({
-    success: true,
-    message: "Cập nhật nhà cung cấp thành công",
-    supplier,
-  });
 });
 
 // @desc    Delete a supplier
 // @route   DELETE /api/suppliers/:id
 // @access  Private/Admin
 export const deleteSupplier = asyncHandler(async (req, res) => {
-  const supplier = await Supplier.findById(req.params.id);
+  const { branchId, role } = req.user;
+  
+  // Admin có thể xóa bất kỳ nhà cung cấp nào, manager chỉ xóa của chi nhánh mình
+  const filter = role === 'admin' 
+    ? { _id: req.params.id } 
+    : { _id: req.params.id, branchId };
+    
+  const supplier = await Supplier.findOne(filter);
 
   if (!supplier) {
     return res.status(404).json({
@@ -154,8 +296,32 @@ export const deleteSupplier = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 export const searchSuppliers = asyncHandler(async (req, res) => {
   const { query = "" } = req.query;
+  const { branchId, role } = req.user;
+
+  // Admin mặc định tìm tất cả hoặc theo filter branchId
+  // Manager chỉ tìm theo branchId của mình
+  const requestedBranchId = req.query.branchId;
+  
+  let baseFilter = {};
+  
+  if (role === 'admin') {
+    // Admin có thể lọc theo chi nhánh cụ thể hoặc tìm tất cả
+    if (requestedBranchId) {
+      baseFilter.branchId = requestedBranchId;
+    }
+  } else {
+    // Manager chỉ tìm được nhà cung cấp của chi nhánh mình
+    if (!branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Không tìm thấy thông tin chi nhánh của bạn",
+      });
+    }
+    baseFilter.branchId = branchId;
+  }
 
   const searchCondition = {
+    ...baseFilter,
     $or: [
       { name: { $regex: query, $options: "i" } },
       { code: { $regex: query, $options: "i" } },
@@ -165,7 +331,51 @@ export const searchSuppliers = asyncHandler(async (req, res) => {
     ],
   };
 
-  const suppliers = await Supplier.find(searchCondition).sort({ createdAt: -1 });
+  let searchQuery = Supplier.find(searchCondition).sort({ createdAt: -1 });
+  
+  // Luôn populate thông tin chi nhánh để dễ hiển thị
+  searchQuery = searchQuery.populate({
+    path: 'branchId',
+    select: 'name',
+    model: 'Branch'
+  });
 
-  return res.status(200).json(suppliers);
+  const results = await searchQuery;
+  
+  // Format response để bao gồm tên chi nhánh
+  const formattedResults = results.map(supplier => {
+    const plainSupplier = supplier.toObject();
+    if (plainSupplier.branchId && plainSupplier.branchId.name) {
+      plainSupplier.branchName = plainSupplier.branchId.name;
+    }
+    return plainSupplier;
+  });
+
+  return res.status(200).json({
+    success: true,
+    data: formattedResults
+  });
+});
+
+// Thêm API endpoint để reset indexes
+export const resetSupplierIndexes = asyncHandler(async (req, res) => {
+  try {
+    // Xóa tất cả indexes hiện tại (trừ _id)
+    const result = await mongoose.connection.db.collection('suppliers').dropIndexes();
+    
+    console.log("Kết quả xóa indexes:", result);
+    
+    res.status(200).json({
+      success: true,
+      message: "Đã reset tất cả indexes của Supplier collection",
+      result
+    });
+  } catch (error) {
+    console.error("Lỗi khi reset indexes:", error);
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi reset indexes",
+      error: error.message
+    });
+  }
 }); 

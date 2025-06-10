@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Button, Dialog, InputText } from "primereact";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "sonner";
 import { IconField } from "primereact/iconfield";
 import { InputIcon } from "primereact/inputicon";
+import { Dropdown } from "primereact/dropdown";
 import Pagination from "../../utils/Paginator";
 import suppliersApi from "../../api/suppliersApi";
+import { getAllBranches } from "../../api/branchesApi";
 
 const Suppliers = () => {
   const [visible, setVisible] = useState(false);
@@ -14,6 +15,10 @@ const Suppliers = () => {
   const [filteredSuppliers, setFilteredSuppliers] = useState([]);
   const [editVisible, setEditVisible] = useState(false);
   const [currentSupplier, setCurrentSupplier] = useState(null);
+  const [userRole, setUserRole] = useState("");
+  const [userBranchId, setUserBranchId] = useState("");
+  const [branches, setBranches] = useState([]);
+  const [branchFilter, setBranchFilter] = useState("");
 
   // Form states
   const [formData, setFormData] = useState({
@@ -26,6 +31,7 @@ const Suppliers = () => {
     taxCode: "",
     notes: "",
     status: "active",
+    branchId: "",
   });
 
   // Pagination states
@@ -33,8 +39,33 @@ const Suppliers = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
-    fetchSuppliers();
+    // Get user role and branch ID from localStorage
+    const role = localStorage.getItem("userRole");
+    const branchId = localStorage.getItem("branchId");
+
+    if (role) {
+      setUserRole(role);
+      if (branchId) {
+        setUserBranchId(branchId);
+        // Set default branch ID for manager
+        if (role === "manager") {
+          setFormData((prev) => ({
+            ...prev,
+            branchId: branchId,
+          }));
+          setBranchFilter(branchId);
+        }
+      }
+    }
+
+    // Fetch branches and suppliers
+    fetchBranches();
   }, []);
+
+  useEffect(() => {
+    // Fetch suppliers when branch filter changes
+    fetchSuppliers();
+  }, [branchFilter]);
 
   useEffect(() => {
     // Filter suppliers based on search term
@@ -44,7 +75,8 @@ const Suppliers = () => {
           supplier?.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           supplier?.contactPerson
             ?.toLowerCase()
-            .includes(searchTerm.toLowerCase())
+            .includes(searchTerm.toLowerCase()) ||
+          supplier?.branchName?.toLowerCase().includes(searchTerm.toLowerCase())
         : true
     );
 
@@ -52,17 +84,51 @@ const Suppliers = () => {
     setFirst(0);
   }, [suppliers, searchTerm]);
 
+  const fetchBranches = async () => {
+    try {
+      const data = await getAllBranches();
+      if (Array.isArray(data) && data.length > 0) {
+        setBranches(data);
+
+        // If user is manager, filter branches to only show their branch
+        const role = localStorage.getItem("userRole");
+        const branchId = localStorage.getItem("branchId");
+
+        if (role === "manager" && branchId) {
+          // Find user's branch
+          const userBranch = data.find((branch) => branch._id === branchId);
+          if (userBranch) {
+            // For manager, only show their branch
+            setBranchFilter(branchId);
+          }
+        }
+      } else {
+        console.error("Branches data is not in expected format:", data);
+        setBranches([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch branches:", error);
+      setBranches([]);
+    }
+  };
+
   const fetchSuppliers = async () => {
     try {
-      const data = await suppliersApi.getAllSuppliers();
-      if (Array.isArray(data)) {
-        setSuppliers(data);
-      } else if (data && Array.isArray(data.suppliers)) {
-        setSuppliers(data.suppliers);
-      } else {
-        console.error("Data is not in expected format:", data);
-        setSuppliers([]);
+      const params = {};
+      if (branchFilter) {
+        params.branchId = branchFilter;
       }
+
+      const response = await suppliersApi.getAllSuppliers(params);
+      let suppliersData = [];
+
+      if (response && response.data) {
+        suppliersData = response.data;
+      } else if (Array.isArray(response)) {
+        suppliersData = response;
+      }
+
+      setSuppliers(suppliersData);
     } catch (error) {
       console.error("Failed to fetch suppliers:", error);
       setSuppliers([]);
@@ -77,6 +143,13 @@ const Suppliers = () => {
     });
   };
 
+  const handleDropdownChange = (e, field) => {
+    setFormData({
+      ...formData,
+      [field]: e.value,
+    });
+  };
+
   // Hàm tạo mã nhà cung cấp ngẫu nhiên 6 chữ số
   const generateRandomCode = () => {
     const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -87,6 +160,8 @@ const Suppliers = () => {
   };
 
   const resetForm = () => {
+    const defaultBranchId = userRole === "manager" ? userBranchId : "";
+
     setFormData({
       name: "",
       code: "",
@@ -97,6 +172,7 @@ const Suppliers = () => {
       taxCode: "",
       notes: "",
       status: "active",
+      branchId: defaultBranchId,
     });
   };
 
@@ -104,6 +180,12 @@ const Suppliers = () => {
     // Kiểm tra dữ liệu trước khi gửi
     if (!formData.name || !formData.phone) {
       toast.error("Vui lòng điền đầy đủ tên và số điện thoại!");
+      return;
+    }
+
+    // Kiểm tra chi nhánh
+    if (!formData.branchId) {
+      toast.error("Vui lòng chọn chi nhánh!");
       return;
     }
 
@@ -146,6 +228,7 @@ const Suppliers = () => {
       taxCode: supplier.taxCode || "",
       notes: supplier.notes || "",
       status: supplier.status || "active",
+      branchId: supplier.branchId?._id || supplier.branchId || "",
     });
     setEditVisible(true);
   };
@@ -154,6 +237,12 @@ const Suppliers = () => {
     // Kiểm tra dữ liệu trước khi gửi
     if (!formData.name || !formData.phone) {
       toast.error("Vui lòng điền đầy đủ tên và số điện thoại!");
+      return;
+    }
+
+    // Kiểm tra chi nhánh
+    if (!formData.branchId) {
+      toast.error("Vui lòng chọn chi nhánh!");
       return;
     }
 
@@ -200,7 +289,8 @@ const Suppliers = () => {
   };
 
   // Get current page suppliers
-  const getCurrentPageSuppliers = () => filteredSuppliers.slice(first, first + rowsPerPage);
+  const getCurrentPageSuppliers = () =>
+    filteredSuppliers.slice(first, first + rowsPerPage);
 
   const renderSupplierForm = () => (
     <div className="p-6 bg-gradient-to-b from-white to-blue-50 rounded-lg">
@@ -217,7 +307,7 @@ const Suppliers = () => {
             name="name"
             value={formData.name}
             onChange={handleInputChange}
-            className="w-full p-2.5 border-blue-200 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md"
+            className="w-full p-2 border rounded"
             required
           />
         </div>
@@ -236,7 +326,7 @@ const Suppliers = () => {
               value={formData.code}
               onChange={handleInputChange}
               placeholder="Để trống để tự động tạo"
-              className="w-full p-2.5 border-blue-200 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md"
+              className="w-full p-2 border rounded"
             />
             <Button
               icon="pi pi-refresh"
@@ -245,6 +335,26 @@ const Suppliers = () => {
               onClick={generateRandomCode}
             />
           </div>
+        </div>
+        <div>
+          <label
+            htmlFor="branchId"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Chi nhánh <span className="text-red-500">*</span>
+          </label>
+          <Dropdown
+            id="branchId"
+            value={formData.branchId}
+            options={branches}
+            onChange={(e) => handleDropdownChange(e, "branchId")}
+            optionLabel="name"
+            optionValue="_id"
+            placeholder="Chọn chi nhánh"
+            className="w-full p-2 border rounded"
+            disabled={userRole === "manager"}
+            required
+          />
         </div>
         <div>
           <label
@@ -258,7 +368,7 @@ const Suppliers = () => {
             name="contactPerson"
             value={formData.contactPerson}
             onChange={handleInputChange}
-            className="w-full p-2.5 border-blue-200 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md"
+            className="w-full p-2 border rounded"
           />
         </div>
         <div>
@@ -273,7 +383,7 @@ const Suppliers = () => {
             name="phone"
             value={formData.phone}
             onChange={handleInputChange}
-            className="w-full p-2.5 border-blue-200 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md"
+            className="w-full p-2 border rounded"
             required
           />
         </div>
@@ -289,7 +399,7 @@ const Suppliers = () => {
             name="email"
             value={formData.email}
             onChange={handleInputChange}
-            className="w-full p-2.5 border-blue-200 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md"
+            className="w-full p-2 border rounded"
           />
         </div>
         <div>
@@ -304,10 +414,10 @@ const Suppliers = () => {
             name="taxCode"
             value={formData.taxCode}
             onChange={handleInputChange}
-            className="w-full p-2.5 border-blue-200 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md"
+            className="w-full p-2 border rounded"
           />
         </div>
-        <div className="md:col-span-2">
+        <div>
           <label
             htmlFor="address"
             className="block text-sm font-medium text-gray-700 mb-1"
@@ -319,8 +429,26 @@ const Suppliers = () => {
             name="address"
             value={formData.address}
             onChange={handleInputChange}
-            className="w-full p-2.5 border-blue-200 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md"
+            className="w-full p-2 border rounded"
           />
+          <div>
+            <label
+              htmlFor="status"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Trạng thái
+            </label>
+            <select
+              id="status"
+              name="status"
+              value={formData.status}
+              onChange={handleInputChange}
+              className="w-full p-2.5 border border-blue-200 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md"
+            >
+              <option value="active">Đang hoạt động</option>
+              <option value="inactive">Không hoạt động</option>
+            </select>
+          </div>
         </div>
         <div className="md:col-span-2">
           <label
@@ -338,36 +466,17 @@ const Suppliers = () => {
             rows={3}
           />
         </div>
-        <div className="col-span-1">
-          <label
-            htmlFor="status"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Trạng thái
-          </label>
-          <select
-            id="status"
-            name="status"
-            value={formData.status}
-            onChange={handleInputChange}
-            className="w-full p-2.5 border border-blue-200 shadow-sm focus:border-blue-400 focus:ring focus:ring-blue-200 focus:ring-opacity-50 rounded-md"
-          >
-            <option value="active">Đang hoạt động</option>
-            <option value="inactive">Không hoạt động</option>
-          </select>
-        </div>
       </div>
     </div>
   );
 
   return (
     <div className="p-2 md:p-4">
-      <ToastContainer />
       <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">
         Quản Lý Nhà Cung Cấp
       </h1>
       <div className="flex flex-col md:flex-row gap-2 mb-3 md:mb-5">
-        <div className="w-full md:w-2/3">
+        <div className="w-full md:w-1/3">
           <IconField iconPosition="left" className="w-full">
             <InputIcon className="pi pi-search -mt-2"> </InputIcon>
             <InputText
@@ -377,6 +486,19 @@ const Suppliers = () => {
               className="border rounded w-full p-2 px-12"
             />
           </IconField>
+        </div>
+        <div className="w-full md:w-1/3">
+          {userRole === "admin" && (
+            <Dropdown
+              value={branchFilter}
+              options={[{ _id: "", name: "Tất cả chi nhánh" }, ...branches]}
+              onChange={(e) => setBranchFilter(e.value)}
+              optionLabel="name"
+              optionValue="_id"
+              placeholder="Lọc theo chi nhánh"
+              className="w-full p-2 border rounded"
+            />
+          )}
         </div>
         <div className="w-full md:w-1/3">
           <Button
@@ -401,6 +523,9 @@ const Suppliers = () => {
               </th>
               <th className="border border-blue-300 p-3 text-sm font-semibold text-center">
                 Tên nhà cung cấp
+              </th>
+              <th className="border border-blue-300 p-3 text-sm font-semibold text-center">
+                Chi nhánh
               </th>
               <th className="border border-blue-300 p-3 text-sm font-semibold text-center">
                 Người liên hệ
@@ -435,6 +560,11 @@ const Suppliers = () => {
                 </td>
                 <td className="border border-gray-200 p-3 text-sm">
                   {supplier?.name}
+                </td>
+                <td className="border border-gray-200 p-3 text-sm text-center">
+                  {supplier?.branchName ||
+                    (supplier?.branchId && supplier?.branchId.name) ||
+                    ""}
                 </td>
                 <td className="border border-gray-200 p-3 text-sm text-center">
                   {supplier?.contactPerson}
@@ -476,7 +606,7 @@ const Suppliers = () => {
             ))}
             {getCurrentPageSuppliers().length === 0 && (
               <tr>
-                <td colSpan="8" className="p-5 text-center text-gray-500">
+                <td colSpan="9" className="p-5 text-center text-gray-500">
                   Không có dữ liệu nhà cung cấp. Hãy thêm nhà cung cấp mới!
                 </td>
               </tr>
@@ -488,7 +618,7 @@ const Suppliers = () => {
       <div className="mt-4 bg-white p-2 rounded-lg shadow-sm">
         <Pagination
           totalRecords={filteredSuppliers.length}
-          rowsPerPageOptions={[5,10,25,50]}
+          rowsPerPageOptions={[5, 10, 25, 50]}
           onPageChange={handlePageChange}
         />
       </div>

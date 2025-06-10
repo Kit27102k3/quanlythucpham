@@ -47,6 +47,7 @@ const ProductForm = ({
   setConfirmDialog,
   isEditMode,
   handleCancel,
+  isSubmitting,
 }) => {
   return (
     <div className="w-full max-w-7xl mx-auto">
@@ -212,7 +213,7 @@ ProductForm.propTypes = {
   product: PropTypes.object.isRequired,
   setProduct: PropTypes.func.isRequired,
   loading: PropTypes.bool.isRequired,
-  toast: PropTypes.object.isRequired,
+  toast: PropTypes.object,
   handleSubmit: PropTypes.func.isRequired,
   handleInputChange: PropTypes.func.isRequired,
   handleDropdownChange: PropTypes.func.isRequired,
@@ -220,8 +221,8 @@ ProductForm.propTypes = {
   handleDateChange: PropTypes.func.isRequired,
   selectedCategory: PropTypes.string,
   categories: PropTypes.array.isRequired,
-  brands: PropTypes.array.isRequired,
-  suppliers: PropTypes.array.isRequired,
+  brands: PropTypes.array,
+  suppliers: PropTypes.array,
   productDescription: PropTypes.string.isRequired,
   setProductDescription: PropTypes.func.isRequired,
   unitOptionsList: PropTypes.array.isRequired,
@@ -238,6 +239,7 @@ ProductForm.propTypes = {
   setConfirmDialog: PropTypes.func.isRequired,
   isEditMode: PropTypes.bool,
   handleCancel: PropTypes.func.isRequired,
+  isSubmitting: PropTypes.bool,
 };
 
 export default ProductForm;

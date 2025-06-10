@@ -9,8 +9,8 @@ const supplierSchema = new mongoose.Schema(
     },
     code: {
       type: String,
-      unique: true,
       trim: true,
+      required: [true, "Mã nhà cung cấp không được để trống"],
     },
     contactPerson: {
       type: String,
@@ -43,6 +43,11 @@ const supplierSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Branch",
+      required: [true, "Chi nhánh không được để trống"],
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
@@ -57,8 +62,20 @@ const supplierSchema = new mongoose.Schema(
   }
 );
 
+// Thêm compound index để đảm bảo cặp (code, branchId) là duy nhất
+supplierSchema.index({ code: 1, branchId: 1 }, { unique: true });
 // Tạo index tìm kiếm cho các trường thường xuyên được tìm kiếm
-supplierSchema.index({ name: 1, code: 1, contactPerson: 1 });
+supplierSchema.index({ name: 1, contactPerson: 1 });
+
+// Thêm middleware để tự động xóa indexes khi khởi động (tạm thời để giải quyết vấn đề với index cũ)
+supplierSchema.pre('init', async function() {
+  try {
+    await mongoose.connection.collections['suppliers'].dropIndexes();
+    console.log('Đã xóa tất cả indexes của Supplier collection');
+  } catch (error) {
+    console.error('Lỗi khi xóa indexes:', error);
+  }
+});
 
 const Supplier = mongoose.model("Supplier", supplierSchema);
 

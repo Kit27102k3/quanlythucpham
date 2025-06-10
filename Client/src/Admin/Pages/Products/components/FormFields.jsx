@@ -219,6 +219,10 @@ export const DetailInfoFields = ({
     }
   }, [userRole, userBranchId, product.branchId, handleDropdownChange]);
 
+  // Ensure brands and suppliers are arrays
+  const brandsArray = Array.isArray(brands) ? brands : [];
+  const suppliersArray = Array.isArray(suppliers) ? suppliers : [];
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-2">
@@ -232,7 +236,7 @@ export const DetailInfoFields = ({
           id="productBrand"
           value={product.productBrandId}
           onChange={(e) => handleDropdownChange(e, "productBrand")}
-          options={brands.map((brand) => ({
+          options={brandsArray.map((brand) => ({
             label: brand.name,
             value: brand._id,
           }))}
@@ -265,7 +269,7 @@ export const DetailInfoFields = ({
           id="productSupplier"
           value={product.productSupplierId}
           onChange={(e) => handleDropdownChange(e, "productSupplier")}
-          options={suppliers.map((supplier) => ({
+          options={suppliersArray.map((supplier) => ({
             label: supplier.name,
             value: supplier._id,
           }))}

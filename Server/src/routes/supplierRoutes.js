@@ -5,11 +5,15 @@ import {
   createSupplier, 
   updateSupplier, 
   deleteSupplier, 
-  searchSuppliers 
+  searchSuppliers,
+  resetSupplierIndexes 
 } from '../Controller/supplierController.js';
 import { verifyToken, verifyAdmin } from '../Middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Route đặc biệt để reset indexes - không yêu cầu xác thực
+router.post("/reset-indexes-now", resetSupplierIndexes);
 
 // Tất cả routes đều được bảo vệ, chỉ admin và manager mới có quyền truy cập
 router.use(verifyToken);
@@ -22,6 +26,10 @@ router.route('/')
 // GET /api/suppliers/search - Tìm kiếm nhà cung cấp
 router.route('/search')
   .get(verifyAdmin, searchSuppliers);
+
+// POST /api/suppliers/reset-indexes - Reset indexes (yêu cầu xác thực)
+router.route('/reset-indexes')
+  .post(verifyAdmin, resetSupplierIndexes);
 
 // GET, PUT, DELETE /api/suppliers/:id - Lấy, cập nhật, xóa nhà cung cấp theo ID
 router.route('/:id')

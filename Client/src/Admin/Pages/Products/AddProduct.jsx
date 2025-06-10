@@ -80,9 +80,43 @@ const AddProduct = ({ onHide, onAddSuccess, currentUser = { _id: "", name: "Ngư
           axios.get(`${API_BASE_URL}/api/suppliers`, { headers }),
         ]);
 
-        setCategories(categoriesRes.data);
-        setBrands(brandsRes.data);
-        setSuppliers(suppliersRes.data);
+        // Ensure we always have arrays, even if the API returns data in different formats
+        const processCategories = () => {
+          if (Array.isArray(categoriesRes.data)) {
+            return categoriesRes.data;
+          } else if (categoriesRes.data && Array.isArray(categoriesRes.data.data)) {
+            return categoriesRes.data.data;
+          } else {
+            console.warn("Categories data is not in expected format:", categoriesRes.data);
+            return [];
+          }
+        };
+
+        const processBrands = () => {
+          if (Array.isArray(brandsRes.data)) {
+            return brandsRes.data;
+          } else if (brandsRes.data && Array.isArray(brandsRes.data.data)) {
+            return brandsRes.data.data;
+          } else {
+            console.warn("Brands data is not in expected format:", brandsRes.data);
+            return [];
+          }
+        };
+
+        const processSuppliers = () => {
+          if (Array.isArray(suppliersRes.data)) {
+            return suppliersRes.data;
+          } else if (suppliersRes.data && Array.isArray(suppliersRes.data.data)) {
+            return suppliersRes.data.data;
+          } else {
+            console.warn("Suppliers data is not in expected format:", suppliersRes.data);
+            return [];
+          }
+        };
+
+        setCategories(processCategories());
+        setBrands(processBrands());
+        setSuppliers(processSuppliers());
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.current.show({
