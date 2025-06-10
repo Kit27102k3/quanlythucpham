@@ -9,8 +9,8 @@ const brandSchema = new mongoose.Schema(
     },
     code: {
       type: String,
-      unique: true,
       trim: true,
+      required: [true, "Mã thương hiệu không được để trống"],
     },
     logo: {
       type: String,
@@ -33,6 +33,11 @@ const brandSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       default: "active",
     },
+    branchId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Branch",
+      required: [true, "Chi nhánh không được để trống"],
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin",
@@ -47,8 +52,20 @@ const brandSchema = new mongoose.Schema(
   }
 );
 
-// Tạo index tìm kiếm cho các trường thường xuyên được tìm kiếm
-brandSchema.index({ name: 1, code: 1 });
+// Tạm thời bỏ tất cả các indexes để giải quyết lỗi
+// Sau khi giải quyết được lỗi, chúng ta sẽ thêm lại indexes này
+brandSchema.index({ code: 1, branchId: 1 }, { unique: true });
+brandSchema.index({ name: 1 });
+
+// Thêm middleware để tự động xóa indexes khi khởi động
+brandSchema.pre('init', async function() {
+  try {
+    await mongoose.connection.collections['brands'].dropIndexes();
+    console.log('Đã xóa tất cả indexes của Brand collection');
+  } catch (error) {
+    console.error('Lỗi khi xóa indexes:', error);
+  }
+});
 
 const Brand = mongoose.model("Brand", brandSchema);
 

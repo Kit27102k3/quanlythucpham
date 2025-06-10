@@ -11,14 +11,14 @@ const intentKeywords = {
   'faq_store_location': ['địa chỉ', 'cửa hàng', 'chỗ bán', 'cơ sở', 'chi nhánh', 'vị trí', 'nơi bán', 'ở đâu', 'shop ở đâu', 'cửa hàng ở đâu', 'chỗ nào'],
   'faq_product_quality': ['chất lượng', 'sản phẩm', 'đảm bảo', 'độ an toàn', 'hạn sử dụng', 'chứng nhận', 'kiểm định', 'cam kết', 'bảo đảm', 'chất lượng như thế nào', 'nguồn gốc', 'xuất xứ'],
   'faq_shipping_time': ['giao hàng', 'vận chuyển', 'thời gian giao', 'bao lâu', 'mấy ngày', 'nhận hàng', 'ship', 'khi nào nhận được', 'giao trong bao lâu', 'giao nhanh không'],
-  'faq_return_policy': ['đổi trả', 'hoàn tiền', 'trả lại', 'không ưng', 'đổi sản phẩm', 'chính sách đổi', 'bảo hành', 'không vừa ý', 'không thích', 'lỗi', 'hư hỏng', 'kém chất lượng', 'đổi hàng'],
+  'faq_return_policy': ['đổi trả', 'hoàn tiền', 'trả lại', 'không ưng', 'đổi sản phẩm', 'chính sách đổi', 'bảo hành', 'không vừa ý', 'không thích', 'lỗi', 'hư hỏng', 'kém chất lượng', 'đổi hàng', 'chính sách đổi trả', 'trả hàng', 'hoàn trả', 'đổi trả hàng', 'chính sách trả hàng', 'quy định đổi trả', 'điều kiện đổi trả', 'thời gian đổi trả', 'hạn đổi trả', 'có được đổi trả không'],
   'faq_promotions': ['khuyến mãi', 'giảm giá', 'ưu đãi', 'sale', 'quà tặng kèm', 'mã giảm giá', 'voucher', 'coupon', 'có ưu đãi', 'đang giảm giá', 'sale off', 'có khuyến mãi không', 'ưu đãi gì'],
   'faq_trending_products': ['sản phẩm hot', 'bán chạy', 'xu hướng', 'mới nhất', 'phổ biến', 'nhiều người mua', 'trend', 'nổi bật', 'sản phẩm mới', 'hàng hot', 'hàng mới về', 'sản phẩm phổ biến'],
   'faq_shipping_fee': ['phí vận chuyển', 'phí giao hàng', 'ship', 'freeship', 'miễn phí giao', 'giá ship', 'tiền ship', 'tốn phí', 'mất phí', 'chi phí giao', 'free ship', 'giao miễn phí', 'phí ship'],
   'faq_customer_support': ['hỗ trợ', 'tư vấn', 'liên hệ', 'giúp đỡ', 'hotline', 'số điện thoại', 'nhân viên', 'chăm sóc', 'tổng đài', 'zalo', 'facebook', 'email'],
   'faq_membership': ['thành viên', 'khách hàng thân thiết', 'membership', 'hội viên', 'tích điểm', 'ưu đãi thành viên', 'vip', 'điểm thưởng', 'chương trình thành viên', 'quyền lợi', 'đăng ký thành viên'],
   'faq_organic_products': ['hữu cơ', 'organic', 'tự nhiên', 'không hóa chất', 'sạch', 'an toàn', 'sinh học', 'không thuốc trừ sâu', 'không phân bón', 'sản phẩm hữu cơ', 'thực phẩm sạch', 'xanh', 'eco'],
-  'faq_dietary_options': ['ăn kiêng', 'chay', 'thuần chay', 'vegan', 'keto', 'low-carb', 'gluten-free', 'không đường', 'ít đường', 'không lactose', 'ăn chay', 'đồ chay', 'không tinh bột', 'ít muối', 'ít béo'],
+  'faq_dietary_options': ['ăn kiêng', 'chay', 'thuần chay', 'vegan', 'keto', 'low-carb', 'gluten-free', 'không đường', 'ít đường', 'không lactose', 'ăn chay', 'đồ chay', 'không tinh bột', 'ít muối', 'ít béo', 'thực phẩm chay', 'món chay', 'người ăn chay', 'đồ ăn chay', 'thực phẩm dành cho người ăn chay', 'thực phẩm thuần chay', 'thực phẩm không chứa thịt'],
   'faq_gift_services': ['quà tặng', 'gói quà', 'giỏ quà', 'thẻ quà tặng', 'gift card', 'gửi quà', 'quà biếu', 'quà sinh nhật', 'dịch vụ quà', 'gửi quà tặng', 'có dịch vụ gói quà không', 'làm hộp quà'],
   'faq_bulk_orders': ['đơn hàng lớn', 'mua số lượng nhiều', 'mua sỉ', 'đặt hàng số lượng lớn', 'doanh nghiệp', 'công ty đặt hàng', 'số lượng lớn', 'mua nhiều', 'giá sỉ', 'giảm giá khi mua nhiều', 'đơn đoàn', 'mua hàng loạt', 'mua với số lượng lớn', 'đơn hàng số lượng lớn', 'đơn số lượng lớn'],
   'faq_chatbot_help': ['chatbot có thể giúp gì cho tôi', 'chatbot giúp gì cho tôi', 'chatbot giúp gì', 'chatbot có thể giúp gì', 'chatbot hỗ trợ', 'bot có thể làm gì', 'chatbot làm được gì', 'trợ lý ảo', 'bot giúp được gì', 'bot hỗ trợ gì', 'chatbot có tính năng gì', 'website hỗ trợ', 'tính năng chatbot', 'tính năng website', 'hệ thống hỗ trợ', 'chatbot làm gì'],
@@ -69,6 +69,35 @@ export const detectIntentFromKeywords = (query) => {
         return intent;
       }
     }
+  }
+  
+  // Phân tích ngữ nghĩa cơ bản cho một số trường hợp đặc biệt
+  // Xử lý các câu hỏi về thực phẩm chay
+  if ((normalizedQuery.includes('thực phẩm') || normalizedQuery.includes('đồ ăn') || normalizedQuery.includes('món ăn')) 
+      && (normalizedQuery.includes('chay') || normalizedQuery.includes('không thịt'))) {
+    console.log("Phát hiện câu hỏi về thực phẩm chay qua phân tích ngữ nghĩa");
+    return 'faq_dietary_options';
+  }
+  
+  // Xử lý câu hỏi về đổi trả
+  if ((normalizedQuery.includes('đổi') || normalizedQuery.includes('trả')) 
+      && (normalizedQuery.includes('hàng') || normalizedQuery.includes('sản phẩm') || normalizedQuery.includes('chính sách'))) {
+    console.log("Phát hiện câu hỏi về chính sách đổi trả qua phân tích ngữ nghĩa");
+    return 'faq_return_policy';
+  }
+  
+  // Xử lý câu hỏi về giao hàng
+  if ((normalizedQuery.includes('giao') || normalizedQuery.includes('ship') || normalizedQuery.includes('vận chuyển')) 
+      && (normalizedQuery.includes('hàng') || normalizedQuery.includes('mất') || normalizedQuery.includes('thời gian') || normalizedQuery.includes('bao lâu'))) {
+    console.log("Phát hiện câu hỏi về thời gian giao hàng qua phân tích ngữ nghĩa");
+    return 'faq_shipping_time';
+  }
+  
+  // Xử lý câu hỏi về phí vận chuyển
+  if ((normalizedQuery.includes('phí') || normalizedQuery.includes('tiền')) 
+      && (normalizedQuery.includes('ship') || normalizedQuery.includes('giao') || normalizedQuery.includes('vận chuyển'))) {
+    console.log("Phát hiện câu hỏi về phí vận chuyển qua phân tích ngữ nghĩa");
+    return 'faq_shipping_fee';
   }
   
   // Điểm số cho mỗi intent
@@ -344,7 +373,14 @@ Thời hạn đổi trả:
 - Sản phẩm đóng gói: trong vòng 3 ngày
 - Sản phẩm đồ khô, gia dụng: trong vòng 7 ngày
 
-Liên hệ đổi trả: 0326 743391 hoặc kit10012003@gmail.com`;
+Quy trình đổi trả:
+1. Liên hệ với chúng tôi qua hotline 0326 743391 hoặc email kit10012003@gmail.com
+2. Cung cấp mã đơn hàng và lý do đổi trả
+3. Nhận hướng dẫn đóng gói và gửi trả sản phẩm
+4. Sau khi nhận được sản phẩm trả lại, chúng tôi sẽ kiểm tra và xử lý trong vòng 3-5 ngày làm việc
+5. Hoàn tiền hoặc đổi sản phẩm mới theo yêu cầu của khách hàng
+
+Lưu ý: Chi phí vận chuyển cho việc đổi trả sẽ do khách hàng chi trả, trừ trường hợp sản phẩm bị lỗi do nhà sản xuất hoặc vận chuyển.`;
   
   return {
     success: true,

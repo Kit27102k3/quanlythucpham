@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+/* eslint-disable react/prop-types */
+import { useState } from "react";
+import { Link, useLocation} from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 
 const AdminLayout = ({ children }) => {

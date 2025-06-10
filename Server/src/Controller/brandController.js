@@ -1,183 +1,313 @@
 import Brand from "../Model/Brand.js";
 import { asyncHandler } from "../Middleware/asyncHandler.js";
+import mongoose from "mongoose";
 
-// @desc    Get all brands
-// @route   GET /api/brands
-// @access  Private/Admin
+const generateUniqueBrandCode = async (name) => {
+  const words = name.split(" ");
+  let code = words
+    .map((w) => w[0]?.toUpperCase())
+    .join("")
+    .slice(0, 4);
+
+  while (code.length < 4) {
+    code += Math.floor(Math.random() * 10);
+  }
+
+  let tries = 0;
+  while ((await Brand.findOne({ code })) && tries < 5) {
+    code = code.slice(0, 3) + Math.floor(Math.random() * 10);
+    tries++;
+  }
+
+  return code;
+};
+
 export const getAllBrands = asyncHandler(async (req, res) => {
-  const brands = await Brand.find({}).sort({ createdAt: -1 });
-  
-  return res.status(200).json(brands);
-});
+  const { branchId, role } = req.user;
 
-// @desc    Get a single brand
-// @route   GET /api/brands/:id
-// @access  Private/Admin
-export const getBrandById = asyncHandler(async (req, res) => {
-  const brand = await Brand.findById(req.params.id);
-  
-  if (!brand) {
-    return res.status(404).json({
-      success: false,
-      message: "Không tìm thấy thương hiệu",
-    });
-  }
-  
-  return res.status(200).json(brand);
-});
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 20;
+  const skip = (page - 1) * limit;
 
-// @desc    Create a new brand
-// @route   POST /api/brands
-// @access  Private/Admin
-export const createBrand = asyncHandler(async (req, res) => {
-  const { name } = req.body;
-  let { code } = req.body;
+  const requestedBranchId = req.query.branchId;
 
-  // Kiểm tra thông tin bắt buộc
-  if (!name) {
-    return res.status(400).json({
-      success: false,
-      message: "Vui lòng cung cấp tên thương hiệu",
-    });
-  }
+  let filter = {};
 
-  // Nếu không có mã, tự động tạo mã ngẫu nhiên 4 chữ cái viết tắt từ tên
-  if (!code) {
-    // Lấy chữ cái đầu của mỗi từ trong tên thương hiệu
-    const words = name.split(" ");
-    let generatedCode = "";
-    for (let i = 0; i < Math.min(words.length, 4); i++) {
-      if (words[i].length > 0) {
-        generatedCode += words[i][0].toUpperCase();
-      }
+  if (role === "admin") {
+    if (requestedBranchId) {
+      filter.branchId = requestedBranchId;
     }
-    
-    // Nếu code có ít hơn 4 ký tự, thêm chữ cái từ từ đầu tiên
-    while (generatedCode.length < 4) {
-      if (words[0].length > generatedCode.length - 1) {
-        generatedCode += words[0][generatedCode.length].toUpperCase();
-      } else {
-        // Nếu từ đầu tiên không đủ ký tự, thêm số ngẫu nhiên
-        generatedCode += Math.floor(Math.random() * 10).toString();
-      }
-    }
-    
-    code = generatedCode;
-    req.body.code = code;
-  }
-
-  // Kiểm tra xem code đã tồn tại chưa
-  const existingBrand = await Brand.findOne({ code });
-  if (existingBrand) {
-    return res.status(400).json({
-      success: false,
-      message: "Mã thương hiệu đã tồn tại",
-    });
-  }
-
-  // Thêm thông tin người tạo nếu có
-  if (req.user && req.user._id) {
-    req.body.createdBy = req.user._id;
-  }
-
-  const brand = await Brand.create(req.body);
-
-  return res.status(201).json({
-    success: true,
-    message: "Thêm thương hiệu thành công",
-    brand,
-  });
-});
-
-// @desc    Update a brand
-// @route   PUT /api/brands/:id
-// @access  Private/Admin
-export const updateBrand = asyncHandler(async (req, res) => {
-  let brand = await Brand.findById(req.params.id);
-
-  if (!brand) {
-    return res.status(404).json({
-      success: false,
-      message: "Không tìm thấy thương hiệu",
-    });
-  }
-
-  // Kiểm tra thông tin bắt buộc
-  if (!req.body.name) {
-    return res.status(400).json({
-      success: false,
-      message: "Vui lòng cung cấp tên thương hiệu",
-    });
-  }
-
-  // Nếu cập nhật mã thương hiệu (code), phải kiểm tra xem mã đã tồn tại chưa
-  if (req.body.code && req.body.code !== brand.code) {
-    const existingBrand = await Brand.findOne({
-      code: req.body.code,
-      _id: { $ne: req.params.id },
-    });
-
-    if (existingBrand) {
+  } else {
+    if (!branchId) {
       return res.status(400).json({
         success: false,
-        message: "Mã thương hiệu đã tồn tại",
+        message: "Không tìm thấy thông tin chi nhánh của bạn",
       });
     }
+    filter.branchId = branchId;
   }
 
-  // Thêm thông tin người cập nhật nếu có
-  if (req.user && req.user._id) {
-    req.body.updatedBy = req.user._id;
-  }
+  let query = Brand.find(filter)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
 
-  brand = await Brand.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
+  query = query.populate({
+    path: "branchId",
+    select: "name",
+    model: "Branch",
   });
 
-  return res.status(200).json({
+  const [brands, total] = await Promise.all([
+    query,
+    Brand.countDocuments(filter),
+  ]);
+
+  const formattedBrands = brands.map((brand) => {
+    const plainBrand = brand.toObject();
+    if (plainBrand.branchId && plainBrand.branchId.name) {
+      plainBrand.branchName = plainBrand.branchId.name;
+    }
+    return plainBrand;
+  });
+
+  res.status(200).json({
     success: true,
-    message: "Cập nhật thương hiệu thành công",
-    brand,
+    data: formattedBrands,
+    pagination: { page, limit, total },
   });
 });
 
-// @desc    Delete a brand
-// @route   DELETE /api/brands/:id
-// @access  Private/Admin
-export const deleteBrand = asyncHandler(async (req, res) => {
-  const brand = await Brand.findById(req.params.id);
+export const getBrandById = asyncHandler(async (req, res) => {
+  const { branchId, role } = req.user;
+
+  const filter =
+    role === "admin"
+      ? { _id: req.params.id }
+      : { _id: req.params.id, branchId };
+
+  const brand = await Brand.findOne(filter).populate({
+    path: "branchId",
+    select: "name",
+    model: "Branch",
+  });
 
   if (!brand) {
-    return res.status(404).json({
+    return res
+      .status(404)
+      .json({ success: false, message: "Không tìm thấy thương hiệu" });
+  }
+
+  const formattedBrand = brand.toObject();
+  if (formattedBrand.branchId && formattedBrand.branchId.name) {
+    formattedBrand.branchName = formattedBrand.branchId.name;
+  }
+
+  res.status(200).json({ success: true, data: formattedBrand });
+});
+
+export const createBrand = asyncHandler(async (req, res) => {
+  const { name, code, branchId: targetBranchId } = req.body;
+  const { branchId: userBranchId, _id: adminId, role } = req.user;
+
+  if (!name) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Vui lòng cung cấp tên thương hiệu" });
+  }
+
+  const finalBranchId =
+    role === "admin" && targetBranchId ? targetBranchId : userBranchId;
+
+  if (!finalBranchId) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Vui lòng chọn chi nhánh cho thương hiệu",
+      });
+  }
+
+  let finalCode = code || (await generateUniqueBrandCode(name));
+
+  const existing = await Brand.findOne({
+    code: finalCode,
+    branchId: finalBranchId,
+  });
+
+  if (existing) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Mã thương hiệu đã tồn tại trong chi nhánh này",
+      });
+  }
+
+  const brandData = { ...req.body };
+  delete brandData.branchId;
+
+  const brand = await Brand.create({
+    ...brandData,
+    code: finalCode,
+    branchId: finalBranchId,
+    createdBy: adminId,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "Tạo thương hiệu thành công",
+    data: brand,
+  });
+});
+
+export const updateBrand = asyncHandler(async (req, res) => {
+  const { branchId: userBranchId, _id: adminId, role } = req.user;
+  const { branchId: targetBranchId } = req.body;
+
+  const filter =
+    role === "admin"
+      ? { _id: req.params.id }
+      : { _id: req.params.id, branchId: userBranchId };
+
+  const brand = await Brand.findOne(filter);
+
+  if (!brand) {
+    return res
+      .status(404)
+      .json({ success: false, message: "Không tìm thấy thương hiệu" });
+  }
+
+  const finalBranchId =
+    role === "admin" && targetBranchId ? targetBranchId : userBranchId;
+
+  if (!finalBranchId) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message: "Vui lòng chọn chi nhánh cho thương hiệu",
+      });
+  }
+
+  const updateData = { ...req.body };
+  delete updateData.branchId;
+
+  updateData.branchId = finalBranchId;
+  updateData.updatedBy = adminId;
+
+  try {
+    const updated = await Brand.findOneAndUpdate(
+      { _id: brand._id },
+      updateData,
+      {
+        new: true,
+        runValidators: false,
+      }
+    );
+
+    res
+      .status(200)
+      .json({ success: true, message: "Cập nhật thành công", data: updated });
+  } catch (error) {
+    res.status(500).json({
       success: false,
-      message: "Không tìm thấy thương hiệu",
+      message: "Lỗi khi cập nhật thương hiệu",
+      error: error.message,
     });
+  }
+});
+
+export const deleteBrand = asyncHandler(async (req, res) => {
+  const { branchId, role } = req.user;
+
+  const filter =
+    role === "admin"
+      ? { _id: req.params.id }
+      : { _id: req.params.id, branchId };
+
+  const brand = await Brand.findOne(filter);
+
+  if (!brand) {
+    return res
+      .status(404)
+      .json({ success: false, message: "Không tìm thấy thương hiệu" });
   }
 
   await brand.deleteOne();
-
-  return res.status(200).json({
-    success: true,
-    message: "Xóa thương hiệu thành công",
-  });
+  res
+    .status(200)
+    .json({ success: true, message: "Xóa thương hiệu thành công" });
 });
 
-// @desc    Search brands
-// @route   GET /api/brands/search
-// @access  Private/Admin
 export const searchBrands = asyncHandler(async (req, res) => {
   const { query = "" } = req.query;
+  const { branchId, role } = req.user;
 
-  const searchCondition = {
+  const regex = new RegExp(query, "i");
+
+  const requestedBranchId = req.query.branchId;
+
+  let baseFilter = {};
+
+  if (role === "admin") {
+    if (requestedBranchId) {
+      baseFilter.branchId = requestedBranchId;
+    }
+  } else {
+    if (!branchId) {
+      return res.status(400).json({
+        success: false,
+        message: "Không tìm thấy thông tin chi nhánh của bạn",
+      });
+    }
+    baseFilter.branchId = branchId;
+  }
+
+  let searchQuery = Brand.find({
+    ...baseFilter,
     $or: [
-      { name: { $regex: query, $options: "i" } },
-      { code: { $regex: query, $options: "i" } },
-      { country: { $regex: query, $options: "i" } },
+      { name: { $regex: regex } },
+      { code: { $regex: regex } },
+      { country: { $regex: regex } },
     ],
-  };
+  }).sort({ createdAt: -1 });
 
-  const brands = await Brand.find(searchCondition).sort({ createdAt: -1 });
+  searchQuery = searchQuery.populate({
+    path: "branchId",
+    select: "name",
+    model: "Branch",
+  });
 
-  return res.status(200).json(brands);
-}); 
+  const results = await searchQuery;
+
+  const formattedResults = results.map((brand) => {
+    const plainBrand = brand.toObject();
+    if (plainBrand.branchId && plainBrand.branchId.name) {
+      plainBrand.branchName = plainBrand.branchId.name;
+    }
+    return plainBrand;
+  });
+
+  res.status(200).json({ success: true, data: formattedResults });
+});
+
+export const resetBrandIndexes = asyncHandler(async (req, res) => {
+  try {
+    const result = await mongoose.connection.db
+      .collection("brands")
+      .dropIndexes();
+
+    res.status(200).json({
+      success: true,
+      message: "Đã reset tất cả indexes của Brand collection",
+      result,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi reset indexes",
+      error: error.message,
+    });
+  }
+});

@@ -2,6 +2,7 @@
 /* eslint-disable no-unused-vars */
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import Admin from "../Model/adminModel.js";
 
 dotenv.config({ path: ".env" });
 
@@ -9,9 +10,11 @@ const JWT_SECRET =
   process.env.JWT_SECRET_ACCESS ||
   process.env.JWT_SECRET ||
   "QUANLYTHUCPHAM_MERN";
-const ADMIN_SECRET_TOKEN = "admin-token-for-TKhiem";
 
-export const verifyToken = (req, res, next) => {
+// Sử dụng giá trị từ biến môi trường hoặc giá trị mặc định
+const ADMIN_SECRET_TOKEN = process.env.ADMIN_SECRET_TOKEN || "admin-token-for-TKhiem";
+
+export const verifyToken = async (req, res, next) => {
   const publicRoutes = [
     '/api/products/best-sellers',
     '/api/products',
@@ -35,13 +38,22 @@ export const verifyToken = (req, res, next) => {
       });
     }
 
+    // Khôi phục lại xác thực đặc biệt
     if (token === ADMIN_SECRET_TOKEN) {
-      req.user = {
-        id: "65f62e09ac3ea4ad23023293",
-        role: "admin",
-        username: "Admin",
-      };
-      return next();
+      // Tìm một admin user có quyền cao nhất để sử dụng
+      try {
+        const adminUser = await Admin.findOne({ role: "admin" }).select('_id');
+        if (adminUser) {
+          req.user = {
+            id: adminUser._id,
+            role: "admin",
+            username: "Admin",
+          };
+          return next();
+        }
+      } catch (err) {
+        console.error("Lỗi khi tìm admin user:", err);
+      }
     }
 
     try {
@@ -51,6 +63,18 @@ export const verifyToken = (req, res, next) => {
         id: decoded.id || decoded.userId
       };
       req.token = token;
+      
+      if (req.user.role === 'manager' && req.user.id) {
+        try {
+          const admin = await Admin.findById(req.user.id).select('branchId');
+          if (admin && admin.branchId) {
+            req.user.branchId = admin.branchId;
+          }
+        } catch (dbError) {
+          console.error("Error fetching admin branch info:", dbError);
+        }
+      }
+      
       next();
     } catch (jwtError) {
       if (jwtError.name === 'TokenExpiredError') {
@@ -93,7 +117,7 @@ export const isAdmin = (req, res, next) => {
   }
 };
 
-export const verifyAdmin = (req, res, next) => {
+export const verifyAdmin = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader && authHeader.startsWith('Bearer ') 
@@ -107,13 +131,22 @@ export const verifyAdmin = (req, res, next) => {
       });
     }
 
+    // Khôi phục lại xác thực đặc biệt
     if (token === ADMIN_SECRET_TOKEN) {
-      req.user = {
-        id: "65f62e09ac3ea4ad23023293",
-        role: "admin",
-        username: "Admin",
-      };
-      return next();
+      // Tìm một admin user có quyền cao nhất để sử dụng
+      try {
+        const adminUser = await Admin.findOne({ role: "admin" }).select('_id');
+        if (adminUser) {
+          req.user = {
+            id: adminUser._id,
+            role: "admin",
+            username: "Admin",
+          };
+          return next();
+        }
+      } catch (err) {
+        console.error("Lỗi khi tìm admin user:", err);
+      }
     }
 
     try {
@@ -128,6 +161,17 @@ export const verifyAdmin = (req, res, next) => {
           success: false,
           message: "Không có quyền thực hiện hành động này"
         });
+      }
+      
+      if (req.user.role === 'manager' && req.user.id) {
+        try {
+          const admin = await Admin.findById(req.user.id).select('branchId');
+          if (admin && admin.branchId) {
+            req.user.branchId = admin.branchId;
+          }
+        } catch (dbError) {
+          console.error("Error fetching admin branch info:", dbError);
+        }
       }
 
       next();

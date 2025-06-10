@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {authApi} from '../api/authApi';
 import { FaUser } from 'react-icons/fa';
+import { toast } from 'sonner';
 import { CaretDownIcon, ExitIcon, EnterIcon, PersonIcon } from '@radix-ui/react-icons';
 
 const menuItems = [
@@ -56,6 +57,7 @@ const SidebarLeft = () => {
 
   const handleLogout = () => {
     authApi.logout();
+    toast.success("Đăng xuất thành công!")
     setIsLoggedIn(false);
     setUser(null);
     navigate('/');

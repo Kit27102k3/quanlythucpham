@@ -6,6 +6,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import formatCurrency from "../Until/FotmatPrice";
 import PropTypes from "prop-types";
+import TypingEffect from "./TypingEffect";
 
 // Hàm debounce để tránh gọi API quá nhiều lần
 function debounce(func, wait) {
@@ -258,6 +259,7 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
   const [isFirstOpen, setIsFirstOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [lastIntent, setLastIntent] = useState(null);
+  const [typingMessage, setTypingMessage] = useState(null);
   
   const userId = localStorage.getItem("userId");
   const messagesEndRef = useRef(null);
@@ -290,15 +292,31 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
   useEffect(() => {
     if (isOpen && isFirstOpen) {
       // Chỉ thêm tin nhắn chào mừng khi mở đầu tiên
-      setMessages([{ 
+      setTypingMessage({ 
         text: "Xin chào! Tôi là trợ lý ảo của DNC FOOD. Tôi có thể giúp gì cho bạn?", 
         sender: "bot",
         showOptions: true, // Flag để hiển thị các nút tùy chọn
         optionsType: "general" // Luôn hiển thị các tùy chọn chung
-      }]);
+      });
       setIsFirstOpen(false);
     }
   }, [isOpen, isFirstOpen]);
+
+  // Xử lý khi tin nhắn đánh máy hoàn thành
+  useEffect(() => {
+    if (typingMessage) {
+      setIsLoading(true);
+    }
+  }, [typingMessage]);
+
+  // Xử lý hoàn thành đánh máy
+  const handleTypingComplete = useCallback(() => {
+    if (typingMessage) {
+      setMessages(prev => [...prev, typingMessage]);
+      setTypingMessage(null);
+      setIsLoading(false);
+    }
+  }, [typingMessage]);
 
   const getProductImageUrl = useCallback((url) => {
     // For debugging - log the incoming URL
@@ -419,20 +437,16 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         if (responseData.type === 'multiProductSearch' && responseData.data && Array.isArray(responseData.data)) {
           console.log("Multi-product search results:", responseData.data);
           
-          setMessages((prev) => [
-            ...prev,
-            {
-              type: 'multiProductSearch',
-              text: responseData.message || 'Kết quả tìm kiếm nhiều sản phẩm:',
-              data: responseData.data,
-              totalResults: responseData.totalResults || responseData.data.reduce((total, result) => total + result.products.length, 0),
-              sender: "bot"
-            }
-          ]);
+          setTypingMessage({
+            type: 'multiProductSearch',
+            text: responseData.message || 'Kết quả tìm kiếm nhiều sản phẩm:',
+            data: responseData.data,
+            totalResults: responseData.totalResults || responseData.data.reduce((total, result) => total + result.products.length, 0),
+            sender: "bot"
+          });
           
           // Cập nhật intent mới nhất
           setLastIntent('multiProductSearch');
-          setIsLoading(false);
           return;
         }
         
@@ -441,101 +455,40 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
           // Data là mảng các sản phẩm
           console.log("Data is an array of products:", responseData.data);
           
-          setMessages((prev) => [
-            ...prev,
-            {
-              type: responseData.type || 'productSearch',
-              text: responseData.text || responseData.message || 'Đây là kết quả tìm kiếm:',
-              products: responseData.data,
-              nameCategory: responseData.nameCategory || 'Kết quả tìm kiếm',
-              sender: "bot"
-            }
-          ]);
+          setTypingMessage({
+            type: responseData.type || 'productSearch',
+            text: responseData.text || responseData.message || 'Đây là kết quả tìm kiếm:',
+            products: responseData.data,
+            sender: "bot"
+          });
           
           // Cập nhật intent mới nhất
-          setLastIntent(responseData.intent || 'productSearch');
-          setIsLoading(false);
-          return;
-        }
-        else if (responseData.data && typeof responseData.data === 'object') {
-          const { type, text, products } = responseData.data;
-          
-          if (type === 'relatedProducts' || 
-              type === 'discountedProducts' || 
-              type === 'priceRangeProducts' ||
-              type === 'productSearch' ||
-              type === 'categoryQuery') {
-            
-            setMessages((prev) => [
-              ...prev,
-              {
-                type,
-                text: text || responseData.message || 'Đây là một số sản phẩm bạn có thể quan tâm:',
-                products: products || [],
-                nameCategory: responseData.data.nameCategory || 'Kết quả tìm kiếm',
-                sender: "bot"
-              }
-            ]);
-            
-            // Cập nhật intent mới nhất
-            setLastIntent(responseData.intent || type);
-            
-            setIsLoading(false);
-            return;
-          }
-        }
-        
-        // Kiểm tra tin nhắn thông thường có định dạng đặc biệt không
-        if (typeof responseData.message === 'object' && 
-            responseData.message !== null && 
-            (responseData.message.type === 'productSearch' || 
-             responseData.message.type === 'relatedProducts' ||
-             responseData.message.type === 'categoryQuery')) {
-          
-          const { type, text, products, nameCategory } = responseData.message;
-          
-          setMessages((prev) => [
-            ...prev,
-            {
-              type,
-              text: text || 'Đây là kết quả tìm kiếm:',
-              products: products || [],
-              nameCategory: nameCategory || 'Kết quả tìm kiếm',
-              sender: "bot"
-            }
-          ]);
-          
-          setIsLoading(false);
+          setLastIntent(responseData.type || 'productSearch');
           return;
         }
         
-        // Xử lý text thông thường
-        setMessages((prev) => [
-          ...prev,
-          { 
-            text: responseData.message || "Xin lỗi, tôi không hiểu câu hỏi của bạn.",
-            sender: "bot" 
-          }
-        ]);
-
-        // Cập nhật intent mới nhất
-        setLastIntent(responseData.intent);
+        // Trường hợp còn lại - tin nhắn thông thường
+        setTypingMessage({
+          text: responseData.message || responseData.text || "Xin lỗi, tôi không hiểu ý bạn.",
+          sender: "bot"
+        });
       } else {
-        throw new Error(response.data.message || "Đã có lỗi xảy ra");
+        // Xử lý lỗi từ server
+        setTypingMessage({
+          text: response.data.message || "Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.",
+          sender: "bot"
+        });
       }
     } catch (error) {
-      console.error("Chat error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: "Xin lỗi, đã có lỗi xảy ra khi xử lý tin nhắn của bạn. Vui lòng thử lại.",
-          sender: "bot" 
-        }
-      ]);
-    } finally {
-      setIsLoading(false);
+      console.error("Lỗi khi gửi tin nhắn:", error);
+      
+      // Hiển thị thông báo lỗi
+      setTypingMessage({
+        text: "Xin lỗi, đã có lỗi xảy ra khi kết nối với máy chủ. Vui lòng thử lại sau.",
+        sender: "bot"
+      });
     }
-  }, [userId, setIsLoading, setMessages, setLastIntent, API_BASE_URL]);
+  }, [userId, lastIntent]);
   
   // Áp dụng debounce cho handleCustomMessage để tránh gọi API quá nhiều lần
   const handleCustomMessage = useCallback(
@@ -545,21 +498,30 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
     [handleCustomMessageRequest]
   );
   
-  // Handle sending a message
+  // Xử lý gửi tin nhắn
   const handleSendMessage = useCallback(() => {
-    if (!input.trim()) return;
- 
-    const userMessage = input.trim();
-    setMessages((prev) => [...prev, { text: userMessage, sender: "user" }]);
-    setInput("");
-    handleCustomMessage(userMessage);
-  }, [input, handleCustomMessage]);
+    if (!input.trim() || isLoading) return;
 
-  // Handle predefined questions
+    // Thêm tin nhắn của người dùng vào danh sách
+    setMessages((prev) => [...prev, { text: input, sender: "user" }]);
+
+    // Gửi tin nhắn đến API
+    handleCustomMessage(input);
+
+    // Xóa input
+    setInput("");
+  }, [input, isLoading, handleCustomMessage]);
+
+  // Xử lý câu hỏi định sẵn
   const handlePredefinedQuestion = useCallback((question) => {
+    if (isLoading) return;
+
+    // Thêm câu hỏi vào danh sách tin nhắn
     setMessages((prev) => [...prev, { text: question, sender: "user" }]);
+
+    // Gửi câu hỏi đến API
     handleCustomMessage(question);
-  }, [handleCustomMessage]);
+  }, [isLoading, handleCustomMessage]);
 
   // Thêm hàm để lấy các gợi ý câu hỏi phù hợp dựa trên lastIntent
   const getDynamicSuggestions = useCallback(() => {
@@ -819,7 +781,59 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
           <div className={`flex-grow overflow-y-auto p-4 space-y-3 ${isMobile ? 'max-h-[300px]' : 'max-h-[420px]'} custom-scrollbar`}>
             {messages.map((msg, index) => renderMessage(msg, index))}
 
-            {isLoading && (
+            {/* Hiển thị tin nhắn đang đánh máy */}
+            {typingMessage && (
+              <div className="flex justify-start mb-3">
+                <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[85%]">
+                  <TypingEffect 
+                    text={typingMessage.text} 
+                    speed={25}
+                    onComplete={handleTypingComplete}
+                  />
+                  
+                  {/* Hiển thị các nút tùy chọn nếu có */}
+                  {typingMessage.showOptions && typingMessage.sender === "bot" && (
+                    <div className="grid grid-cols-2 gap-2 mt-3 opacity-0 animate-fade-in" 
+                         style={{animationDelay: `${typingMessage.text.length * 25 + 500}ms`, animationFillMode: 'forwards'}}>
+                      {typingMessage.optionsType === "general" && (
+                        <>
+                          <button
+                            onClick={() => handlePredefinedQuestion("Các sản phẩm dưới 100k")}
+                            className="text-xs bg-white text-gray-700 p-2 rounded border border-gray-200 hover:bg-green-50 hover:border-green-200 flex items-center"
+                          >
+                            <Tag className="mr-1 w-3 h-3" />
+                            <span>Các sản phẩm dưới 100k</span>
+                          </button>
+                          <button
+                            onClick={() => handlePredefinedQuestion("Sản phẩm đang giảm giá")}
+                            className="text-xs bg-white text-gray-700 p-2 rounded border border-gray-200 hover:bg-green-50 hover:border-green-200 flex items-center"
+                          >
+                            <ShoppingBag className="mr-1 w-3 h-3" />
+                            <span>Sản phẩm đang giảm giá</span>
+                          </button>
+                          <button
+                            onClick={() => handlePredefinedQuestion("Cách đặt hàng")}
+                            className="text-xs bg-white text-gray-700 p-2 rounded border border-gray-200 hover:bg-green-50 hover:border-green-200 flex items-center"
+                          >
+                            <MapPin className="mr-1 w-3 h-3" />
+                            <span>Cách đặt hàng</span>
+                          </button>
+                          <button
+                            onClick={() => handlePredefinedQuestion("Phí vận chuyển")}
+                            className="text-xs bg-white text-gray-700 p-2 rounded border border-gray-200 hover:bg-green-50 hover:border-green-200 flex items-center"
+                          >
+                            <MapPin className="mr-1 w-3 h-3" />
+                            <span>Phí vận chuyển</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {isLoading && !typingMessage && (
               <div className="flex justify-start">
                 <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl">
                   <div className="flex items-center space-x-2">

@@ -25,13 +25,22 @@ export const adminLogin = async (req, res) => {
       return res.status(403).json({ message: "Tài khoản đã bị vô hiệu hóa" });
     }
 
-    // Tạo token
+    // Tạo token với branchId nếu có
+    const tokenPayload = {
+      id: admin._id,
+      role: admin.role,
+      permissions: admin.permissions,
+    };
+    
+    // Thêm branchId vào token nếu có
+    if (admin.branchId) {
+      tokenPayload.branchId = admin.branchId;
+    }
+    
+    console.log("Creating token with payload:", tokenPayload);
+    
     const accessToken = jwt.sign(
-      {
-        id: admin._id,
-        role: admin.role,
-        permissions: admin.permissions,
-      },
+      tokenPayload,
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );

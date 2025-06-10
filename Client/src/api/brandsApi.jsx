@@ -1,117 +1,113 @@
 import axios from "axios";
-import { API_BASE_URL } from '../config/apiConfig';
+import { API_BASE_URL } from "../config/apiConfig";
 
 const API_URL = `${API_BASE_URL}/api/brands`;
 
 // Hàm lấy token xác thực
 const getAuthToken = () => {
-  // Luôn lấy accessToken
   const token = localStorage.getItem("accessToken");
-  console.log("Token lấy từ localStorage:", token);
   return token;
 };
 
-// Lấy tất cả thương hiệu
+// Hàm thiết lập headers chuẩn cho các request
+const getAuthHeaders = () => {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+// Lấy tất cả thương hiệu theo branch (nếu role là manager) hoặc tất cả thương hiệu (nếu role là admin)
 export const getAllBrands = async () => {
   try {
-    const token = getAuthToken();
-    const headers = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+    const headers = getAuthHeaders();
     const response = await axios.get(API_URL, { headers });
-    return response.data;
+    return response.data.data || []; // Return the data array from the response
   } catch (error) {
-    console.error("Error fetching brands:", error);
-    throw error;
+    handleError("fetching all brands", error);
+    return [];
   }
 };
 
-// Tìm kiếm thương hiệu
+// Tìm kiếm thương hiệu theo query (tên, mã, quốc gia)
 export const searchBrands = async (query) => {
   try {
-    const token = getAuthToken();
-    const headers = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    const response = await axios.get(`${API_URL}/search?query=${encodeURIComponent(query)}`, { headers });
-    return response.data;
+    const headers = getAuthHeaders();
+    const response = await axios.get(
+      `${API_URL}/search?query=${encodeURIComponent(query)}`,
+      { headers }
+    );
+    return response.data.data || [];
   } catch (error) {
-    console.error("Error searching brands:", error);
-    throw error;
+    handleError("searching brands", error);
+    return [];
   }
 };
 
-// Lấy thông tin một thương hiệu theo ID
+// Lấy thương hiệu theo ID
 export const getBrandById = async (id) => {
   try {
-    const token = getAuthToken();
-    const headers = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+    const headers = getAuthHeaders();
     const response = await axios.get(`${API_URL}/${id}`, { headers });
     return response.data;
   } catch (error) {
-    console.error(`Error fetching brand ${id}:`, error);
-    throw error;
+    handleError(`fetching brand with ID ${id}`, error);
   }
 };
 
-// Tạo thương hiệu mới
+// Tạo mới thương hiệu (backend sẽ tự lấy branchId từ req.user)
 export const createBrand = async (brandData) => {
   try {
-    const token = getAuthToken();
+    // Đảm bảo branchId được gửi đúng cách
+    const dataToSend = { ...brandData };
+    
+    // Log dữ liệu trước khi gửi
+    console.log("createBrand API - sending data:", dataToSend);
+    
     const headers = {
+      ...getAuthHeaders(),
       "Content-Type": "application/json",
     };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    console.log("Gửi request tạo brand với token:", token);
-    const response = await axios.post(API_URL, brandData, { headers });
+    const response = await axios.post(API_URL, dataToSend, { headers });
     return response.data;
   } catch (error) {
-    console.error("Error creating brand:", error);
-    if (error.response) {
-      console.error("Status:", error.response.status);
-      console.error("Response data:", error.response.data);
-    }
-    throw error;
+    handleError("creating brand", error);
   }
 };
 
 // Cập nhật thương hiệu
 export const updateBrand = async (id, brandData) => {
   try {
-    const token = getAuthToken();
+    // Đảm bảo branchId được gửi đúng cách
+    const dataToSend = { ...brandData };
+    
+    // Log dữ liệu trước khi gửi
+    console.log("updateBrand API - sending data:", dataToSend);
+    
     const headers = {
+      ...getAuthHeaders(),
       "Content-Type": "application/json",
     };
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-    const response = await axios.put(`${API_URL}/${id}`, brandData, { headers });
+    const response = await axios.put(`${API_URL}/${id}`, dataToSend, {
+      headers,
+    });
     return response.data;
   } catch (error) {
-    console.error(`Error updating brand ${id}:`, error);
-    throw error;
+    handleError(`updating brand ${id}`, error);
   }
 };
 
 // Xóa thương hiệu
 export const deleteBrand = async (id) => {
   try {
-    const token = getAuthToken();
-    const headers = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+    const headers = getAuthHeaders();
     const response = await axios.delete(`${API_URL}/${id}`, { headers });
     return response.data;
   } catch (error) {
-    console.error(`Error deleting brand ${id}:`, error);
-    throw error;
+    handleError(`deleting brand ${id}`, error);
   }
-}; 
+};
+
+// Hàm xử lý lỗi chuẩn
+const handleError = (action, error) => {
+  console.error(`Error ${action}:`, error?.response?.data || error.message);
+  throw error;
+};

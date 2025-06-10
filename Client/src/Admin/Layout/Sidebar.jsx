@@ -20,6 +20,7 @@ import {
 } from "@radix-ui/react-icons";
 import messagesApi from "../../api/messagesApi";
 import { canAccess } from "../../utils/permission";
+import { toast } from "sonner";
 
 const AdminSidebar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -169,9 +170,8 @@ const AdminSidebar = () => {
   const handleNavigation = (path, item) => {
     setActiveItem(item);
     localStorage.setItem("activeItem", item);
+    toast.success("Đăng xuất thành công!")
     navigate(path);
-
-    // Auto close sidebar on mobile after navigation
     if (isMobile) {
       setShowMobileMenu(false);
     }

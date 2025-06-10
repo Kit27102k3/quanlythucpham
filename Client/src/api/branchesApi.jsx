@@ -4,32 +4,35 @@ import { API_URLS } from '../config/apiConfig';
 // Add branches endpoint to API_URLS if it doesn't exist
 const API_URL = API_URLS.BRANCHES;
 
-const branchesApi = {
-  getAllBranches: async () => {
-    try {
-      const token = localStorage.getItem("accessToken");
-      const headers = {};
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      const response = await axios.get(API_URL, { headers });
-      
-      if (response.data && Array.isArray(response.data.data)) {
-        // Trả về mảng chi nhánh trực tiếp
-        return response.data.data;
-      } else if (Array.isArray(response.data)) {
-        // Trường hợp API trả về mảng trực tiếp
-        return response.data;
-      } else {
-        console.warn("Branches API returned invalid data:", response.data);
-        return [];
-      }
-    } catch (error) {
-      console.error("Lỗi khi lấy danh sách chi nhánh:", error);
-      // Return a structured response with empty data array instead of throwing
-      return { data: [] };
+// Export functions to be used directly
+export const getAllBranches = async () => {
+  try {
+    const token = localStorage.getItem("accessToken");
+    const headers = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
-  },
+    const response = await axios.get(API_URL, { headers });
+    
+    if (response.data && Array.isArray(response.data.data)) {
+      // Trả về mảng chi nhánh trực tiếp
+      return response.data.data;
+    } else if (Array.isArray(response.data)) {
+      // Trường hợp API trả về mảng trực tiếp
+      return response.data;
+    } else {
+      console.warn("Branches API returned invalid data:", response.data);
+      return [];
+    }
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách chi nhánh:", error);
+    // Return a structured response with empty data array instead of throwing
+    return [];
+  }
+};
+
+const branchesApi = {
+  getAllBranches,
 
   createBranch: async (data) => {
     try {

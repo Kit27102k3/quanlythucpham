@@ -6,7 +6,6 @@ import cookieParser from "cookie-parser";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
-import path from "path";
 import { deleteExpiredVouchers } from "./Controller/savedVoucherController.js";
 import {
   handleSepayCallback,
@@ -15,11 +14,6 @@ import {
 import reportsController from "./Controller/reportsController.js";
 import NodeCache from 'node-cache';
 
-// ES modules compatibility
-// // Sử dụng process.cwd() thay vì import.meta.url
-// const __dirname = process.cwd();
-
-// Import models before routes
 import "./Model/Review.js";
 import "./Model/ReviewStats.js";
 import "./Model/CustomerLog.js";
@@ -53,7 +47,6 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 // Import customer log middleware
 import { customerActivityLogger } from "./Middleware/customerLogMiddleware.js";
 
-// Import specific controller for direct endpoint handling
 import { getBestSellingProducts } from "./Controller/Products/ProductRankingController.js";
 import { updateProductExpirations } from "./Controller/Products/ProductUtilsController.js";
 
