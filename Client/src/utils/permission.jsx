@@ -7,48 +7,38 @@ export const canAccess = (role, pageKey) => {
   } else {
     permissions = {
       admin: [
+        "employees",
+        "reviews",
+        "contacts",
+        "customers",
+        "messages",
+        "orders",
         "dashboard",
         "products",
         "categories",
-        "brands",
-        "suppliers",
-        "branches",
-        "employees",
-        "customers",
-        "orders",
-        "reviews",
-        "contacts",
-        "messages",
         "coupons",
         "tips",
         "reports",
         "settings",
-        "delivery"
+        "suppliers",
+        "brands",
+        "branches",
       ],
       manager: [
-        "dashboard",
+        "employees",
+        "reviews",
+        "contacts",
+        "customers",
+        "messages",
+        "orders",
+        "suppliers",
         "products",
         "categories",
         "brands",
-        "suppliers",
-        "employees",
-        "customers",
-        "orders",
-        "reviews",
-        "contacts",
-        "messages"
       ],
-      employee: [
-        "dashboard",
-        "products",
-        "orders",
-        "customers",
-        "reviews",
-        "contacts",
-        "messages"
-      ],
-      shipper: ["delivery", "orders"]
+      employee: ["reviews", "contacts", "messages", "orders"],
+      shipper: ["delivery"],
     };
   }
   return permissions[role]?.includes(pageKey);
-}; 
+};

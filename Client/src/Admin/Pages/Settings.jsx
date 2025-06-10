@@ -1,22 +1,58 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import RolePermissionSetting from "../components/RolePermissionSetting";
-import { canAccess } from "../../utils/permission";
 import adminApi from "../../api/adminApi";
 
 const ROLES = [
   { key: "admin", label: "Quản trị viên" },
   { key: "manager", label: "Quản lý" },
   { key: "employee", label: "Nhân viên" },
+  { key: "shipper", label: "Nhân viên giao hàng" },
 ];
 
 // Lấy quyền mặc định
 const getDefaultPermissions = () => ({
   admin: [
-    "employees", "reviews", "contacts", "customers", "messages", "orders",
-    "dashboard", "products", "categories", "coupons", "tips", "reports", "settings"
+    "dashboard",
+    "products",
+    "categories",
+    "brands",
+    "suppliers",
+    "branches",
+    "employees",
+    "customers",
+    "orders",
+    "reviews",
+    "contacts",
+    "messages",
+    "coupons",
+    "tips",
+    "reports",
+    "settings",
+    "delivery"
   ],
-  manager: ["employees", "reviews", "contacts", "customers", "messages", "orders"],
-  employee: ["reviews", "contacts", "messages", "orders"],
+  manager: [
+    "dashboard",
+    "products",
+    "categories",
+    "brands",
+    "suppliers",
+    "employees",
+    "customers",
+    "orders",
+    "reviews",
+    "contacts",
+    "messages"
+  ],
+  employee: [
+    "dashboard",
+    "products",
+    "orders",
+    "customers",
+    "reviews",
+    "contacts",
+    "messages"
+  ],
+  shipper: ["delivery", "orders"]
 });
 
 // Lấy quyền từ localStorage hoặc mặc định

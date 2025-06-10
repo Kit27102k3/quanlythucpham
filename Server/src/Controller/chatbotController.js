@@ -12,6 +12,7 @@ import fs from 'fs';
 // Import xử lý câu hỏi về sản phẩm
 import { handleProductPageQuestion } from './chatbotProductHandler.js';
 import { handleFAQQuestion } from './chatbotFAQHandler.js';
+import UserContext from "../Model/UserContext.js";
 
 // Load environment variables
 dotenv.config();
@@ -1174,14 +1175,12 @@ const generateContextResponse = (message, product) => {
  * @returns {string} - Chuỗi tiền đã định dạng
  */
 const formatCurrency = (amount) => {
-  // Đảm bảo amount là số
-  const validAmount = Number(amount) || 0;
-  
-  return new Intl.NumberFormat('vi-VN', { 
-    style: 'currency', 
+  if (!amount) return "0 đ";
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
     currency: 'VND',
-    maximumFractionDigits: 0
-  }).format(validAmount);
+    minimumFractionDigits: 0
+  }).format(amount);
 };
 
 // Thêm hàm nhận diện câu hỏi về món ăn/công thức
@@ -1537,6 +1536,439 @@ const handleMultiProductSearch = async (queries) => {
   }
   
   return results;
+};
+
+// Thêm hàm xử lý so sánh sản phẩm
+export const handleProductComparison = async (req, res) => {
+  try {
+    const { userId, productIds, message } = req.body;
+    console.log(`Xử lý yêu cầu so sánh sản phẩm từ user ${userId}`);
+    
+    let products = [];
+    
+    // Nếu có danh sách productIds được gửi lên
+    if (productIds && Array.isArray(productIds) && productIds.length >= 2) {
+      console.log(`So sánh các sản phẩm với ID: ${productIds.join(', ')}`);
+      products = await Product.find({ _id: { $in: productIds } });
+    } 
+    // Nếu không có productIds nhưng có userId, tìm sản phẩm từ ngữ cảnh
+    else if (userId) {
+      const context = getContext(userId);
+      
+      if (context && context.lastProducts && context.lastProducts.length >= 2) {
+        console.log(`Sử dụng sản phẩm từ ngữ cảnh: ${context.lastProducts.length} sản phẩm`);
+        // Lấy tối đa 3 sản phẩm từ ngữ cảnh
+        products = context.lastProducts.slice(0, 3);
+      } else if (context && context.lastProduct) {
+        // Nếu chỉ có 1 sản phẩm trong ngữ cảnh, tìm thêm sản phẩm tương tự
+        try {
+          const similarProducts = await Product.find({
+            productCategory: context.lastProduct.productCategory,
+            _id: { $ne: context.lastProduct._id }
+          }).limit(2);
+          
+          if (similarProducts && similarProducts.length > 0) {
+            products = [context.lastProduct, ...similarProducts];
+            console.log(`Sử dụng 1 sản phẩm từ ngữ cảnh và ${similarProducts.length} sản phẩm tương tự`);
+          } else {
+            console.log("Không tìm thấy sản phẩm tương tự để so sánh");
+          }
+        } catch (error) {
+          console.error("Lỗi khi tìm sản phẩm tương tự:", error);
+        }
+      }
+    }
+    
+    // Nếu không tìm thấy đủ sản phẩm để so sánh
+    if (!products || products.length < 2) {
+      console.log("Không đủ sản phẩm để so sánh");
+      return res.status(200).json({
+        success: false,
+        message: "Không tìm thấy đủ sản phẩm để so sánh. Vui lòng xem và chọn ít nhất 2 sản phẩm để so sánh."
+      });
+    }
+    
+    console.log(`Tiến hành so sánh ${products.length} sản phẩm`);
+    
+    // So sánh sản phẩm
+    let comparison;
+    let comparisonMessage;
+    
+    try {
+      comparison = compareProducts(products);
+      comparisonMessage = generateComparisonMessage(comparison);
+    } catch (error) {
+      console.error("Lỗi khi so sánh sản phẩm:", error);
+      return res.status(200).json({
+        success: false,
+        message: `Lỗi khi so sánh sản phẩm: ${error.message}`
+      });
+    }
+    
+    // Lưu kết quả so sánh vào ngữ cảnh
+    if (userId) {
+      saveContext(userId, {
+        lastComparison: comparison,
+        lastProducts: products,
+        lastProduct: products[0],
+        lastQuery: message || "So sánh sản phẩm"
+      });
+    }
+    
+    return res.status(200).json({
+      success: true,
+      type: 'comparison',
+      message: comparisonMessage,
+      data: comparison
+    });
+    
+  } catch (error) {
+    console.error("Lỗi khi so sánh sản phẩm:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi so sánh sản phẩm."
+    });
+  }
+};
+
+// Hàm so sánh sản phẩm
+const compareProducts = (products) => {
+  // Đảm bảo có ít nhất 2 sản phẩm để so sánh
+  if (!products || products.length < 2) {
+    throw new Error("Cần ít nhất 2 sản phẩm để so sánh");
+  }
+  
+  // Giới hạn số lượng sản phẩm so sánh
+  const productsToCompare = products.slice(0, 3);
+  
+  // Các thuộc tính cần so sánh
+  const comparisonAttributes = [
+    { key: "productName", label: "Tên sản phẩm" },
+    { key: "productBrand", label: "Thương hiệu" },
+    { key: "productCategory", label: "Danh mục" },
+    { key: "productPrice", label: "Giá" },
+    { key: "productDiscount", label: "Giảm giá" },
+    { key: "averageRating", label: "Đánh giá" },
+    { key: "productStock", label: "Số lượng tồn kho" },
+    { key: "productWeight", label: "Trọng lượng" },
+    { key: "productOrigin", label: "Xuất xứ" },
+    { key: "productDescription", label: "Mô tả" }
+  ];
+  
+  // Tạo bảng so sánh
+  const comparisonTable = comparisonAttributes.map(attr => {
+    const row = {
+      attribute: attr.label,
+      values: {}
+    };
+    
+    // Lấy giá trị của thuộc tính cho từng sản phẩm
+    productsToCompare.forEach(product => {
+      let value = product[attr.key];
+      
+      // Xử lý các trường hợp đặc biệt
+      if (attr.key === "productPrice") {
+        // Định dạng giá tiền
+        value = formatCurrency(value);
+      } else if (attr.key === "productDiscount") {
+        // Định dạng phần trăm giảm giá
+        value = value ? `${value}%` : "0%";
+      } else if (attr.key === "averageRating") {
+        // Định dạng đánh giá
+        value = value ? `${value}/5` : "Chưa có đánh giá";
+      } else if (attr.key === "productDescription") {
+        // Rút gọn mô tả
+        value = value ? (value.length > 100 ? value.substring(0, 100) + "..." : value) : "Không có mô tả";
+      } else if (!value) {
+        // Giá trị mặc định nếu không có dữ liệu
+        value = "Không có thông tin";
+      }
+      
+      row.values[product._id] = value;
+    });
+    
+    return row;
+  });
+  
+  // Phân tích sự khác biệt giữa các sản phẩm
+  const differences = analyzeDifferences(productsToCompare);
+  
+  // Phân tích ưu điểm của từng sản phẩm
+  const advantages = {};
+  productsToCompare.forEach(product => {
+    const otherProducts = productsToCompare.filter(p => p._id !== product._id);
+    advantages[product._id] = analyzeAdvantages(product, otherProducts);
+  });
+  
+  return {
+    products: productsToCompare.map(p => ({
+      id: p._id,
+      name: p.productName,
+      image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : null
+    })),
+    comparisonTable,
+    differences,
+    advantages
+  };
+};
+
+// Phân tích sự khác biệt chính giữa các sản phẩm
+const analyzeDifferences = (products) => {
+  const differences = [];
+
+  // So sánh giá
+  const prices = products.map(p => parseFloat(p.productPrice) || 0);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  
+  if (maxPrice - minPrice > 0) {
+    const priceDiff = ((maxPrice - minPrice) / minPrice * 100).toFixed(0);
+    differences.push({
+      type: "price",
+      description: `Chênh lệch giá ${priceDiff}% giữa sản phẩm đắt nhất và rẻ nhất`
+    });
+  }
+
+  // So sánh trọng lượng/dung tích
+  const weights = products.map(p => parseFloat(p.productWeight)).filter(w => !isNaN(w));
+  if (weights.length === products.length) {
+    const minWeight = Math.min(...weights);
+    const maxWeight = Math.max(...weights);
+    
+    if (maxWeight / minWeight > 1.2) { // Chênh lệch hơn 20%
+      differences.push({
+        type: "weight",
+        description: `Sản phẩm có trọng lượng/dung tích khác nhau đáng kể`
+      });
+    }
+  }
+
+  // So sánh thương hiệu
+  const brands = new Set(products.map(p => p.productBrand).filter(Boolean));
+  if (brands.size > 1) {
+    differences.push({
+      type: "brand",
+      description: `Sản phẩm đến từ các thương hiệu khác nhau: ${Array.from(brands).join(', ')}`
+    });
+  }
+
+  // So sánh xuất xứ
+  const origins = new Set(products.map(p => p.productOrigin).filter(Boolean));
+  if (origins.size > 1) {
+    differences.push({
+      type: "origin",
+      description: `Sản phẩm có xuất xứ khác nhau: ${Array.from(origins).join(', ')}`
+    });
+  }
+
+  return differences;
+};
+
+// Phân tích ưu điểm của một sản phẩm so với các sản phẩm khác
+const analyzeAdvantages = (product, otherProducts) => {
+  const advantages = [];
+
+  // So sánh giá
+  const thisPrice = parseFloat(product.productPrice) || 0;
+  const otherPrices = otherProducts.map(p => parseFloat(p.productPrice) || 0);
+  if (thisPrice < Math.min(...otherPrices)) {
+    advantages.push({
+      type: "price",
+      description: "Giá thấp nhất trong các sản phẩm so sánh"
+    });
+  }
+
+  // So sánh đánh giá
+  const thisRating = parseFloat(product.averageRating) || 0;
+  const otherRatings = otherProducts.map(p => parseFloat(p.averageRating) || 0);
+  if (thisRating > Math.max(...otherRatings)) {
+    advantages.push({
+      type: "rating",
+      description: "Đánh giá cao nhất trong các sản phẩm so sánh"
+    });
+  }
+
+  // So sánh lượng bán
+  const thisSold = parseInt(product.soldCount) || 0;
+  const otherSold = otherProducts.map(p => parseInt(p.soldCount) || 0);
+  if (thisSold > Math.max(...otherSold)) {
+    advantages.push({
+      type: "popularity",
+      description: "Bán chạy nhất trong các sản phẩm so sánh"
+    });
+  }
+
+  // So sánh giảm giá
+  const thisDiscount = parseFloat(product.productDiscount) || 0;
+  const otherDiscounts = otherProducts.map(p => parseFloat(p.productDiscount) || 0);
+  if (thisDiscount > Math.max(...otherDiscounts)) {
+    advantages.push({
+      type: "discount",
+      description: "Có mức giảm giá cao nhất"
+    });
+  }
+
+  return advantages;
+};
+
+// Tạo nội dung tin nhắn so sánh sản phẩm dễ đọc
+const generateComparisonMessage = (comparison) => {
+  if (!comparison || !comparison.products) {
+    return "Không có đủ dữ liệu để so sánh sản phẩm.";
+  }
+
+  let message = "📊 *SO SÁNH SẢN PHẨM*\n\n";
+
+  // Thêm tên sản phẩm
+  message += "🔹 *Sản phẩm so sánh:*\n";
+  comparison.products.forEach((product, index) => {
+    message += `${index + 1}. ${product.name}\n`;
+  });
+  message += "\n";
+
+  // Thêm bảng so sánh
+  message += "🔹 *Bảng so sánh:*\n";
+  comparison.comparisonTable.forEach(row => {
+    message += `- ${row.attribute}: `;
+    
+    // Lấy danh sách các sản phẩm
+    const productIds = comparison.products.map(p => p.id);
+    
+    // Hiển thị giá trị của từng sản phẩm
+    productIds.forEach((productId, index) => {
+      if (index > 0) message += " | ";
+      message += `${row.values[productId] || "Không có"}`;
+    });
+    
+    message += "\n";
+  });
+  message += "\n";
+
+  // Thêm sự khác biệt chính
+  if (comparison.differences && comparison.differences.length > 0) {
+    message += "🔹 *Sự khác biệt chính:*\n";
+    comparison.differences.forEach(diff => {
+      message += `- ${diff.description}\n`;
+    });
+    message += "\n";
+  }
+
+  // Thêm ưu điểm của từng sản phẩm
+  message += "🔹 *Ưu điểm nổi bật:*\n";
+  comparison.products.forEach((product, index) => {
+    const advantages = comparison.advantages[product.id];
+    message += `${index + 1}. ${product.name}:\n`;
+    
+    if (advantages && advantages.length > 0) {
+      advantages.forEach(adv => {
+        message += `   ✓ ${adv.description}\n`;
+      });
+    } else {
+      message += `   (Không có ưu điểm nổi bật)\n`;
+    }
+  });
+
+  return message;
+};
+
+// Thêm xử lý nhận diện ý định so sánh sản phẩm trong hàm processMessage
+export const processMessage = async (req, res) => {
+  try {
+    const { userId, message } = req.body;
+    
+    if (!userId || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin người dùng hoặc tin nhắn"
+      });
+    }
+    
+    console.log(`Nhận tin nhắn từ user ${userId}: "${message}"`);
+    
+    // Kiểm tra xem có phải là yêu cầu so sánh sản phẩm không
+    if (isComparisonRequest(message)) {
+      console.log("Phát hiện yêu cầu so sánh sản phẩm");
+      
+      // Kiểm tra xem có đủ sản phẩm để so sánh không
+      const context = getContext(userId);
+      
+      if (!context || !context.lastProducts || context.lastProducts.length < 2) {
+        console.log("Không có đủ sản phẩm để so sánh trong ngữ cảnh");
+        return res.status(200).json({
+          success: true,
+          message: "Bạn cần chọn ít nhất 2 sản phẩm để so sánh. Vui lòng tìm kiếm và xem một số sản phẩm trước khi yêu cầu so sánh."
+        });
+      }
+      
+      // Có đủ sản phẩm để so sánh, chuyển sang xử lý so sánh
+      return await handleProductComparison(req, res);
+    }
+    
+    // Xử lý các loại tin nhắn khác...
+    
+    // Trả về phản hồi mặc định nếu không xử lý được
+    return res.status(200).json({
+      success: true,
+      message: "Tôi không hiểu yêu cầu của bạn. Bạn có thể hỏi về sản phẩm cụ thể hoặc yêu cầu so sánh sản phẩm."
+    });
+    
+  } catch (error) {
+    console.error("Lỗi khi xử lý tin nhắn:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi xử lý tin nhắn."
+    });
+  }
+};
+
+// Hàm kiểm tra xem tin nhắn có phải là yêu cầu so sánh sản phẩm không
+const isComparisonRequest = (message) => {
+  if (!message) return false;
+  
+  const lowerMessage = message.toLowerCase().trim();
+  
+  // Các từ khóa liên quan đến so sánh
+  const comparisonKeywords = [
+    "so sánh", "so với", "đối chiếu", "khác nhau", "giống nhau",
+    "khác biệt", "giống biệt", "so", "đối", "compare", "vs", "versus",
+    "hơn", "kém", "tốt hơn", "xấu hơn", "rẻ hơn", "đắt hơn", "không thể so sánh"
+  ];
+  
+  // Các từ khóa liên quan đến sản phẩm
+  const productKeywords = [
+    "sản phẩm", "hàng", "món", "cái", "thứ", "loại", "2 cái", "hai cái",
+    "2 sản phẩm", "hai sản phẩm", "cả hai", "này", "kia", "đồ", "thực phẩm"
+  ];
+  
+  // Các mẫu câu cụ thể về so sánh
+  const comparisonPhrases = [
+    "không thể so sánh", 
+    "so sánh giúp", 
+    "giúp so sánh", 
+    "muốn so sánh", 
+    "cần so sánh",
+    "nên chọn cái nào",
+    "cái nào tốt hơn",
+    "cái nào rẻ hơn",
+    "cái nào đắt hơn",
+    "cái nào chất lượng hơn"
+  ];
+  
+  // Kiểm tra các mẫu câu cụ thể trước
+  for (const phrase of comparisonPhrases) {
+    if (lowerMessage.includes(phrase)) {
+      return true;
+    }
+  }
+  
+  // Kiểm tra xem tin nhắn có chứa từ khóa so sánh không
+  const hasComparisonKeyword = comparisonKeywords.some(keyword => lowerMessage.includes(keyword));
+  
+  // Kiểm tra xem tin nhắn có chứa từ khóa sản phẩm không
+  const hasProductKeyword = productKeywords.some(keyword => lowerMessage.includes(keyword));
+  
+  // Nếu tin nhắn có chứa cả từ khóa so sánh và từ khóa sản phẩm, hoặc chỉ có từ khóa so sánh và ngắn
+  return hasComparisonKeyword && (hasProductKeyword || lowerMessage.length < 30);
 };
 
 

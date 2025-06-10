@@ -1,0 +1,96 @@
+/* eslint-disable no-useless-escape */
+/* eslint-disable no-empty */
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-undef */
+
+import axios from 'axios';
+import Product from "../Model/Products.js";
+import dotenv from 'dotenv';
+import { spawn } from 'child_process';
+import path from 'path';
+import fs from 'fs';
+// Import xử lý câu hỏi về sản phẩm
+import { handleProductPageQuestion } from './chatbotProductHandler.js';
+import { handleFAQQuestion } from './chatbotFAQHandler.js';
+import UserContext from "../Model/UserContext.js";
+
+// Load environment variables
+dotenv.config();
+
+// Cache để lưu ngữ cảnh cuộc hội thoại cho từng người dùng
+const conversationContext = new Map();
+
+// Thời gian hết hạn cho ngữ cảnh (15 phút = 15 * 60 * 1000 ms)
+const CONTEXT_EXPIRY_TIME = 15 * 60 * 1000;
+
+// Định dạng số tiền thành chuỗi tiền tệ VND
+const formatCurrency = (amount) => {
+  if (!amount) return "0 ₫";
+  return new Intl.NumberFormat('vi-VN', { 
+    style: 'currency', 
+    currency: 'VND',
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
+// Thêm xử lý nhận diện ý định so sánh sản phẩm trong hàm processMessage
+export const processMessage = async (req, res) => {
+  try {
+    const { userId, message } = req.body;
+    
+    if (!userId || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Thiếu thông tin người dùng hoặc tin nhắn"
+      });
+    }
+    
+    console.log(`Nhận tin nhắn từ user ${userId}: "${message}"`);
+    
+    // Kiểm tra xem có phải là yêu cầu so sánh sản phẩm không
+    if (isComparisonRequest(message)) {
+      return await handleProductComparison(req, res);
+    }
+    
+    // Xử lý các loại tin nhắn khác...
+    
+    // Trả về phản hồi mặc định nếu không xử lý được
+    return res.status(200).json({
+      success: true,
+      message: "Tôi không hiểu yêu cầu của bạn. Bạn có thể hỏi về sản phẩm cụ thể hoặc yêu cầu so sánh sản phẩm."
+    });
+    
+  } catch (error) {
+    console.error("Lỗi khi xử lý tin nhắn:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Đã xảy ra lỗi khi xử lý tin nhắn."
+    });
+  }
+};
+
+// Hàm kiểm tra xem tin nhắn có phải là yêu cầu so sánh sản phẩm không
+const isComparisonRequest = (message) => {
+  const lowerMessage = message.toLowerCase().trim();
+  
+  // Các từ khóa liên quan đến so sánh
+  const comparisonKeywords = [
+    "so sánh", "so với", "đối chiếu", "khác nhau", "giống nhau",
+    "khác biệt", "giống biệt", "so", "đối", "compare", "vs", "versus"
+  ];
+  
+  // Các từ khóa liên quan đến sản phẩm
+  const productKeywords = [
+    "sản phẩm", "hàng", "món", "cái", "thứ", "loại", "2 cái", "hai cái",
+    "2 sản phẩm", "hai sản phẩm", "cả hai", "này", "kia"
+  ];
+  
+  // Kiểm tra xem tin nhắn có chứa từ khóa so sánh không
+  const hasComparisonKeyword = comparisonKeywords.some(keyword => lowerMessage.includes(keyword));
+  
+  // Kiểm tra xem tin nhắn có chứa từ khóa sản phẩm không
+  const hasProductKeyword = productKeywords.some(keyword => lowerMessage.includes(keyword));
+  
+  // Nếu tin nhắn có chứa cả từ khóa so sánh và từ khóa sản phẩm, hoặc chỉ có từ khóa so sánh
+  return hasComparisonKeyword && (hasProductKeyword || lowerMessage.length < 20);
+}; 
