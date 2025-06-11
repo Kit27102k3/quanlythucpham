@@ -3,6 +3,9 @@
  * File này chứa các hàm để trả lời các câu hỏi chung về cửa hàng, chính sách, và dịch vụ
  */
 
+import Product from "../../Model/Products.js";
+import { getContext, saveContext } from "./chatbotController.js";
+
 // Định nghĩa từ khóa cho mỗi intent để tăng độ chính xác khi nhận diện câu hỏi
 const intentKeywords = {
   'faq_how_to_buy': ['mua hàng', 'mua sản phẩm', 'cách mua', 'mua như thế nào', 'làm sao để mua', 'đặt mua', 'mua như nào', 'mua ở đâu'],

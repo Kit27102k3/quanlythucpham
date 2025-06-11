@@ -1,4 +1,4 @@
-import Product from "../Model/Products.js";
+import Product from "../../Model/Products.js";
 
 /**
  * Format currency to VND format
@@ -303,6 +303,339 @@ export const handleProductReviews = async (product) => {
     message: reviewInfo,
     intent: "productReviews"
   };
+};
+
+/**
+ * Xử lý câu hỏi liên quan đến khoảng giá sản phẩm
+ * @param {string} message - Tin nhắn từ người dùng
+ * @returns {Promise<object>} - Kết quả tìm kiếm sản phẩm theo khoảng giá
+ */
+export const handleIntentWithPriceRange = async (message) => {
+  try {
+    const lowerMessage = message.toLowerCase();
+    
+    // Tìm khoảng giá từ tin nhắn
+    const priceMatch = lowerMessage.match(/dưới (\d+)k/i) || 
+                        lowerMessage.match(/< (\d+)k/i) || 
+                        lowerMessage.match(/nhỏ hơn (\d+)k/i);
+                        
+    const priceHighMatch = lowerMessage.match(/trên (\d+)k/i) || 
+                           lowerMessage.match(/> (\d+)k/i) || 
+                           lowerMessage.match(/lớn hơn (\d+)k/i);
+                           
+    const priceBetweenMatch = lowerMessage.match(/từ (\d+)k đến (\d+)k/i) || 
+                              lowerMessage.match(/(\d+)k - (\d+)k/i);
+    
+    let filter = {};
+    let priceDescription = "";
+    
+    if (priceMatch) {
+      const maxPrice = parseInt(priceMatch[1]) * 1000;
+      filter = { productPrice: { $lte: maxPrice } };
+      priceDescription = `dưới ${priceMatch[1]}k`;
+      console.log(`Tìm sản phẩm có giá dưới: ${maxPrice}`);
+    } 
+    else if (priceHighMatch) {
+      const minPrice = parseInt(priceHighMatch[1]) * 1000;
+      filter = { productPrice: { $gte: minPrice } };
+      priceDescription = `trên ${priceHighMatch[1]}k`;
+      console.log(`Tìm sản phẩm có giá trên: ${minPrice}`);
+    } 
+    else if (priceBetweenMatch) {
+      const minPrice = parseInt(priceBetweenMatch[1]) * 1000;
+      const maxPrice = parseInt(priceBetweenMatch[2]) * 1000;
+      filter = { productPrice: { $gte: minPrice, $lte: maxPrice } };
+      priceDescription = `từ ${priceBetweenMatch[1]}k đến ${priceBetweenMatch[2]}k`;
+      console.log(`Tìm sản phẩm có giá từ ${minPrice} đến ${maxPrice}`);
+    } 
+    else {
+      return {
+        success: false,
+        message: "Không thể xác định khoảng giá từ yêu cầu của bạn."
+      };
+    }
+    
+    // Tìm sản phẩm theo khoảng giá
+    const products = await Product.find(filter).limit(10);
+    
+    if (products && products.length > 0) {
+      // Format sản phẩm để hiển thị
+      const formattedProducts = products.map(p => ({
+        id: p._id,
+        name: p.productName,
+        price: p.productPrice,
+        discount: p.productDiscount || 0,
+        promotionalPrice: p.productPromoPrice || (p.productDiscount ? Math.round(p.productPrice * (1 - p.productDiscount/100)) : p.productPrice),
+        image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : 'default-product.jpg',
+        description: p.productInfo || p.productDetails || ''
+      }));
+      
+      return {
+        success: true,
+        message: `Các sản phẩm có giá ${priceDescription}:`,
+        data: formattedProducts,
+        type: 'priceRangeProducts',
+        text: `Các sản phẩm có giá ${priceDescription}:`,
+        intent: 'priceRange'
+      };
+    } else {
+      return {
+        success: true,
+        message: `Không tìm thấy sản phẩm nào có giá ${priceDescription}.`,
+        intent: 'priceRange'
+      };
+    }
+  } catch (error) {
+    console.error('Lỗi khi tìm sản phẩm theo khoảng giá:', error);
+    return {
+      success: false,
+      message: 'Có lỗi xảy ra khi tìm sản phẩm theo khoảng giá.',
+      intent: 'error'
+    };
+  }
+};
+
+/**
+ * Xử lý câu hỏi liên quan đến danh mục sản phẩm
+ * @param {string} category - Danh mục sản phẩm
+ * @returns {Promise<object>} - Kết quả tìm kiếm sản phẩm theo danh mục
+ */
+export const handleIntentWithProductCategory = async (category) => {
+  try {
+    if (!category) {
+      return {
+        success: false,
+        message: "Không tìm thấy danh mục sản phẩm."
+      };
+    }
+    
+    console.log(`Tìm sản phẩm theo danh mục: ${category}`);
+    
+    // Tìm sản phẩm theo danh mục
+    const products = await Product.find({
+      productCategory: { $regex: category, $options: 'i' }
+    }).limit(10);
+    
+    if (products && products.length > 0) {
+      console.log(`Tìm thấy ${products.length} sản phẩm trong danh mục "${category}"`);
+      
+      // Format sản phẩm để hiển thị
+      const formattedProducts = products.map(p => ({
+        id: p._id,
+        name: p.productName,
+        price: p.productPrice,
+        discount: p.productDiscount || 0,
+        promotionalPrice: p.productPromoPrice || (p.productDiscount ? Math.round(p.productPrice * (1 - p.productDiscount/100)) : p.productPrice),
+        image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : 'default-product.jpg',
+        description: p.productInfo || p.productDetails || ''
+      }));
+      
+      return {
+        success: true,
+        message: `Các sản phẩm trong danh mục "${category}":`,
+        data: formattedProducts,
+        type: 'categoryProducts',
+        text: `Các sản phẩm trong danh mục "${category}":`,
+        intent: 'productCategory'
+      };
+    } else {
+      return {
+        success: true,
+        message: `Không tìm thấy sản phẩm nào trong danh mục "${category}".`,
+        intent: 'productCategory'
+      };
+    }
+  } catch (error) {
+    console.error('Lỗi khi tìm sản phẩm theo danh mục:', error);
+    return {
+      success: false,
+      message: 'Có lỗi xảy ra khi tìm sản phẩm theo danh mục.',
+      intent: 'error'
+    };
+  }
+};
+
+/**
+ * Xử lý câu hỏi liên quan đến loại sản phẩm
+ * @param {string} type - Loại sản phẩm
+ * @returns {Promise<object>} - Kết quả tìm kiếm sản phẩm theo loại
+ */
+export const handleIntentWithProductType = async (type) => {
+  try {
+    if (!type) {
+      return {
+        success: false,
+        message: "Không tìm thấy loại sản phẩm."
+      };
+    }
+    
+    console.log(`Tìm sản phẩm theo loại: ${type}`);
+    
+    // Tìm sản phẩm theo loại (có thể là subcategory hoặc productType)
+    const products = await Product.find({
+      $or: [
+        { productSubCategory: { $regex: type, $options: 'i' } },
+        { productType: { $regex: type, $options: 'i' } }
+      ]
+    }).limit(10);
+    
+    if (products && products.length > 0) {
+      console.log(`Tìm thấy ${products.length} sản phẩm thuộc loại "${type}"`);
+      
+      // Format sản phẩm để hiển thị
+      const formattedProducts = products.map(p => ({
+        id: p._id,
+        name: p.productName,
+        price: p.productPrice,
+        discount: p.productDiscount || 0,
+        promotionalPrice: p.productPromoPrice || (p.productDiscount ? Math.round(p.productPrice * (1 - p.productDiscount/100)) : p.productPrice),
+        image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : 'default-product.jpg',
+        description: p.productInfo || p.productDetails || ''
+      }));
+      
+      return {
+        success: true,
+        message: `Các sản phẩm thuộc loại "${type}":`,
+        data: formattedProducts,
+        type: 'typeProducts',
+        text: `Các sản phẩm thuộc loại "${type}":`,
+        intent: 'productType'
+      };
+    } else {
+      return {
+        success: true,
+        message: `Không tìm thấy sản phẩm nào thuộc loại "${type}".`,
+        intent: 'productType'
+      };
+    }
+  } catch (error) {
+    console.error('Lỗi khi tìm sản phẩm theo loại:', error);
+    return {
+      success: false,
+      message: 'Có lỗi xảy ra khi tìm sản phẩm theo loại.',
+      intent: 'error'
+    };
+  }
+};
+
+/**
+ * Xử lý câu hỏi liên quan đến thương hiệu sản phẩm
+ * @param {string} brand - Thương hiệu sản phẩm
+ * @returns {Promise<object>} - Kết quả tìm kiếm sản phẩm theo thương hiệu
+ */
+export const handleIntentWithProductBrand = async (brand) => {
+  try {
+    if (!brand) {
+      return {
+        success: false,
+        message: "Không tìm thấy thương hiệu sản phẩm."
+      };
+    }
+    
+    console.log(`Tìm sản phẩm theo thương hiệu: ${brand}`);
+    
+    // Tìm sản phẩm theo thương hiệu
+    const products = await Product.find({
+      productBrand: { $regex: brand, $options: 'i' }
+    }).limit(10);
+    
+    if (products && products.length > 0) {
+      console.log(`Tìm thấy ${products.length} sản phẩm thuộc thương hiệu "${brand}"`);
+      
+      // Format sản phẩm để hiển thị
+      const formattedProducts = products.map(p => ({
+        id: p._id,
+        name: p.productName,
+        price: p.productPrice,
+        discount: p.productDiscount || 0,
+        promotionalPrice: p.productPromoPrice || (p.productDiscount ? Math.round(p.productPrice * (1 - p.productDiscount/100)) : p.productPrice),
+        image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : 'default-product.jpg',
+        description: p.productInfo || p.productDetails || ''
+      }));
+      
+      return {
+        success: true,
+        message: `Các sản phẩm thuộc thương hiệu "${brand}":`,
+        data: formattedProducts,
+        type: 'brandProducts',
+        text: `Các sản phẩm thuộc thương hiệu "${brand}":`,
+        intent: 'productBrand'
+      };
+    } else {
+      return {
+        success: true,
+        message: `Không tìm thấy sản phẩm nào thuộc thương hiệu "${brand}".`,
+        intent: 'productBrand'
+      };
+    }
+  } catch (error) {
+    console.error('Lỗi khi tìm sản phẩm theo thương hiệu:', error);
+    return {
+      success: false,
+      message: 'Có lỗi xảy ra khi tìm sản phẩm theo thương hiệu.',
+      intent: 'error'
+    };
+  }
+};
+
+/**
+ * Xử lý câu hỏi liên quan đến xuất xứ sản phẩm
+ * @param {string} origin - Xuất xứ sản phẩm
+ * @returns {Promise<object>} - Kết quả tìm kiếm sản phẩm theo xuất xứ
+ */
+export const handleIntentWithProductOrigin = async (origin) => {
+  try {
+    if (!origin) {
+      return {
+        success: false,
+        message: "Không tìm thấy xuất xứ sản phẩm."
+      };
+    }
+    
+    console.log(`Tìm sản phẩm theo xuất xứ: ${origin}`);
+    
+    // Tìm sản phẩm theo xuất xứ
+    const products = await Product.find({
+      productOrigin: { $regex: origin, $options: 'i' }
+    }).limit(10);
+    
+    if (products && products.length > 0) {
+      console.log(`Tìm thấy ${products.length} sản phẩm có xuất xứ "${origin}"`);
+      
+      // Format sản phẩm để hiển thị
+      const formattedProducts = products.map(p => ({
+        id: p._id,
+        name: p.productName,
+        price: p.productPrice,
+        discount: p.productDiscount || 0,
+        promotionalPrice: p.productPromoPrice || (p.productDiscount ? Math.round(p.productPrice * (1 - p.productDiscount/100)) : p.productPrice),
+        image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : 'default-product.jpg',
+        description: p.productInfo || p.productDetails || ''
+      }));
+      
+      return {
+        success: true,
+        message: `Các sản phẩm có xuất xứ "${origin}":`,
+        data: formattedProducts,
+        type: 'originProducts',
+        text: `Các sản phẩm có xuất xứ "${origin}":`,
+        intent: 'productOrigin'
+      };
+    } else {
+      return {
+        success: true,
+        message: `Không tìm thấy sản phẩm nào có xuất xứ "${origin}".`,
+        intent: 'productOrigin'
+      };
+    }
+  } catch (error) {
+    console.error('Lỗi khi tìm sản phẩm theo xuất xứ:', error);
+    return {
+      success: false,
+      message: 'Có lỗi xảy ra khi tìm sản phẩm theo xuất xứ.',
+      intent: 'error'
+    };
+  }
 };
 
 /**

@@ -3,7 +3,9 @@
  * File này chứa các hàm để trả lời câu hỏi về sản phẩm
  */
 
-import Product from "../Model/Products.js";
+import Product from "../../Model/Products.js";
+import { getContext, saveContext } from "./chatbotController.js";
+import { handleIntentWithProductCategory, handleIntentWithProductType, handleIntentWithProductBrand, handleIntentWithProductOrigin, handleIntentWithPriceRange } from "./ProductIntentHandlers.js";
 
 /**
  * Định dạng số tiền sang VND

@@ -1,5 +1,5 @@
 import express from 'express';
-import { handleMessage, handleRasaWebhook, processMessage, handleProductComparison } from '../Controller/chatbotController.js';
+import { handleMessage, handleRasaWebhook, processMessage, handleProductComparison } from '../Controller/Chatbot/chatbotController.js';
 import { verifyToken } from '../Middleware/verifyToken.js';
 
 const router = express.Router();
