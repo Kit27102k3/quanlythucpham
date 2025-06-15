@@ -27,7 +27,7 @@ export const logAuthActivity = async (req, res, next) => {
     // Check if this is an authentication route
     if (path.includes('/login') || path.includes('/auth')) {
       const user = req.user || {};
-      const email = req.body?.email || user.email;
+      const email = req.body && req.body.email || user.email;
       
       // Log based on response status
       if (res.statusCode >= 200 && res.statusCode < 300) {
@@ -36,7 +36,7 @@ export const logAuthActivity = async (req, res, next) => {
           email,
           ip,
           userAgent,
-          sessionId: req.session?.id,
+          sessionId: req.session && req.session.id,
           method: path.includes('google') ? 'google' : 
                   path.includes('facebook') ? 'facebook' : 'password'
         });
@@ -61,14 +61,14 @@ export const logAuthActivity = async (req, res, next) => {
         email: user.email,
         ip,
         userAgent,
-        sessionId: req.session?.id
+        sessionId: req.session && req.session.id
       });
     }
     
     // Check if this is a registration route
     if (path.includes('/register') || path.includes('/signup')) {
       const user = req.user || {};
-      const email = req.body?.email || user.email;
+      const email = req.body && req.body.email || user.email;
       
       if (res.statusCode >= 200 && res.statusCode < 300) {
         await CustomerLogger.registration({
@@ -114,7 +114,7 @@ export const logProductView = async (req, res, next) => {
           ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
           userAgent: req.headers['user-agent'],
           productId,
-          productName: req.product?.name || 'Unknown Product'
+          productName: req.product && req.product.name || 'Unknown Product'
         });
       }
     }

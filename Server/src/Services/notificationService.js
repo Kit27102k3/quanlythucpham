@@ -34,11 +34,11 @@ export const sendPushNotification = async (userId, subscription, payload) => {
       notification: {
         title: payload.title,
         body: payload.body,
-        icon: payload.data?.icon || "/logo192.png",
+        icon: payload.data && payload.data.icon || "/logo192.png",
         badge: "/badge-icon.png",
         vibrate: [100, 50, 100],
-        tag: payload.data?.type || "general",
-        actions: payload.data?.actions || [
+        tag: payload.data && payload.data.type || "general",
+        actions: payload.data && payload.data.actions || [
           { action: "view", title: "Xem ngay" },
         ],
         data: {
@@ -212,10 +212,10 @@ export const sendOrderStatusNotification = async (
         type: "order_update",
         status: order.status,
         orderItems:
-          order.items?.map((item) => ({
+          (order.items && order.items.map((item) => ({
             name: item.productName,
             quantity: item.quantity,
-          })) || [],
+          }))) || [],
         icon: "/order-icon.png",
       },
     });

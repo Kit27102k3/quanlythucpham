@@ -476,9 +476,9 @@ const reportsController = {
           id: user._id,
           name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Không xác định',
           email: user.email || 'Không xác định',
-          phone: user.phone || user.contactInfo?.phone || 'Không xác định',
-          address: user.address?.full || user.contactInfo?.address || 'Không xác định',
-          province: user.address?.province || user.contactInfo?.province || user.contactInfo?.city || 'Không xác định',
+          phone: user.phone || (user.contactInfo && user.contactInfo.phone) || 'Không xác định',
+          address: (user.address && user.address.full) || (user.contactInfo && user.contactInfo.address) || 'Không xác định',
+          province: (user.address && user.address.province) || (user.contactInfo && user.contactInfo.province) || (user.contactInfo && user.contactInfo.city) || 'Không xác định',
           createdAt: user.createdAt,
           lastLogin: user.lastLogin || user.createdAt,
           role: user.role || 'customer'
@@ -555,7 +555,7 @@ const reportsController = {
         completedOrders,
         pendingOrders,
         cancelledOrders,
-        averageOrderValue: avgResult[0]?.avg || 0,
+        averageOrderValue: avgResult[0] && avgResult[0].avg || 0,
         ordersByStatus: ordersByStatus.map((item) => ({
           status: item._id,
           count: item.count,
@@ -604,8 +604,8 @@ const reportsController = {
       res.json({
         totalVouchers,
         activeVouchers,
-        usedVouchers: usageStats[0]?.usedCount || 0,
-        totalDiscount: usageStats[0]?.totalDiscount || 0,
+        usedVouchers: usageStats[0] && usageStats[0].usedCount || 0,
+        totalDiscount: usageStats[0] && usageStats[0].totalDiscount || 0,
         voucherStats: voucherDetails.map((voucher) => ({
           code: voucher.code,
           type: voucher.discountType,
@@ -895,7 +895,7 @@ const reportsController = {
         successfulDeliveries,
         pendingDeliveries,
         failedDeliveries,
-        averageDeliveryTime: deliveryTimeAvg[0]?.avgTime
+        averageDeliveryTime: deliveryTimeAvg[0] && deliveryTimeAvg[0].avgTime
           ? parseFloat(deliveryTimeAvg[0].avgTime.toFixed(1))
           : 0,
         deliveryByRegion: deliveryByRegion.map((item) => ({
@@ -971,7 +971,7 @@ const reportsController = {
 
       res.json({
         totalReviews,
-        averageRating: ratingResult[0]?.avgRating
+        averageRating: ratingResult[0] && ratingResult[0].avgRating
           ? parseFloat(ratingResult[0].avgRating.toFixed(1))
           : 0,
         ratingDistribution: Array.from({ length: 5 }, (_, i) => {
@@ -1078,8 +1078,8 @@ const reportsController = {
                     cond: Object.keys(dateFilter).length > 0 ? 
                       { $and: [
                         { $eq: ["$$order.status", "completed"] },
-                        dateFilter.createdAt?.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
-                        dateFilter.createdAt?.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
+                        dateFilter.createdAt && dateFilter.createdAt.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
+                        dateFilter.createdAt && dateFilter.createdAt.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
                       ]} : 
                       { $eq: ["$$order.status", "completed"] }
                   }
@@ -1095,8 +1095,8 @@ const reportsController = {
                         cond: Object.keys(dateFilter).length > 0 ? 
                           { $and: [
                             { $eq: ["$$order.status", "completed"] },
-                            dateFilter.createdAt?.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
-                            dateFilter.createdAt?.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
+                            dateFilter.createdAt && dateFilter.createdAt.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
+                            dateFilter.createdAt && dateFilter.createdAt.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
                           ]} : 
                           { $eq: ["$$order.status", "completed"] }
                       }
@@ -1158,8 +1158,9 @@ const reportsController = {
                     as: "order",
                     cond: Object.keys(dateFilter).length > 0 ? 
                       { $and: [
-                        dateFilter.createdAt?.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
-                        dateFilter.createdAt?.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
+                        { $eq: ["$$order.status", "completed"] },
+                        dateFilter.createdAt && dateFilter.createdAt.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
+                        dateFilter.createdAt && dateFilter.createdAt.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
                       ]} : 
                       true
                   }
@@ -1175,8 +1176,8 @@ const reportsController = {
                         cond: Object.keys(dateFilter).length > 0 ? 
                           { $and: [
                             { $eq: ["$$order.status", "completed"] },
-                            dateFilter.createdAt?.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
-                            dateFilter.createdAt?.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
+                            dateFilter.createdAt && dateFilter.createdAt.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
+                            dateFilter.createdAt && dateFilter.createdAt.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
                           ]} : 
                           { $eq: ["$$order.status", "completed"] }
                       }
@@ -1226,26 +1227,28 @@ const reportsController = {
         const branchUsers = userStats.find(item => item._id && item._id.toString() === branchId);
         
         // Top sản phẩm của chi nhánh
-        const topProducts = branchProducts?.products
-          ?.sort((a, b) => b.revenue - a.revenue)
-          ?.slice(0, 5)
-          ?.map(product => ({
-            name: product.productName,
-            revenue: product.revenue || 0,
-            sold: product.sold || 0,
-            inventory: product.stock || 0
-          })) || [];
+        const topProducts = branchProducts && branchProducts.products
+          ? branchProducts.products
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 5)
+            .map(product => ({
+              name: product.productName,
+              revenue: product.revenue || 0,
+              sold: product.sold || 0,
+              inventory: product.stock || 0
+            }))
+          : [];
         
         return {
           id: branchId,
           name: branch.name || `Chi nhánh ${branchId.substring(0, 5)}`,
-          revenue: branchRevenue?.revenue || 0,
-          orders: branchOrders?.totalOrders || 0,
-          completedOrders: branchOrders?.completedOrders || 0,
-          customers: branchUsers?.totalCustomers || 0,
-          activeCustomers: branchUsers?.activeCustomers || 0,
-          products: branchProducts?.totalProducts || 0,
-          lowStockProducts: branchProducts?.lowStockProducts || 0,
+          revenue: branchRevenue && branchRevenue.revenue || 0,
+          orders: branchOrders && branchOrders.totalOrders || 0,
+          completedOrders: branchOrders && branchOrders.completedOrders || 0,
+          customers: branchUsers && branchUsers.totalCustomers || 0,
+          activeCustomers: branchUsers && branchUsers.activeCustomers || 0,
+          products: branchProducts && branchProducts.totalProducts || 0,
+          lowStockProducts: branchProducts && branchProducts.lowStockProducts || 0,
           topProducts: topProducts
         };
       });
@@ -1592,7 +1595,7 @@ Hãy trình bày phân tích một cách rõ ràng, dễ đọc và có cấu tr
       
       // Trả về lỗi và dữ liệu thô để client có thể hiển thị
       return res.status(500).json({ 
-        error: `Không thể kết nối đến dịch vụ AI sau nhiều lần thử: ${lastError?.message || 'Lỗi không xác định'}. Vui lòng thử lại sau.`,
+        error: `Không thể kết nối đến dịch vụ AI sau nhiều lần thử: ${lastError && lastError.message || 'Lỗi không xác định'}. Vui lòng thử lại sau.`,
         message: "Lỗi khi phân tích dữ liệu",
         data: userRole === 'admin' && branchId === 'all' ? { branches: branchDetails } : branchDetails.find(b => b.id === branchId) || branchDetails[0]
       });

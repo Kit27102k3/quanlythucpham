@@ -37,15 +37,15 @@ export const getAllContacts = async (req, res) => {
           user && user.firstName
             ? `${user.firstName} ${user.lastName}`
             : "Người dùng",
-        avatar: user?.userImage || null,
+        avatar: user && user.userImage || null,
         online: false,
         lastSeen: lastMessage ? formatTimeAgo(lastMessage.timestamp) : null,
-        lastMessage: lastMessage?.text || "",
+        lastMessage: lastMessage && lastMessage.text || "",
         unread: conv.messages.filter(
           (msg) => msg.sender === "user" && !msg.read
         ).length,
-        adminName: admin?.fullName || "Admin",
-        adminId: conv.adminId?.toString(),
+        adminName: admin && admin.fullName || "Admin",
+        adminId: conv.adminId && conv.adminId.toString(),
       };
     });
 
@@ -113,7 +113,7 @@ export const sendMessage = async (req, res) => {
     }
 
     let userId =
-      sender === "admin" ? receiverId : requestUserId || req.user?.id;
+      sender === "admin" ? receiverId : requestUserId || (req.user && req.user.id);
     if (!userId) {
       return res
         .status(400)

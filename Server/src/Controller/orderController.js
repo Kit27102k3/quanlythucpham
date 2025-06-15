@@ -1960,7 +1960,7 @@ export const createOrder = async (req, res) => {
     if (!finalBranchId && shippingInfo && (shippingInfo.address || shippingAddress)) {
       try {
         const addressToUse = shippingInfo.address || shippingAddress;
-        const coordinates = shippingInfo?.coordinates || null;
+        const coordinates = shippingInfo && shippingInfo.coordinates || null;
         
         // Tìm chi nhánh gần nhất
         const nearestBranch = await findNearestBranch(addressToUse, coordinates);

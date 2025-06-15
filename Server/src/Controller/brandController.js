@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 const generateUniqueBrandCode = async (name) => {
   const words = name.split(" ");
   let code = words
-    .map((w) => w[0]?.toUpperCase())
+    .map((w) => w[0] && w[0].toUpperCase())
     .join("")
     .slice(0, 4);
 

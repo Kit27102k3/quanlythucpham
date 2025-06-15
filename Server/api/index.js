@@ -63,10 +63,6 @@ router.get("/products/inventory", async (req, res) => {
         category:
           product.productCategory || product.category || "Không phân loại",
         stock:
-          product.productStock !== undefined
-            ? product.productStock
-            : product.stock || 0,
-        status:
           (product.productStock !== undefined
             ? product.productStock
             : product.stock || 0) <= 5
@@ -74,7 +70,7 @@ router.get("/products/inventory", async (req, res) => {
             : "Còn hàng",
         price: product.productPrice || product.price || 0,
         sku: product.productCode || product.sku || "",
-        image: product.productImages?.[0] || product.image || "",
+        image: (product.productImages && product.productImages[0]) || product.image || "",
       }));
 
       return res.json(inventoryData);

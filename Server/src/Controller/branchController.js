@@ -480,7 +480,7 @@ export const assignBranchToAddress = async (req, res) => {
 export const getBranchByManager = async (req, res) => {
   try {
     // Lấy thông tin user từ middleware xác thực
-    const userId = req.user?.id;
+    const userId = req.user && req.user.id;
     
     if (!userId) {
       return res.status(401).json({

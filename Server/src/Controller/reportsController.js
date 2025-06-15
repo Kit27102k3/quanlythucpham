@@ -670,17 +670,17 @@ const reportsController = {
       // Phân tích dữ liệu dựa trên vai trò
       if (userRole === 'admin') {
         // Lấy danh sách các chi nhánh
-        const branchIds = [...new Set(orders.map(order => order.branchId?.toString()).filter(Boolean))];
+        const branchIds = [...new Set(orders.map(order => order.branchId && order.branchId.toString()).filter(Boolean))];
         
         // Phân tích dữ liệu cho từng chi nhánh
         const branches = await Promise.all(branchIds.map(async (id) => {
           const branchName = id === '1' ? 'Chi nhánh Hà Nội' : id === '2' ? 'Chi nhánh TP.HCM' : `Chi nhánh ${id}`;
           
           // Lọc dữ liệu theo chi nhánh
-          const branchOrders = orders.filter(order => order.branchId?.toString() === id);
-          const branchProducts = products.filter(p => p.branchId?.toString() === id);
-          const branchCustomers = customers.filter(c => c.branchId?.toString() === id);
-          const branchReviews = reviews.filter(r => r.branchId?.toString() === id);
+          const branchOrders = orders.filter(order => order.branchId && order.branchId.toString() === id);
+          const branchProducts = products.filter(p => p.branchId && p.branchId.toString() === id);
+          const branchCustomers = customers.filter(c => c.branchId && c.branchId.toString() === id);
+          const branchReviews = reviews.filter(r => r.branchId && r.branchId.toString() === id);
           
           // Tính toán các chỉ số
           const revenue = branchOrders
@@ -692,7 +692,7 @@ const reportsController = {
           // Tính tỷ lệ khách hàng quay lại
           const returningCustomers = branchCustomers.filter(customer => {
             const customerOrders = branchOrders.filter(order => 
-              order.userId?.toString() === customer._id.toString()
+              order.userId && order.userId.toString() === customer._id.toString()
             );
             return customerOrders.length > 1;
           }).length;
@@ -895,10 +895,10 @@ ${branches.map(b => `### ${b.name}\n- Doanh thu: ${b.revenue.toLocaleString('vi-
         res.json({ branches, strategies, analysis });
       } else {
         // Manager view - phân tích chi nhánh cụ thể
-        const branchOrders = orders.filter(order => order.branchId?.toString() === branchId);
-        const branchProducts = products.filter(p => p.branchId?.toString() === branchId);
-        const branchCustomers = customers.filter(c => c.branchId?.toString() === branchId);
-        const branchReviews = reviews.filter(r => r.branchId?.toString() === branchId);
+        const branchOrders = orders.filter(order => order.branchId && order.branchId.toString() === branchId);
+        const branchProducts = products.filter(p => p.branchId && p.branchId.toString() === branchId);
+        const branchCustomers = customers.filter(c => c.branchId && c.branchId.toString() === branchId);
+        const branchReviews = reviews.filter(r => r.branchId && r.branchId.toString() === branchId);
 
         // Tính toán các chỉ số tổng quan
         const revenue = branchOrders
@@ -910,7 +910,7 @@ ${branches.map(b => `### ${b.name}\n- Doanh thu: ${b.revenue.toLocaleString('vi-
         // Tính tỷ lệ khách hàng quay lại
         const returningCustomers = branchCustomers.filter(customer => {
           const customerOrders = branchOrders.filter(order => 
-            order.userId?.toString() === customer._id.toString()
+            order.userId && order.userId.toString() === customer._id.toString()
           );
           return customerOrders.length > 1;
         }).length;
