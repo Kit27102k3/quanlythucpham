@@ -1,179 +1,380 @@
 // Essential utility functions for OrderDetail component
 
+// Mapbox access token
+export const MAPBOX_ACCESS_TOKEN = "pk.eyJ1Ijoia2l0MjcxMCIsImEiOiJjbWF4bWh5YWQwc2N0MmtxM2p1M2Z5azZkIn0.navJSR4rbpRHVV3TEXelQg";
+
 // Định nghĩa các chi nhánh cửa hàng
-export const SHOP_BRANCHES = [
+const shopBranches = [
   {
-    id: "cantho",
+    id: 1,
     name: "Chi nhánh Cần Thơ",
     lat: 10.0339,
     lng: 105.7855,
-    address: "123 Nguyễn Văn Cừ, Ninh Kiều, Cần Thơ",
-    isMainBranch: true
+    address: "30 Nguyễn Văn Linh, Ninh Kiều, Cần Thơ",
+    isMain: true
   },
   {
-    id: "soctrang",
+    id: 2,
+    name: "Chi nhánh Hồ Chí Minh",
+    lat: 10.7769,
+    lng: 106.6983,
+    address: "268 Lý Thường Kiệt, Quận 10, Hồ Chí Minh",
+    isMain: false
+  },
+  {
+    id: 3,
+    name: "Chi nhánh Hà Nội",
+    lat: 21.0285,
+    lng: 105.8542,
+    address: "55 Giải Phóng, Hai Bà Trưng, Hà Nội",
+    isMain: false
+  },
+  {
+    id: 4,
+    name: "Chi nhánh Đà Nẵng",
+    lat: 16.0544,
+    lng: 108.2022,
+    address: "102 Nguyễn Văn Linh, Hải Châu, Đà Nẵng",
+    isMain: false
+  },
+  {
+    id: 5,
+    name: "Chi nhánh Huế",
+    lat: 16.4637,
+    lng: 107.5909,
+    address: "28 Lý Thường Kiệt, Phú Nhuận, Huế",
+    isMain: false
+  },
+  {
+    id: 6,
     name: "Chi nhánh Sóc Trăng",
     lat: 9.6037,
-    lng: 105.9747,
-    address: "456 Lê Hồng Phong, TP. Sóc Trăng, Sóc Trăng",
-    isMainBranch: false
+    lng: 105.9811,
+    address: "126 Trần Hưng Đạo, Phường 3, Sóc Trăng",
+    isMain: false
   }
 ];
 
-// Lấy vị trí cửa hàng mặc định (chi nhánh chính)
-export const SHOP_LOCATION = SHOP_BRANCHES.find(branch => branch.isMainBranch) || SHOP_BRANCHES[0];
-
-// Lấy chi nhánh gần nhất với một địa điểm cụ thể
-export const getNearestBranch = (lat, lng) => {
-  if (!lat || !lng) return SHOP_LOCATION;
-  
-  let nearestBranch = SHOP_BRANCHES[0];
-  let shortestDistance = calculateDistance(lat, lng, nearestBranch.lat, nearestBranch.lng);
-  
-  for (let i = 1; i < SHOP_BRANCHES.length; i++) {
-    const branch = SHOP_BRANCHES[i];
-    const distance = calculateDistance(lat, lng, branch.lat, branch.lng);
-    
-    if (distance < shortestDistance) {
-      shortestDistance = distance;
-      nearestBranch = branch;
-    }
-  }
-  
-  return nearestBranch;
+/**
+ * Lấy vị trí cửa hàng mặc định (chi nhánh chính)
+ * @returns {Object} Vị trí chi nhánh chính
+ */
+export const getDefaultShopLocation = () => {
+  return shopBranches.find(branch => branch.isMain) || shopBranches[0];
 };
 
-// Tính khoảng cách giữa hai điểm dựa trên tọa độ
-export const calculateDistance = (lat1, lng1, lat2, lng2) => {
-  const R = 6371; // Bán kính Trái Đất tính bằng km
+/**
+ * Tìm chi nhánh gần nhất với vị trí khách hàng
+ * @param {number} lat - Vĩ độ vị trí khách hàng
+ * @param {number} lng - Kinh độ vị trí khách hàng
+ * @returns {Object} Chi nhánh gần nhất
+ */
+export const getNearestBranch = (lat, lng) => {
+  if (!lat || !lng) return getDefaultShopLocation();
+  
+  let nearestBranch = null;
+  let minDistance = Infinity;
+  
+  shopBranches.forEach(branch => {
+    const distance = calculateDistance(lat, lng, branch.lat, branch.lng);
+    if (distance < minDistance) {
+      minDistance = distance;
+      nearestBranch = branch;
+    }
+  });
+  
+  return nearestBranch || getDefaultShopLocation();
+};
+
+/**
+ * Tính khoảng cách giữa hai điểm địa lý sử dụng công thức Haversine
+ * @param {number} lat1 - Vĩ độ điểm 1
+ * @param {number} lon1 - Kinh độ điểm 1
+ * @param {number} lat2 - Vĩ độ điểm 2
+ * @param {number} lon2 - Kinh độ điểm 2
+ * @returns {number} Khoảng cách tính bằng km
+ */
+export const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Bán kính trái đất tính bằng km
   const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
     Math.sin(dLat/2) * Math.sin(dLat/2) +
     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-    Math.sin(dLng/2) * Math.sin(dLng/2);
+    Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   const distance = R * c;
   return distance;
 };
 
-// Tạo lộ trình qua các kho
+/**
+ * Tạo lộ trình qua các kho trung chuyển
+ * @param {Object} shopLocation - Vị trí cửa hàng
+ * @param {Object} customerLocation - Vị trí khách hàng
+ * @returns {Array} Danh sách các kho trung chuyển
+ */
 export const generateWarehouseRoute = (shopLocation, customerLocation) => {
-  // Simplified implementation
-  return [
-    { name: "Kho chính", lat: shopLocation.lat, lng: shopLocation.lng, status: "completed", time: new Date(Date.now() - 86400000) },
-    { name: "Trung tâm phân phối", lat: (shopLocation.lat + customerLocation.lat) / 2, lng: (shopLocation.lng + customerLocation.lng) / 2, status: "in_progress", time: new Date() },
-    { name: "Đang giao đến khách hàng", lat: customerLocation.lat, lng: customerLocation.lng, status: "pending", time: new Date(Date.now() + 86400000) }
-  ];
-};
-
-// Tạo đơn hàng mẫu cho mục đích demo
-export function generateMockOrder(orderId = null) {
-  const id = orderId || Math.floor(Math.random() * 1000000).toString();
+  if (!shopLocation || !customerLocation) return [];
+  
+  // Tính khoảng cách giữa cửa hàng và khách hàng
+  const distance = calculateDistance(
+    shopLocation.lat, 
+    shopLocation.lng, 
+    customerLocation.lat, 
+    customerLocation.lng
+  );
+  
+  // Số lượng kho trung chuyển phụ thuộc vào khoảng cách
+  let numWarehouses = 0;
+  if (distance < 50) {
+    numWarehouses = 1;
+  } else if (distance < 200) {
+    numWarehouses = 2;
+  } else {
+    numWarehouses = 3;
+  }
+  
+  // Tạo danh sách các kho trung chuyển
+  const warehouses = [];
   const now = new Date();
-  const createdAt = new Date(now.getTime() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)); // Random trong 7 ngày qua
   
-  // Các trạng thái có thể có
-  const statuses = ['pending', 'confirmed', 'shipping', 'delivered', 'canceled'];
-  const status = statuses[Math.floor(Math.random() * 3)]; // Chỉ lấy 3 trạng thái đầu
-  
-  // Phương thức thanh toán
-  const paymentMethods = ['cod', 'banking', 'momo', 'zalopay', 'vnpay'];
-  const paymentMethod = paymentMethods[Math.floor(Math.random() * paymentMethods.length)];
-  
-  // Tạo danh sách sản phẩm ngẫu nhiên
-  const numItems = Math.floor(Math.random() * 5) + 1; // 1-5 sản phẩm
-  const items = [];
-  
-  const productNames = [
-    'Táo Fuji Nhật Bản', 'Cam Navel Úc', 'Dưa hấu không hạt', 'Nho xanh không hạt', 
-    'Sữa tươi tiệt trùng Vinamilk', 'Bánh mì sandwich', 'Thịt bò Úc', 'Thịt heo sạch',
-    'Cá hồi phi lê', 'Tôm sú', 'Rau cải xanh', 'Cà rốt', 'Khoai tây', 'Nước suối',
-    'Nước ngọt Coca Cola', 'Bia Heineken', 'Snack khoai tây', 'Bánh quy', 'Mì gói'
-  ];
-  
-  let totalAmount = 0;
-  
-  for (let i = 0; i < numItems; i++) {
-    const price = Math.floor(Math.random() * 200000) + 10000; // 10k-210k VND
-    const quantity = Math.floor(Math.random() * 5) + 1; // 1-5 sản phẩm
-    const discountAmount = Math.random() > 0.7 ? Math.floor(price * 0.1) : 0; // 10% giảm giá cho 30% sản phẩm
-    const subtotal = price * quantity - discountAmount;
+  for (let i = 0; i < numWarehouses; i++) {
+    // Tính toán vị trí kho trung chuyển (nội suy tuyến tính)
+    const ratio = (i + 1) / (numWarehouses + 1);
+    const lat = shopLocation.lat + (customerLocation.lat - shopLocation.lat) * ratio;
+    const lng = shopLocation.lng + (customerLocation.lng - shopLocation.lng) * ratio;
     
-    totalAmount += subtotal;
+    // Tính toán thời gian đến và đi
+    const hoursToArrive = 2 + i * 4; // 2 giờ cho kho đầu tiên, thêm 4 giờ cho mỗi kho tiếp theo
+    const arrivalTime = new Date(now.getTime() + hoursToArrive * 3600 * 1000);
+    const departureTime = new Date(arrivalTime.getTime() + 1 * 3600 * 1000); // Lưu kho 1 giờ
     
-    items.push({
-      _id: `item_${i}_${Date.now()}`,
-      product: {
-        _id: `product_${i}_${Date.now()}`,
-        name: productNames[Math.floor(Math.random() * productNames.length)],
-        image: `https://picsum.photos/seed/${i + Date.now()}/200/200`,
-        unit: ['kg', 'gói', 'chai', 'hộp', 'túi'][Math.floor(Math.random() * 5)]
-      },
-      quantity,
-      price,
-      discountAmount,
-      unit: ['kg', 'gói', 'chai', 'hộp', 'túi'][Math.floor(Math.random() * 5)],
-      unitPrice: price,
-      conversionRate: Math.random() > 0.8 ? Math.floor(Math.random() * 5) + 2 : 1 // 20% có conversion rate
+    warehouses.push({
+      name: `Kho trung chuyển ${i + 1}`,
+      address: `Kho ${i + 1}, ${getRandomAddress(lat, lng)}`,
+      lat,
+      lng,
+      arrivalTime: arrivalTime.toISOString(),
+      departureTime: departureTime.toISOString()
     });
   }
   
-  // Phí vận chuyển và thuế
-  const shippingFee = Math.floor(Math.random() * 50000) + 15000; // 15k-65k VND
-  const tax = Math.floor(totalAmount * 0.1); // 10% thuế
-  totalAmount += shippingFee + tax;
-  
-  // Giảm giá đơn hàng
-  const discount = Math.random() > 0.7 ? Math.floor(totalAmount * 0.05) : 0; // 5% giảm giá cho 30% đơn hàng
-  totalAmount -= discount;
-  
-  // Ngày giao hàng dự kiến
-  const estimatedDelivery = new Date(createdAt.getTime() + (3 + Math.floor(Math.random() * 4)) * 24 * 60 * 60 * 1000);
-  
-  // Địa chỉ giao hàng
-  const addresses = [
-    '123 Nguyễn Văn Linh, Quận Ninh Kiều, Cần Thơ',
-    '456 Trần Hưng Đạo, Quận 1, TP. Hồ Chí Minh',
-    '789 Lê Lợi, Quận Hải Châu, Đà Nẵng',
-    '101 Nguyễn Huệ, Quận Hoàn Kiếm, Hà Nội',
-    '202 Lê Duẩn, TP. Huế, Thừa Thiên Huế'
-  ];
-  
-  return {
-    _id: id,
-    orderNumber: `ORD${id}`,
-    userId: `user_${Math.floor(Math.random() * 1000)}`,
-    items,
-    totalAmount,
-    shippingFee,
-    tax,
-    discount,
-    status,
-    paymentMethod,
-    paymentStatus: paymentMethod === 'cod' ? (status === 'delivered' ? 'paid' : 'pending') : 'paid',
-    shippingAddress: addresses[Math.floor(Math.random() * addresses.length)],
-    createdAt,
-    updatedAt: new Date(createdAt.getTime() + Math.floor(Math.random() * 24 * 60 * 60 * 1000)),
-    estimatedDelivery
-  };
-}
-
-// Định dạng ngày tháng
-export const formatDate = (date) => {
-  if (!date) return '';
-  const d = new Date(date);
-  return d.toLocaleDateString('vi-VN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
+  return warehouses;
 };
 
-// Định dạng tiền tệ
-export const formatCurrency = (amount) => {
-  if (amount === undefined || amount === null) return '0';
-  return amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+/**
+ * Tạo địa chỉ ngẫu nhiên dựa trên vị trí
+ * @param {number} lat - Vĩ độ
+ * @param {number} lng - Kinh độ
+ * @returns {string} Địa chỉ ngẫu nhiên
+ */
+const getRandomAddress = (lat, lng) => {
+  const cities = [
+    "Cần Thơ", "Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Huế", "Sóc Trăng",
+    "An Giang", "Bạc Liêu", "Bến Tre", "Bình Định", "Bình Dương"
+  ];
+  
+  const districts = [
+    "Quận 1", "Quận 2", "Quận 3", "Ninh Kiều", "Bình Thủy", "Cái Răng",
+    "Hải Châu", "Thanh Khê", "Sơn Trà", "Ba Đình", "Hoàn Kiếm", "Hai Bà Trưng"
+  ];
+  
+  const streets = [
+    "Nguyễn Văn Linh", "Lý Thường Kiệt", "Trần Hưng Đạo", "Lê Lợi", "Nguyễn Huệ",
+    "Phan Đình Phùng", "Phan Chu Trinh", "Nguyễn Du", "Hùng Vương", "3/2", "30/4"
+  ];
+  
+  // Chọn thành phố dựa trên vị trí
+  let city = cities[0];
+  for (const branch of shopBranches) {
+    if (Math.abs(lat - branch.lat) < 0.1 && Math.abs(lng - branch.lng) < 0.1) {
+      city = branch.name.replace("Chi nhánh ", "");
+      break;
+    }
+  }
+  
+  const streetNumber = Math.floor(Math.random() * 200) + 1;
+  const district = districts[Math.floor(Math.random() * districts.length)];
+  const street = streets[Math.floor(Math.random() * streets.length)];
+  
+  return `${streetNumber} ${street}, ${district}, ${city}`;
+};
+
+/**
+ * Tạo đơn hàng mẫu cho demo
+ * @param {string} orderId - Mã đơn hàng
+ * @returns {Object} Đơn hàng mẫu
+ */
+export const generateMockOrder = (orderId) => {
+  // Danh sách sản phẩm mẫu
+  const products = [
+    { id: 1, name: "Thịt heo", price: 120000, image: "https://cdn.tgdd.vn/2020/08/content/thitheo-800x450.jpg" },
+    { id: 2, name: "Thịt bò", price: 280000, image: "https://cdn.tgdd.vn/2020/09/content/thitbo-800x450.jpg" },
+    { id: 3, name: "Gà nguyên con", price: 150000, image: "https://cdn.tgdd.vn/2020/08/content/ga-800x450.jpg" },
+    { id: 4, name: "Cá thu", price: 190000, image: "https://cdn.tgdd.vn/2020/08/content/cathu-800x450.jpg" },
+    { id: 5, name: "Tôm sú", price: 320000, image: "https://cdn.tgdd.vn/2020/08/content/tomsu-800x450.jpg" },
+    { id: 6, name: "Rau muống", price: 15000, image: "https://cdn.tgdd.vn/2020/08/content/raumuong-800x450.jpg" },
+    { id: 7, name: "Cải thảo", price: 18000, image: "https://cdn.tgdd.vn/2020/08/content/caithao-800x450.jpg" },
+    { id: 8, name: "Cà rốt", price: 22000, image: "https://cdn.tgdd.vn/2020/08/content/carot-800x450.jpg" },
+    { id: 9, name: "Táo", price: 65000, image: "https://cdn.tgdd.vn/2020/08/content/tao-800x450.jpg" },
+    { id: 10, name: "Cam", price: 70000, image: "https://cdn.tgdd.vn/2020/08/content/cam-800x450.jpg" }
+  ];
+  
+  // Chọn ngẫu nhiên 2-5 sản phẩm
+  const numItems = Math.floor(Math.random() * 4) + 2;
+  const orderItems = [];
+  const selectedProductIds = new Set();
+  
+  while (orderItems.length < numItems) {
+    const randomIndex = Math.floor(Math.random() * products.length);
+    const product = products[randomIndex];
+    
+    if (!selectedProductIds.has(product.id)) {
+      selectedProductIds.add(product.id);
+      const quantity = Math.floor(Math.random() * 3) + 1;
+      orderItems.push({
+        ...product,
+        quantity,
+        total: product.price * quantity
+      });
+    }
+  }
+  
+  // Tính tổng tiền
+  const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
+  const shippingFee = 30000;
+  const discount = Math.random() > 0.7 ? Math.floor(subtotal * 0.1) : 0;
+  const total = subtotal + shippingFee - discount;
+  
+  // Tạo địa chỉ khách hàng ngẫu nhiên
+  const customerCities = [
+    { name: "Cần Thơ", lat: 10.0339, lng: 105.7855 },
+    { name: "Hồ Chí Minh", lat: 10.7769, lng: 106.6983 },
+    { name: "Hà Nội", lat: 21.0285, lng: 105.8542 },
+    { name: "Đà Nẵng", lat: 16.0544, lng: 108.2022 },
+    { name: "Huế", lat: 16.4637, lng: 107.5909 },
+    { name: "Sóc Trăng", lat: 9.6037, lng: 105.9811 }
+  ];
+  
+  const randomCity = customerCities[Math.floor(Math.random() * customerCities.length)];
+  // Thêm nhiễu nhỏ cho tọa độ để không trùng với vị trí chi nhánh
+  const latNoise = (Math.random() - 0.5) * 0.05;
+  const lngNoise = (Math.random() - 0.5) * 0.05;
+  
+  const customerLocation = {
+    lat: randomCity.lat + latNoise,
+    lng: randomCity.lng + lngNoise,
+    address: getRandomAddress(randomCity.lat + latNoise, randomCity.lng + lngNoise)
+  };
+  
+  // Tạo thông tin đơn hàng
+  const now = new Date();
+  const orderDate = new Date(now.getTime() - Math.floor(Math.random() * 86400000)); // Trong vòng 24h qua
+  const estimatedDelivery = new Date(now.getTime() + (2 + Math.floor(Math.random() * 3)) * 86400000); // 2-4 ngày sau
+  
+  // Trạng thái đơn hàng
+  const statuses = ["pending", "confirmed", "shipping", "delivered", "completed"];
+  const randomStatusIndex = Math.floor(Math.random() * 3) + 1; // Chọn confirmed, shipping hoặc delivered
+  const status = statuses[randomStatusIndex];
+  
+  return {
+    _id: orderId || `ORD${Math.floor(Math.random() * 10000)}`,
+    orderItems,
+    subtotal,
+    shippingFee,
+    discount,
+    total,
+    paymentMethod: Math.random() > 0.5 ? "COD" : "Banking",
+    shippingAddress: customerLocation.address,
+    customerLocation,
+    orderDate: orderDate.toISOString(),
+    estimatedDelivery: estimatedDelivery.toISOString(),
+    status,
+    isPaid: status !== "pending" && Math.random() > 0.3,
+    user: {
+      _id: `USR${Math.floor(Math.random() * 10000)}`,
+      name: "Khách hàng",
+      email: "customer@example.com",
+      phone: `09${Math.floor(Math.random() * 100000000)}`
+    }
+  };
+};
+
+/**
+ * Định dạng ngày tháng
+ * @param {string|Date} date - Ngày cần định dạng
+ * @param {boolean} includeTime - Có hiển thị giờ hay không
+ * @returns {string} Ngày đã định dạng
+ */
+export const formatDate = (date, includeTime = false) => {
+  if (!date) return "N/A";
+  
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "Invalid date";
+  
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+  
+  let result = `${day}/${month}/${year}`;
+  
+  if (includeTime) {
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    result += ` ${hours}:${minutes}`;
+  }
+  
+  return result;
+};
+
+/**
+ * Định dạng tiền tệ
+ * @param {number} amount - Số tiền cần định dạng
+ * @param {boolean} showCurrency - Có hiển thị đơn vị tiền tệ hay không
+ * @returns {string} Số tiền đã định dạng
+ */
+export const formatCurrency = (amount, showCurrency = true) => {
+  if (amount === undefined || amount === null) return "N/A";
+  
+  const formatter = new Intl.NumberFormat('vi-VN', {
+    style: showCurrency ? 'currency' : 'decimal',
+    currency: 'VND',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  });
+  
+  return formatter.format(amount);
+};
+
+/**
+ * Geocode địa chỉ sử dụng Mapbox
+ * @param {string} address - Địa chỉ cần geocode
+ * @returns {Promise<{lat: number, lng: number}>} Tọa độ địa chỉ
+ */
+export const geocodeAddress = async (address) => {
+  if (!address) {
+    console.error('Không có địa chỉ để geocode');
+    return null;
+  }
+  
+  // Trong thực tế, bạn sẽ gọi API Mapbox để geocode địa chỉ
+  // Ở đây chúng ta giả lập kết quả dựa trên từ khóa trong địa chỉ
+  
+  // Kiểm tra các từ khóa trong địa chỉ
+  if (address.includes('Cần Thơ')) {
+    return { lat: 10.0339, lng: 105.7855 };
+  } else if (address.includes('Hồ Chí Minh')) {
+    return { lat: 10.7769, lng: 106.6983 };
+  } else if (address.includes('Hà Nội')) {
+    return { lat: 21.0285, lng: 105.8542 };
+  } else if (address.includes('Đà Nẵng')) {
+    return { lat: 16.0544, lng: 108.2022 };
+  } else if (address.includes('Huế')) {
+    return { lat: 16.4637, lng: 107.5909 };
+  } else if (address.includes('Sóc Trăng')) {
+    return { lat: 9.6037, lng: 105.9811 };
+  }
+  
+  // Mặc định trả về tọa độ Cần Thơ
+  return { lat: 10.0339, lng: 105.7855 };
 }; 
