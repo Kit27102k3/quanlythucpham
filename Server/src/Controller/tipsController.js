@@ -51,18 +51,25 @@ export const createTip = async (req, res) => {
     // Xử lý upload ảnh nếu có
     if (req.file) {
       try {
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: "tips",
-          resource_type: "auto",
+        // Upload buffer trực tiếp lên Cloudinary thay vì dùng file path
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: "tips",
+              resource_type: "auto",
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          
+          uploadStream.end(req.file.buffer);
         });
+        
         imageUrl = result.secure_url;
-        // Xóa file tạm sau khi đã upload
-        fs.unlinkSync(req.file.path);
       } catch (uploadError) {
         console.error("Lỗi khi upload ảnh:", uploadError);
-        if (fs.existsSync(req.file.path)) {
-          fs.unlinkSync(req.file.path);
-        }
         return res.status(500).json({ message: "Lỗi khi upload ảnh", error: uploadError.message });
       }
     }
@@ -97,10 +104,6 @@ export const createTip = async (req, res) => {
     res.status(201).json(savedTip);
   } catch (error) {
     console.error("Lỗi khi tạo mẹo mới:", error);
-    // Xóa file tạm nếu có lỗi xảy ra
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
     res.status(500).json({ message: "Lỗi khi tạo mẹo mới", error: error.message });
   }
 };
@@ -120,18 +123,25 @@ export const updateTip = async (req, res) => {
     let imageUrl = existingTip.image;
     if (req.file) {
       try {
-        const result = await cloudinary.uploader.upload(req.file.path, {
-          folder: "tips",
-          resource_type: "auto",
+        // Upload buffer trực tiếp lên Cloudinary thay vì dùng file path
+        const result = await new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: "tips",
+              resource_type: "auto",
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          
+          uploadStream.end(req.file.buffer);
         });
+        
         imageUrl = result.secure_url;
-        // Xóa file tạm sau khi đã upload
-        fs.unlinkSync(req.file.path);
       } catch (uploadError) {
         console.error("Lỗi khi upload ảnh:", uploadError);
-        if (fs.existsSync(req.file.path)) {
-          fs.unlinkSync(req.file.path);
-        }
         return res.status(500).json({ message: "Lỗi khi upload ảnh", error: uploadError.message });
       }
     } else if (req.body.image) {
@@ -177,10 +187,6 @@ export const updateTip = async (req, res) => {
     res.status(200).json(updatedTip);
   } catch (error) {
     console.error("Lỗi khi cập nhật mẹo:", error);
-    // Xóa file tạm nếu có lỗi xảy ra
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
     res.status(500).json({ message: "Lỗi khi cập nhật mẹo", error: error.message });
   }
 };

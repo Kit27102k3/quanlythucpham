@@ -13,12 +13,6 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Ensure temp uploads directory exists
-const tempUploadsDir = path.join(__dirname, '../../temp-uploads');
-if (!fs.existsSync(tempUploadsDir)) {
-  fs.mkdirSync(tempUploadsDir, { recursive: true });
-}
-
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -27,17 +21,9 @@ cloudinary.config({
   secure: true
 });
 
-// Configure multer storage for temporary files
+// Configure multer to use memory storage instead of disk storage for Vercel compatibility
 export const upload = multer({
-  storage: multer.diskStorage({
-    destination: function (req, file, cb) {
-      cb(null, tempUploadsDir);
-    },
-    filename: function (req, file, cb) {
-      const uniqueFilename = `${uuidv4()}${path.extname(file.originalname)}`;
-      cb(null, uniqueFilename);
-    }
-  }),
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 2 * 1024 * 1024 // 2MB
   },
@@ -61,19 +47,24 @@ export const uploadImage = async (req, res) => {
       });
     }
 
-    const filePath = req.file.path;
-
-    // Upload to Cloudinary
-    const result = await cloudinary.uploader.upload(filePath, {
-      folder: 'admin-avatars',
-      transformation: [
-        { width: 500, height: 500, crop: 'limit' },
-        { quality: 'auto' }
-      ]
+    // Upload buffer directly to Cloudinary instead of file path
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'admin-avatars',
+          transformation: [
+            { width: 500, height: 500, crop: 'limit' },
+            { quality: 'auto' }
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      
+      uploadStream.end(req.file.buffer);
     });
-
-    // Delete the temporary file
-    fs.unlinkSync(filePath);
 
     // Return success response
     return res.status(200).json({
@@ -84,11 +75,6 @@ export const uploadImage = async (req, res) => {
     });
   } catch (error) {
     console.error('Error uploading to Cloudinary:', error);
-    
-    // Clean up the temporary file if it exists
-    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
-    }
     
     return res.status(500).json({
       success: false,

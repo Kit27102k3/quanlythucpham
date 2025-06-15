@@ -33,8 +33,17 @@ function AllProducts({
       const filteredRes = showPromotional
         ? res.filter((product) => product?.productDiscount > 0)
         : res;
-      setProducts(filteredRes);
-      console.log("Fetched products:", filteredRes);
+      
+      // Filter out products that are out of stock
+      const inStockProducts = filteredRes.filter(product => 
+        product.productStatus !== "Hết hàng" && 
+        (product.productStock === undefined || 
+         product.productStock === null || 
+         product.productStock > 0)
+      );
+      
+      setProducts(inStockProducts);
+      console.log("Fetched products (in stock only):", inStockProducts);
     };
     fetchAllProducts();
   }, [showPromotional]);

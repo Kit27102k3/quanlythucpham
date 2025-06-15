@@ -81,7 +81,16 @@ function ProductNew() {
     const fetchProducts = async () => {
       try {
         const data = await productsApi.getAllProducts();
-        const sortedData = data
+        
+        // Filter out products that are out of stock
+        const inStockProducts = data.filter(product => 
+          product.productStatus !== "Hết hàng" && 
+          (product.productStock === undefined || 
+           product.productStock === null || 
+           product.productStock > 0)
+        );
+        
+        const sortedData = inStockProducts
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
           .slice(0, 4);
 

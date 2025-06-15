@@ -199,8 +199,17 @@ function Fruit() {
       try {
         setIsLoading(true);
         const res = await productsApi.getProductByCategory("Trái cây");
+        
+        // Filter out products that are out of stock
+        const inStockProducts = res.filter(product => 
+          product.productStatus !== "Hết hàng" && 
+          (product.productStock === undefined || 
+           product.productStock === null || 
+           product.productStock > 0)
+        );
+        
         // Sắp xếp sản phẩm từ mới nhất đến cũ nhất
-        const sortedProducts = [...res].sort((a, b) => {
+        const sortedProducts = [...inStockProducts].sort((a, b) => {
           // Sử dụng updatedAt hoặc createdAt để sắp xếp
           const dateA = new Date(a.updatedAt || a.createdAt);
           const dateB = new Date(b.updatedAt || b.createdAt);

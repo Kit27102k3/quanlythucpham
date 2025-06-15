@@ -17,7 +17,16 @@ function SearchProducts() {
         setIsChangingPage(true);
         try {
           const results = await productsApi.searchProducts(query);
-          setProducts(results.products);
+          
+          // Filter out products that are out of stock
+          const inStockProducts = results.products.filter(product => 
+            product.productStatus !== "Hết hàng" && 
+            (product.productStock === undefined || 
+             product.productStock === null || 
+             product.productStock > 0)
+          );
+          
+          setProducts(inStockProducts);
         } catch (error) {
           console.error("Error fetching products:", error);
         } finally {

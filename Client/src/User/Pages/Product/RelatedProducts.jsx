@@ -29,7 +29,16 @@ function RelatedProducts({ currentProduct }) {
           categoryName,
           currentProductId
         );
-        setRelatedProducts(data);
+        
+        // Filter out products that are out of stock
+        const inStockProducts = data.filter(product => 
+          product.productStatus !== "Hết hàng" && 
+          (product.productStock === undefined || 
+           product.productStock === null || 
+           product.productStock > 0)
+        );
+        
+        setRelatedProducts(inStockProducts);
       } catch (error) {
         console.error("Lỗi khi lấy sản phẩm liên quan:", error);
       }
