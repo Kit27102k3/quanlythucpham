@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable no-unused-vars */
 import { useState, useEffect, useCallback, memo } from "react";
 import { Toaster, toast } from "sonner";
@@ -120,7 +121,6 @@ const OrderAdmin = () => {
           
           if (user?.branchId && typeof user.branchId === 'object' && user.branchId._id) {
             branchId = user.branchId._id;
-            console.log("Found branchId as object in user:", branchId);
             
             if (user.branchId.name) {
               branchName = user.branchId.name;
@@ -129,7 +129,7 @@ const OrderAdmin = () => {
           } 
           else if (user?.branchId && typeof user.branchId === 'string') {
             branchId = user.branchId;
-            console.log("Found branchId as string in user:", branchId);
+           
           }
           
           if (!branchId && user?.branch) {
@@ -139,10 +139,10 @@ const OrderAdmin = () => {
                 branchName = user.branch.name;
                 localStorage.setItem("branchName", branchName);
               }
-              console.log("Found branch object in user:", branchId);
+             
             } else if (typeof user.branch === 'string') {
               branchId = user.branch;
-              console.log("Found branch string in user:", branchId);
+
             }
           }
           

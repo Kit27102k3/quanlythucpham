@@ -6,8 +6,12 @@ import User from "../Model/Register.js";
 import Category from "../Model/Category.js"; // Added missing import
 import { verifyToken as authMiddleware } from "../Middleware/authMiddleware.js";
 import { getLowStockProducts, getTopSellingProducts } from "../Controller/Products/ProductAnalyticsController.js";
+import reportsController from "../Controller/reportsController.js";
 
 const router = express.Router();
+
+// AI Analysis endpoint
+router.get("/analysis", authMiddleware, reportsController.getAnalysisData);
 
 // Get revenue data by time range (week/month/year)
 router.get("/revenue", authMiddleware, async (req, res) => {

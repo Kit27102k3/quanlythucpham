@@ -282,4 +282,152 @@ export const getSampleFeedbackData = () => {
       { category: '5 sao', Rau: 80, Thịt: 72, Trứng: 85, Gạo: 88, Gia_vị: 75 }
     ]
   };
+};
+
+// Dữ liệu mẫu cho AI Analysis
+export const getSampleAIAnalysisData = (branchId) => {
+  // Dữ liệu mẫu cho phân tích AI
+  const branches = [
+    {
+      id: "68374aed10562d7b04a9ac80",
+      name: "Chi nhánh Quận 1",
+      revenue: 45000000,
+      orders: 320,
+      completedOrders: 280,
+      customers: 150,
+      activeCustomers: 120,
+      products: 450,
+      lowStockProducts: 15,
+      strengths: [
+        "Vị trí trung tâm thuận lợi",
+        "Doanh thu cao nhất hệ thống",
+        "Tỷ lệ khách hàng thân thiết cao"
+      ],
+      weaknesses: [
+        "Chi phí vận hành cao",
+        "Tỷ lệ hàng tồn kho cao",
+        "Không gian bán hàng hạn chế"
+      ],
+      solutions: [
+        {
+          issue: "Chi phí vận hành cao",
+          solution: "Tối ưu hóa quy trình vận hành và nhân sự",
+          timeline: "3 tháng"
+        },
+        {
+          issue: "Tỷ lệ hàng tồn kho cao",
+          solution: "Áp dụng hệ thống quản lý tồn kho thời gian thực",
+          timeline: "1 tháng"
+        }
+      ]
+    },
+    {
+      id: "68374aed10562d7b04a9ac81",
+      name: "Chi nhánh Quận 7",
+      revenue: 38000000,
+      orders: 290,
+      completedOrders: 250,
+      customers: 130,
+      activeCustomers: 95,
+      products: 420,
+      lowStockProducts: 8,
+      strengths: [
+        "Khu vực khách hàng có thu nhập cao",
+        "Không gian rộng rãi, hiện đại",
+        "Tỷ lệ hoàn thành đơn hàng cao"
+      ],
+      weaknesses: [
+        "Tỷ lệ khách hàng quay lại thấp",
+        "Chi phí marketing cao",
+        "Thiếu nhân viên có kinh nghiệm"
+      ],
+      solutions: [
+        {
+          issue: "Tỷ lệ khách hàng quay lại thấp",
+          solution: "Triển khai chương trình khách hàng thân thiết",
+          timeline: "2 tháng"
+        },
+        {
+          issue: "Thiếu nhân viên có kinh nghiệm",
+          solution: "Tổ chức đào tạo nâng cao kỹ năng cho nhân viên",
+          timeline: "3 tháng"
+        }
+      ]
+    }
+  ];
+
+  const strategies = [
+    {
+      title: "Mở rộng thị trường",
+      description: "Nghiên cứu thị trường để xác định các khu vực tiềm năng cho chi nhánh mới"
+    },
+    {
+      title: "Đa dạng hóa sản phẩm",
+      description: "Tập trung phát triển thêm sản phẩm trong các danh mục phổ biến: Trái cây, Nước ngọt, Đồ ăn nhanh"
+    },
+    {
+      title: "Công nghệ số",
+      description: "Ứng dụng công nghệ AI và IoT để tối ưu hóa quy trình quản lý kho và dự báo nhu cầu"
+    },
+    {
+      title: "Phát triển bền vững",
+      description: "Tăng cường các hoạt động bảo vệ môi trường và trách nhiệm xã hội, ưu tiên sản phẩm hữu cơ và thân thiện với môi trường"
+    }
+  ];
+
+  const analysis = `# Phân tích tổng quan hệ thống siêu thị thực phẩm sạch
+
+## 1. Tổng quan tình hình kinh doanh
+Dựa trên dữ liệu hiện có, hệ thống siêu thị thực phẩm sạch đang hoạt động ở mức độ trung bình, với tiềm năng phát triển lớn trong tương lai.
+
+### Điểm mạnh:
+- Hệ thống có 1 chi nhánh phân bố rộng khắp
+- Danh mục sản phẩm đa dạng, đáp ứng nhu cầu khách hàng
+- Tỷ lệ hoàn thành đơn hàng cao, cho thấy khả năng đáp ứng tốt
+
+### Điểm yếu:
+- Doanh thu chưa đồng đều giữa các chi nhánh
+- Tỷ lệ khách hàng quay lại chưa cao
+- Một số chi nhánh có tỷ lệ hàng tồn kho cao
+
+## 2. Phân tích chi nhánh
+### Chi nhánh Quận 1
+- Doanh thu: 45,000,000đ
+- Số đơn hàng: 320 (Hoàn thành: 280)
+- Số khách hàng: 150 (Hoạt động: 120)
+
+Điểm mạnh: Thời gian giao hàng nhanh
+Điểm yếu: Doanh thu thấp, Tỷ lệ khách hàng quay lại thấp, Đánh giá sản phẩm chưa cao
+
+Đề xuất: Triển khai chương trình khách hàng thân thiết và cải thiện chất lượng sản phẩm và dịch vụ khách hàng
+
+## 3. Phân tích chi nhánh
+### Chi nhánh 68374aed10562d7b04a9ac80
+- Doanh thu: 0đ
+- Khách hàng: 0
+- Tỷ lệ quay lại: 0.0%
+
+Điểm mạnh: Thời gian giao hàng nhanh
+
+Điểm yếu: Doanh thu thấp, Tỷ lệ khách hàng quay lại thấp, Đánh giá sản phẩm chưa cao
+
+Đề xuất: Triển khai chương trình khách hàng thân thiết và cải thiện chất lượng sản phẩm và dịch vụ khách hàng`;
+
+  // Nếu có branchId, trả về dữ liệu cho chi nhánh cụ thể
+  if (branchId && branchId !== 'all') {
+    const branch = branches.find(b => b.id === branchId);
+    if (branch) {
+      return {
+        analysis: analysis,
+        data: branch
+      };
+    }
+  }
+
+  // Nếu không có branchId hoặc branchId là 'all', trả về dữ liệu tổng quan
+  return {
+    analysis: analysis,
+    branches: branches,
+    strategies: strategies
+  };
 }; 

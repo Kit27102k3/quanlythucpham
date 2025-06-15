@@ -9,6 +9,9 @@ import SystemActivityReport from './SystemActivityReport';
 import DeliveryReport from './DeliveryReport';
 import FeedbackReport from './FeedbackReport';
 import RevenueChart from './RevenueChart';
+import AnalysisReport from './AnalysisReport';
+import AutoExportConfig from './AutoExportConfig';
+import AutoExportManager from './AutoExportManager';
 
 export {
   DashboardReport,
@@ -21,5 +24,8 @@ export {
   SystemActivityReport,
   DeliveryReport,
   FeedbackReport,
-  RevenueChart
+  RevenueChart,
+  AnalysisReport,
+  AutoExportConfig,
+  AutoExportManager
 }; 

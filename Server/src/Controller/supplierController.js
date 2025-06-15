@@ -5,63 +5,24 @@ import mongoose from "mongoose";
 // @desc    Get all suppliers
 // @route   GET /api/suppliers
 // @access  Private/Admin
-export const getAllSuppliers = asyncHandler(async (req, res) => {
-  const { branchId, role } = req.user;
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
-  const skip = (page - 1) * limit;
-
-  // Admin mặc định xem tất cả hoặc theo filter branchId
-  // Manager chỉ xem theo branchId của mình
-  const requestedBranchId = req.query.branchId;
-  
-  let filter = {};
-  
-  if (role === 'admin') {
-    // Admin có thể lọc theo chi nhánh cụ thể hoặc xem tất cả
-    if (requestedBranchId) {
-      filter.branchId = requestedBranchId;
-    }
-  } else {
-    // Manager chỉ xem được nhà cung cấp của chi nhánh mình
-    if (!branchId) {
-      return res.status(400).json({
-        success: false,
-        message: "Không tìm thấy thông tin chi nhánh của bạn",
-      });
-    }
-    filter.branchId = branchId;
+export const getAllSuppliers = async (req, res) => {
+  try {
+    const suppliers = await Supplier.find().sort({ name: 1 });
+    
+    return res.status(200).json({
+      success: true,
+      data: suppliers,
+      message: "Lấy danh sách nhà cung cấp thành công",
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách nhà cung cấp:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy danh sách nhà cung cấp",
+      error: error.message,
+    });
   }
-
-  let query = Supplier.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit);
-  
-  // Luôn populate thông tin chi nhánh để dễ hiển thị
-  query = query.populate({
-    path: 'branchId',
-    select: 'name',
-    model: 'Branch'
-  });
-
-  const [suppliers, total] = await Promise.all([
-    query,
-    Supplier.countDocuments(filter),
-  ]);
-
-  // Format response để bao gồm tên chi nhánh
-  const formattedSuppliers = suppliers.map(supplier => {
-    const plainSupplier = supplier.toObject();
-    if (plainSupplier.branchId && plainSupplier.branchId.name) {
-      plainSupplier.branchName = plainSupplier.branchId.name;
-    }
-    return plainSupplier;
-  });
-
-  return res.status(200).json({
-    success: true,
-    data: formattedSuppliers,
-    pagination: { page, limit, total },
-  });
-});
+};
 
 // @desc    Get a single supplier
 // @route   GET /api/suppliers/:id

@@ -184,25 +184,41 @@ export const createProduct = async (req, res) => {
 export const updateProduct = async (req, res) => {
   const { id } = req.params;
   try {
+    console.log("Updating product with ID:", id);
+    console.log("Request body:", req.body);
+    
     const product = await Product.findById(id);
     if (!product) {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
 
     // Kiểm tra danh mục mới nếu có thay đổi
-    if (
-      req.body.productCategory &&
-      req.body.productCategory !== product.productCategory
-    ) {
-      const category = await Category.findOne({
-        nameCategory: req.body.productCategory,
-      });
+    if (req.body.productCategory && req.body.productCategory !== product.productCategory) {
+      // Thử tìm danh mục theo ID trước
+      let category = null;
+      try {
+        category = await Category.findById(req.body.productCategory);
+      } catch (error) {
+        console.log("Không tìm thấy danh mục theo ID, thử tìm theo tên...");
+      }
+      
+      // Nếu không tìm thấy theo ID, thử tìm theo tên
       if (!category) {
+        category = await Category.findOne({
+          nameCategory: req.body.productCategory,
+        });
+      }
+      
+      if (!category) {
+        console.error("Không tìm thấy danh mục với ID/tên:", req.body.productCategory);
         return res
           .status(400)
           .json({ message: "Danh mục sản phẩm không tồn tại" });
       }
+      
+      // Lưu tên danh mục
       req.body.productCategory = category.nameCategory;
+      console.log("Đã tìm thấy danh mục:", category.nameCategory);
     }
 
     // Sử dụng URLs đã được upload thông qua Cloudinary widget
@@ -214,7 +230,13 @@ export const updateProduct = async (req, res) => {
     }
 
     let existingImages = product.productImages || [];
-    if (req.body.keepImages) {
+    
+    // Nếu có productImages trong request, sử dụng trực tiếp
+    if (req.body.productImages && Array.isArray(req.body.productImages)) {
+      console.log("Using productImages from request:", req.body.productImages);
+      existingImages = req.body.productImages;
+      newImageUrls = []; // Không cần thêm newImageUrls nữa vì đã có đủ trong productImages
+    } else if (req.body.keepImages) {
       const keepImages = Array.isArray(req.body.keepImages)
         ? req.body.keepImages
         : JSON.parse(req.body.keepImages);
@@ -237,12 +259,18 @@ export const updateProduct = async (req, res) => {
     let productDescription = product.productDescription;
     if (req.body.productDescription) {
       try {
-        productDescription = JSON.parse(req.body.productDescription);
+        // Nếu là JSON string, parse nó
+        if (typeof req.body.productDescription === 'string' && 
+            (req.body.productDescription.startsWith('[') || req.body.productDescription.startsWith('{'))) {
+          productDescription = JSON.parse(req.body.productDescription);
+        } else {
+          // Nếu là string thông thường, giữ nguyên định dạng
+          productDescription = req.body.productDescription;
+        }
       } catch (error) {
-        productDescription = req.body.productDescription
-          .split(".")
-          .map((desc) => desc.trim())
-          .filter((desc) => desc !== "");
+        // Nếu không parse được, giữ nguyên giá trị
+        console.log("Không thể parse productDescription, giữ nguyên định dạng:", error.message);
+        productDescription = req.body.productDescription;
       }
     }
 
@@ -280,18 +308,27 @@ export const updateProduct = async (req, res) => {
     // Validate và chuẩn bị unitOptions nếu có
     let unitOptions = product.unitOptions || [];
     if (req.body.unitOptions && Array.isArray(req.body.unitOptions)) {
-      unitOptions = req.body.unitOptions.map((option) => ({
-        unit: option.unit,
-        price: option.price,
-        conversionRate: option.conversionRate || 1,
-        inStock: option.inStock || 0,
-        isDefault: option.isDefault || false,
-      }));
+      console.log("Processing unitOptions:", req.body.unitOptions);
+      
+      try {
+        unitOptions = req.body.unitOptions.map((option) => ({
+          unit: option.unit || "gram",
+          price: Number(option.price) || 0,
+          conversionRate: Number(option.conversionRate) || 1,
+          inStock: Number(option.inStock) || 0,
+          isDefault: Boolean(option.isDefault) || false,
+        }));
 
-      // Đảm bảo có ít nhất một đơn vị mặc định
-      const hasDefault = unitOptions.some((opt) => opt.isDefault);
-      if (!hasDefault && unitOptions.length > 0) {
-        unitOptions[0].isDefault = true;
+        // Đảm bảo có ít nhất một đơn vị mặc định
+        const hasDefault = unitOptions.some((opt) => opt.isDefault);
+        if (!hasDefault && unitOptions.length > 0) {
+          unitOptions[0].isDefault = true;
+        }
+        
+        console.log("Processed unitOptions:", unitOptions);
+      } catch (error) {
+        console.error("Error processing unitOptions:", error);
+        unitOptions = product.unitOptions || [];
       }
     }
 
@@ -301,13 +338,26 @@ export const updateProduct = async (req, res) => {
         ...req.body,
         productImages: [...existingImages, ...newImageUrls],
         productDescription,
-        productPrice: Number(req.body.productPrice) || product.productPrice,
-        productDiscount:
-          Number(req.body.productDiscount) ?? product.productDiscount,
-        productStock: Number(req.body.productStock) ?? product.productStock,
-        productWeight: Number(req.body.productWeight) ?? product.productWeight,
+        productPrice: 
+          req.body.productPrice !== undefined && !isNaN(Number(req.body.productPrice))
+            ? Number(req.body.productPrice) 
+            : product.productPrice,
+        productDiscount: 
+          req.body.productDiscount !== undefined && !isNaN(Number(req.body.productDiscount)) 
+            ? Number(req.body.productDiscount) 
+            : product.productDiscount,
+        productStock: 
+          req.body.productStock !== undefined && !isNaN(Number(req.body.productStock))
+            ? Number(req.body.productStock) 
+            : product.productStock,
+        productWeight: 
+          req.body.productWeight !== undefined && !isNaN(Number(req.body.productWeight))
+            ? Number(req.body.productWeight) 
+            : product.productWeight,
         productWarranty:
-          Number(req.body.productWarranty) ?? product.productWarranty,
+          req.body.productWarranty !== undefined && !isNaN(Number(req.body.productWarranty))
+            ? Number(req.body.productWarranty) 
+            : product.productWarranty,
         productUnit: req.body.productUnit || product.productUnit || "gram",
         discountStartDate,
         discountEndDate,

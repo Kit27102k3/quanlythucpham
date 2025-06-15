@@ -71,7 +71,6 @@ supplierSchema.index({ name: 1, contactPerson: 1 });
 supplierSchema.pre('init', async function() {
   try {
     await mongoose.connection.collections['suppliers'].dropIndexes();
-    console.log('Đã xóa tất cả indexes của Supplier collection');
   } catch (error) {
     console.error('Lỗi khi xóa indexes:', error);
   }

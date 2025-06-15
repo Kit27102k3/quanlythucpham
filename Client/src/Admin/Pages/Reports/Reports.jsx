@@ -14,6 +14,8 @@ import {
   InventoryReport,
   UserReport,
   OrderReport,
+  AnalysisReport,
+  AutoExportManager
 } from "./components";
 
 // Import utility functions
@@ -23,6 +25,12 @@ import {
   exportToExcel,
   sendReportEmail,
 } from "./utils/reportUtils";
+
+// Import auto export initialization
+import { initAutoExport } from "./utils/autoExport";
+
+// Initialize auto export system
+initAutoExport();
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -53,6 +61,10 @@ const Reports = () => {
     region: "all",
   });
   const [exportLoading, setExportLoading] = useState(false);
+
+  // Get user role and branch ID from your auth context or state management
+  const userRole = "admin"; // Replace with actual user role from your auth system
+  const branchId = "1"; // Replace with actual branch ID from your auth system
 
   // Function to fetch data from API
   const fetchData = async (fetchFunction, setter) => {
@@ -268,7 +280,17 @@ const Reports = () => {
             formatCurrency={formatCurrency}
           />
         );
-     
+      case "system-activity":
+        return (
+          <SystemActivityReport
+            systemActivityData={systemActivityData}
+            exportToPDF={exportToPDF}
+            exportToExcel={exportToExcel}
+            sendReportEmail={sendReportEmail}
+            exportLoading={exportLoading}
+            setExportLoading={setExportLoading}
+          />
+        );
       case "delivery":
         return (
           <DeliveryReport
@@ -283,7 +305,27 @@ const Reports = () => {
         );
       case "feedback":
         return (
-          <FeedbackReport />
+          <FeedbackReport
+            feedbackData={feedbackData}
+            exportToPDF={exportToPDF}
+            exportToExcel={exportToExcel}
+            sendReportEmail={sendReportEmail}
+            exportLoading={exportLoading}
+            setExportLoading={setExportLoading}
+          />
+        );
+      case "analysis":
+        return (
+          <AnalysisReport
+            userRole={userRole}
+            branchId={branchId}
+          />
+        );
+      case "auto-export":
+        return (
+          <AutoExportManager
+            setExportLoading={setExportLoading}
+          />
         );
       default:
         return null;
@@ -291,59 +333,140 @@ const Reports = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Báo cáo & Thống kê</h1>
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Báo cáo</h1>
+        <p className="text-gray-600">Xem và phân tích dữ liệu hệ thống</p>
+      </div>
 
       {/* Tabs */}
-      <div className="mb-6 overflow-x-auto hide-scrollbar">
-        <div className="whitespace-nowrap">
-          {[
-            { id: "dashboard", label: "Tổng quan" },
-            { id: "revenue", label: "Doanh thu" },
-            { id: "top-products", label: "Top sản phẩm" },
-            { id: "inventory", label: "Tồn kho" },
-            { id: "users", label: "Người dùng" },
-            { id: "orders", label: "Đơn hàng" },
-            { id: "promotions", label: "Khuyến mãi" },
-            { id: "system-activity", label: "Hệ thống" },
-            { id: "delivery", label: "Giao hàng" },
-            { id: "feedback", label: "Phản hồi" },
-          ].map((tab) => (
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`${
+              activeTab === "dashboard"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Tổng quan
+          </button>
+          <button
+            onClick={() => setActiveTab("revenue")}
+            className={`${
+              activeTab === "revenue"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Doanh thu
+          </button>
+          <button
+            onClick={() => setActiveTab("top-products")}
+            className={`${
+              activeTab === "top-products"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Sản phẩm bán chạy
+          </button>
+          <button
+            onClick={() => setActiveTab("inventory")}
+            className={`${
+              activeTab === "inventory"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Tồn kho
+          </button>
+          <button
+            onClick={() => setActiveTab("users")}
+            className={`${
+              activeTab === "users"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Người dùng
+          </button>
+          <button
+            onClick={() => setActiveTab("orders")}
+            className={`${
+              activeTab === "orders"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Đơn hàng
+          </button>
+          <button
+            onClick={() => setActiveTab("promotions")}
+            className={`${
+              activeTab === "promotions"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Khuyến mãi
+          </button>
+          <button
+            onClick={() => setActiveTab("system-activity")}
+            className={`${
+              activeTab === "system-activity"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Hoạt động hệ thống
+          </button>
+          <button
+            onClick={() => setActiveTab("delivery")}
+            className={`${
+              activeTab === "delivery"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Giao hàng
+          </button>
+          <button
+            onClick={() => setActiveTab("feedback")}
+            className={`${
+              activeTab === "feedback"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Phản hồi
+          </button>
             <button
-              key={tab.id}
-              className={`px-4 py-2 mr-2 rounded-md ${
-                activeTab === tab.id
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-              onClick={() => setActiveTab(tab.id)}
+            onClick={() => setActiveTab("analysis")}
+            className={`${
+              activeTab === "analysis"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
             >
-              {tab.label}
+            Phân tích AI
             </button>
-          ))}
-        </div>
+          <button
+            onClick={() => setActiveTab("auto-export")}
+            className={`${
+              activeTab === "auto-export"
+                ? "border-green-500 text-green-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+          >
+            Xuất tự động
+          </button>
+        </nav>
             </div>
 
-      {/* Time range selector */}
-      {activeTab !== "dashboard" && activeTab !== "inventory" && (
-        <div className="mb-6">
-          <div className="flex items-center space-x-2">
-            <span className="text-gray-700">Thời gian:</span>
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1"
-            >
-              <option value="week">7 ngày qua</option>
-              <option value="month">30 ngày qua</option>
-              <option value="year">12 tháng qua</option>
-            </select>
-          </div>
-        </div>
-      )}
-
       {/* Content */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white rounded-lg shadow">
         {renderContent()}
       </div>
     </div>

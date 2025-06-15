@@ -58,6 +58,21 @@ export default async function handler(request, context) {
           responseData = await mockControllerResponse(reportsController.getTopProducts, { limit });
         }
         break;
+      case 'analysis':
+        // Get user role and branch ID from query params
+        const userRole = url.searchParams.get('userRole') || 'admin';
+        const branchId = url.searchParams.get('branchId') || 'all';
+        const startDate = url.searchParams.get('startDate');
+        const endDate = url.searchParams.get('endDate');
+        
+        // Call the controller method with the appropriate parameters
+        responseData = await mockControllerResponse(reportsController.getAnalysisData, { 
+          userRole, 
+          branchId,
+          startDate,
+          endDate
+        });
+        break;
       case 'inventory':
         responseData = await mockControllerResponse(reportsController.getInventoryData);
         break;

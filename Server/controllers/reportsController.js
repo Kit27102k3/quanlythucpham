@@ -1,11 +1,12 @@
-import BestSellingProduct from "../Model/BestSellingProduct.js";
-import User from "../Model/User.js";
-import Order from "../Model/Order.js";
-import Product from "../Model/Product.js";
-import Review from "../Model/Review.js";
-import SystemLog from "../Model/SystemLog.js";
-import Coupon from "../Model/Coupon.js";
+import BestSellingProduct from "../src/Model/BestSellingProduct.js";
+import User from "../src/Model/Register.js";
+import Order from "../src/Model/Order.js";
+import Product from "../src/Model/Products.js";
+import Review from "../src/Model/Review.js";
+import SystemLog from "../src/Model/SystemActivity.js";
+import Coupon from "../src/Model/Coupon.js";
 import mongoose from "mongoose";
+import process from "process";
 
 /**
  * Reports controller to handle API requests for generating various reports
@@ -14,26 +15,49 @@ const reportsController = {
   // Dashboard statistics
   getDashboardStats: async (req, res) => {
     try {
-      const [
+      // Kiểm tra kết nối MongoDB
+      if (mongoose.connection.readyState !== 1) {
+        return res.status(503).json({ 
+          message: "Không thể kết nối đến cơ sở dữ liệu",
+          connectionStatus: "disconnected"
+        });
+      }
+      
+      console.log("Đang lấy dữ liệu thống kê dashboard...");
+      
+      // Lấy tổng số đơn hàng
+      const totalOrders = await Order.countDocuments();
+      console.log("Tổng số đơn hàng:", totalOrders);
+      
+      // Lấy tổng số khách hàng - không giới hạn ở role "customer"
+      const totalCustomers = await User.countDocuments();
+      console.log("Tổng số khách hàng:", totalCustomers);
+      
+      // Lấy tổng số sản phẩm
+      const totalProducts = await Product.countDocuments();
+      console.log("Tổng số sản phẩm:", totalProducts);
+      
+      // Lấy các hoạt động gần đây
+      const recentActivities = await SystemLog.find().sort({ createdAt: -1 }).limit(5);
+      
+      // Lấy tổng doanh thu từ tất cả các đơn hàng đã hoàn thành (status: "completed" hoặc "delivered")
+      const totalRevenueResult = await Order.aggregate([
+        { $match: { status: { $in: ["completed", "delivered"] } } },
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      ]);
+      
+      console.log("Kết quả tính tổng doanh thu:", totalRevenueResult);
+      
+      // Debug: Kiểm tra tất cả các đơn hàng
+      const allOrders = await Order.find({}, { status: 1, totalAmount: 1 });
+      console.log("Tất cả đơn hàng:", JSON.stringify(allOrders));
+      
+      const totalRevenue = totalRevenueResult.length > 0 ? totalRevenueResult[0].total : 0;
+      console.log("Tổng doanh thu:", totalRevenue);
+
+      const responseData = {
         totalOrders,
         totalRevenue,
-        totalCustomers,
-        totalProducts,
-        recentActivities,
-      ] = await Promise.all([
-        Order.countDocuments(),
-        Order.aggregate([
-          { $match: { status: "completed" } },
-          { $group: { _id: null, total: { $sum: "$totalAmount" } } },
-        ]),
-        User.countDocuments({ role: "customer" }),
-        Product.countDocuments(),
-        SystemLog.find().sort({ createdAt: -1 }).limit(5),
-      ]);
-
-      res.json({
-        totalOrders,
-        totalRevenue: totalRevenue[0]?.total || 0,
         totalCustomers,
         totalProducts,
         recentActivities: recentActivities.map((log) => ({
@@ -42,10 +66,17 @@ const reportsController = {
           message: log.message,
           timestamp: log.createdAt,
         })),
-      });
+      };
+      
+      console.log("Dữ liệu trả về:", responseData);
+      res.json(responseData);
     } catch (error) {
       console.error("Error in getDashboardStats:", error);
-      res.status(500).json({ message: "Lỗi khi lấy dữ liệu thống kê" });
+      res.status(500).json({ 
+        message: "Lỗi khi lấy dữ liệu thống kê", 
+        error: error.message,
+        connectionStatus: mongoose.connection.readyState
+      });
     }
   },
 
@@ -66,8 +97,14 @@ const reportsController = {
           startDate.setDate(startDate.getDate() - 7);
       }
 
+      console.log(`Lấy dữ liệu doanh thu từ ${startDate.toISOString()} đến hiện tại`);
+
+      // Lấy doanh thu từ các đơn hàng đã hoàn thành (status: "completed" hoặc "delivered")
       const revenueData = await Order.aggregate([
-        { $match: { status: "completed", createdAt: { $gte: startDate } } },
+        { $match: { 
+          status: { $in: ["completed", "delivered"] }, 
+          createdAt: { $gte: startDate } 
+        }},
         {
           $group: {
             _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -78,13 +115,42 @@ const reportsController = {
         { $sort: { _id: 1 } },
       ]);
 
-      res.json(
-        revenueData.map((item) => ({
-          date: item._id,
-          revenue: item.revenue,
-          orders: item.orders,
-        }))
-      );
+      console.log("Kết quả dữ liệu doanh thu:", revenueData);
+
+      // Tạo mảng các ngày từ startDate đến hiện tại
+      const allDates = [];
+      const currentDate = new Date();
+      const tempDate = new Date(startDate);
+      
+      while (tempDate <= currentDate) {
+        allDates.push(new Date(tempDate));
+        tempDate.setDate(tempDate.getDate() + 1);
+      }
+      
+      // Tạo dữ liệu đầy đủ cho tất cả các ngày, ngày không có doanh thu sẽ hiển thị 0
+      const completeRevenueData = allDates.map(date => {
+        const dateString = date.toISOString().split('T')[0];
+        const existingData = revenueData.find(item => item._id === dateString);
+        
+        // Tạo tên ngày trong tuần
+        const dayOfWeek = date.getDay();
+        const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+        const dayName = dayNames[dayOfWeek];
+        
+        // Format ngày hiển thị
+        const displayDate = `${dayName} (${date.getDate()}/${date.getMonth() + 1})`;
+        
+        return {
+          date: dateString,
+          displayDate: displayDate,
+          dayName: dayName,
+          revenue: existingData ? existingData.revenue : 0,
+          orders: existingData ? existingData.orders : 0,
+        };
+      });
+
+      console.log("Dữ liệu doanh thu đầy đủ:", completeRevenueData);
+      res.json(completeRevenueData);
     } catch (error) {
       console.error("Error in getRevenueData:", error);
       res.status(500).json({ message: "Lỗi khi lấy dữ liệu doanh thu" });
@@ -123,38 +189,72 @@ const reportsController = {
     }
   },
 
-  // Inventory data
+  // Get inventory data for products with low stock
   getInventoryData: async (req, res) => {
     try {
       const limit = parseInt(req.query.limit) || 5;
-      const products = await Product.find()
-        .select("productName productCategory stock productStock")
-        .lean();
-
-      const inventoryData = products
-        .filter((product) => {
-          const stockValue = product.productStock ?? product.stock;
-          return (
-            typeof stockValue === "number" && stockValue < 20 && stockValue >= 0
-          );
-        })
-        .map((product) => ({
-          id: product._id,
-          name: product.productName,
-          category: product.productCategory || "Không phân loại",
-          stock: product.productStock ?? product.stock,
-          status:
-            (product.productStock ?? product.stock) <= 5
-              ? "Sắp hết"
-              : "Còn hàng",
-        }))
-        .sort((a, b) => a.stock - b.stock)
-        .slice(0, limit);
-
-      res.json(inventoryData);
+      const threshold = parseInt(req.query.threshold) || 20;
+      
+      // Try to get products with stock below threshold
+      const lowStockProducts = await Product.find({ 
+        $or: [
+          { stock: { $lte: threshold, $gt: 0 } },
+          { productStock: { $lte: threshold, $gt: 0 } }
+        ]
+      })
+      .sort({ stock: 1, productStock: 1 })
+      .limit(limit);
+      
+      // If we have products, return them
+      if (lowStockProducts && lowStockProducts.length > 0) {
+        return res.json({
+          success: true,
+          data: lowStockProducts.map(product => {
+            // Lấy đường dẫn hình ảnh
+            let imageUrl = product.image || product.productImage;
+            
+            // Nếu có mảng hình ảnh, lấy hình ảnh đầu tiên
+            if (!imageUrl && product.images && product.images.length > 0) {
+              imageUrl = product.images[0];
+            }
+            if (!imageUrl && product.productImages && product.productImages.length > 0) {
+              imageUrl = product.productImages[0];
+            }
+            
+            // Nếu vẫn không có hình ảnh, sử dụng placeholder
+            if (!imageUrl) {
+              imageUrl = "https://via.placeholder.com/100x100/f3f4f6/64748b?text=No+Image";
+            }
+            
+            return {
+              id: product._id,
+              name: product.name || product.productName,
+              category: product.category || product.categoryName || "Không phân loại",
+              stock: product.stock || product.productStock || 0,
+              status: (product.stock || product.productStock) <= 5 ? "Sắp hết" : "Còn hàng",
+              image: imageUrl,
+              sku: product.sku || product.productCode
+            };
+          })
+        });
+      }
+      
+      // Nếu không có sản phẩm, trả về mảng rỗng
+      return res.json({
+        success: true,
+        data: [],
+        message: "Không tìm thấy sản phẩm tồn kho thấp"
+      });
+      
     } catch (error) {
       console.error("Error in getInventoryData:", error);
-      res.status(500).json({ message: "Lỗi khi lấy dữ liệu tồn kho" });
+      
+      // Trả về lỗi
+      res.status(500).json({
+        success: false,
+        message: "Lỗi khi lấy dữ liệu tồn kho",
+        error: error.message
+      });
     }
   },
 
@@ -217,6 +317,182 @@ const reportsController = {
     } catch (error) {
       console.error("Error in getUserData:", error);
       res.status(500).json({ message: "Lỗi khi lấy dữ liệu người dùng" });
+    }
+  },
+
+  // User detail data with province distribution
+  getUserDetailData: async (req, res) => {
+    try {
+      const { period = "month" } = req.query;
+      console.log(`Lấy dữ liệu chi tiết người dùng với period=${period}`);
+      
+      // Xác định ngày bắt đầu dựa trên period
+      const startDate = new Date();
+      switch (period) {
+        case "year":
+          startDate.setFullYear(startDate.getFullYear() - 1);
+          break;
+        case "quarter":
+          startDate.setMonth(startDate.getMonth() - 3);
+          break;
+        case "week":
+          startDate.setDate(startDate.getDate() - 7);
+          break;
+        default: // month
+          startDate.setMonth(startDate.getMonth() - 1);
+      }
+
+      // Lấy dữ liệu người dùng
+      const [totalUsers, newUsers, activeUsers, usersByRegion, usersByAge, usersByProvince, users] =
+        await Promise.all([
+          User.countDocuments(),
+          User.countDocuments({ createdAt: { $gte: startDate } }),
+          User.countDocuments({ lastLogin: { $gte: startDate } }),
+          User.aggregate([
+            { $group: { _id: "$region", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+          ]),
+          User.aggregate([
+            {
+              $project: {
+                ageRange: {
+                  $switch: {
+                    branches: [
+                      { case: { $lt: ["$age", 25] }, then: "18-24" },
+                      { case: { $lt: ["$age", 35] }, then: "25-34" },
+                      { case: { $lt: ["$age", 45] }, then: "35-44" },
+                    ],
+                    default: "45+",
+                  },
+                },
+              },
+            },
+            { $group: { _id: "$ageRange", count: { $sum: 1 } } },
+            { $sort: { _id: 1 } },
+          ]),
+          User.aggregate([
+            {
+              $project: {
+                province: {
+                  $cond: {
+                    if: { $ifNull: ["$address.province", false] },
+                    then: "$address.province",
+                    else: {
+                      $cond: {
+                        if: { $ifNull: ["$contactInfo.province", false] },
+                        then: "$contactInfo.province",
+                        else: {
+                          $cond: {
+                            if: { $ifNull: ["$contactInfo.city", false] },
+                            then: "$contactInfo.city",
+                            else: "Không xác định"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            { $group: { _id: "$province", count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+          ]),
+          User.find({}, {
+            firstName: 1,
+            lastName: 1,
+            email: 1,
+            phone: 1,
+            address: 1,
+            contactInfo: 1,
+            createdAt: 1,
+            lastLogin: 1,
+            role: 1
+          }).sort({ createdAt: -1 }).limit(100)
+        ]);
+
+      // Tính toán các số liệu thống kê khác
+      const maleUsers = await User.countDocuments({ gender: "male" });
+      const femaleUsers = await User.countDocuments({ gender: "female" });
+      
+      // Phân tích hoạt động người dùng
+      const userActivity = await User.aggregate([
+        {
+          $lookup: {
+            from: "orders",
+            localField: "_id",
+            foreignField: "userId",
+            as: "orders"
+          }
+        },
+        {
+          $project: {
+            _id: 1,
+            orderCount: { $size: "$orders" },
+            totalSpent: { $sum: "$orders.totalAmount" },
+            lastOrder: { $max: "$orders.createdAt" }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            activeUsers: { $sum: { $cond: [{ $gt: ["$orderCount", 0] }, 1, 0] } },
+            inactiveUsers: { $sum: { $cond: [{ $eq: ["$orderCount", 0] }, 1, 0] } },
+            averageOrderCount: { $avg: "$orderCount" },
+            averageSpent: { $avg: "$totalSpent" }
+          }
+        }
+      ]);
+
+      // Định dạng dữ liệu phản hồi
+      const responseData = {
+        totalUsers,
+        newUsers,
+        activeUsers: userActivity.length > 0 ? userActivity[0].activeUsers : activeUsers,
+        inactiveUsers: userActivity.length > 0 ? userActivity[0].inactiveUsers : (totalUsers - activeUsers),
+        maleUsers,
+        femaleUsers,
+        usersByRegion: usersByRegion.map((item) => ({
+          region: item._id || "Không xác định",
+          count: item.count,
+        })),
+        usersByAge: usersByAge.map((item) => ({
+          range: item._id || "Không xác định",
+          count: item.count,
+        })),
+        usersByProvince: usersByProvince.map((item) => ({
+          province: item._id || "Không xác định",
+          count: item.count,
+        })),
+        userActivity: userActivity.length > 0 ? {
+          averageOrderCount: userActivity[0].averageOrderCount || 0,
+          averageSpent: userActivity[0].averageSpent || 0,
+          activeRatio: totalUsers > 0 ? (userActivity[0].activeUsers / totalUsers) : 0
+        } : {
+          averageOrderCount: 0,
+          averageSpent: 0,
+          activeRatio: 0
+        },
+        users: users.map(user => ({
+          id: user._id,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Không xác định',
+          email: user.email || 'Không xác định',
+          phone: user.phone || user.contactInfo?.phone || 'Không xác định',
+          address: user.address?.full || user.contactInfo?.address || 'Không xác định',
+          province: user.address?.province || user.contactInfo?.province || user.contactInfo?.city || 'Không xác định',
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin || user.createdAt,
+          role: user.role || 'customer'
+        }))
+      };
+
+      console.log(`Trả về dữ liệu chi tiết người dùng với ${users.length} người dùng và ${usersByProvince.length} tỉnh thành`);
+      res.json(responseData);
+    } catch (error) {
+      console.error("Error in getUserDetailData:", error);
+      res.status(500).json({ 
+        message: "Lỗi khi lấy dữ liệu chi tiết người dùng",
+        error: error.message 
+      });
     }
   },
 
@@ -723,6 +999,805 @@ const reportsController = {
     } catch (error) {
       console.error("Error in getFeedbackData:", error);
       res.status(500).json({ message: "Lỗi khi lấy dữ liệu phản hồi" });
+    }
+  },
+
+  // Phân tích AI dựa trên dữ liệu thực
+  getAnalysisData: async (req, res) => {
+    try {
+      console.log("API getAnalysisData được gọi với query:", req.query);
+      const { userRole, branchId, startDate, endDate } = req.query;
+      
+      // Tạo điều kiện lọc theo ngày nếu có
+      const dateFilter = {};
+      if (startDate && endDate) {
+        dateFilter.createdAt = {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        };
+        console.log("Lọc dữ liệu theo khoảng thời gian:", startDate, "đến", endDate);
+      } else if (startDate) {
+        dateFilter.createdAt = { $gte: new Date(startDate) };
+        console.log("Lọc dữ liệu từ ngày:", startDate);
+      } else if (endDate) {
+        dateFilter.createdAt = { $lte: new Date(endDate) };
+        console.log("Lọc dữ liệu đến ngày:", endDate);
+      }
+      
+      // Lấy dữ liệu cần thiết cho phân tích
+      const [
+        revenueData,
+        orderStats,
+        productStats,
+        userStats,
+        branches
+      ] = await Promise.all([
+        // Lấy dữ liệu doanh thu
+        Order.aggregate([
+          { $match: { status: "completed", ...dateFilter } },
+          { $group: { _id: "$branchId", revenue: { $sum: "$totalAmount" }, count: { $sum: 1 } } }
+        ]),
+        // Lấy thống kê đơn hàng
+        Order.aggregate([
+          { $match: dateFilter },
+          { 
+            $group: { 
+              _id: "$branchId", 
+              totalOrders: { $sum: 1 },
+              completedOrders: { 
+                $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } 
+              },
+              pendingOrders: { 
+                $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } 
+              }
+            } 
+          }
+        ]),
+        // Lấy thống kê sản phẩm
+        Product.aggregate([
+          {
+            $lookup: {
+              from: "orders",
+              localField: "_id",
+              foreignField: "items.productId",
+              as: "orders"
+            }
+          },
+          {
+            $project: {
+              _id: 1,
+              productName: 1,
+              productCategory: 1,
+              branchId: 1,
+              stock: { $ifNull: ["$productStock", "$stock"] },
+              sold: { 
+                $size: {
+                  $filter: {
+                    input: "$orders",
+                    as: "order",
+                    cond: Object.keys(dateFilter).length > 0 ? 
+                      { $and: [
+                        { $eq: ["$$order.status", "completed"] },
+                        dateFilter.createdAt?.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
+                        dateFilter.createdAt?.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
+                      ]} : 
+                      { $eq: ["$$order.status", "completed"] }
+                  }
+                }
+              },
+              revenue: {
+                $sum: {
+                  $map: {
+                    input: {
+                      $filter: {
+                        input: "$orders",
+                        as: "order",
+                        cond: Object.keys(dateFilter).length > 0 ? 
+                          { $and: [
+                            { $eq: ["$$order.status", "completed"] },
+                            dateFilter.createdAt?.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
+                            dateFilter.createdAt?.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
+                          ]} : 
+                          { $eq: ["$$order.status", "completed"] }
+                      }
+                    },
+                    as: "order",
+                    in: {
+                      $sum: {
+                        $map: {
+                          input: {
+                            $filter: {
+                              input: "$$order.items",
+                              as: "item",
+                              cond: { $eq: ["$$item.productId", "$_id"] }
+                            }
+                          },
+                          as: "item",
+                          in: { $multiply: ["$$item.price", "$$item.quantity"] }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            $group: {
+              _id: "$branchId",
+              products: { $push: "$$ROOT" },
+              totalProducts: { $sum: 1 },
+              lowStockProducts: { 
+                $sum: { $cond: [{ $lt: ["$stock", 10] }, 1, 0] }
+              }
+            }
+          }
+        ]),
+        // Lấy thống kê người dùng
+        User.aggregate([
+          { $match: { role: "customer" } },
+          {
+            $lookup: {
+              from: "orders",
+              localField: "_id",
+              foreignField: "userId",
+              as: "orders"
+            }
+          },
+          {
+            $project: {
+              _id: 1,
+              firstName: 1,
+              lastName: 1,
+              email: 1,
+              branchId: 1,
+              orderCount: { 
+                $size: {
+                  $filter: {
+                    input: "$orders",
+                    as: "order",
+                    cond: Object.keys(dateFilter).length > 0 ? 
+                      { $and: [
+                        dateFilter.createdAt?.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
+                        dateFilter.createdAt?.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
+                      ]} : 
+                      true
+                  }
+                }
+              },
+              totalSpent: { 
+                $sum: {
+                  $map: {
+                    input: {
+                      $filter: {
+                        input: "$orders",
+                        as: "order",
+                        cond: Object.keys(dateFilter).length > 0 ? 
+                          { $and: [
+                            { $eq: ["$$order.status", "completed"] },
+                            dateFilter.createdAt?.$gte ? { $gte: ["$$order.createdAt", dateFilter.createdAt.$gte] } : true,
+                            dateFilter.createdAt?.$lte ? { $lte: ["$$order.createdAt", dateFilter.createdAt.$lte] } : true
+                          ]} : 
+                          { $eq: ["$$order.status", "completed"] }
+                      }
+                    },
+                    as: "order",
+                    in: "$$order.totalAmount"
+                  }
+                }
+              }
+            }
+          },
+          {
+            $group: {
+              _id: "$branchId",
+              customers: { $push: "$$ROOT" },
+              totalCustomers: { $sum: 1 },
+              activeCustomers: {
+                $sum: { $cond: [{ $gt: ["$orderCount", 0] }, 1, 0] }
+              }
+            }
+          }
+        ]),
+        // Lấy danh sách chi nhánh
+        mongoose.model('Branch').find().lean()
+      ]);
+
+      console.log("Dữ liệu đã lấy được:");
+      console.log("- revenueData:", revenueData.length, "bản ghi");
+      console.log("- orderStats:", orderStats.length, "bản ghi");
+      console.log("- productStats:", productStats.length, "bản ghi");
+      console.log("- userStats:", userStats.length, "bản ghi");
+      console.log("- branches:", branches.length, "bản ghi");
+      
+      // Xử lý dữ liệu để tạo prompt cho OpenAI
+      const totalRevenue = revenueData.reduce((sum, item) => sum + (item.revenue || 0), 0);
+      const totalOrders = orderStats.reduce((sum, item) => sum + (item.totalOrders || 0), 0);
+      const totalCompletedOrders = orderStats.reduce((sum, item) => sum + (item.completedOrders || 0), 0);
+      const totalCustomers = userStats.reduce((sum, item) => sum + (item.totalCustomers || 0), 0);
+      const totalActiveCustomers = userStats.reduce((sum, item) => sum + (item.activeCustomers || 0), 0);
+      
+      // Tạo dữ liệu chi tiết về từng chi nhánh
+      const branchDetails = branches.map(branch => {
+        const branchId = branch._id.toString();
+        const branchRevenue = revenueData.find(item => item._id && item._id.toString() === branchId);
+        const branchOrders = orderStats.find(item => item._id && item._id.toString() === branchId);
+        const branchProducts = productStats.find(item => item._id && item._id.toString() === branchId);
+        const branchUsers = userStats.find(item => item._id && item._id.toString() === branchId);
+        
+        // Top sản phẩm của chi nhánh
+        const topProducts = branchProducts?.products
+          ?.sort((a, b) => b.revenue - a.revenue)
+          ?.slice(0, 5)
+          ?.map(product => ({
+            name: product.productName,
+            revenue: product.revenue || 0,
+            sold: product.sold || 0,
+            inventory: product.stock || 0
+          })) || [];
+        
+        return {
+          id: branchId,
+          name: branch.name || `Chi nhánh ${branchId.substring(0, 5)}`,
+          revenue: branchRevenue?.revenue || 0,
+          orders: branchOrders?.totalOrders || 0,
+          completedOrders: branchOrders?.completedOrders || 0,
+          customers: branchUsers?.totalCustomers || 0,
+          activeCustomers: branchUsers?.activeCustomers || 0,
+          products: branchProducts?.totalProducts || 0,
+          lowStockProducts: branchProducts?.lowStockProducts || 0,
+          topProducts: topProducts
+        };
+      });
+      
+      // Lấy API key từ biến môi trường
+      const apiKey = process.env.OPENAI_API_KEY;
+      console.log("API Key OpenAI:", apiKey ? "Có" : "Không có");
+      
+      if (!apiKey) {
+        return res.status(500).json({ 
+          error: "Không tìm thấy API key cho dịch vụ AI. Vui lòng kiểm tra cấu hình server.",
+          message: "Lỗi cấu hình AI",
+          data: { branches: branchDetails }
+        });
+      }
+      
+      // Danh sách các model để thử
+      const models = ["gpt-4o-mini"];
+      let lastError = null;
+      
+      // Xử lý phân tích dựa trên vai trò người dùng
+      if (userRole === 'admin') {
+        // Nếu là admin và chọn tất cả chi nhánh
+        if (branchId === 'all') {
+          // Tạo prompt cho phân tích tổng quan
+          let prompt = `
+Hãy phân tích dữ liệu kinh doanh của chuỗi siêu thị thực phẩm sạch và đưa ra phân tích chi tiết:
+
+1. Thông tin tổng quan:
+- Tổng doanh thu: ${totalRevenue.toLocaleString('vi-VN')}đ
+- Tổng số đơn hàng: ${totalOrders} (Hoàn thành: ${totalCompletedOrders})
+- Tổng số khách hàng: ${totalCustomers} (Hoạt động: ${totalActiveCustomers})
+- Tỷ lệ hoàn thành đơn hàng: ${totalOrders > 0 ? ((totalCompletedOrders / totalOrders) * 100).toFixed(2) : 0}%
+- Tỷ lệ khách hàng hoạt động: ${totalCustomers > 0 ? ((totalActiveCustomers / totalCustomers) * 100).toFixed(2) : 0}%
+
+2. Chi tiết từng chi nhánh:
+${branchDetails.map(branch => `
+Chi nhánh: ${branch.name}
+- Doanh thu: ${branch.revenue.toLocaleString('vi-VN')}đ
+- Số đơn hàng: ${branch.orders} (Hoàn thành: ${branch.completedOrders})
+- Số khách hàng: ${branch.customers} (Hoạt động: ${branch.activeCustomers})
+- Số lượng sản phẩm: ${branch.products} (Sắp hết hàng: ${branch.lowStockProducts})
+- Top sản phẩm: ${branch.topProducts.map(p => `${p.name} (Đã bán: ${p.sold}, Doanh thu: ${p.revenue.toLocaleString('vi-VN')}đ, Tồn kho: ${p.inventory})`).join(', ')}
+`).join('\n')}
+
+Hãy phân tích chi tiết:
+
+1. Tổng quan tình hình kinh doanh:
+   - Đánh giá hiệu quả kinh doanh tổng thể
+   - Điểm mạnh và điểm yếu chính của chuỗi siêu thị
+   - Xu hướng và cơ hội phát triển
+
+2. Phân tích từng chi nhánh:
+   - Xếp hạng các chi nhánh theo hiệu suất (dựa trên doanh thu, số đơn hàng, khách hàng)
+   - Phân tích chi tiết 3 chi nhánh hoạt động tốt nhất và 3 chi nhánh hoạt động kém nhất
+   - Nguyên nhân dẫn đến sự chênh lệch hiệu suất giữa các chi nhánh
+
+3. Đề xuất chiến lược:
+   - 5 đề xuất cụ thể để cải thiện hiệu quả kinh doanh tổng thể
+   - Chiến lược phát triển cho từng nhóm chi nhánh (hiệu suất cao, trung bình, thấp)
+   - Kế hoạch hành động ngắn hạn (3 tháng) và dài hạn (1 năm)
+
+4. Quản lý hàng tồn kho:
+   - Đánh giá tình trạng hàng tồn kho hiện tại
+   - Đề xuất chiến lược tối ưu hóa hàng tồn kho
+   - Giải pháp cho các sản phẩm sắp hết hàng
+
+Hãy trình bày phân tích một cách rõ ràng, dễ đọc và có cấu trúc. Sử dụng ngôn ngữ đơn giản, chính xác và mang tính xây dựng.`;
+
+          // Gọi API OpenAI
+          for (const model of models) {
+            try {
+              console.log(`Bắt đầu gọi API OpenAI với model ${model}`);
+              const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                  model: model,
+                  messages: [
+                    {
+                      role: "system",
+                      content: "Bạn là một chuyên gia phân tích dữ liệu kinh doanh với nhiều năm kinh nghiệm trong lĩnh vực bán lẻ thực phẩm. Hãy đưa ra các phân tích chuyên sâu, chi tiết và đề xuất cụ thể dựa trên dữ liệu."
+                    },
+                    {
+                      role: "user",
+                      content: prompt
+                    }
+                  ],
+                  temperature: 0.7,
+                  max_tokens: 3500
+                })
+              });
+              
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`OpenAI API error với model ${model}:`, errorText);
+                lastError = new Error(`OpenAI API error với model ${model}: ${response.status} - ${errorText}`);
+                continue;
+              }
+              
+              const data = await response.json();
+              
+              if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                console.error(`Invalid API response structure với model ${model}:`, data);
+                lastError = new Error(`Invalid API response structure với model ${model}`);
+                continue;
+              }
+              
+              const analysis = data.choices[0].message.content;
+              console.log(`Độ dài phân tích từ model ${model}:`, analysis.length);
+              
+              // Trả về kết quả phân tích từ OpenAI
+              const responseData = {
+                analysis: analysis,
+                data: { branches: branchDetails }
+              };
+              
+              console.log("Trả về phân tích thành công");
+              return res.json(responseData);
+            } catch (error) {
+              console.error(`Error calling OpenAI API với model ${model}:`, error);
+              lastError = error;
+            }
+          }
+        } else {
+          // Admin chọn một chi nhánh cụ thể
+          const branch = branchDetails.find(b => b.id === branchId);
+          
+          if (!branch) {
+            return res.status(404).json({ 
+              message: "Không tìm thấy chi nhánh",
+              data: { branches: branchDetails }
+            });
+          }
+          
+          // Tạo prompt cho chi nhánh cụ thể
+          let prompt = `
+Hãy phân tích dữ liệu kinh doanh của chi nhánh ${branch.name} và đưa ra phân tích chi tiết:
+
+1. Thông tin chi nhánh:
+- Doanh thu: ${branch.revenue.toLocaleString('vi-VN')}đ
+- Số đơn hàng: ${branch.orders} (Hoàn thành: ${branch.completedOrders})
+- Tỷ lệ hoàn thành đơn hàng: ${branch.orders > 0 ? ((branch.completedOrders / branch.orders) * 100).toFixed(2) : 0}%
+- Số khách hàng: ${branch.customers} (Hoạt động: ${branch.activeCustomers})
+- Tỷ lệ khách hàng hoạt động: ${branch.customers > 0 ? ((branch.activeCustomers / branch.customers) * 100).toFixed(2) : 0}%
+- Số lượng sản phẩm: ${branch.products} (Sắp hết hàng: ${branch.lowStockProducts})
+- Top sản phẩm: ${branch.topProducts.map(p => `${p.name} (Đã bán: ${p.sold}, Doanh thu: ${p.revenue.toLocaleString('vi-VN')}đ, Tồn kho: ${p.inventory})`).join(', ')}
+
+Hãy phân tích chi tiết:
+
+1. Tổng quan hiệu suất chi nhánh:
+   - Đánh giá hiệu quả kinh doanh của chi nhánh
+   - Điểm mạnh và điểm yếu chính
+   - Cơ hội phát triển và thách thức
+
+2. Phân tích sản phẩm:
+   - Đánh giá top 5 sản phẩm bán chạy
+   - Phân tích tỷ lệ tồn kho và đề xuất chiến lược nhập hàng
+   - Đề xuất cách thức trưng bày và marketing cho các sản phẩm
+
+3. Phân tích khách hàng:
+   - Đánh giá tỷ lệ khách hàng hoạt động
+   - Đề xuất chiến lược tăng tỷ lệ quay lại mua hàng
+   - Chiến dịch marketing để thu hút khách hàng mới
+
+4. Kế hoạch hành động:
+   - 5 đề xuất cụ thể để cải thiện hiệu quả kinh doanh
+   - Kế hoạch hành động ngắn hạn (1 tháng) và trung hạn (3 tháng)
+   - Các chỉ số KPI cần theo dõi và mục tiêu cần đạt được
+
+Hãy trình bày phân tích một cách rõ ràng, dễ đọc và có cấu trúc. Sử dụng ngôn ngữ đơn giản, chính xác và mang tính xây dựng.`;
+
+          // Gọi API OpenAI
+          for (const model of models) {
+            try {
+              console.log(`Bắt đầu gọi API OpenAI với model ${model} cho chi nhánh ${branch.name}`);
+              const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                  model: model,
+                  messages: [
+                    {
+                      role: "system",
+                      content: "Bạn là một chuyên gia phân tích dữ liệu kinh doanh với nhiều năm kinh nghiệm trong lĩnh vực bán lẻ thực phẩm. Hãy đưa ra các phân tích chuyên sâu, chi tiết và đề xuất cụ thể dựa trên dữ liệu."
+                    },
+                    {
+                      role: "user",
+                      content: prompt
+                    }
+                  ],
+                  temperature: 0.7,
+                  max_tokens: 3500
+                })
+              });
+              
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`OpenAI API error với model ${model}:`, errorText);
+                lastError = new Error(`OpenAI API error với model ${model}: ${response.status} - ${errorText}`);
+                continue;
+              }
+              
+              const data = await response.json();
+              
+              if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                console.error(`Invalid API response structure với model ${model}:`, data);
+                lastError = new Error(`Invalid API response structure với model ${model}`);
+                continue;
+              }
+              
+              const analysis = data.choices[0].message.content;
+              console.log(`Độ dài phân tích từ model ${model}:`, analysis.length);
+              
+              // Trả về kết quả phân tích từ OpenAI
+              const responseData = {
+                analysis: analysis,
+                data: branch
+              };
+              
+              console.log("Trả về phân tích thành công");
+              return res.json(responseData);
+            } catch (error) {
+              console.error(`Error calling OpenAI API với model ${model}:`, error);
+              lastError = error;
+            }
+          }
+        }
+      } else {
+        // Nếu là manager - chỉ phân tích chi nhánh của họ
+        const branch = branchDetails.find(b => b.id === branchId) || branchDetails[0];
+        
+        if (!branch) {
+          return res.status(404).json({ 
+            message: "Không tìm thấy chi nhánh",
+            data: { branches: branchDetails }
+          });
+        }
+        
+        let prompt = `
+Hãy phân tích dữ liệu kinh doanh của chi nhánh ${branch.name} và đưa ra phân tích chi tiết:
+
+1. Thông tin chi nhánh:
+- Doanh thu: ${branch.revenue.toLocaleString('vi-VN')}đ
+- Số đơn hàng: ${branch.orders} (Hoàn thành: ${branch.completedOrders})
+- Tỷ lệ hoàn thành đơn hàng: ${branch.orders > 0 ? ((branch.completedOrders / branch.orders) * 100).toFixed(2) : 0}%
+- Số khách hàng: ${branch.customers} (Hoạt động: ${branch.activeCustomers})
+- Tỷ lệ khách hàng hoạt động: ${branch.customers > 0 ? ((branch.activeCustomers / branch.customers) * 100).toFixed(2) : 0}%
+- Số lượng sản phẩm: ${branch.products} (Sắp hết hàng: ${branch.lowStockProducts})
+- Top sản phẩm: ${branch.topProducts.map(p => `${p.name} (Đã bán: ${p.sold}, Doanh thu: ${p.revenue.toLocaleString('vi-VN')}đ, Tồn kho: ${p.inventory})`).join(', ')}
+
+Hãy phân tích chi tiết:
+
+1. Tổng quan hiệu suất chi nhánh:
+   - Đánh giá hiệu quả kinh doanh của chi nhánh
+   - Điểm mạnh và điểm yếu chính
+   - Cơ hội phát triển và thách thức
+
+2. Phân tích sản phẩm:
+   - Đánh giá top 5 sản phẩm bán chạy
+   - Phân tích tỷ lệ tồn kho và đề xuất chiến lược nhập hàng
+   - Đề xuất cách thức trưng bày và marketing cho các sản phẩm
+
+3. Phân tích khách hàng:
+   - Đánh giá tỷ lệ khách hàng hoạt động
+   - Đề xuất chiến lược tăng tỷ lệ quay lại mua hàng
+   - Chiến dịch marketing để thu hút khách hàng mới
+
+4. Kế hoạch hành động:
+   - 5 đề xuất cụ thể để cải thiện hiệu quả kinh doanh
+   - Kế hoạch hành động ngắn hạn (1 tháng) và trung hạn (3 tháng)
+   - Các chỉ số KPI cần theo dõi và mục tiêu cần đạt được
+
+Hãy trình bày phân tích một cách rõ ràng, dễ đọc và có cấu trúc. Sử dụng ngôn ngữ đơn giản, chính xác và mang tính xây dựng.`;
+
+        // Gọi API OpenAI
+        for (const model of models) {
+          try {
+            console.log(`Bắt đầu gọi API OpenAI với model ${model} cho chi nhánh ${branch.name}`);
+            const response = await fetch("https://api.openai.com/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+              },
+              body: JSON.stringify({
+                model: model,
+                messages: [
+                  {
+                    role: "system",
+                    content: "Bạn là một chuyên gia phân tích dữ liệu kinh doanh với nhiều năm kinh nghiệm trong lĩnh vực bán lẻ thực phẩm. Hãy đưa ra các phân tích chuyên sâu, chi tiết và đề xuất cụ thể dựa trên dữ liệu."
+                  },
+                  {
+                    role: "user",
+                    content: prompt
+                  }
+                ],
+                temperature: 0.7,
+                max_tokens: 3500
+              })
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`OpenAI API error với model ${model}:`, errorText);
+              lastError = new Error(`OpenAI API error với model ${model}: ${response.status} - ${errorText}`);
+              continue;
+            }
+            
+            const data = await response.json();
+            
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+              console.error(`Invalid API response structure với model ${model}:`, data);
+              lastError = new Error(`Invalid API response structure với model ${model}`);
+              continue;
+            }
+            
+            const analysis = data.choices[0].message.content;
+            console.log(`Độ dài phân tích từ model ${model}:`, analysis.length);
+            
+            // Trả về kết quả phân tích từ OpenAI
+            const responseData = {
+              analysis: analysis,
+              data: branch
+            };
+            
+            console.log("Trả về phân tích thành công");
+            return res.json(responseData);
+          } catch (error) {
+            console.error(`Error calling OpenAI API với model ${model}:`, error);
+            lastError = error;
+          }
+        }
+      }
+      
+      // Nếu đã thử tất cả các model mà vẫn lỗi
+      console.error("Đã thử tất cả các model nhưng không thành công:", lastError);
+      
+      // Trả về lỗi và dữ liệu thô để client có thể hiển thị
+      return res.status(500).json({ 
+        error: `Không thể kết nối đến dịch vụ AI sau nhiều lần thử: ${lastError?.message || 'Lỗi không xác định'}. Vui lòng thử lại sau.`,
+        message: "Lỗi khi phân tích dữ liệu",
+        data: userRole === 'admin' && branchId === 'all' ? { branches: branchDetails } : branchDetails.find(b => b.id === branchId) || branchDetails[0]
+      });
+    } catch (error) {
+      console.error("Error in getAnalysisData:", error);
+      
+      // Lấy thông tin từ request vì các biến có thể không được định nghĩa trong scope này
+      const { userRole, branchId } = req.query;
+      let rawData = null;
+      
+      try {
+        // Thử lấy dữ liệu chi nhánh cơ bản nếu có thể
+        const branches = await mongoose.model('Branch').find().lean();
+        if (branches && branches.length > 0) {
+          const simpleBranchDetails = branches.map(branch => ({
+            id: branch._id.toString(),
+            name: branch.name || `Chi nhánh ${branch._id.toString().substring(0, 5)}`,
+            revenue: 0,
+            orders: 0,
+            completedOrders: 0,
+            customers: 0,
+            activeCustomers: 0,
+            products: 0,
+            lowStockProducts: 0,
+            topProducts: []
+          }));
+          
+          rawData = userRole === 'admin' && branchId === 'all' 
+            ? { branches: simpleBranchDetails } 
+            : simpleBranchDetails.find(b => b.id === branchId) || simpleBranchDetails[0];
+        }
+      } catch (innerError) {
+        console.error("Error getting basic branch data:", innerError);
+      }
+      
+      res.status(500).json({ 
+        message: "Lỗi khi phân tích dữ liệu",
+        error: error.message,
+        data: rawData
+      });
+    }
+  },
+
+  // Get recent activities
+  getRecentActivities: async (req, res) => {
+    try {
+      // Kiểm tra kết nối MongoDB
+      if (mongoose.connection.readyState !== 1) {
+        console.log("MongoDB connection is not established");
+        return res.status(503).json({
+          success: false,
+          message: "Không thể kết nối đến cơ sở dữ liệu",
+          connectionStatus: mongoose.connection.readyState
+        });
+      }
+      
+      // Lấy dữ liệu hoạt động gần đây từ SystemLog
+      let recentActivities = [];
+      
+      try {
+        // Lấy log hoạt động hệ thống
+        const systemLogs = await SystemLog.find()
+          .sort({ createdAt: -1 })
+          .limit(5);
+          
+        if (systemLogs && systemLogs.length > 0) {
+          recentActivities = systemLogs.map(log => ({
+            id: log._id,
+            type: log.actionType || "system",
+            user: log.userName || "Admin",
+            message: log.message || `${log.userName || 'Admin'} đã ${log.actionType || 'thực hiện hành động'} trong hệ thống`,
+            timestamp: log.createdAt
+          }));
+        }
+      } catch (logError) {
+        console.warn("Không thể lấy dữ liệu từ SystemLog:", logError.message);
+      }
+      
+      // Nếu không có đủ dữ liệu từ SystemLog, lấy thêm từ các bảng khác
+      if (recentActivities.length < 5) {
+        try {
+          // Lấy đơn hàng gần đây
+          const recentOrders = await Order.find()
+            .sort({ createdAt: -1 })
+            .limit(3)
+            .populate("userId", "firstName lastName");
+            
+          if (recentOrders && recentOrders.length > 0) {
+            const orderActivities = recentOrders.map(order => ({
+              id: order._id,
+              type: "order",
+              user: order.userId ? `${order.userId.firstName || ''} ${order.userId.lastName || ''}`.trim() : "Khách hàng",
+              message: `${order.userId ? `${order.userId.firstName || ''} ${order.userId.lastName || ''}`.trim() : "Khách hàng"} đã đặt đơn hàng mới`,
+              timestamp: order.createdAt
+            }));
+            
+            recentActivities = [...recentActivities, ...orderActivities];
+          }
+        } catch (orderError) {
+          console.warn("Không thể lấy dữ liệu từ Order:", orderError.message);
+        }
+      }
+      
+      // Nếu vẫn chưa đủ 5 hoạt động, lấy thêm từ User
+      if (recentActivities.length < 5) {
+        try {
+          // Lấy người dùng mới đăng ký
+          const recentUsers = await User.find()
+            .sort({ createdAt: -1 })
+            .limit(3);
+            
+          if (recentUsers && recentUsers.length > 0) {
+            const userActivities = recentUsers.map(user => ({
+              id: user._id,
+              type: "user",
+              user: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || "Người dùng mới",
+              message: `${`${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || "Người dùng mới"} đã đăng ký tài khoản`,
+              timestamp: user.createdAt
+            }));
+            
+            recentActivities = [...recentActivities, ...userActivities];
+          }
+        } catch (userError) {
+          console.warn("Không thể lấy dữ liệu từ User:", userError.message);
+        }
+      }
+      
+      // Nếu vẫn chưa đủ 5 hoạt động, lấy thêm từ Product
+      if (recentActivities.length < 5) {
+        try {
+          // Lấy sản phẩm mới thêm vào
+          const recentProducts = await Product.find()
+            .sort({ createdAt: -1 })
+            .limit(3);
+            
+          if (recentProducts && recentProducts.length > 0) {
+            const productActivities = recentProducts.map(product => ({
+              id: product._id,
+              type: "product",
+              user: "Admin",
+              message: `Admin đã thêm sản phẩm mới: ${product.name || product.productName || 'Sản phẩm mới'}`,
+              timestamp: product.createdAt
+            }));
+            
+            recentActivities = [...recentActivities, ...productActivities];
+          }
+        } catch (productError) {
+          console.warn("Không thể lấy dữ liệu từ Product:", productError.message);
+        }
+      }
+      
+      // Sắp xếp theo thời gian và giới hạn 5 hoạt động
+      recentActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      recentActivities = recentActivities.slice(0, 5);
+      
+      // Nếu vẫn không có dữ liệu, tạo dữ liệu mẫu
+      if (recentActivities.length === 0) {
+        const currentDate = new Date();
+        recentActivities = [
+          {
+            id: 1,
+            type: "order",
+            user: "Nguyễn Văn A",
+            message: "Nguyễn Văn A đã đặt đơn hàng mới",
+            timestamp: new Date(currentDate.getTime() - 30 * 60000).toISOString(),
+          },
+          {
+            id: 2,
+            type: "product",
+            user: "Admin",
+            message: "Admin đã thêm sản phẩm mới: Muối tôm Fadely",
+            timestamp: new Date(currentDate.getTime() - 120 * 60000).toISOString(),
+          },
+          {
+            id: 3,
+            type: "user",
+            user: "Trần Thị B",
+            message: "Khách hàng mới Trần Thị B đã đăng ký tài khoản",
+            timestamp: new Date(currentDate.getTime() - 180 * 60000).toISOString(),
+          },
+          {
+            id: 4,
+            type: "order",
+            user: "Lê Văn C",
+            message: "Lê Văn C đã hoàn thành đơn hàng #12345",
+            timestamp: new Date(currentDate.getTime() - 240 * 60000).toISOString(),
+          },
+          {
+            id: 5,
+            type: "product",
+            user: "Admin",
+            message: "Admin đã cập nhật tồn kho sản phẩm",
+            timestamp: new Date(currentDate.getTime() - 300 * 60000).toISOString(),
+          },
+        ];
+      }
+      
+      res.json(recentActivities);
+    } catch (error) {
+      console.error("Error in getRecentActivities:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Lỗi khi lấy hoạt động gần đây", 
+        error: error.message 
+      });
     }
   },
 };

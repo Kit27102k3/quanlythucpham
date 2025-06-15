@@ -24,6 +24,7 @@ import TableRow from "@mui/material/TableRow";
 import Paper from "@mui/material/Paper";
 import ErrorBoundary from "../../../../components/ErrorBoundary";
 import { toast } from "sonner";
+import AutoExportConfig from "./AutoExportConfig";
 
 const StatCard = ({ icon: Icon, title, value, bgColor }) => (
   <div
@@ -73,7 +74,7 @@ const DashboardReport = ({
   exportToPDF,
   exportToExcel,
   sendReportEmail,
-  exportLoading,
+  exportLoading = false,
   setExportLoading,
   formatCurrency,
 }) => {
@@ -100,18 +101,74 @@ const DashboardReport = ({
         setErrorMessage("");
         
         // Use the dashboardApi to get complete dashboard data
-        const dashboardResponse = await dashboardApi.getCompleteDashboardData();
-        if (dashboardResponse) {
+        let dashboardResponse;
+        try {
+          // Thử lấy dữ liệu trực tiếp từ API
+          dashboardResponse = await dashboardApi.getDashboardStats();
+          console.log("Dữ liệu nhận được từ API getDashboardStats:", dashboardResponse);
           
-          setDashboardData(dashboardResponse);
-        } else {
-          throw new Error("Không thể tải dữ liệu tổng quan");
+          if (!dashboardResponse || typeof dashboardResponse !== 'object') {
+            throw new Error("Dữ liệu không hợp lệ từ API");
+          }
+          
+          // Kiểm tra dữ liệu doanh thu và khách hàng
+          if (dashboardResponse.totalRevenue === 0 || dashboardResponse.totalCustomers === 0) {
+            console.log("Dữ liệu doanh thu hoặc khách hàng bằng 0, thử lấy từ getCompleteDashboardData");
+            const completeData = await dashboardApi.getCompleteDashboardData();
+            console.log("Dữ liệu từ getCompleteDashboardData:", completeData);
+            
+            // Cập nhật dữ liệu nếu cần
+            if (dashboardResponse.totalRevenue === 0 && completeData.totalRevenue > 0) {
+              dashboardResponse.totalRevenue = completeData.totalRevenue;
+            }
+            
+            if (dashboardResponse.totalCustomers === 0 && completeData.totalCustomers > 0) {
+              dashboardResponse.totalCustomers = completeData.totalCustomers;
+            }
+          }
+        } catch (error) {
+          console.error("Lỗi khi lấy dữ liệu từ API getDashboardStats:", error);
+          
+          // Thử phương thức thứ hai
+          try {
+            dashboardResponse = await dashboardApi.getCompleteDashboardData();
+            console.log("Dữ liệu nhận được từ getCompleteDashboardData:", dashboardResponse);
+          } catch (secondError) {
+            console.error("Lỗi khi lấy dữ liệu từ getCompleteDashboardData:", secondError);
+            dashboardResponse = {};
+            setHasError(true);
+            setErrorMessage("Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
+          }
         }
+        
+        // Lấy hoạt động gần đây
+        try {
+          const recentActivities = await dashboardApi.getRecentActivities();
+          if (recentActivities && Array.isArray(recentActivities) && recentActivities.length > 0) {
+            dashboardResponse.recentActivities = recentActivities;
+          }
+        } catch (activitiesError) {
+          console.error("Lỗi khi lấy hoạt động gần đây:", activitiesError);
+        }
+        
+        // Sử dụng dữ liệu thực từ API
+        const dashboardDataToSet = {
+          totalRevenue: dashboardResponse.totalRevenue || 0,
+          totalOrders: dashboardResponse.totalOrders || 0,
+          totalProducts: dashboardResponse.totalProducts || 0,
+          totalCustomers: dashboardResponse.totalCustomers || 0,
+          recentActivities: dashboardResponse.recentActivities || []
+        };
+        
+        console.log("Dữ liệu sẽ hiển thị:", dashboardDataToSet);
+        
+        // Cập nhật state với dữ liệu đã xử lý
+        setDashboardData(dashboardDataToSet);
         
         // Get revenue data for charts in a separate try-catch
         try {
-         
           const revenueResponse = await dashboardApi.getRevenueData("week");
+          console.log("Dữ liệu doanh thu:", revenueResponse);
           
           if (revenueResponse && Array.isArray(revenueResponse) && revenueResponse.length > 0) {
             // Make sure revenue data has the right format
@@ -122,38 +179,10 @@ const DashboardReport = ({
             }));
             
             setRevenueData(processedData);
-          } else {
-            console.warn("Revenue data is empty or not an array:", revenueResponse);
-            // Create some dummy data to test chart rendering
-            const dummyData = [];
-            const today = new Date();
-            for (let i = 6; i >= 0; i--) {
-              const date = new Date();
-              date.setDate(today.getDate() - i);
-              dummyData.push({
-                date: date.toLocaleDateString('vi-VN'),
-                doanh_thu: Math.floor(Math.random() * 5000000)
-              });
-            }
-            console.log("Using dummy revenue data:", dummyData);
-            setRevenueData(dummyData);
           }
         } catch (revenueError) {
           console.error("Error loading revenue data:", revenueError);
           toast.error("Không thể tải dữ liệu doanh thu");
-          
-          // Create some dummy data to test chart rendering
-          const dummyData = [];
-          const today = new Date();
-          for (let i = 6; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(today.getDate() - i);
-            dummyData.push({
-              date: date.toLocaleDateString('vi-VN'),
-              doanh_thu: Math.floor(Math.random() * 5000000)
-            });
-          }
-          setRevenueData(dummyData);
         }
         
         // Get top selling products in a separate try-catch
@@ -266,7 +295,7 @@ const DashboardReport = ({
             </svg>
           </div>
           <h3 className="text-lg font-medium text-red-800 mb-2">Không thể tải dữ liệu</h3>
-          <p className="text-red-600 mb-4">{errorMessage}</p>
+          <p className="text-red-600 mb-4">Không thể kết nối đến cơ sở dữ liệu. Vui lòng kiểm tra kết nối của bạn và thử lại sau.</p>
           <button 
             onClick={handleRefresh}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
@@ -474,14 +503,14 @@ const DashboardReport = ({
                                 <img 
                                   src={item.image} 
                                   alt={item.name} 
-                                  className="w-10 h-10 object-cover mr-3 rounded"
+                                  className="w-10 h-10 object-cover mr-3 rounded border border-gray-200"
                                   onError={(e) => {
                                     e.target.onerror = null;
-                                    e.target.src = "https://via.placeholder.com/40";
+                                    e.target.src = "https://via.placeholder.com/40x40/f3f4f6/64748b?text=SP";
                                   }}
                                 />
                               ) : (
-                                <div className="w-10 h-10 bg-gray-100 flex items-center justify-center mr-3 rounded">
+                                <div className="w-10 h-10 bg-gray-100 flex items-center justify-center mr-3 rounded border border-gray-200">
                                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                   </svg>
@@ -591,6 +620,11 @@ const DashboardReport = ({
               )}
             </div>
           </div>
+
+          {/* Add Auto Export Configuration */}
+          <div className="mt-8 border-t pt-4">
+            <AutoExportConfig reportId="dashboard" setExportLoading={setExportLoading} />
+          </div>
         </>
       )}
     </div>
@@ -604,10 +638,6 @@ DashboardReport.propTypes = {
   exportLoading: PropTypes.bool,
   setExportLoading: PropTypes.func.isRequired,
   formatCurrency: PropTypes.func,
-};
-
-DashboardReport.defaultProps = {
-  exportLoading: false,
 };
 
 export default DashboardReport;

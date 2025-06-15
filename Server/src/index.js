@@ -11,7 +11,7 @@ import {
   handleSepayCallback,
   handleBankWebhook,
 } from "./Controller/paymentController.js";
-import reportsController from "./Controller/reportsController.js";
+import reportsController from "../controllers/reportsController.js";
 import NodeCache from 'node-cache';
 
 import "./Model/Review.js";
@@ -86,28 +86,6 @@ app.use(cookieParser());
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
 
-// Middleware kiểm tra token và trích xuất thông tin người dùng
-app.use((req, res, next) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.substring(7);
-      const jwt = require("jsonwebtoken");
-      const secretKey = process.env.JWT_SECRET || "your-secret-key";
-
-      try {
-        const decoded = jwt.verify(token, secretKey);
-        req.user = decoded;
-      } catch (error) {
-        // Xử lý token không hợp lệ
-      }
-    }
-    next();
-  } catch (error) {
-    next();
-  }
-});
-
 // Thêm middleware kiểm tra kết nối MongoDB trước khi xử lý request
 app.use((req, res, next) => {
   if (mongoose.connection.readyState !== 1) {
@@ -148,6 +126,31 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
         retryReads: true
       });
       console.log("MongoDB connected successfully");
+      
+      // Debug: Kiểm tra các đơn hàng trong database
+      import('./Model/Order.js').then(({ default: Order }) => {
+        Order.find()
+          .then(orders => {
+            console.log(`Found ${orders.length} orders in database`);
+            console.log("Orders:", orders.map(order => ({
+              id: order._id,
+              status: order.status,
+              amount: order.totalAmount
+            })));
+            
+            // Kiểm tra tổng doanh thu
+            Order.aggregate([
+              { $match: { status: { $in: ["completed", "delivered"] } } },
+              { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+            ])
+            .then(result => {
+              console.log("Total revenue:", result);
+            })
+            .catch(err => console.error("Error calculating revenue:", err));
+          })
+          .catch(err => console.error("Error fetching orders:", err));
+      }).catch(err => console.error("Error importing Order model:", err));
+      
       return;
     } catch (err) {
       console.error(`Connection attempt ${i + 1} failed:`, err);
@@ -214,6 +217,7 @@ app.get("/api/reports/revenue", reportsController.getRevenueData);
 app.get("/api/reports/top-products", reportsController.getTopProducts);
 app.get("/api/reports/inventory", reportsController.getInventoryData);
 app.get("/api/reports/users", reportsController.getUserData);
+app.get("/api/reports/users/detail", reportsController.getUserDetailData);
 app.get("/api/reports/orders", reportsController.getOrderData);
 app.get("/api/reports/promotions", reportsController.getPromotionData);
 app.get("/api/reports/system-activity", reportsController.getSystemActivityData);
@@ -410,3 +414,73 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Thêm API giả để trả về dữ liệu doanh thu và khách hàng
+app.get("/api/users/count", async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({ count: 0, message: "Database not connected" });
+    }
+    
+    import('./Model/Register.js').then(({ default: User }) => {
+      User.countDocuments().then(count => {
+        console.log("API users/count - Tổng số người dùng:", count);
+        res.json({ count });
+      }).catch(err => {
+        console.error("Error counting users:", err);
+        res.json({ count: 0, error: err.message });
+      });
+    }).catch(err => {
+      console.error("Error importing User model:", err);
+      res.json({ count: 0, error: err.message });
+    });
+  } catch (error) {
+    console.error("Error in /api/users/count:", error);
+    res.json({ count: 0, error: error.message });
+  }
+});
+
+app.get("/admin/users/count", async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({ count: 0, message: "Database not connected" });
+    }
+    
+    import('./Model/Register.js').then(({ default: User }) => {
+      User.countDocuments().then(count => {
+        console.log("API admin/users/count - Tổng số người dùng:", count);
+        res.json({ count });
+      }).catch(err => {
+        console.error("Error counting users:", err);
+        res.json({ count: 0, error: err.message });
+      });
+    }).catch(err => {
+      console.error("Error importing User model:", err);
+      res.json({ count: 0, error: err.message });
+    });
+  } catch (error) {
+    console.error("Error in /admin/users/count:", error);
+    res.json({ count: 0, error: error.message });
+  }
+});
+
+// Thay thế các endpoint mẫu bằng endpoint thực tế sử dụng controller
+app.get("/api/top-products", reportsController.getTopProducts);
+app.get("/api/best-selling-products", reportsController.getTopProducts);
+app.get("/api/reports/top-products", reportsController.getTopProducts);
+
+// API endpoint cho dữ liệu tổng doanh thu
+app.get("/api/reports/dashboard", reportsController.getDashboardStats);
+
+// Sử dụng controller thay vì dữ liệu mẫu
+app.get("/api/dashboard", reportsController.getDashboardStats);
+app.get("/admin/dashboard", reportsController.getDashboardStats);
+
+// API endpoint cho sản phẩm tồn kho thấp
+app.get("/api/products/low-stock", reportsController.getInventoryData);
+app.get("/api/products/inventory", reportsController.getInventoryData);
+app.get("/api/reports/inventory", reportsController.getInventoryData);
+
+// API endpoint for recent activities
+app.get("/api/recent-activities", reportsController.getRecentActivities);
+app.get("/api/activities/recent", reportsController.getRecentActivities);

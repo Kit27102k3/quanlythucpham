@@ -967,6 +967,95 @@ const filterOrdersByPeriod = (orders, period) => {
   });
 };
 
+// Hàm lấy dữ liệu phân tích AI
+const getAnalysisData = async (options = {}) => {
+  try {
+    const token = getAuthToken();
+    if (!token) throw new Error("Không có token xác thực");
+
+    const { userRole, branchId, startDate, endDate } = options;
+    
+    const params = {
+      userRole: userRole || 'admin'
+    };
+
+    if (branchId && branchId !== 'all') {
+      params.branchId = branchId;
+    }
+    
+    if (startDate) {
+      params.startDate = startDate;
+    }
+    
+    if (endDate) {
+      params.endDate = endDate;
+    }
+
+    console.log("Gọi API phân tích với params:", params);
+    
+    const response = await axios.get(`${API_URL}/api/reports/analysis`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      params,
+      timeout: 30000 // Tăng timeout lên 30 giây vì phân tích AI có thể mất thời gian
+    });
+
+    console.log("Kết quả phân tích từ API:", response.data);
+    
+    // Kiểm tra dữ liệu trả về
+    if (!response.data) {
+      console.error("API trả về dữ liệu không hợp lệ:", response.data);
+      throw new Error("Dữ liệu phân tích không hợp lệ");
+    }
+
+    // Trả về dữ liệu nguyên bản từ API
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching analysis data:', error);
+    
+    // Xử lý các loại lỗi cụ thể
+    if (error.response) {
+      // Lỗi từ phía server (status code không phải 2xx)
+      const statusCode = error.response.status;
+      const errorMessage = error.response.data?.message || error.response.data?.error || error.message;
+      
+      if (statusCode === 500 && errorMessage.includes("OpenAI API")) {
+        throw new Error("Không thể kết nối đến dịch vụ AI. Vui lòng thử lại sau hoặc liên hệ quản trị viên.");
+      } else if (statusCode === 401 || statusCode === 403) {
+        throw new Error("Bạn không có quyền truy cập dịch vụ phân tích AI.");
+      } else {
+        throw new Error(`Lỗi từ máy chủ: ${errorMessage}`);
+      }
+    } else if (error.request) {
+      // Lỗi không nhận được phản hồi từ server
+      throw new Error("Không nhận được phản hồi từ máy chủ. Vui lòng kiểm tra kết nối mạng.");
+    } else {
+      // Lỗi trong quá trình thiết lập request
+      throw new Error(`Lỗi khi gửi yêu cầu: ${error.message}`);
+    }
+  }
+};
+
+// Hàm lấy danh sách chi nhánh
+const getBranches = async () => {
+  try {
+    const token = getAuthToken();
+    if (!token) return null;
+
+    const response = await axios.get(`${API_URL}/api/branches`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching branches:', error);
+    return null;
+  }
+};
+
 export const reportsApi = {
   // Dashboard related reports
   getDashboardData: async () => {
@@ -1690,6 +1779,10 @@ export const reportsApi = {
   },
 
   getUserDetailData,
+
+  getAnalysisData,
+
+  getBranches,
 };
 
 export default reportsApi;

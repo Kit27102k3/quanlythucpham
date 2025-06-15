@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from "react";
 import { Button, Dialog, InputText } from "primereact";
 import {  toast } from "sonner";
@@ -98,7 +99,7 @@ const Brands = () => {
 
               if (userBranch && userBranch._id) {
                 branchId = userBranch._id;
-                console.log("Found user branch ID by manager match:", branchId);
+                
                 localStorage.setItem("userBranchId", branchId);
                 setUserBranchId(branchId);
               }
@@ -107,10 +108,7 @@ const Brands = () => {
             // If still no branch ID found, use the first available branch for managers
             if (!branchId && data.length > 0) {
               branchId = data[0]._id;
-              console.log(
-                "No branch found for manager, using first available branch:",
-                branchId
-              );
+              
               localStorage.setItem("userBranchId", branchId);
               setUserBranchId(branchId);
             }

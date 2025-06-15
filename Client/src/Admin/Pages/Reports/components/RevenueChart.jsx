@@ -64,168 +64,92 @@ const RevenueChart = ({
       return;
     }
     
+    console.log("RevenueChart received data:", revenueData);
+    
     try {
-      let processedData = [...revenueData].map((item, index) => {
-        // Kiểm tra xem dữ liệu có định dạng mới không (name và revenue)
-        if (item.name && typeof item.revenue !== 'undefined') {
-          return {
-            date: item.name,
-            fullDate: item.date || item.name,
-            doanh_thu: item.revenue,
-            index: index
-          };
-        }
+      // Xử lý dữ liệu từ API
+      const processedData = revenueData.map((item, index) => {
+        // Ưu tiên sử dụng displayDate và dayName từ API trả về
+        let displayDate = item.displayDate;
+        let dayName = item.dayName;
+        let fullDate = item.date;
         
-        let formattedDate = item.date;
-        let fullDate = item.date; // Lưu ngày đầy đủ
-        let dayName = null; // Tên thứ
-        
-        // Xử lý định dạng ngày Việt Nam (dd/MM/yyyy)
-        if (typeof formattedDate === 'string') {
-          const vietnameseDatePattern = /^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/;
-          const match = formattedDate.match(vietnameseDatePattern);
-          
-          if (match) {
-            // Chuyển đổi từ dd/MM/yyyy sang Date object
-            const day = parseInt(match[1], 10);
-            const month = parseInt(match[2], 10) - 1; // Tháng trong JS là 0-11
-            const year = parseInt(match[3], 10);
+        // Nếu API không trả về displayDate, tự tạo từ date
+        if (!displayDate) {
+          let dateObj;
+          try {
+            if (typeof item.date === 'string') {
+              dateObj = new Date(item.date);
+              
+              // Kiểm tra nếu date không hợp lệ
+              if (isNaN(dateObj.getTime())) {
+                // Thử phân tích theo định dạng YYYY-MM-DD
+                const parts = item.date.split('-');
+                if (parts.length === 3) {
+                  dateObj = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                } else {
+                  // Nếu vẫn không hợp lệ, tạo ngày tương đối dựa vào index
+                  dateObj = new Date();
+                  dateObj.setDate(dateObj.getDate() - (revenueData.length - 1 - index));
+                }
+              }
+            } else {
+              // Nếu không có date, tạo ngày tương đối dựa vào index
+              dateObj = new Date();
+              dateObj.setDate(dateObj.getDate() - (revenueData.length - 1 - index));
+            }
             
-            const dateObj = new Date(year, month, day);
-            if (!isNaN(dateObj.getTime())) {
+            // Tạo dayName nếu không có
+            if (!dayName) {
               const dayOfWeek = dateObj.getDay();
               const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
               dayName = dayNames[dayOfWeek];
-              formattedDate = `${dayName} (${day}/${month + 1})`;
             }
-          }
-        }
-        
-        // Ưu tiên sử dụng displayName nếu có
-        if (item.displayName) {
-          console.log(`Using displayName for item ${index}:`, item.displayName);
-          dayName = item.displayName;
-          formattedDate = item.date ? `${item.displayName} (${item.date})` : item.displayName;
-        }
-        
-        // Xử lý trường hợp dữ liệu từ MongoDB (ISO format)
-        if (typeof item.createdAt === 'string' && item.createdAt.includes('T')) {
-          const date = new Date(item.createdAt);
-          if (!isNaN(date.getTime())) {
-            // Lưu ngày đầy đủ
-            fullDate = date.toLocaleDateString("vi-VN");
             
-            // Chuyển đổi thành tên thứ trong tuần
-            const dayOfWeek = date.getDay();
+            // Tạo displayDate nếu không có
+            if (!displayDate) {
+              displayDate = `${dayName} (${dateObj.getDate()}/${dateObj.getMonth() + 1})`;
+            }
+            
+            // Tạo fullDate nếu không có
+            if (!fullDate) {
+              fullDate = dateObj.toLocaleDateString("vi-VN");
+            }
+          } catch (error) {
+            // Fallback nếu có lỗi khi xử lý ngày
+            const dateObj = new Date();
+            dateObj.setDate(dateObj.getDate() - (revenueData.length - 1 - index));
+            const dayOfWeek = dateObj.getDay();
             const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
             dayName = dayNames[dayOfWeek];
-            formattedDate = `${dayName} (${date.getDate()}/${date.getMonth() + 1})`;
-            console.log(`Converted createdAt to day name for item ${index}:`, formattedDate);
+            displayDate = `${dayName} (${dateObj.getDate()}/${dateObj.getMonth() + 1})`;
+            fullDate = dateObj.toLocaleDateString("vi-VN");
           }
         }
         
-        if (formattedDate === "N/A" || !formattedDate) {
-          const currentDate = new Date();
-          const newDate = new Date(currentDate);
-          newDate.setDate(currentDate.getDate() - (revenueData.length - 1 - index));
-          
-          // Lưu ngày đầy đủ
-          fullDate = newDate.toLocaleDateString("vi-VN");
-          
-          // Chuyển đổi thành tên thứ trong tuần
-          const dayOfWeek = newDate.getDay();
-          const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
-          dayName = dayNames[dayOfWeek];
-          formattedDate = `${dayName} (${newDate.getDate()}/${newDate.getMonth() + 1})`;
-          console.log(`Generated day name for item ${index}:`, formattedDate);
-        }
-        
-        // Xử lý đặc biệt cho chuỗi "Invalid Date"
-        if (typeof formattedDate === 'string' && formattedDate.includes('Invalid')) {
-          const currentDate = new Date();
-          const newDate = new Date(currentDate);
-          newDate.setDate(currentDate.getDate() - (revenueData.length - 1 - index));
-          
-          // Lưu ngày đầy đủ
-          fullDate = newDate.toLocaleDateString("vi-VN");
-          
-          // Chuyển đổi thành tên thứ trong tuần
-          const dayOfWeek = newDate.getDay();
-          const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
-          dayName = dayNames[dayOfWeek];
-          formattedDate = `${dayName} (${newDate.getDate()}/${newDate.getMonth() + 1})`;
-          console.log(`Fixed invalid date for item ${index}, using day name:`, formattedDate);
-        }
-        
-        if (typeof formattedDate !== 'string') {
-          try {
-            if (formattedDate instanceof Date && !isNaN(formattedDate.getTime())) {
-              // Lưu ngày đầy đủ
-              fullDate = formattedDate.toLocaleDateString("vi-VN");
-              
-              // Chuyển đổi thành tên thứ trong tuần
-              const dayOfWeek = formattedDate.getDay();
-              const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
-              dayName = dayNames[dayOfWeek];
-              formattedDate = `${dayName} (${formattedDate.getDate()}/${formattedDate.getMonth() + 1})`;
-            } else {
-              formattedDate = String(formattedDate);
-            }
-          } catch {
-            formattedDate = `Ngày ${index + 1}`;
-          }
-        }
-        
-        if (!formattedDate || formattedDate === 'undefined' || formattedDate === 'null') {
-          formattedDate = `Ngày ${index + 1}`;
-        }
-        
+        // Lấy giá trị doanh thu
         let revenue = 0;
-        if (typeof item.doanh_thu === 'number') {
-          revenue = item.doanh_thu;
-        } else if (typeof item.revenue === 'number') {
+        if (typeof item.revenue === 'number') {
           revenue = item.revenue;
-        } else if (typeof item.amount === 'number') {
-          revenue = item.amount;
-        } else if (typeof item.total === 'number') {
-          revenue = item.total;
-        } else if (typeof item.totalAmount === 'number') {
-          revenue = item.totalAmount;
-        }
-        
-        if (isNaN(revenue)) {
-          revenue = 0;
+        } else if (typeof item.doanh_thu === 'number') {
+          revenue = item.doanh_thu;
         }
         
         return {
-          date: formattedDate,
-          fullDate: fullDate,
-          dayName: dayName,
+          date: displayDate || `Ngày ${index + 1}`,
+          fullDate: fullDate || `Ngày ${index + 1}`,
+          dayName: dayName || "",
           doanh_thu: revenue,
           index: index
         };
       });
       
-      processedData = processedData.sort((a, b) => a.index - b.index);
-      console.log("Chart processed data:", processedData);
+      // Sử dụng tất cả dữ liệu, không lọc
+      console.log("Processed chart data:", processedData);
       setChartData(processedData);
     } catch (error) {
       console.error("Error processing chart data:", error);
-      const dummyData = [];
-      const today = new Date();
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date();
-        date.setDate(today.getDate() - i);
-        const dayOfWeek = date.getDay();
-        const dayNames = ["CN", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
-        dummyData.push({
-          date: `${dayNames[dayOfWeek]} (${date.getDate()}/${date.getMonth() + 1})`,
-          fullDate: date.toLocaleDateString("vi-VN"),
-          dayName: dayNames[dayOfWeek],
-          doanh_thu: Math.floor(Math.random() * 5000000)
-        });
-      }
-      setChartData(dummyData);
+      setChartData([]);
     }
   }, [revenueData]);
 
@@ -337,7 +261,6 @@ const RevenueChart = ({
             <CartesianGrid stroke={gridColor} strokeDasharray="5 5" vertical={false} />
             <XAxis 
               dataKey="date" 
-              tickFormatter={dateAxisFormatter} 
               tick={{ fill: textColor, fontSize: 12 }}
               axisLine={{ stroke: gridColor }}
               tickLine={{ stroke: gridColor }}
@@ -374,7 +297,6 @@ const RevenueChart = ({
             <CartesianGrid stroke={gridColor} strokeDasharray="5 5" vertical={false} />
             <XAxis 
               dataKey="date" 
-              tickFormatter={dateAxisFormatter} 
               tick={{ fill: textColor, fontSize: 12 }}
               axisLine={{ stroke: gridColor }}
               tickLine={{ stroke: gridColor }}
@@ -419,7 +341,6 @@ const RevenueChart = ({
             <CartesianGrid stroke={gridColor} strokeDasharray="5 5" vertical={false} />
             <XAxis 
               dataKey="date" 
-              tickFormatter={dateAxisFormatter} 
               tick={{ fill: textColor, fontSize: 12 }}
               axisLine={{ stroke: gridColor }}
               tickLine={{ stroke: gridColor }}

@@ -38,4 +38,7 @@ router.get('/orders/delivery-stats', authenticate, reportsController.getDelivery
 // Feedback statistics
 router.get('/reviews/stats', authenticate, reportsController.getFeedbackData);
 
+// AI Analysis
+router.get('/analysis', authenticate, reportsController.getAnalysisData);
+
 export default router;

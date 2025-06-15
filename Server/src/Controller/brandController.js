@@ -22,61 +22,24 @@ const generateUniqueBrandCode = async (name) => {
   return code;
 };
 
-export const getAllBrands = asyncHandler(async (req, res) => {
-  const { branchId, role } = req.user;
-
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
-  const skip = (page - 1) * limit;
-
-  const requestedBranchId = req.query.branchId;
-
-  let filter = {};
-
-  if (role === "admin") {
-    if (requestedBranchId) {
-      filter.branchId = requestedBranchId;
-    }
-  } else {
-    if (!branchId) {
-      return res.status(400).json({
-        success: false,
-        message: "Không tìm thấy thông tin chi nhánh của bạn",
-      });
-    }
-    filter.branchId = branchId;
+export const getAllBrands = async (req, res) => {
+  try {
+    const brands = await Brand.find().sort({ name: 1 });
+    
+    return res.status(200).json({
+      success: true,
+      data: brands,
+      message: "Lấy danh sách thương hiệu thành công",
+    });
+  } catch (error) {
+    console.error("Lỗi khi lấy danh sách thương hiệu:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy danh sách thương hiệu",
+      error: error.message,
+    });
   }
-
-  let query = Brand.find(filter)
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit);
-
-  query = query.populate({
-    path: "branchId",
-    select: "name",
-    model: "Branch",
-  });
-
-  const [brands, total] = await Promise.all([
-    query,
-    Brand.countDocuments(filter),
-  ]);
-
-  const formattedBrands = brands.map((brand) => {
-    const plainBrand = brand.toObject();
-    if (plainBrand.branchId && plainBrand.branchId.name) {
-      plainBrand.branchName = plainBrand.branchId.name;
-    }
-    return plainBrand;
-  });
-
-  res.status(200).json({
-    success: true,
-    data: formattedBrands,
-    pagination: { page, limit, total },
-  });
-});
+};
 
 export const getBrandById = asyncHandler(async (req, res) => {
   const { branchId, role } = req.user;

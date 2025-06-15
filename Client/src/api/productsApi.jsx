@@ -31,23 +31,30 @@ export const productsApi = {
       } catch (error) {
         // Nếu endpoint không tồn tại (404), lấy tất cả sản phẩm và lọc theo branchId
         if (error.response && error.response.status === 404) {
+          console.log(`Endpoint /branch/${branchId} không tồn tại, lấy tất cả sản phẩm và lọc...`);
           
           const allProductsResponse = await axios.get(API_URL, { headers });
-          const allProducts = allProductsResponse.data;
+          const allProducts = Array.isArray(allProductsResponse.data) 
+            ? allProductsResponse.data 
+            : (allProductsResponse.data.products || []);
 
-          if (Array.isArray(allProducts)) {
-            return allProducts.filter(
-              (product) => product.branchId === branchId
-            );
-          }
-          return [];
+          // Kiểm tra xem branchId có trong sản phẩm không
+          const filteredProducts = allProducts.filter(product => {
+            return product.branchId === branchId || 
+                  (product.branch && product.branch._id === branchId) ||
+                  (product.branch && product.branch.id === branchId);
+          });
+          
+          console.log(`Đã lọc được ${filteredProducts.length} sản phẩm cho chi nhánh ${branchId}`);
+          return filteredProducts;
         }
         // Nếu lỗi khác, ném lỗi để xử lý bên ngoài
         throw error;
       }
     } catch (error) {
       console.error(`Error fetching products for branch ${branchId}:`, error);
-      throw error;
+      // Trả về mảng rỗng thay vì ném lỗi để tránh làm hỏng UI
+      return [];
     }
   },
 
@@ -85,11 +92,40 @@ export const productsApi = {
   updateProduct: async (id, data) => {
     try {
       const token = localStorage.getItem("accessToken");
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await axios.put(`${API_URL}/${id}`, data, { headers });
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      };
+      
+      // Chuẩn bị dữ liệu trước khi gửi
+      const productData = { ...data };
+      
+      // Đảm bảo các trường số được chuyển đổi đúng
+      if (productData.productPrice) productData.productPrice = Number(productData.productPrice);
+      if (productData.productDiscount) productData.productDiscount = Number(productData.productDiscount);
+      if (productData.productStock) productData.productStock = Number(productData.productStock);
+      if (productData.productWeight) productData.productWeight = Number(productData.productWeight);
+      
+      // Đảm bảo unitOptions được định dạng đúng
+      if (productData.unitOptions && Array.isArray(productData.unitOptions)) {
+        productData.unitOptions = productData.unitOptions.map(option => ({
+          ...option,
+          price: Number(option.price),
+          conversionRate: Number(option.conversionRate),
+          inStock: Number(option.inStock)
+        }));
+      }
+      
+      console.log("Sending update data:", { id, data: productData });
+      
+      const response = await axios.put(`${API_URL}/${id}`, productData, { headers });
       return response.data;
     } catch (error) {
       console.error("Error updating product:", error);
+      if (error.response) {
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      }
       throw error;
     }
   },

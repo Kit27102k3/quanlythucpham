@@ -356,7 +356,7 @@ const AdminSidebar = () => {
                       className="w-10 h-10 rounded-full object-cover border-2 border-green-200"
                     />
                     <div className="flex flex-col">
-                      <span className="font-semibold text-gray-700">{localStorage.getItem("userName") || "Admin"}</span>
+                      <span className="font-semibold text-gray-700">{localStorage.getItem("fullName")}</span>
                       <span className="text-xs text-gray-500">{localStorage.getItem("userRole") || "Quản trị viên"}</span>
                     </div>
                   </div>
@@ -472,7 +472,7 @@ const AdminSidebar = () => {
           />
           {isSidebarOpen && (
             <div className="flex flex-col">
-              <span className="font-semibold text-gray-700">{localStorage.getItem("userName") || "Admin"}</span>
+              <span className="font-semibold text-gray-700">{localStorage.getItem("fullName")}</span>
               <span className="text-xs text-gray-500">{localStorage.getItem("userRole") || "Quản trị viên"}</span>
             </div>
           )}

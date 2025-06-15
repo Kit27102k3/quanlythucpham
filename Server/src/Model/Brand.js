@@ -61,7 +61,6 @@ brandSchema.index({ name: 1 });
 brandSchema.pre('init', async function() {
   try {
     await mongoose.connection.collections['brands'].dropIndexes();
-    console.log('Đã xóa tất cả indexes của Brand collection');
   } catch (error) {
     console.error('Lỗi khi xóa indexes:', error);
   }

@@ -19,6 +19,7 @@ import ErrorBoundary from "../../../../components/ErrorBoundary";
 import PropTypes from "prop-types";
 import { toast } from "sonner";
 import { Scrollbars } from "react-custom-scrollbars-2";
+import AutoExportConfig from "./AutoExportConfig";
 
 const RevenueReport = ({
   exportToPDF,
@@ -581,41 +582,37 @@ const RevenueReport = ({
   };
 
   return (
-    <div id="revenue-report" className="bg-white p-6 rounded-lg shadow-md">
+    <div id="revenue-report" className="p-6">
+      {/* Report header with export buttons */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-gray-800">Báo cáo doanh thu</h2>
-        <div className="flex gap-2">
+        <div className="flex space-x-2">
           <button
             onClick={() => exportToPDF("revenue", setExportLoading)}
-            disabled={exportLoading || loading || error}
-            className="px-3 py-1.5 bg-red-500 text-white rounded-md text-sm font-medium flex items-center"
+            disabled={exportLoading}
+            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             {exportLoading ? (
-              <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-white rounded-full"></span>
-            ) : null}
-            Xuất PDF
+              <>
+                <span className="animate-spin mr-2">⏳</span> Đang xuất...
+              </>
+            ) : (
+              "Xuất PDF"
+            )}
           </button>
           <button
-            onClick={() =>
-              exportToExcel({ revenueData }, "revenue", setExportLoading)
-            }
-            disabled={exportLoading || loading || error}
-            className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium flex items-center"
+            onClick={() => exportToExcel("revenue", setExportLoading)}
+            disabled={exportLoading}
+            className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {exportLoading ? (
-              <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-white rounded-full"></span>
-            ) : null}
-            Xuất Excel
+            {exportLoading ? "Đang xuất..." : "Xuất Excel"}
           </button>
           <button
             onClick={() => sendReportEmail("revenue", setExportLoading)}
-            disabled={exportLoading || loading || error}
-            className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-sm font-medium flex items-center"
+            disabled={exportLoading}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {exportLoading ? (
-              <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-white rounded-full"></span>
-            ) : null}
-            Gửi Email
+            {exportLoading ? "Đang gửi..." : "Gửi Email"}
           </button>
         </div>
       </div>
@@ -1088,6 +1085,11 @@ const RevenueReport = ({
           </div>
         </>
       )}
+
+      {/* Add Auto Export Configuration */}
+      <div className="mt-8 border-t pt-4">
+        <AutoExportConfig reportId="revenue" setExportLoading={setExportLoading} />
+      </div>
     </div>
   );
 };

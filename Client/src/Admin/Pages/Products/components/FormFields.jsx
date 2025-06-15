@@ -20,6 +20,7 @@ export const MEASUREMENT_UNITS = [
   { label: "Chai", value: "chai" },
   { label: "Gói", value: "gói" },
   { label: "Lon", value: "lon" },
+  { label: "Lốc", value: "lốc" },
 ];
 
 export const BasicInfoFields = ({
@@ -29,128 +30,167 @@ export const BasicInfoFields = ({
   selectedCategory,
   categories,
   handleNumberChange,
-}) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div className="space-y-2">
-      <label
-        htmlFor="productName"
-        className="text-sm font-medium text-gray-700"
-      >
-        Tên sản phẩm <span className="text-red-500">*</span>
-      </label>
-      <InputText
-        id="productName"
-        name="productName"
-        value={product.productName ?? ""}
-        onChange={handleInputChange}
-        className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-        placeholder="Nhập tên sản phẩm"
-        required
-      />
-    </div>
+}) => {
+  console.log("BasicInfoFields - selectedCategory:", selectedCategory);
+  console.log("BasicInfoFields - categories:", categories);
+  console.log("BasicInfoFields - product.productCategory:", product.productCategory);
+  
+  // Tìm danh mục phù hợp từ danh sách
+  const findCategoryInList = () => {
+    if (!categories || categories.length === 0) return null;
+    
+    // Nếu đã có selectedCategory, kiểm tra xem có tồn tại trong danh sách không
+    if (selectedCategory) {
+      const foundById = categories.find(cat => cat._id === selectedCategory);
+      if (foundById) return selectedCategory;
+    }
+    
+    // Nếu có product.productCategory là object
+    if (product.productCategory && typeof product.productCategory === 'object' && product.productCategory._id) {
+      const foundById = categories.find(cat => cat._id === product.productCategory._id);
+      if (foundById) return product.productCategory._id;
+    }
+    
+    // Nếu có product.productCategory là string
+    if (product.productCategory && typeof product.productCategory === 'string') {
+      // Thử tìm theo ID
+      const foundById = categories.find(cat => cat._id === product.productCategory);
+      if (foundById) return product.productCategory;
+      
+      // Thử tìm theo tên
+      const foundByName = categories.find(cat => cat.nameCategory === product.productCategory);
+      if (foundByName) return foundByName._id;
+    }
+    
+    return null;
+  };
+  
+  const effectiveCategory = findCategoryInList();
+  console.log("BasicInfoFields - effectiveCategory:", effectiveCategory);
 
-    <div className="space-y-2">
-      <label
-        htmlFor="productCategory"
-        className="text-sm font-medium text-gray-700"
-      >
-        Danh mục <span className="text-red-500">*</span>
-      </label>
-      <Dropdown
-        id="productCategory"
-        value={selectedCategory || product.productCategory}
-        onChange={(e) => handleDropdownChange(e, "productCategory")}
-        options={categories.map((cat) => ({
-          label: cat.nameCategory,
-          value: cat._id,
-          code: cat.codeCategory,
-        }))}
-        optionLabel="label"
-        optionValue="value"
-        placeholder="Chọn danh mục"
-        className="w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-        panelClassName="z-50 shadow-lg border border-gray-200 rounded-md"
-        filter
-        required
-        appendTo="self"
-        style={{ height: "2.5rem" }}
-        itemTemplate={(option) => (
-          <div className="px-4 py-2 hover:bg-gray-50 transition-colors">
-            {option.label}
-          </div>
-        )}
-        filterPlaceholder="Tìm danh mục..."
-        dropdownIcon="pi pi-chevron-down"
-        showFilterClear={false}
-        filterIcon=""
-        filterTemplate={(options) => (
-          <div className="p-dropdown-filter-container">
-            <input
-              type="text"
-              value={options.filterValue || ""}
-              onChange={(e) => options.filterCallback(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md w-full mb-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              style={{ height: "36px" }}
-              autoFocus
-              placeholder="Tìm danh mục..."
-            />
-          </div>
-        )}
-        pt={{
-          input: { className: "py-2 px-3" },
-          trigger: { className: "py-2" },
-        }}
-      />
-    </div>
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-2">
+        <label
+          htmlFor="productName"
+          className="text-sm font-medium text-gray-700"
+        >
+          Tên sản phẩm <span className="text-red-500">*</span>
+        </label>
+        <InputText
+          id="productName"
+          name="productName"
+          value={product.productName ?? ""}
+          onChange={handleInputChange}
+          className="w-full h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          placeholder="Nhập tên sản phẩm"
+          required
+        />
+      </div>
 
-    <div className="space-y-2">
-      <label
-        htmlFor="productPrice"
-        className="text-sm font-medium text-gray-700"
-      >
-        Giá <span className="text-red-500">*</span>
-      </label>
-      <InputNumber
-        id="productPrice"
-        value={parseFloat(product.productPrice) || null}
-        onValueChange={(e) => handleNumberChange(e, "productPrice")}
-        mode="currency"
-        currency="VND"
-        locale="vi-VN"
-        placeholder="0 ₫"
-        className="w-full h-10 flex items-center"
-        required
-        inputClassName="h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-      />
-    </div>
+      <div className="space-y-2">
+        <label
+          htmlFor="productCategory"
+          className="text-sm font-medium text-gray-700"
+        >
+          Danh mục <span className="text-red-500">*</span>
+        </label>
+        <Dropdown
+          id="productCategory"
+          value={effectiveCategory}
+          onChange={(e) => handleDropdownChange(e, "productCategory")}
+          options={categories.map((cat) => ({
+            label: cat.nameCategory,
+            value: cat._id,
+            code: cat.codeCategory,
+          }))}
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Chọn danh mục"
+          className="w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          panelClassName="z-50 shadow-lg border border-gray-200 rounded-md"
+          filter
+          required
+          appendTo="self"
+          style={{ height: "2.5rem" }}
+          itemTemplate={(option) => (
+            <div className="px-4 py-2 hover:bg-gray-50 transition-colors">
+              {option.label}
+            </div>
+          )}
+          filterPlaceholder="Tìm danh mục..."
+          dropdownIcon="pi pi-chevron-down"
+          showFilterClear={false}
+          filterIcon=""
+          filterTemplate={(options) => (
+            <div className="p-dropdown-filter-container">
+              <input
+                type="text"
+                value={options.filterValue || ""}
+                onChange={(e) => options.filterCallback(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md w-full mb-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                style={{ height: "36px" }}
+                autoFocus
+                placeholder="Tìm danh mục..."
+              />
+            </div>
+          )}
+          pt={{
+            input: { className: "py-2 px-3" },
+            trigger: { className: "py-2" },
+          }}
+        />
+      </div>
 
-    <div className="space-y-2">
-      <label
-        htmlFor="productStatus"
-        className="text-sm font-medium text-gray-700"
-      >
-        Tình trạng
-      </label>
-      <Dropdown
-        id="productStatus"
-        value={product.productStatus || "Còn hàng"}
-        onChange={(e) => handleDropdownChange(e, "productStatus")}
-        options={[
-          { label: "Còn hàng", value: "Còn hàng" },
-          { label: "Hết hàng", value: "Hết hàng" },
-          { label: "Ngừng kinh doanh", value: "Ngừng kinh doanh" },
-        ]}
-        className="w-full flex items-center pl-2 h-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-        style={{ height: "2.5rem" }}
-        itemTemplate={(option) => (
-          <div className="px-4 py-2 hover:bg-gray-50 transition-colors">
-            {option.label}
-          </div>
-        )}
-      />
+      <div className="space-y-2">
+        <label
+          htmlFor="productPrice"
+          className="text-sm font-medium text-gray-700"
+        >
+          Giá <span className="text-red-500">*</span>
+        </label>
+        <InputNumber
+          id="productPrice"
+          value={parseFloat(product.productPrice) || null}
+          onValueChange={(e) => handleNumberChange(e, "productPrice")}
+          mode="currency"
+          currency="VND"
+          locale="vi-VN"
+          placeholder="0 ₫"
+          className="w-full h-10 flex items-center"
+          required
+          inputClassName="h-10 px-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label
+          htmlFor="productStatus"
+          className="text-sm font-medium text-gray-700"
+        >
+          Tình trạng
+        </label>
+        <Dropdown
+          id="productStatus"
+          value={product.productStatus || "Còn hàng"}
+          onChange={(e) => handleDropdownChange(e, "productStatus")}
+          options={[
+            { label: "Còn hàng", value: "Còn hàng" },
+            { label: "Hết hàng", value: "Hết hàng" },
+            { label: "Ngừng kinh doanh", value: "Ngừng kinh doanh" },
+          ]}
+          className="w-full flex items-center pl-2 h-10 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+          style={{ height: "2.5rem" }}
+          itemTemplate={(option) => (
+            <div className="px-4 py-2 hover:bg-gray-50 transition-colors">
+              {option.label}
+            </div>
+          )}
+        />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export const DetailInfoFields = ({
   product,
@@ -597,8 +637,9 @@ export const DescriptionFields = ({
             : product.productDescription || ""
         }
         onChange={(e) => setProductDescription(e.target.value)}
-        rows={5}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+        rows={8}
+        autoResize
+        className="w-full px-3 py-2 border border-gray-300 rounded-md resize-y"
         placeholder="Mỗi đặc điểm nên kết thúc bằng dấu chấm (.)"
       />
       <small className="text-gray-500 mt-1 block">
@@ -619,7 +660,8 @@ export const DescriptionFields = ({
         value={product.productIntroduction ?? ""}
         onChange={handleInputChange}
         rows={3}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+        autoResize
+        className="w-full px-3 py-2 border border-gray-300 rounded-md resize-y"
         placeholder="Giới thiệu ngắn gọn về sản phẩm"
       />
     </div>
@@ -636,8 +678,9 @@ export const DescriptionFields = ({
         name="productDetails"
         value={product.productDetails ?? ""}
         onChange={handleInputChange}
-        rows={4}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+        rows={6}
+        autoResize
+        className="w-full px-3 py-2 border border-gray-300 rounded-md resize-y"
         placeholder="Thông tin chi tiết về đặc tính, công dụng của sản phẩm"
       />
     </div>

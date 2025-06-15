@@ -15,26 +15,22 @@ const router = express.Router();
 // Route đặc biệt để reset indexes - không yêu cầu xác thực
 router.post("/reset-indexes-now", resetSupplierIndexes);
 
-// Tất cả routes đều được bảo vệ, chỉ admin và manager mới có quyền truy cập
+// GET routes không yêu cầu xác thực
+router.get('/', getAllSuppliers);
+router.get('/search', searchSuppliers);
+router.get('/:id', getSupplierById);
+
+// Các routes khác yêu cầu xác thực
 router.use(verifyToken);
 
-// GET /api/suppliers - Lấy tất cả nhà cung cấp
-router.route('/')
-  .get(verifyAdmin, getAllSuppliers)
-  .post(verifyAdmin, createSupplier);
-
-// GET /api/suppliers/search - Tìm kiếm nhà cung cấp
-router.route('/search')
-  .get(verifyAdmin, searchSuppliers);
+// POST /api/suppliers - Tạo nhà cung cấp
+router.post('/', verifyAdmin, createSupplier);
 
 // POST /api/suppliers/reset-indexes - Reset indexes (yêu cầu xác thực)
-router.route('/reset-indexes')
-  .post(verifyAdmin, resetSupplierIndexes);
+router.post('/reset-indexes', verifyAdmin, resetSupplierIndexes);
 
-// GET, PUT, DELETE /api/suppliers/:id - Lấy, cập nhật, xóa nhà cung cấp theo ID
-router.route('/:id')
-  .get(verifyAdmin, getSupplierById)
-  .put(verifyAdmin, updateSupplier)
-  .delete(verifyAdmin, deleteSupplier);
+// PUT, DELETE /api/suppliers/:id - Cập nhật, xóa nhà cung cấp theo ID
+router.put('/:id', verifyAdmin, updateSupplier);
+router.delete('/:id', verifyAdmin, deleteSupplier);
 
 export default router; 

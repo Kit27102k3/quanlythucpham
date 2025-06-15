@@ -65,12 +65,32 @@ const EditProduct = ({ currentUser, product: initialProduct, setVisible, onUpdat
           
           // Set product data from props
           setProduct(productWithDateFixed);
-          setSelectedCategory(initialProduct.productCategory?._id || initialProduct.productCategory);
+          
+          // Xử lý selectedCategory
+          let categoryId = null;
+          
+          if (initialProduct.productCategory) {
+            if (typeof initialProduct.productCategory === 'object' && initialProduct.productCategory._id) {
+              categoryId = initialProduct.productCategory._id;
+            } else if (typeof initialProduct.productCategory === 'string') {
+              categoryId = initialProduct.productCategory;
+            }
+          }
+          
+          console.log("Setting selectedCategory to:", categoryId);
+          setSelectedCategory(categoryId);
+          
+          // Set reference data
+          const categoriesData = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
+          console.log("Categories data:", categoriesData);
+          setCategories(categoriesData);
           
           // Ensure productDescription is a string
           const descriptionText = Array.isArray(initialProduct.productDescription) 
             ? initialProduct.productDescription.join('\n') 
-            : (initialProduct.productDescription || "");
+            : (typeof initialProduct.productDescription === 'string' 
+                ? initialProduct.productDescription.replace(/\./g, '.\n') 
+                : "");
           setProductDescription(descriptionText);
           
           // Set images
@@ -95,10 +115,15 @@ const EditProduct = ({ currentUser, product: initialProduct, setVisible, onUpdat
             ]);
           }
           
-          // Set reference data
-          setCategories(categoriesRes.data);
-          setBrands(brandsRes.data);
-          setSuppliers(suppliersRes.data);
+          // Xử lý dữ liệu brands - có thể nằm trong data.data hoặc trực tiếp trong data
+          const brandsData = brandsRes.data && brandsRes.data.data ? brandsRes.data.data : 
+                            (Array.isArray(brandsRes.data) ? brandsRes.data : []);
+          setBrands(brandsData);
+          
+          // Xử lý dữ liệu suppliers - có thể nằm trong data.data hoặc trực tiếp trong data
+          const suppliersData = suppliersRes.data && suppliersRes.data.data ? suppliersRes.data.data : 
+                               (Array.isArray(suppliersRes.data) ? suppliersRes.data : []);
+          setSuppliers(suppliersData);
         } catch (error) {
           console.error("Error fetching reference data:", error);
           toast.current.show({
@@ -131,12 +156,32 @@ const EditProduct = ({ currentUser, product: initialProduct, setVisible, onUpdat
           
           // Set product data
           setProduct(productData);
-          setSelectedCategory(productData.productCategory?._id);
+          
+          // Xử lý selectedCategory
+          let categoryId = null;
+          
+          if (productData.productCategory) {
+            if (typeof productData.productCategory === 'object' && productData.productCategory._id) {
+              categoryId = productData.productCategory._id;
+            } else if (typeof productData.productCategory === 'string') {
+              categoryId = productData.productCategory;
+            }
+          }
+          
+          console.log("Setting selectedCategory to:", categoryId);
+          setSelectedCategory(categoryId);
+          
+          // Set reference data
+          const categoriesData = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
+          console.log("Categories data:", categoriesData);
+          setCategories(categoriesData);
           
           // Ensure productDescription is a string
           const descriptionText = Array.isArray(productData.productDescription) 
             ? productData.productDescription.join('\n') 
-            : (productData.productDescription || "");
+            : (typeof productData.productDescription === 'string' 
+                ? productData.productDescription.replace(/\./g, '.\n') 
+                : "");
           setProductDescription(descriptionText);
           
           // Set images
@@ -161,10 +206,15 @@ const EditProduct = ({ currentUser, product: initialProduct, setVisible, onUpdat
             ]);
           }
           
-          // Set reference data
-          setCategories(categoriesRes.data);
-          setBrands(brandsRes.data);
-          setSuppliers(suppliersRes.data);
+          // Xử lý dữ liệu brands - có thể nằm trong data.data hoặc trực tiếp trong data
+          const brandsData = brandsRes.data && brandsRes.data.data ? brandsRes.data.data : 
+                            (Array.isArray(brandsRes.data) ? brandsRes.data : []);
+          setBrands(brandsData);
+          
+          // Xử lý dữ liệu suppliers - có thể nằm trong data.data hoặc trực tiếp trong data
+          const suppliersData = suppliersRes.data && suppliersRes.data.data ? suppliersRes.data.data : 
+                               (Array.isArray(suppliersRes.data) ? suppliersRes.data : []);
+          setSuppliers(suppliersData);
         } catch (error) {
           console.error("Error fetching data:", error);
           toast.current.show({
@@ -358,47 +408,62 @@ const EditProduct = ({ currentUser, product: initialProduct, setVisible, onUpdat
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Validation
-    if (!product.productName || !product.productCategory || !product.productPrice) {
-      toast.current.show({
-        severity: "error",
-        summary: "Lỗi",
-        detail: "Vui lòng điền đầy đủ các trường bắt buộc",
-        life: 3000,
-      });
-      return;
-    }
-
-    if (uploadedImages.length === 0) {
-      toast.current.show({
-        severity: "warn",
-        summary: "Cảnh báo",
-        detail: "Bạn chưa tải lên hình ảnh nào cho sản phẩm",
-        life: 3000,
-      });
-      return;
-    }
-
+    
     try {
       setLoading(true);
+      
+      // Validate form
+      if (!product.productName || !selectedCategory) {
+        if (toast.current) {
+          toast.current.show({
+            severity: "error",
+            summary: "Lỗi",
+            detail: "Vui lòng điền đầy đủ thông tin bắt buộc",
+            life: 3000,
+          });
+        }
+        return;
+      }
+      
+      // Prepare product data
+      const productData = { ...product };
+      
+      // Set category from selectedCategory
+      productData.productCategory = selectedCategory;
+      
+      // Process description (split by newlines or periods)
+      if (productDescription) {
+        // Giữ nguyên định dạng xuống dòng khi lưu
+        productData.productDescription = productDescription;
+      }
+      
+      // Format date fields
+      if (productData.expiryDate) {
+        productData.expiryDate = new Date(productData.expiryDate);
+      }
       
       // Get branchId from localStorage or use current user's branch or keep existing
       const branchId = localStorage.getItem("userBranch") || currentUser?.branchId || product.branchId;
       
-      // Prepare product data
-      const productData = {
-        ...product,
-        branchId: branchId, // Add branchId to product data
-        productImages: uploadedImages,
-        productDescription: productDescription.split("\n"),
-        unitOptions: unitOptionsList,
-        updatedBy: currentUser?._id || "unknown",
-      };
+      // Set branchId
+      productData.branchId = branchId;
+      
+      // Set images
+      productData.productImages = uploadedImages;
+      
+      // Set unit options
+      productData.unitOptions = unitOptionsList.map(option => ({
+        ...option,
+        price: Number(option.price) || 0,
+        conversionRate: Number(option.conversionRate) || 1,
+        inStock: Number(option.inStock) || 0
+      }));
       
       // Submit product update using productsApi
       const id = params.id || product._id;
+      console.log("Product ID for update:", id);
       const response = await productsApi.updateProduct(id, productData);
+      console.log("Update response:", response);
       
       // Handle success
       if (onUpdateSuccess) {
@@ -413,24 +478,32 @@ const EditProduct = ({ currentUser, product: initialProduct, setVisible, onUpdat
         }, 1500);
       }
       
-      toast.current.show({
-        severity: "success",
-        summary: "Thành công",
-        detail: "Cập nhật sản phẩm thành công",
-        life: 3000,
-      });
+      if (toast.current) {
+        toast.current.show({
+          severity: "success",
+          summary: "Thành công",
+          detail: "Cập nhật sản phẩm thành công",
+          life: 3000,
+        });
+      } else {
+        console.log("Thành công: Cập nhật sản phẩm thành công");
+      }
     } catch (error) {
       console.error("Lỗi khi cập nhật sản phẩm:", error);
       
       // Hiển thị thông báo lỗi cụ thể từ API hoặc thông báo lỗi mặc định
-      const errorMessage = error.message || "Có lỗi xảy ra khi cập nhật sản phẩm";
+      const errorMessage = error.response?.data?.message || error.message || "Có lỗi xảy ra khi cập nhật sản phẩm";
       
-      toast.current.show({
-        severity: "error",
-        summary: "Lỗi",
-        detail: errorMessage,
-        life: 5000,
-      });
+      if (toast.current) {
+        toast.current.show({
+          severity: "error",
+          summary: "Lỗi",
+          detail: errorMessage,
+          life: 5000,
+        });
+      } else {
+        console.error(`Lỗi: ${errorMessage}`);
+      }
       
       // Nếu lỗi xác thực, có thể chuyển hướng đến trang đăng nhập
       if (error.message?.includes("đăng nhập lại") || 

@@ -31,23 +31,27 @@ export const canAccess = (role, pageKey) => {
         "categories",
         "brands",
         "suppliers",
+        "branches",
         "employees",
         "customers",
         "orders",
         "reviews",
         "contacts",
-        "messages"
+        "messages",
+        "coupons",
+        "tips",
+        "reports",
+        "delivery"
       ],
       employee: [
-        "dashboard",
-        "products",
+
         "orders",
         "customers",
         "reviews",
         "contacts",
         "messages"
       ],
-      shipper: ["delivery", "orders"]
+      shipper: ["delivery"]
     };
   }
   return permissions[role]?.includes(pageKey);
