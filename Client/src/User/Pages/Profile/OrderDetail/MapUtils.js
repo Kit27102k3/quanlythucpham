@@ -55,6 +55,9 @@ const shopBranches = [
   }
 ];
 
+// Export shop branches for use in other components
+export const SHOP_BRANCHES = shopBranches;
+
 /**
  * Lấy vị trí cửa hàng mặc định (chi nhánh chính)
  * @returns {Object} Vị trí chi nhánh chính
