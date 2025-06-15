@@ -170,6 +170,31 @@ const supabaseController = {
         isSupabase: true
       });
     }
+  },
+  
+  /**
+   * Lấy danh sách chi nhánh
+   * @param {Object} req - Express request object
+   * @param {Object} res - Express response object
+   */
+  getBranches: async (req, res) => {
+    try {
+      const branches = await supabaseService.getBranches();
+      
+      res.json({
+        success: true,
+        data: branches,
+        isSupabase: true
+      });
+    } catch (error) {
+      console.error('Error in getBranches controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Lỗi khi lấy danh sách chi nhánh',
+        error: error.message,
+        isSupabase: true
+      });
+    }
   }
 };
 

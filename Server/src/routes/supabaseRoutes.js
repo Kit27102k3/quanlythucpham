@@ -15,6 +15,9 @@ router.get('/orders', supabaseController.getOrders);
 // Route để lấy thông tin người dùng theo ID
 router.get('/users/:id', supabaseController.getUserById);
 
+// Route để lấy danh sách chi nhánh
+router.get('/branches', supabaseController.getBranches);
+
 // Route để thực hiện truy vấn SQL tùy chỉnh
 router.post('/query', supabaseController.executeQuery);
 
