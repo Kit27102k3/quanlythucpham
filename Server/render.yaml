@@ -1,14 +1,11 @@
 services:
   - type: web
-    name: quanlythucpham-backend
+    name: quanlythucpham-api
     env: node
-    plan: free
-    region: singapore
-    buildCommand: cd Server && npm install && npm run build
-    startCommand: cd Server && npm start
-    healthCheckPath: /health
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
     envVars:
       - key: NODE_VERSION
-        value: 18.19.0
+        value: 18.x
       - key: NODE_ENV
         value: production 

@@ -128,28 +128,27 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
       console.log("MongoDB connected successfully");
       
       // Debug: Kiểm tra các đơn hàng trong database
-      import('./Model/Order.js').then(({ default: Order }) => {
-        Order.find()
-          .then(orders => {
-            console.log(`Found ${orders.length} orders in database`);
-            console.log("Orders:", orders.map(order => ({
-              id: order._id,
-              status: order.status,
-              amount: order.totalAmount
-            })));
-            
-            // Kiểm tra tổng doanh thu
-            Order.aggregate([
-              { $match: { status: { $in: ["completed", "delivered"] } } },
-              { $group: { _id: null, total: { $sum: "$totalAmount" } } },
-            ])
-            .then(result => {
-              console.log("Total revenue:", result);
-            })
-            .catch(err => console.error("Error calculating revenue:", err));
-          })
-          .catch(err => console.error("Error fetching orders:", err));
-      }).catch(err => console.error("Error importing Order model:", err));
+      try {
+        const OrderModule = await import('./Model/Order.js');
+        const Order = OrderModule.default;
+        
+        const orders = await Order.find();
+        console.log(`Found ${orders.length} orders in database`);
+        console.log("Orders:", orders.map(order => ({
+          id: order._id,
+          status: order.status,
+          amount: order.totalAmount
+        })));
+        
+        // Kiểm tra tổng doanh thu
+        const revenueResult = await Order.aggregate([
+          { $match: { status: { $in: ["completed", "delivered"] } } },
+          { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+        ]);
+        console.log("Total revenue:", revenueResult);
+      } catch (err) {
+        console.error("Error processing orders:", err);
+      }
       
       return;
     } catch (err) {

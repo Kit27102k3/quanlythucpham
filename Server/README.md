@@ -70,3 +70,43 @@ export const createSepayPaymentUrl = async (req, res) => {
   }
 };
 
+# Quản Lý Thực Phẩm - Server
+
+## Hướng dẫn deploy lên Render
+
+1. Đăng ký tài khoản tại [Render](https://render.com/)
+2. Tạo một Web Service mới
+3. Kết nối với repository GitHub của bạn
+4. Cấu hình như sau:
+   - **Name**: quanlythucpham-api
+   - **Environment**: Node
+   - **Build Command**: npm install && npm run build
+   - **Start Command**: npm run start:prod
+   - **Node Version**: 18.x
+
+## Biến môi trường
+
+Đảm bảo thiết lập các biến môi trường sau trong Render:
+
+- `MONGODB_URI`: URL kết nối MongoDB
+- `JWT_SECRET_ACCESS`: Secret key cho JWT
+- `JWT_REFRESH_SECRET`: Secret key cho JWT refresh
+- `CLOUDINARY_CLOUD_NAME`: Tên cloud Cloudinary
+- `CLOUDINARY_API_KEY`: API key Cloudinary
+- `CLOUDINARY_API_SECRET`: API secret Cloudinary
+- `NODE_ENV`: production
+
+## Troubleshooting
+
+Nếu gặp lỗi khi build hoặc deploy:
+
+1. Kiểm tra logs trong Render dashboard
+2. Đảm bảo tất cả dependencies đã được cài đặt
+3. Kiểm tra cấu hình Babel trong file `.babelrc`
+4. Kiểm tra phiên bản Node.js (nên dùng Node.js 18.x)
+
+## Lưu ý
+
+- File `render.yaml` đã được cấu hình sẵn cho việc deploy
+- Babel được cấu hình để chuyển đổi mã nguồn ES6+ sang phiên bản tương thích với Node.js
+

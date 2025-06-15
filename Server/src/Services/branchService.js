@@ -1,4 +1,5 @@
 import Branch from "../Model/Branch.js";
+import Order from "../Model/Order.js";
 import axios from "axios";
 
 // Tìm chi nhánh gần nhất dựa trên địa chỉ
@@ -84,8 +85,6 @@ export const assignBranchToOrder = async (orderId, address, coordinates = null) 
     }
     
     // Cập nhật đơn hàng với branchId
-    // Giả sử bạn có một Order model đã import
-    const Order = (await import("../Model/Order.js")).default;
     const updatedOrder = await Order.findByIdAndUpdate(
       orderId,
       { branchId: nearestBranch._id },
