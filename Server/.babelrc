@@ -4,7 +4,10 @@
   ],
   "plugins": [
     "transform-object-rest-spread",
-    "syntax-import-meta",
+    "dynamic-import-node",
+    "transform-es2015-modules-commonjs",
+    "transform-async-to-generator",
+    "transform-class-properties",
     "transform-runtime"
   ]
 } 
