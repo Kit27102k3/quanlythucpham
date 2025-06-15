@@ -43,6 +43,8 @@ import branchRoutes from "./routes/branchRoutes.js";
 import customerLogRoutes from "./routes/customerLogRoutes.js";
 import exportRoutes from "./routes/exportRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import supabaseRoutes from './routes/supabaseRoutes.js';
+import supabase from './config/supabase.js';
 
 // Import customer log middleware
 import { customerActivityLogger } from "./Middleware/customerLogMiddleware.js";
@@ -90,20 +92,15 @@ app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
 app.use((req, res, next) => {
   if (mongoose.connection.readyState !== 1) {
     // 0: disconnected, 1: connected, 2: connecting, 3: disconnecting
-    console.log("MongoDB not connected, returning cached or fallback data");
+    console.log("MongoDB not connected, using Supabase fallback");
     
-    // Nếu là request API products, trả về dữ liệu mẫu
-    if (req.path === '/api/products') {
-      return res.json({
-        success: false,
-        message: "Không thể kết nối đến cơ sở dữ liệu",
-        isOffline: true,
-        data: [] // Hoặc dữ liệu mẫu/cache nếu có
-      });
+    // Nếu là request API products và không phải là request đến Supabase API
+    if (req.path.includes('/api/') && !req.path.includes('/supabase/')) {
+      // Chuyển hướng đến Supabase API tương ứng
+      const supabasePath = req.path.replace('/api/', '/api/supabase/');
+      console.log(`Redirecting ${req.path} to ${supabasePath}`);
+      req.url = supabasePath;
     }
-    
-    // Các API khác
-    return next();
   }
   next();
 });
@@ -198,8 +195,9 @@ app.use("/api/system", systemRoutes);
 app.use("/api/suppliers", supplierRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/branches", branchRoutes);
-app.use("/api/logs", customerLogRoutes);
+app.use("/api/customer-logs", customerLogRoutes);
 app.use("/api/export", exportRoutes);
+app.use("/api/supabase", supabaseRoutes);
 app.get("/api/products/best-sellers", getBestSellingProducts);
 app.get("/api/dashboard/stats", reportsController.getDashboardStats);
 app.get("/api/analytics/revenue", reportsController.getRevenueData);
@@ -284,10 +282,26 @@ app.use((req, res, next) => {
 });
 
 app.get("/health", (req, res) => {
+  const mongoStatus = mongoose.connection.readyState;
+  const mongoStatusText = {
+    0: "disconnected",
+    1: "connected",
+    2: "connecting",
+    3: "disconnecting"
+  }[mongoStatus] || "unknown";
+
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV || "development",
+    mongodb: {
+      status: mongoStatus,
+      statusText: mongoStatusText
+    },
+    supabase: {
+      status: !!supabase,
+      url: process.env.SUPABASE_URL ? "configured" : "not configured"
+    }
   });
 });
 
