@@ -6,6 +6,8 @@ services:
     startCommand: npm run start:prod
     envVars:
       - key: NODE_VERSION
-        value: 18.x
+        value: 16.20.0
       - key: NODE_ENV
-        value: production 
+        value: production
+      - key: NPM_CONFIG_LEGACY_PEER_DEPS
+        value: "true" 
