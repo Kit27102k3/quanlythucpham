@@ -29,7 +29,7 @@ const getApiBaseUrl = () => {
   }
   
   // Trong môi trường production (Vercel), sử dụng URL chính xác của backend
-  return import.meta.env.VITE_SERVER_URL || "https://quanlythucpham-azf6.vercel.app";
+  return import.meta.env.VITE_SERVER_URL || "https://quanlythucpham.onrender.com";
 };
 
 // Định nghĩa API_BASE_URL

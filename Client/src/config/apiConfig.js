@@ -3,7 +3,7 @@ const getApiBaseUrl = () => {
     return import.meta.env.VITE_SERVER_URL || "http://localhost:8080";
   }
   return (
-    import.meta.env.VITE_SERVER_URL || "https://quanlythucpham-azf6.vercel.app"
+    import.meta.env.VITE_SERVER_URL || "https://quanlythucpham.onrender.com"
   );
 };
 
