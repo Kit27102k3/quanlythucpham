@@ -72,6 +72,7 @@ app.use(
       "https://quanlythucpham.vercel.app",
       "https://quanlythucpham-vercel.app",
       "https://quanlythucpham-git-main-kits-projects.vercel.app",
+      "https://quanlythucpham-kit27102k3s-projects.vercel.app",
       process.env.NODE_ENV !== "production" ? "*" : null,
     ].filter(Boolean),
     credentials: true,
@@ -82,6 +83,15 @@ app.use(
 
 // Add a CORS preflight handler for OPTIONS requests
 app.options("*", cors());
+
+// Custom middleware to ensure CORS headers are set on all responses
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  next();
+});
 
 app.use(express.json({ limit: "50mb" }));
 app.use(cookieParser());
