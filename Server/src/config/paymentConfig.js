@@ -8,7 +8,7 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 // Cấu hình domain dựa theo môi trường
 const SITE_CONFIG = {
     baseUrl: isDevelopment ? "http://localhost:3000" : "https://quanlythucpham.vercel.app",
-    apiUrl: isDevelopment ? "http://localhost:8080" : "https://quanlythucpham-azf6.vercel.app"
+    apiUrl: isDevelopment ? "http://localhost:8080" : "https://quanlythucpham.onrender.com"
 };
 
 export const SEPAY = {

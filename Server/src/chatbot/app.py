@@ -11,10 +11,12 @@ import openai
 from openai import OpenAI
 from dotenv import load_dotenv
 from db_connector import get_product_data
+from flask_cors import CORS
 
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app, origins=["https://quanlythucpham.vercel.app", "https://quanlythucpham-kit27102k3s-projects.vercel.app"])
 
 # Cấu hình API key đúng cách
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))

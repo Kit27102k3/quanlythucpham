@@ -12,7 +12,7 @@ dotenv.config();
 const isDevelopment = process.env.NODE_ENV !== 'production';
 const SITE_CONFIG = {
     baseUrl: isDevelopment ? "http://localhost:3000" : "https://quanlythucpham.vercel.app",
-    apiUrl: isDevelopment ? "http://localhost:8080" : "https://quanlythucpham-azf6.vercel.app"
+    apiUrl: isDevelopment ? "http://localhost:8080" : "https://quanlythucpham.onrender.com"
 };
 
 class PaymentService {
@@ -29,7 +29,7 @@ class PaymentService {
             // Sử dụng đường dẫn chính xác của API
             const apiBaseUrl = ngrokUrl || (isDevelopment 
                 ? "http://localhost:8080" 
-                : "https://quanlythucpham-azf6.vercel.app");
+                : "https://quanlythucpham.onrender.com");
             
             // Đường dẫn webhook SePay chính xác
             const notifyUrl = `${apiBaseUrl}/api/payments/webhook/bank`;

@@ -7,13 +7,13 @@
 import axios from 'axios';
 
 // Cấu hình cơ bản
-const API_BASE_URL = 'https://quanlythucpham-azf6.vercel.app/api/db';
+const API_BASE_URL = 'https://quanlythucpham.onrender.com/api/db';
 let authToken = null;
 
 // Hàm đăng nhập để lấy token
 export const login = async (email, password) => {
   try {
-    const response = await axios.post('https://quanlythucpham-azf6.vercel.app/api/auth/login', {
+    const response = await axios.post('https://quanlythucpham.onrender.com/api/auth/login', {
       email,
       password
     });
