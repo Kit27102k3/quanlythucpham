@@ -3,10 +3,10 @@ services:
     name: quanlythucpham-api
     env: node
     buildCommand: npm install && npm run build
-    startCommand: npm run start:prod
+    startCommand: npm run start
     envVars:
       - key: NODE_VERSION
-        value: 16.20.0
+        value: 18.18.0
       - key: NODE_ENV
         value: production
       - key: NPM_CONFIG_LEGACY_PEER_DEPS
