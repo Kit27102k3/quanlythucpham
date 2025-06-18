@@ -1,115 +1,121 @@
-# Chatbot RAG cho Siêu Thị Thực Phẩm Sạch
+# Hệ thống Chatbot Tối ưu cho Siêu thị Thực phẩm Sạch
 
-Đây là hệ thống chatbot sử dụng mô hình RAG (Retrieval-Augmented Generation) để trả lời câu hỏi liên quan đến siêu thị thực phẩm sạch. Chatbot có thể truy xuất thông tin từ cơ sở dữ liệu hoặc từ các tài liệu (FAQ, chính sách, thông tin sản phẩm) và tạo ra câu trả lời phù hợp.
+Hệ thống chatbot này đã được tối ưu để trả lời các câu hỏi từ khách hàng dựa trên dữ liệu thực tế từ MongoDB của hệ thống siêu thị thực phẩm sạch.
 
-## Tính năng
+## Tính năng chính
 
-- Tìm kiếm ngữ nghĩa thông tin từ nhiều nguồn dữ liệu
-- Tạo câu trả lời tự nhiên và mạch lạc
-- Kết nối với cơ sở dữ liệu để lấy thông tin cập nhật
-- Giao diện web thân thiện với người dùng
-- Hỗ trợ tải lên tài liệu mới
-- Lưu trữ và phân tích lịch sử hội thoại
-
-## Cài đặt
-
-### Yêu cầu hệ thống
-
-- Python 3.7+
-- MongoDB (tùy chọn, để lưu trữ dữ liệu)
-- Đủ không gian đĩa cho vector database
-
-### Cài đặt thư viện
-
-```bash
-# Clone repository
-git clone https://github.com/your-username/food-market-chatbot.git
-cd food-market-chatbot
-
-# Tạo và kích hoạt môi trường ảo (tùy chọn nhưng khuyến nghị)
-python -m venv venv
-source venv/bin/activate  # Trên Windows: venv\Scripts\activate
-
-# Cài đặt thư viện
-pip install -r requirements.txt
-```
-
-### Cấu hình
-
-1. Tạo file `.env` trong thư mục gốc với nội dung sau:
-
-```
-# OpenAI API Key (tùy chọn, nếu sử dụng mô hình của OpenAI)
-
-# MongoDB connection string (tùy chọn, nếu sử dụng MongoDB)
-MONGO_URI=mongodb://localhost:27017/
-```
-
-2. Chuẩn bị dữ liệu:
-   - Dữ liệu mẫu đã được cung cấp trong thư mục `data/`
-   - Bạn có thể thêm hoặc sửa dữ liệu trong các file tương ứng
-
-## Chạy ứng dụng
-
-```bash
-# Chạy ứng dụng
-python app.py
-```
-
-Truy cập ứng dụng tại: http://localhost:8000
+- **Prompt tối ưu dựa trên dữ liệu thực tế**: Sử dụng cấu trúc dữ liệu MongoDB để tạo prompt huấn luyện chatbot chính xác và phù hợp.
+- **60 câu hỏi thực tế từ khách hàng**: Được phân loại thành 6 nhóm chính để huấn luyện chatbot.
+- **RAG (Retrieval Augmented Generation)**: Kết hợp tìm kiếm thông tin từ cơ sở dữ liệu với khả năng sinh văn bản của mô hình ngôn ngữ.
+- **Giao diện quản lý prompt**: Cho phép admin tùy chỉnh và cập nhật prompt cho chatbot.
+- **Công cụ kiểm thử**: Đánh giá hiệu suất của chatbot với các câu hỏi thực tế.
 
 ## Cấu trúc thư mục
 
 ```
-chatbot/
-├── app.py                 # Ứng dụng FastAPI
-├── rag_chatbot.py         # Mô hình RAG chatbot
-├── db_connector.py        # Kết nối với cơ sở dữ liệu
-├── requirements.txt       # Thư viện cần thiết
-├── data/                  # Dữ liệu
-│   ├── faq.json           # Câu hỏi thường gặp
-│   ├── products.json      # Thông tin sản phẩm
-│   ├── shipping_policy.txt # Chính sách vận chuyển
-│   ├── return_policy.txt  # Chính sách đổi trả
-│   ├── payment_policy.txt # Chính sách thanh toán
-│   └── privacy_policy.txt # Chính sách bảo mật
-├── templates/             # Templates HTML
-│   └── index.html         # Giao diện chatbot
-├── static/                # File tĩnh (CSS, JS)
-│   └── ...
-└── vector_db/            # Vector database (được tạo tự động)
+Server/src/chatbot/
+├── config/                  # Cấu hình cho chatbot
+│   └── chatbot_prompt.txt   # Prompt hiện tại đang sử dụng
+├── training_data/           # Dữ liệu huấn luyện
+│   ├── customer_queries.js  # 60 câu hỏi thực tế từ khách hàng
+│   ├── prompt_generator.js  # Tạo prompt từ dữ liệu
+│   ├── chatbot_trainer.js   # Công cụ huấn luyện chatbot
+│   └── prompts/             # Thư mục lưu trữ các prompt đã tạo
+├── admin/                   # Giao diện quản lý cho admin
+│   └── prompt_manager.js    # Quản lý prompt
+├── test_results/            # Kết quả kiểm thử
+├── rag_chatbot.py           # Mã nguồn chính của chatbot
+├── run.py                   # Script chạy và quản lý chatbot
+├── test_chatbot.js          # Công cụ kiểm thử chatbot
+└── README.md                # Tài liệu hướng dẫn
 ```
 
-## Tùy chỉnh nâng cao
+## Cách sử dụng
 
-### Thay đổi mô hình embedding
+### 1. Khởi động chatbot
 
-Mặc định, chatbot sử dụng mô hình `sentence-transformers/all-MiniLM-L6-v2` cho embedding. Bạn có thể thay đổi mô hình này trong file `rag_chatbot.py`:
-
-```python
-self.embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2" # Thay thế bằng mô hình khác
-)
+```bash
+cd Server/src/chatbot
+python run.py
 ```
 
-### Sử dụng mô hình ngôn ngữ khác
+### 2. Cập nhật prompt cho chatbot
 
-Mặc định, chatbot sử dụng OpenAI ChatGPT nếu bạn cung cấp API key. Bạn có thể sử dụng các mô hình ngôn ngữ khác bằng cách sửa đổi file `rag_chatbot.py`.
+#### Sử dụng API (yêu cầu quyền admin)
 
-### Kết nối với cơ sở dữ liệu khác
+```bash
+curl -X POST http://localhost:3000/api/chatbot/update-prompt \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"promptType": "withExamples"}'
+```
 
-Mặc định, chatbot kết nối với MongoDB (nếu cung cấp MONGO_URI). Bạn có thể kết nối với các cơ sở dữ liệu khác bằng cách sửa đổi file `db_connector.py`.
+Các loại prompt có sẵn:
+- `basic`: Prompt cơ bản
+- `withExamples`: Prompt với các ví dụ về cách trả lời
+- `healthNeeds`: Prompt tập trung vào nhu cầu sức khỏe
+- `productInfo`: Prompt tập trung vào thông tin sản phẩm
+- `promotions`: Prompt tập trung vào khuyến mãi và ưu đãi
+- `orderAndDelivery`: Prompt tập trung vào đơn hàng và giao hàng
+- `storeInfo`: Prompt tập trung vào chi nhánh và giờ mở cửa
+- `reviewsAndFeedback`: Prompt tập trung vào đánh giá và phản hồi
 
-## Sử dụng
+#### Tạo mới tất cả các prompt
 
-1. Truy cập ứng dụng tại: http://localhost:8000
-2. Nhập câu hỏi của bạn vào hộp chat
-3. Chatbot sẽ trả lời dựa trên thông tin có sẵn
+```bash
+curl -X POST http://localhost:3000/api/chatbot/generate-prompts \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json"
+```
 
-## Đóng góp
+#### Khởi động lại chatbot sau khi cập nhật prompt
 
-Mọi đóng góp đều được hoan nghênh! Vui lòng tạo issue hoặc pull request nếu bạn muốn cải thiện chatbot.
+```bash
+curl -X POST http://localhost:3000/api/chatbot/restart \
+  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
+  -H "Content-Type: application/json"
+```
 
-## Giấy phép
+### 3. Kiểm thử chatbot
 
-Dự án này được phân phối dưới giấy phép MIT. Xem file `LICENSE` để biết thêm chi tiết. 
+#### Kiểm thử tất cả các câu hỏi
+
+```bash
+cd Server/src/chatbot
+node test_chatbot.js all
+```
+
+#### Kiểm thử một nhóm câu hỏi cụ thể
+
+```bash
+node test_chatbot.js healthNeeds
+```
+
+Các nhóm câu hỏi có sẵn:
+- `healthNeeds`: Câu hỏi về nhu cầu sức khỏe
+- `productInfo`: Câu hỏi về thông tin sản phẩm
+- `promotions`: Câu hỏi về khuyến mãi và ưu đãi
+- `orderAndDelivery`: Câu hỏi về đơn hàng và giao hàng
+- `storeInfo`: Câu hỏi về chi nhánh và giờ mở cửa
+- `reviewsAndFeedback`: Câu hỏi về đánh giá và phản hồi
+
+## Tùy chỉnh thêm
+
+### Thêm câu hỏi mới
+
+Mở file `Server/src/chatbot/training_data/customer_queries.js` và thêm câu hỏi mới vào nhóm phù hợp.
+
+### Tùy chỉnh prompt
+
+Bạn có thể chỉnh sửa trực tiếp các prompt đã tạo trong thư mục `Server/src/chatbot/training_data/prompts/` hoặc chỉnh sửa logic tạo prompt trong file `Server/src/chatbot/training_data/prompt_generator.js`.
+
+## Yêu cầu hệ thống
+
+- Node.js >= 14
+- Python >= 3.8
+- MongoDB
+- Các thư viện Python: langchain, langchain_community, langchain_openai, faiss-cpu, sentence-transformers
+
+## Tác giả
+
+Hệ thống chatbot này được phát triển bởi đội ngũ phát triển Siêu thị Thực phẩm Sạch. 

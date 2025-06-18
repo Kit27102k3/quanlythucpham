@@ -10,7 +10,7 @@ import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
 // Import xử lý câu hỏi về sản phẩm
-import { handleProductPageQuestion } from "./chatbotProductHandler.js";
+import { handleProductPageQuestion, detectHealthNeeds, findProductsForHealthNeed, generateHealthResponse } from "./chatbotProductHandler.js";
 import { handleFAQQuestion } from "./chatbotFAQHandler.js";
 import UserContext from "../../Model/UserContext.js";
 
@@ -390,534 +390,702 @@ const handleDietQuestion = async (message, productId) => {
   }
 };
 
-// Hàm xử lý tin nhắn từ người dùng
+/**
+ * Xử lý tin nhắn từ người dùng và trả về câu trả lời
+ * @param {object} req - Request object
+ * @param {object} res - Response object
+ */
 export const handleMessage = async (req, res) => {
   try {
     const { message, userId, productId } = req.body;
-
+    
     if (!message) {
       return res.status(400).json({
         success: false,
-        message: "Message is required",
+        message: "Thiếu thông tin tin nhắn",
       });
     }
     
-    console.log(`Nhận tin nhắn từ user ${userId || "anonymous"}: "${message}"`);
-    console.log("Thông tin sản phẩm đang xem (productId):", productId);
-
-    // ƯU TIÊN kiểm tra xem có phải là yêu cầu so sánh sản phẩm không
-    if (isComparisonRequest(message)) {
-      console.log("Phát hiện yêu cầu so sánh sản phẩm trong handleMessage");
-
-      // Kiểm tra xem có đủ sản phẩm để so sánh không
-      const context = getContext(userId);
-
-      if (
-        !context ||
-        !context.lastProducts ||
-        context.lastProducts.length < 2
-      ) {
-        console.log("Không có đủ sản phẩm để so sánh trong ngữ cảnh");
-
-        // Nếu có một sản phẩm trong ngữ cảnh, thử tìm thêm sản phẩm tương tự
-        if (context && context.lastProduct) {
-          try {
-            console.log(
-              `Tìm sản phẩm tương tự với ${context.lastProduct.productName} để so sánh`
-            );
-            const similarProducts = await Product.find({
-              productCategory: context.lastProduct.productCategory,
-              _id: { $ne: context.lastProduct._id },
-            }).limit(2);
-
-            if (similarProducts && similarProducts.length > 0) {
-              // Tạo danh sách sản phẩm để so sánh
-              const productsToCompare = [
-                context.lastProduct,
-                ...similarProducts,
-              ];
-
-              // Lưu danh sách vào ngữ cảnh
-              saveContext(userId, {
-                lastProducts: productsToCompare,
-                lastQuery: message,
-              });
-
-              console.log(
-                `Đã tìm thấy ${similarProducts.length} sản phẩm tương tự để so sánh`
-              );
-
-              // Chuyển sang xử lý so sánh
-              req.body.productIds = productsToCompare.map((p) => p._id);
-              return await handleProductComparison(req, res);
-            }
-          } catch (error) {
-            console.error("Lỗi khi tìm sản phẩm tương tự:", error);
-          }
-        }
-
-        return res.status(200).json({
-          success: true,
-          message:
-            "Bạn cần chọn ít nhất 2 sản phẩm để so sánh. Vui lòng tìm kiếm và xem một số sản phẩm trước khi yêu cầu so sánh.",
+    console.log(`Nhận tin nhắn từ user ${userId || 'anonymous'}: "${message}"`);
+    
+    // Lấy ngữ cảnh hiện tại của người dùng (nếu có)
+    const context = getContext(userId);
+    console.log("Ngữ cảnh hiện tại:", context);
+    
+    // Kiểm tra xem có phải câu hỏi về sức khỏe không
+    const healthNeeds = detectHealthNeeds(message);
+    if (healthNeeds && healthNeeds.length > 0) {
+      console.log("Phát hiện câu hỏi về sức khỏe:", healthNeeds);
+      
+      const primaryNeed = healthNeeds[0].need;
+      const products = await findProductsForHealthNeed(primaryNeed);
+      const healthResponse = generateHealthResponse(primaryNeed, products);
+      
+      // Lưu ngữ cảnh để sử dụng sau này
+      if (userId) {
+        saveContext(userId, {
+          lastHealthNeed: primaryNeed,
+          lastHealthProducts: products.map(p => p._id)
         });
       }
-
-      // Có đủ sản phẩm để so sánh, chuyển sang xử lý so sánh
-      console.log(
-        `Có ${context.lastProducts.length} sản phẩm trong ngữ cảnh để so sánh`
-      );
-      req.body.productIds = context.lastProducts.map((p) => p._id);
-      return await handleProductComparison(req, res);
-    }
-    
-    // Kiểm tra xem có phải yêu cầu về nguyên liệu từ công thức trước đó
-    const isIngredientRequest =
-      /tìm (các )?nguyên liệu|nguyên liệu (ở )?trên|chỗ nào (có )?bán|mua (ở )?đâu/i.test(
-        message
-      );
-    if (isIngredientRequest && userId) {
-      const context = getContext(userId);
       
-      if (context && context.lastRecipe) {
-        console.log(
-          "Phát hiện yêu cầu tìm nguyên liệu từ công thức trước:",
-          context.lastRecipe.substring(0, 50) + "..."
-        );
-        
-        // Trích xuất nguyên liệu từ công thức
-        const ingredients = extractIngredientsFromRecipe(context.lastRecipe);
-        console.log("Các nguyên liệu được trích xuất:", ingredients);
-        
-        if (ingredients.length > 0) {
-          // Tìm kiếm sản phẩm theo từng nguyên liệu
-          const multiResults = await handleMultiProductSearch(ingredients);
-          
-          if (multiResults.length > 0) {
-            // Đếm tổng số sản phẩm tìm được
-            const totalProducts = multiResults.reduce(
-              (total, result) =>
-                total + (result.products ? result.products.length : 0),
-              0
-            );
-            
-            // Đếm số lượng queries có kết quả
-            const queriesWithResults = multiResults.filter(
-              (result) => result.products && result.products.length > 0
-            ).length;
-            
-            // Tạo thông báo phù hợp
-            let responseMessage = "";
-            
-            if (queriesWithResults === ingredients.length) {
-              responseMessage = `Tôi đã tìm thấy ${totalProducts} sản phẩm phù hợp với ${ingredients.length} nguyên liệu từ công thức:`;
-            } else if (queriesWithResults > 0) {
-              responseMessage = `Tôi tìm thấy sản phẩm phù hợp với ${queriesWithResults}/${ingredients.length} nguyên liệu từ công thức:`;
-            } else {
-              responseMessage =
-                "Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với các nguyên liệu từ công thức. Bạn có thể thử lại với từ khóa khác không?";
-            }
-            
-            // Lưu kết quả tìm kiếm vào ngữ cảnh
-            const lastProducts = multiResults.flatMap(
-              (result) => result.products || []
-            );
-            saveContext(userId, { 
-              multiSearchResults: multiResults,
-              lastProducts: lastProducts.length > 0 ? lastProducts : null,
-              lastProduct: lastProducts.length > 0 ? lastProducts[0] : null,
-              lastQuery: message,
-            });
-            
-            return res.status(200).json({
-              success: true,
-              type: "multiProductSearch",
-              message: responseMessage,
-              data: multiResults,
-              totalResults: totalProducts,
-            });
-          } else {
-            return res.status(200).json({
-              success: true,
-              type: "text",
-              message:
-                "Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với các nguyên liệu từ công thức. Bạn có thể tìm kiếm trực tiếp bằng từng nguyên liệu cụ thể.",
-            });
-          }
-        } else {
-          return res.status(200).json({
-            success: true,
-            type: "text",
-            message:
-              "Tôi không thể trích xuất được nguyên liệu từ công thức trước đó. Bạn có thể cho tôi biết cụ thể nguyên liệu bạn đang tìm kiếm không?",
-          });
-        }
-      }
-    }
-    
-    // Kiểm tra xem có phải yêu cầu tìm nhiều sản phẩm cùng lúc không
-    const multiProductQueries = detectMultiProductSearch(message);
-    if (multiProductQueries) {
-      console.log(
-        "Phát hiện yêu cầu tìm nhiều sản phẩm cùng lúc:",
-        multiProductQueries
-      );
-      
-      const multiResults = await handleMultiProductSearch(multiProductQueries);
-      
-      if (multiResults.length > 0) {
-        // Đếm tổng số sản phẩm tìm được
-        const totalProducts = multiResults.reduce(
-          (total, result) =>
-            total + (result.products ? result.products.length : 0),
-          0
-        );
-        
-        // Đếm số lượng queries có kết quả
-        const queriesWithResults = multiResults.filter(
-          (result) => result.products && result.products.length > 0
-        ).length;
-        
-        // Tạo thông báo phù hợp
-        let responseMessage = "";
-        
-        if (queriesWithResults === multiProductQueries.length) {
-          // Tìm thấy kết quả cho tất cả các truy vấn
-          responseMessage = `Tôi đã tìm thấy ${totalProducts} sản phẩm phù hợp với ${multiProductQueries.length} loại bạn yêu cầu:`;
-        } else if (queriesWithResults > 0) {
-          // Chỉ tìm thấy kết quả cho một số truy vấn
-          responseMessage = `Tôi tìm thấy sản phẩm phù hợp với ${queriesWithResults}/${multiProductQueries.length} loại bạn yêu cầu:`;
-        } else {
-          // Không tìm thấy kết quả nào
-          responseMessage =
-            "Tôi không tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Bạn có thể thử lại với từ khóa khác không?";
-        }
-        
-        // Lưu kết quả tìm kiếm vào ngữ cảnh nếu có userId
-        if (userId) {
-          const lastProducts = multiResults.flatMap(
-            (result) => result.products || []
-          );
-          saveContext(userId, { 
-            multiSearchResults: multiResults,
-            lastProducts: lastProducts.length > 0 ? lastProducts : null,
-            lastProduct: lastProducts.length > 0 ? lastProducts[0] : null,
-            lastQuery: message,
-          });
-        }
-        
-        return res.status(200).json({
+      // Kiểm tra nếu healthResponse là object với type 'healthProducts'
+      if (typeof healthResponse === 'object' && healthResponse.type === 'healthProducts') {
+        return res.json({
           success: true,
-          type: "multiProductSearch",
-          message: responseMessage,
-          data: multiResults,
-          totalResults: totalProducts,
+          message: healthResponse.text,
+          products: healthResponse.products,
+          title: healthResponse.title,
+          type: healthResponse.type
         });
       } else {
-        return res.status(200).json({
+        return res.json({
           success: true,
-          type: "text",
-          message:
-            "Rất tiếc, tôi không tìm thấy sản phẩm nào phù hợp với các tiêu chí tìm kiếm của bạn. Bạn có thể thử lại với các từ khóa khác không?",
+          message: healthResponse,
+          type: 'text'
         });
       }
     }
     
-    // Xử lý câu hỏi về sản phẩm hiện tại nếu có productId
-    if (productId) {
-      try {
-        // Tìm thông tin sản phẩm từ database
-        const product = await Product.findById(productId);
-        
-        if (product) {
-          console.log(`Đang xử lý câu hỏi về sản phẩm: ${product.productName}`);
-          
-          // Lưu sản phẩm vào ngữ cảnh
-          saveContext(userId, { lastProduct: product });
-          
-          // Xử lý câu hỏi về sản phẩm hiện tại
-          const productResponse = await handleProductPageQuestion(
-            message,
-            product
-          );
-          
-          if (productResponse && productResponse.success) {
-            console.log(
-              "Phản hồi từ xử lý câu hỏi sản phẩm:",
-              productResponse.message
-            );
-            return res.status(200).json(productResponse);
-          }
-        }
-      } catch (error) {
-        console.error("Lỗi khi xử lý câu hỏi về sản phẩm:", error);
-      }
-    }
-    
-    // Kiểm tra xem có phải câu hỏi phụ thuộc ngữ cảnh sản phẩm trước đó không
-    const isContextDependent = checkContextDependentQuery(message);
-    console.log("Kiểm tra câu hỏi phụ thuộc ngữ cảnh:", isContextDependent);
-    
-    if (isContextDependent && userId) {
-      const context = getContext(userId);
-      console.log(
-        "Ngữ cảnh hiện tại:",
-        context
-          ? JSON.stringify({
-        hasLastProduct: !!context.lastProduct,
-              productName: context.lastProduct
-                ? context.lastProduct.productName
-                : null,
-              lastQuery: context.lastQuery || null,
-            })
-          : "Không có ngữ cảnh"
-      );
+    // Kiểm tra xem có phải câu hỏi liên quan đến nhu cầu sức khỏe trước đó
+    if (context && context.lastHealthNeed && 
+        (message.toLowerCase().includes("sản phẩm") || 
+         message.toLowerCase().includes("món ăn") ||
+         message.toLowerCase().includes("như trên") ||
+         message.toLowerCase().includes("cửa hàng có") ||
+         message.toLowerCase().includes("mua ở đâu"))) {
+      console.log(`Phát hiện câu hỏi liên quan đến nhu cầu sức khỏe trước đó: ${context.lastHealthNeed}`);
       
-      if (context && context.lastProduct) {
-        console.log(
-          `Phát hiện câu hỏi phụ thuộc ngữ cảnh về sản phẩm: ${context.lastProduct.productName}`
-        );
+      // Tìm sản phẩm liên quan đến nhu cầu sức khỏe trước đó
+      // Import động các hàm cần thiết
+      const chatbotProductHandler = await import("./chatbotProductHandler.js");
+      const products = await chatbotProductHandler.findProductsForHealthNeed(context.lastHealthNeed);
+      
+      if (products && products.length > 0) {
+        // Tạo danh sách sản phẩm để hiển thị
+        let responseMsg = `Dựa vào nhu cầu sức khỏe của bạn, chúng tôi có các sản phẩm sau phù hợp:\n\n`;
         
-        // Xử lý câu hỏi dựa trên sản phẩm trong ngữ cảnh
-        const productResponse = await handleProductPageQuestion(
-          message,
-          context.lastProduct
-        );
+        // Phân loại sản phẩm theo danh mục
+        const categorizedProducts = {};
+        products.forEach(product => {
+          const category = product.productCategory || "Khác";
+          if (!categorizedProducts[category]) {
+            categorizedProducts[category] = [];
+          }
+          categorizedProducts[category].push(product);
+        });
         
-        if (productResponse && productResponse.success) {
-          return res.status(200).json(productResponse);
+        // Hiển thị sản phẩm theo từng danh mục
+        for (const [category, categoryProducts] of Object.entries(categorizedProducts)) {
+          responseMsg += `**${category}:**\n`;
+          categoryProducts.forEach((product, index) => {
+            responseMsg += `${index + 1}. ${product.productName} - ${formatCurrency(product.productPrice)}đ\n`;
+          });
+          responseMsg += "\n";
         }
         
-        // Nếu không xử lý được bằng handleProductPageQuestion, tạo câu trả lời dựa trên thuộc tính sản phẩm
-        const response = generateContextResponse(message, context.lastProduct);
-        if (response) {
-          return res.status(200).json(response);
-        }
+        responseMsg += "Bạn có thể nhấn vào tên sản phẩm để xem chi tiết.";
+        
+        return res.json({
+          success: true,
+          message: responseMsg,
+          type: "text",
+          intent: `health_products_${context.lastHealthNeed}`,
+          products: products.slice(0, 8).map(p => ({
+            id: p._id,
+            name: p.productName,
+            price: p.productPrice,
+            image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : null
+          }))
+        });
+      } else {
+        return res.json({
+          success: true,
+          message: `Hiện tại cửa hàng chưa có sản phẩm cụ thể phù hợp với nhu cầu sức khỏe của bạn. Vui lòng tham khảo các loại thực phẩm đã gợi ý trước đó hoặc liên hệ nhân viên tư vấn để được hỗ trợ thêm.`,
+          type: "text",
+          intent: `no_health_products_${context.lastHealthNeed}`
+        });
       }
     }
     
-    // Đối với câu hỏi "Có sản phẩm X không?"
-    const productQuestion = checkProductAvailabilityQuestion(message);
-    if (productQuestion) {
-      try {
-        // Tìm kiếm sản phẩm dựa trên tên sản phẩm được trích xuất
-        const products = await searchProductsMongoDB(productQuestion);
-        
-        if (products && products.length > 0) {
-          // Lưu sản phẩm đầu tiên vào ngữ cảnh để sử dụng cho câu hỏi tiếp theo
-          saveContext(userId, {
-            lastProduct: products[0],
-            lastProducts: products,
-          });
-          
-          return res.status(200).json({
-            success: true,
-            type: "categoryQuery",
-            message: `Chúng tôi có ${products.length} sản phẩm phù hợp:`,
-            data: products,
-          });
-        } else {
-          return res.status(200).json({
-            success: true,
+    // Kiểm tra xem có phải câu hỏi về đơn hàng không
+    const orderPattern = /đơn hàng|đơn của tôi|theo dõi đơn|trạng thái đơn|hủy đơn|đổi hàng|trả hàng|vận chuyển|giao hàng|order|tracking/i;
+    if (orderPattern.test(message)) {
+      return res.json({
+          success: true,
+        message: "Để kiểm tra thông tin đơn hàng, vui lòng đăng nhập và truy cập mục 'Đơn hàng của tôi' trong tài khoản của bạn. Bạn cũng có thể liên hệ với bộ phận Chăm sóc khách hàng theo số hotline 1800-xxxx để được hỗ trợ.",
             type: "text",
-            message: `Rất tiếc, chúng tôi hiện không có sản phẩm "${productQuestion}" trong kho. Bạn có thể xem các sản phẩm tương tự khác không?`,
-          });
-        }
-      } catch (error) {
-        console.error("Lỗi khi tìm kiếm sản phẩm:", error);
-      }
-    }
-    
-    // Kiểm tra xem có phải câu hỏi về chế độ ăn chay/mặn không
-    const dietResponse = await handleDietQuestion(message, productId);
-    if (dietResponse) {
-      return res.status(200).json({
-        success: true,
-        message: dietResponse
+        intent: "order_info",
       });
     }
     
-    // Tiếp tục xử lý các intent khác nếu không phải câu hỏi về sản phẩm hiện tại
-    // Phát hiện intent từ tin nhắn
-    const intent = detectIntent(message);
-    console.log("Intent được phát hiện:", intent);
+    // Kiểm tra xem có phải câu hỏi về chế độ ăn không
+    const dietPattern = /ăn kiêng|chế độ ăn|dinh dưỡng|calories|calo|ăn chay|thuần chay|keto|low carb|giảm cân|tăng cân|tăng cơ|bầu|mang thai/i;
+    if (dietPattern.test(message)) {
+      const dietResponse = await handleDietQuestion(message, productId);
+      return res.json(dietResponse);
+    }
     
-    // Xử lý dựa trên intent
-    let response;
-    switch (intent) {
-      case "greeting":
-        response = {
-          success: true,
-          type: "text",
-          message:
-            "Xin chào! Tôi là trợ lý ảo của cửa hàng. Tôi có thể giúp gì cho bạn?",
-        };
-        break;
+    // Kiểm tra xem có phải câu hỏi về rau củ quả/trái cây không
+    const fruitVegPattern = /trái cây|rau củ|rau xanh|hoa quả|quả|rau|củ|trái/i;
+    const recommendPattern = /nên|tư vấn|gợi ý|phù hợp|thích hợp|tốt|khuyên|chọn/i;
+    
+    // Kiểm tra xem có phải câu hỏi về việc nên mua trái cây nào dựa vào nhu cầu sức khỏe
+    if ((fruitVegPattern.test(message) && recommendPattern.test(message)) || 
+        (message.toLowerCase().includes("nên mua trái cây nào")) || 
+        (message.toLowerCase().includes("trái cây nào") && message.toLowerCase().includes("nên mua")) ||
+        (message.toLowerCase().includes("loại trái cây") && message.toLowerCase().includes("nên"))) {
+      
+      console.log("Phát hiện câu hỏi về việc nên mua trái cây nào");
+      
+      // Kiểm tra xem có ngữ cảnh sức khỏe trước đó không
+      if (context && context.lastHealthNeed) {
+        console.log(`Tìm trái cây phù hợp với nhu cầu sức khỏe: ${context.lastHealthNeed}`);
         
-      case "price":
-        response = {
-          success: true,
-          type: "text",
-          message:
-            "Để biết giá cụ thể của sản phẩm, vui lòng cho tôi biết bạn quan tâm đến sản phẩm nào?",
-        };
-        break;
+        // Lọc các loại trái cây phù hợp với nhu cầu sức khỏe
+        const healthNeed = context.lastHealthNeed;
         
-      case "cooking_recipe":
+        // Danh sách từ khóa sức khỏe cho từng loại trái cây
+        const fruitHealthBenefits = {
+          tieuDuong: {
+            goodFruits: ["táo xanh", "táo", "dâu tây", "việt quất", "quả mọng", "chanh", "bưởi", "cam", "quýt", "lê"],
+            benefits: "có chỉ số đường huyết thấp hoặc trung bình, giàu chất xơ và chất chống oxy hóa",
+            avoid: ["nho ngọt", "xoài chín", "dứa", "chuối chín"]
+          },
+          huyetAp: {
+            goodFruits: ["chuối", "cam", "kiwi", "lê", "dâu tây", "việt quất", "dưa hấu", "thanh long"],
+            benefits: "giàu kali, magie và chất chống oxy hóa giúp điều hòa huyết áp",
+            avoid: ["cam thảo", "trái cây ngâm muối"]
+          },
+          giamCan: {
+            goodFruits: ["táo", "dâu tây", "cam", "quýt", "bưởi", "chanh", "dưa hấu", "dưa lưới"],
+            benefits: "ít calo, giàu chất xơ, giúp tạo cảm giác no lâu",
+            avoid: ["xoài chín", "sầu riêng", "chuối", "mít"]
+          },
+          duong: {
+            goodFruits: ["táo xanh", "táo", "dâu tây", "việt quất", "chanh", "bưởi", "cam", "quýt", "lê"],
+            benefits: "ít đường tự nhiên hoặc có chỉ số đường huyết thấp",
+            avoid: ["nho ngọt", "xoài chín", "dứa", "chuối chín"]
+          }
+        };
+        
         try {
-          // Gọi API Python backend để lấy công thức nấu ăn
-          const pyRes = await axios.post(
-            "http://localhost:5000/api/chatbot/ask",
-            { question: message }
-          );
-          if (pyRes.data && pyRes.data.answer) {
-            // Lưu công thức vào ngữ cảnh để sử dụng sau này
+          // Tìm sản phẩm từ danh mục trái cây trong cửa hàng
+          const fruitProducts = await Product.find({
+            productCategory: { $regex: "trái cây", $options: "i" },
+            productStatus: { $ne: "Hết hàng" }
+          }).limit(15);
+          
+          if (fruitProducts && fruitProducts.length > 0) {
+            // Lọc và xếp hạng trái cây phù hợp với nhu cầu sức khỏe
+            const ratedFruits = [];
+            
+            // Nếu có thông tin về nhu cầu sức khỏe, xếp hạng trái cây
+            if (fruitHealthBenefits[healthNeed]) {
+              const healthInfo = fruitHealthBenefits[healthNeed];
+              
+              // Kiểm tra từng sản phẩm và cho điểm phù hợp
+              fruitProducts.forEach(product => {
+                const productName = product.productName.toLowerCase();
+                let score = 0;
+                let isRecommended = false;
+                let isAvoided = false;
+                
+                // Kiểm tra xem sản phẩm có thuộc danh sách nên dùng không
+                healthInfo.goodFruits.forEach(goodFruit => {
+                  if (productName.includes(goodFruit.toLowerCase())) {
+                    score += 5;
+                    isRecommended = true;
+                  }
+                });
+                
+                // Kiểm tra xem sản phẩm có thuộc danh sách nên tránh không
+                if (healthInfo.avoid) {
+                  healthInfo.avoid.forEach(badFruit => {
+                    if (productName.includes(badFruit.toLowerCase())) {
+                      score -= 5;
+                      isAvoided = true;
+                    }
+                  });
+                }
+                
+                // Chỉ thêm vào danh sách nếu không thuộc danh sách tránh
+                if (!isAvoided || isRecommended) {
+                  ratedFruits.push({
+                    product,
+                    score,
+                    isRecommended,
+                    isAvoided
+                  });
+                }
+              });
+              
+              // Sắp xếp theo điểm giảm dần
+              ratedFruits.sort((a, b) => b.score - a.score);
+              
+              // Tạo câu trả lời
+              let responseMsg = `Dựa vào nhu cầu sức khỏe của bạn (${healthNeed === 'tieuDuong' ? 'tiểu đường' : 
+                              healthNeed === 'huyetAp' ? 'huyết áp' : 
+                              healthNeed === 'giamCan' ? 'giảm cân' : 
+                              healthNeed === 'duong' ? 'giảm đường' : healthNeed}), tôi đề xuất các loại trái cây sau:\n\n`;
+              
+              // Đề xuất trái cây phù hợp
+              const recommendedFruits = ratedFruits.filter(item => item.isRecommended);
+              if (recommendedFruits.length > 0) {
+                responseMsg += `**Trái cây phù hợp nhất:**\n`;
+                recommendedFruits.forEach((item, index) => {
+                  responseMsg += `${index + 1}. ${item.product.productName} - ${formatCurrency(item.product.productPrice)}đ\n`;
+                });
+                responseMsg += `\nCác loại trái cây này ${healthInfo.benefits}.\n\n`;
+              }
+              
+              // Liệt kê các loại trái cây khác
+              const otherFruits = ratedFruits.filter(item => !item.isRecommended && !item.isAvoided);
+              if (otherFruits.length > 0) {
+                responseMsg += `**Các loại trái cây khác trong cửa hàng:**\n`;
+                otherFruits.slice(0, 5).forEach((item, index) => {
+                  responseMsg += `${index + 1}. ${item.product.productName} - ${formatCurrency(item.product.productPrice)}đ\n`;
+                });
+              }
+              
+              // Danh sách trái cây nên tránh
+              if (healthInfo.avoid && healthInfo.avoid.length > 0) {
+                responseMsg += `\n**Lưu ý:** Nên hạn chế các loại trái cây có hàm lượng đường cao như ${healthInfo.avoid.join(', ')}.\n`;
+              }
+              
+              // Thêm kết luận rõ ràng
+              responseMsg += `\n**Kết luận:** `;
+              
+              if (recommendedFruits.length > 0) {
+                const topFruit = recommendedFruits[0];
+                
+                if (healthNeed === 'tieuDuong') {
+                  responseMsg += `Bạn nên chọn **${topFruit.product.productName}** vì đây là lựa chọn tốt nhất cho người tiểu đường với chỉ số đường huyết thấp, giàu chất xơ và ít ngọt. `;
+                  if (recommendedFruits.length > 1) {
+                    responseMsg += `Ngoài ra, ${recommendedFruits[1].product.productName} cũng là lựa chọn tốt.`;
+                  }
+                } else if (healthNeed === 'huyetAp') {
+                  responseMsg += `Bạn nên chọn **${topFruit.product.productName}** vì đây là lựa chọn tốt nhất cho người huyết áp với hàm lượng kali cao, giúp điều hòa huyết áp. `;
+                  if (recommendedFruits.length > 1) {
+                    responseMsg += `Ngoài ra, ${recommendedFruits[1].product.productName} cũng là lựa chọn tốt.`;
+                  }
+                } else if (healthNeed === 'giamCan') {
+                  responseMsg += `Bạn nên chọn **${topFruit.product.productName}** vì đây là lựa chọn tốt nhất cho người giảm cân với hàm lượng calo thấp, giàu chất xơ và tạo cảm giác no lâu. `;
+                  if (recommendedFruits.length > 1) {
+                    responseMsg += `Ngoài ra, ${recommendedFruits[1].product.productName} cũng là lựa chọn tốt.`;
+                  }
+        } else {
+                  responseMsg += `Bạn nên chọn **${topFruit.product.productName}** vì đây là lựa chọn tốt nhất phù hợp với nhu cầu sức khỏe của bạn. `;
+                  if (recommendedFruits.length > 1) {
+                    responseMsg += `Ngoài ra, ${recommendedFruits[1].product.productName} cũng là lựa chọn tốt.`;
+                  }
+                }
+              } else {
+                responseMsg += `Hiện tại cửa hàng chưa có loại trái cây nào đặc biệt phù hợp với nhu cầu sức khỏe của bạn. Bạn nên tham khảo các loại thực phẩm đã gợi ý trước đó.`;
+              }
+              
+              // Lưu ngữ cảnh
+        if (userId) {
+          saveContext(userId, { 
+                  ...context,
+                  lastSearch: message,
+                  lastProducts: recommendedFruits.length > 0 ? recommendedFruits.map(item => item.product) : fruitProducts,
+                  lastProductType: "trái cây phù hợp sức khỏe"
+                });
+              }
+              
+              return res.json({
+          success: true,
+                message: responseMsg,
+          type: "text",
+                intent: `health_fruit_recommendation_${healthNeed}`,
+                products: recommendedFruits.length > 0 
+                  ? recommendedFruits.slice(0, 8).map(item => ({
+                      id: item.product._id,
+                      name: item.product.productName,
+                      price: item.product.productPrice,
+                      image: item.product.productImages && item.product.productImages.length > 0 ? item.product.productImages[0] : null
+                    }))
+                  : []
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Lỗi khi tìm trái cây phù hợp với nhu cầu sức khỏe:", error);
+        }
+      }
+    }
+    
+    // Kiểm tra xem có phải câu hỏi về rau củ quả/trái cây thông thường
+    if (fruitVegPattern.test(message) && 
+        (/có|bán|cửa hàng|shop|đâu|nào|loại|gì|những/i.test(message))) {
+      try {
+        console.log("Phát hiện câu hỏi về rau củ quả/trái cây");
+        
+        // Kiểm tra ngữ cảnh sức khỏe trước đó
+        if (context && context.lastHealthNeed) {
+          console.log(`Tìm trái cây phù hợp với nhu cầu sức khỏe: ${context.lastHealthNeed}`);
+          
+          // Lọc các loại trái cây phù hợp với nhu cầu sức khỏe
+          const healthNeed = context.lastHealthNeed;
+          
+          // Danh sách từ khóa sức khỏe cho từng loại trái cây
+          const fruitHealthBenefits = {
+            tieuDuong: {
+              goodFruits: ["táo xanh", "táo", "dâu tây", "việt quất", "quả mọng", "chanh", "bưởi", "cam", "quýt", "lê"],
+              benefits: "có chỉ số đường huyết thấp hoặc trung bình, giàu chất xơ và chất chống oxy hóa",
+              avoid: ["nho ngọt", "xoài chín", "dứa", "chuối chín"]
+            },
+            huyetAp: {
+              goodFruits: ["chuối", "cam", "kiwi", "lê", "dâu tây", "việt quất", "dưa hấu", "thanh long"],
+              benefits: "giàu kali, magie và chất chống oxy hóa giúp điều hòa huyết áp",
+              avoid: ["cam thảo", "trái cây ngâm muối"]
+            },
+            giamCan: {
+              goodFruits: ["táo", "dâu tây", "cam", "quýt", "bưởi", "chanh", "dưa hấu", "dưa lưới"],
+              benefits: "ít calo, giàu chất xơ, giúp tạo cảm giác no lâu",
+              avoid: ["xoài chín", "sầu riêng", "chuối", "mít"]
+            },
+            duong: {
+              goodFruits: ["táo xanh", "táo", "dâu tây", "việt quất", "chanh", "bưởi", "cam", "quýt", "lê"],
+              benefits: "ít đường tự nhiên hoặc có chỉ số đường huyết thấp",
+              avoid: ["nho ngọt", "xoài chín", "dứa", "chuối chín"]
+            }
+          };
+          
+          // Tìm sản phẩm từ danh mục trái cây trong cửa hàng
+          const fruitProducts = await Product.find({
+            productCategory: { $regex: "trái cây", $options: "i" },
+            productStatus: { $ne: "Hết hàng" }
+          }).limit(15);
+          
+          if (fruitProducts && fruitProducts.length > 0) {
+            // Lọc và xếp hạng trái cây phù hợp với nhu cầu sức khỏe
+            const ratedFruits = [];
+            
+            // Nếu có thông tin về nhu cầu sức khỏe, xếp hạng trái cây
+            if (fruitHealthBenefits[healthNeed]) {
+              const healthInfo = fruitHealthBenefits[healthNeed];
+              
+              // Kiểm tra từng sản phẩm và cho điểm phù hợp
+              fruitProducts.forEach(product => {
+                const productName = product.productName.toLowerCase();
+                let score = 0;
+                let isRecommended = false;
+                let isAvoided = false;
+                
+                // Kiểm tra xem sản phẩm có thuộc danh sách nên dùng không
+                healthInfo.goodFruits.forEach(goodFruit => {
+                  if (productName.includes(goodFruit.toLowerCase())) {
+                    score += 5;
+                    isRecommended = true;
+                  }
+                });
+                
+                // Kiểm tra xem sản phẩm có thuộc danh sách nên tránh không
+                if (healthInfo.avoid) {
+                  healthInfo.avoid.forEach(badFruit => {
+                    if (productName.includes(badFruit.toLowerCase())) {
+                      score -= 5;
+                      isAvoided = true;
+                    }
+                  });
+                }
+                
+                // Chỉ thêm vào danh sách nếu không thuộc danh sách tránh
+                if (!isAvoided || isRecommended) {
+                  ratedFruits.push({
+                    product,
+                    score,
+                    isRecommended,
+                    isAvoided
+                  });
+                }
+              });
+              
+              // Sắp xếp theo điểm giảm dần
+              ratedFruits.sort((a, b) => b.score - a.score);
+              
+              // Tạo câu trả lời
+              let responseMsg = `Dựa vào nhu cầu sức khỏe của bạn (${healthNeed === 'tieuDuong' ? 'tiểu đường' : 
+                                healthNeed === 'huyetAp' ? 'huyết áp' : 
+                                healthNeed === 'giamCan' ? 'giảm cân' : 
+                                healthNeed === 'duong' ? 'giảm đường' : healthNeed}), tôi đề xuất các loại trái cây sau:\n\n`;
+              
+              // Đề xuất trái cây phù hợp
+              const recommendedFruits = ratedFruits.filter(item => item.isRecommended);
+              if (recommendedFruits.length > 0) {
+                responseMsg += `**Trái cây phù hợp nhất:**\n`;
+                recommendedFruits.forEach((item, index) => {
+                  responseMsg += `${index + 1}. ${item.product.productName} - ${formatCurrency(item.product.productPrice)}đ\n`;
+                });
+                responseMsg += `\nCác loại trái cây này ${healthInfo.benefits}.\n\n`;
+              }
+              
+              // Liệt kê các loại trái cây khác
+              const otherFruits = ratedFruits.filter(item => !item.isRecommended && !item.isAvoided);
+              if (otherFruits.length > 0) {
+                responseMsg += `**Các loại trái cây khác trong cửa hàng:**\n`;
+                otherFruits.slice(0, 5).forEach((item, index) => {
+                  responseMsg += `${index + 1}. ${item.product.productName} - ${formatCurrency(item.product.productPrice)}đ\n`;
+                });
+              }
+              
+              // Danh sách trái cây nên tránh
+              if (healthInfo.avoid && healthInfo.avoid.length > 0) {
+                responseMsg += `\n**Lưu ý:** Nên hạn chế các loại trái cây có hàm lượng đường cao như ${healthInfo.avoid.join(', ')}.\n`;
+              }
+              
+              // Thêm kết luận rõ ràng
+              responseMsg += `\n**Kết luận:** `;
+              
+              if (recommendedFruits.length > 0) {
+                const topFruit = recommendedFruits[0];
+                
+                if (healthNeed === 'tieuDuong') {
+                  responseMsg += `Bạn nên chọn **${topFruit.product.productName}** vì đây là lựa chọn tốt nhất cho người tiểu đường với chỉ số đường huyết thấp, giàu chất xơ và ít ngọt. `;
+                  if (recommendedFruits.length > 1) {
+                    responseMsg += `Ngoài ra, ${recommendedFruits[1].product.productName} cũng là lựa chọn tốt.`;
+                  }
+                } else if (healthNeed === 'huyetAp') {
+                  responseMsg += `Bạn nên chọn **${topFruit.product.productName}** vì đây là lựa chọn tốt nhất cho người huyết áp với hàm lượng kali cao, giúp điều hòa huyết áp. `;
+                  if (recommendedFruits.length > 1) {
+                    responseMsg += `Ngoài ra, ${recommendedFruits[1].product.productName} cũng là lựa chọn tốt.`;
+                  }
+                } else if (healthNeed === 'giamCan') {
+                  responseMsg += `Bạn nên chọn **${topFruit.product.productName}** vì đây là lựa chọn tốt nhất cho người giảm cân với hàm lượng calo thấp, giàu chất xơ và tạo cảm giác no lâu. `;
+                  if (recommendedFruits.length > 1) {
+                    responseMsg += `Ngoài ra, ${recommendedFruits[1].product.productName} cũng là lựa chọn tốt.`;
+                  }
+                } else {
+                  responseMsg += `Bạn nên chọn **${topFruit.product.productName}** vì đây là lựa chọn tốt nhất phù hợp với nhu cầu sức khỏe của bạn. `;
+                  if (recommendedFruits.length > 1) {
+                    responseMsg += `Ngoài ra, ${recommendedFruits[1].product.productName} cũng là lựa chọn tốt.`;
+                  }
+                }
+              } else {
+                responseMsg += `Hiện tại cửa hàng chưa có loại trái cây nào đặc biệt phù hợp với nhu cầu sức khỏe của bạn. Bạn nên tham khảo các loại thực phẩm đã gợi ý trước đó.`;
+              }
+              
+              // Lưu ngữ cảnh
+              if (userId) {
+          saveContext(userId, {
+                  ...context,
+                  lastSearch: message,
+                  lastProducts: recommendedFruits.length > 0 ? recommendedFruits.map(item => item.product) : fruitProducts,
+                  lastProductType: "trái cây phù hợp sức khỏe"
+                });
+              }
+              
+              return res.json({
+            success: true,
+                message: responseMsg,
+            type: "text",
+                intent: `health_fruit_recommendation_${healthNeed}`,
+                products: recommendedFruits.length > 0 
+                  ? recommendedFruits.slice(0, 8).map(item => ({
+                      id: item.product._id,
+                      name: item.product.productName,
+                      price: item.product.productPrice,
+                      image: item.product.productImages && item.product.productImages.length > 0 ? item.product.productImages[0] : null
+                    }))
+                  : []
+              });
+            }
+          }
+        }
+        
+        // Nếu không có ngữ cảnh sức khỏe hoặc không có trái cây phù hợp, hiển thị tất cả trái cây
+        const fruitVegProducts = await Product.find({
+          $or: [
+            { productCategory: { $regex: "rau|củ|quả|trái cây", $options: "i" } },
+            { productName: { $regex: "rau|củ|quả|trái cây", $options: "i" } }
+          ],
+          productStatus: { $ne: "Hết hàng" }
+        }).limit(10);
+        
+        if (fruitVegProducts && fruitVegProducts.length > 0) {
+          // Phân loại sản phẩm
+          const categorizedProducts = {};
+          fruitVegProducts.forEach(product => {
+            const category = product.productCategory || "Khác";
+            if (!categorizedProducts[category]) {
+              categorizedProducts[category] = [];
+            }
+            categorizedProducts[category].push(product);
+          });
+          
+          // Tạo câu trả lời
+          let responseMsg = "🍎 **Cửa hàng có các loại rau củ quả sau:**\n\n";
+          
+          // Hiển thị sản phẩm theo từng danh mục
+          for (const [category, products] of Object.entries(categorizedProducts)) {
+            responseMsg += `**${category}:**\n`;
+            products.forEach((product, index) => {
+              responseMsg += `${index + 1}. ${product.productName} - ${formatCurrency(product.productPrice)}đ\n`;
+            });
+            responseMsg += "\n";
+          }
+          
+          // Lưu ngữ cảnh
             if (userId) {
               saveContext(userId, {
-                lastRecipe: pyRes.data.answer,
-                lastQuery: message,
+              lastSearch: message,
+              lastProducts: fruitVegProducts,
+              lastProductType: "rau củ quả"
               });
             }
             
-            return res.status(200).json({
+          return res.json({
               success: true,
+            message: responseMsg,
               type: "text",
-              message: pyRes.data.answer,
+            intent: "fruit_veg_search",
+            products: fruitVegProducts.slice(0, 8).map(p => ({
+              id: p._id,
+              name: p.productName,
+              price: p.productPrice,
+              image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : null
+            }))
+          });
+        } else {
+          return res.json({
+            success: true,
+            message: "Hiện tại cửa hàng chưa có sản phẩm rau củ quả nào. Chúng tôi sẽ cập nhật thêm sản phẩm trong thời gian tới.",
+            type: "text",
+            intent: "no_fruit_veg"
+          });
+        }
+        } catch (error) {
+        console.error("Lỗi khi tìm sản phẩm rau củ quả:", error);
+      }
+    }
+    
+    // Kiểm tra xem có phải câu hỏi về nấu ăn không
+    if (isCookingQuestion(message)) {
+      // Xử lý câu hỏi về nấu ăn
+      const cookingResponse = await handleCookingQuestion(message);
+      
+      // Trích xuất nguyên liệu từ công thức
+      const ingredients = extractIngredientsFromRecipe(cookingResponse.message);
+      
+      // Lưu ngữ cảnh về công thức và nguyên liệu
+      if (userId && ingredients.length > 0) {
+              saveContext(userId, { 
+          lastRecipe: cookingResponse.message,
+          lastIngredients: ingredients,
+        });
+      }
+      
+      return res.json(cookingResponse);
+    }
+    
+    // Kiểm tra xem có phải câu hỏi về sản phẩm không
+    if (productId) {
+      // Nếu có ID sản phẩm, xử lý câu hỏi liên quan đến sản phẩm cụ thể
+      const productResponse = await handleProductPageQuestion(message, productId, userId);
+      return res.json(productResponse);
+    }
+    
+    // Kiểm tra xem có phải câu hỏi thường gặp không
+    const faqIntent = detectFAQIntent(message);
+    if (faqIntent) {
+      const faqResponse = await handleFAQQuestion(message, faqIntent);
+      return res.json(faqResponse);
+    }
+    
+    // Kiểm tra xem có phải câu hỏi phụ thuộc vào ngữ cảnh không
+    const contextQuery = checkContextDependentQuery(message);
+    if (contextQuery && context) {
+      // Xử lý câu hỏi phụ thuộc vào ngữ cảnh
+      const contextResponse = await generateContextResponse(message, context);
+      return res.json(contextResponse);
+    }
+    
+    // Kiểm tra xem có phải câu hỏi về so sánh sản phẩm không
+    if (isComparisonRequest(message)) {
+      // Chuyển hướng xử lý sang API so sánh sản phẩm
+      return processMessage(req, res);
+    }
+    
+    // Kiểm tra xem có phải câu hỏi tìm kiếm nhiều sản phẩm không
+    const multiProductQueries = detectMultiProductSearch(message);
+    if (multiProductQueries && multiProductQueries.length > 0) {
+      const multiProductResponse = await handleMultiProductSearch(multiProductQueries);
+      return res.json(multiProductResponse);
+    }
+    
+    // Phát hiện ý định chung của người dùng
+    const intent = detectIntent(message);
+    console.log("Phát hiện ý định:", intent);
+    
+    // Xử lý theo ý định
+    switch (intent) {
+      case "greeting":
+        return res.json({
+          success: true,
+          message: "Xin chào! Tôi là trợ lý ảo của cửa hàng thực phẩm sạch. Tôi có thể giúp bạn tìm kiếm sản phẩm, giới thiệu công thức nấu ăn, tư vấn dinh dưỡng hoặc trả lời các câu hỏi về cửa hàng. Bạn cần hỗ trợ gì?",
+          type: "text",
+          intent: "greeting",
+        });
+        
+      case "product_search":
+        // Tìm kiếm sản phẩm
+        const searchResults = await searchProductsMongoDB(message);
+        
+        if (searchResults.success && searchResults.products.length > 0) {
+          // Lưu ngữ cảnh tìm kiếm
+            if (userId) {
+              saveContext(userId, { 
+              lastSearch: message,
+              lastSearchResults: searchResults.products.map(p => p._id),
             });
           }
-          response = {
-            success: true,
-            type: "text",
-            message: "Xin lỗi, tôi không tìm thấy công thức phù hợp.",
-          };
-        } catch (error) {
-          console.error("Lỗi khi lấy công thức nấu ăn:", error);
-          response = {
-            success: true,
-            type: "text",
-            message: "Xin lỗi, đã có lỗi xảy ra khi lấy công thức nấu ăn.",
-          };
+          
+          return res.json(searchResults);
         }
         break;
         
-      case "product":
-        // Tìm kiếm sản phẩm
-        try {
-          // Sử dụng MongoDB để tìm kiếm thay vì Python
-          const productResults = await searchProductsMongoDB(message);
+      case "product_availability":
+        // Kiểm tra tình trạng sản phẩm
+        const productQuery = checkProductAvailabilityQuestion(message);
+        if (productQuery) {
+          const availabilityResults = await searchProductsMongoDB(productQuery);
           
-          if (productResults && productResults.length > 0) {
-            // Lưu sản phẩm đầu tiên vào ngữ cảnh
-            if (userId) {
-              saveContext(userId, { 
-                lastProduct: productResults[0], 
-                lastProducts: productResults,
-                lastQuery: message,
-              });
-              console.log(
-                `Đã lưu sản phẩm "${productResults[0].productName}" vào ngữ cảnh cho user ${userId}`
-              );
-            }
+          if (availabilityResults.success && availabilityResults.products.length > 0) {
+            const product = availabilityResults.products[0];
+            const isAvailable = product.productStatus !== "Hết hàng";
             
-            return res.status(200).json({
-              success: true,
-              type: "categoryQuery",
-              message: "Đây là một số sản phẩm phù hợp với yêu cầu của bạn:",
-              data: productResults,
-            });
-          } else {
-            response = {
-              success: true,
-              type: "text",
-              message:
-                "Rất tiếc, tôi không tìm thấy sản phẩm phù hợp với yêu cầu của bạn. Bạn có thể mô tả chi tiết hơn không?",
-            };
-          }
-        } catch (error) {
-          console.error("Lỗi khi tìm kiếm sản phẩm:", error);
-          response = {
+            return res.json({
             success: true,
+              message: isAvailable
+                ? `Sản phẩm "${product.productName}" hiện đang có sẵn với giá ${formatCurrency(product.productPrice)}. Bạn có thể đặt hàng ngay bây giờ.`
+                : `Rất tiếc, sản phẩm "${product.productName}" hiện đang hết hàng. Bạn có thể đăng ký nhận thông báo khi có hàng trở lại hoặc xem các sản phẩm tương tự.`,
             type: "text",
-            message:
-              "Đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau.",
-          };
+              intent: "product_availability",
+              products: [product],
+            });
+          }
         }
         break;
       
-      // Xử lý các câu hỏi thường gặp (FAQ)
-      case "faq_how_to_buy":
-      case "faq_how_to_order":
-      case "faq_payment_methods":
-      case "faq_store_location":
-      case "faq_product_quality":
-      case "faq_shipping_time":
-      case "faq_return_policy":
-      case "faq_promotions":
-      case "faq_trending_products":
-      case "faq_shipping_fee":
-      case "faq_customer_support":
-        try {
-          // Gọi hàm xử lý FAQ
-          const faqResponse = handleFAQQuestion(intent);
-          if (faqResponse) {
-            return res.status(200).json(faqResponse);
-          }
-        } catch (error) {
-          console.error("Lỗi khi xử lý câu hỏi FAQ:", error);
-        }
-        break;
-        
-      case "unknown":
       default:
-        try {
-          // Thử tìm kiếm sản phẩm trực tiếp
-          const products = await searchProductsMongoDB(message);
-          
-          if (products && products.length > 0) {
-            // Lưu sản phẩm đầu tiên vào ngữ cảnh
-            if (userId) {
-              saveContext(userId, { 
-                lastProduct: products[0], 
-                lastProducts: products,
-                lastQuery: message,
-              });
-              console.log(
-                `Đã lưu sản phẩm "${products[0].productName}" vào ngữ cảnh cho user ${userId}`
-              );
-            }
-            
-            return res.status(200).json({
-              success: true,
-              type: "categoryQuery",
-              message: "Đây là một số sản phẩm phù hợp với yêu cầu của bạn:",
-              data: products,
-            });
-          } else {
-            response = {
-              success: true,
-              type: "text",
-              message:
-                "Tôi không tìm thấy thông tin phù hợp. Bạn có thể hỏi cụ thể hơn về sản phẩm, giá cả, hoặc thông tin khác không?",
-            };
-          }
-        } catch (error) {
-          console.error("Lỗi khi xử lý câu hỏi:", error);
-          response = {
-            success: true,
-            type: "text",
-            message:
-              "Tôi không hiểu ý của bạn. Bạn có thể diễn đạt theo cách khác được không?",
-          };
-        }
-        break;
+        // Xử lý mặc định - chuyển hướng sang API xử lý tin nhắn chung
+        return processMessage(req, res);
     }
     
-    return res.status(200).json(response);
+    // Nếu không tìm thấy kết quả phù hợp
+    return res.json({
+              success: true,
+      message: "Tôi không tìm thấy thông tin phù hợp với câu hỏi của bạn. Vui lòng hỏi rõ hơn hoặc thử lại sau.",
+              type: "text",
+    });
+    
   } catch (error) {
     console.error("Lỗi khi xử lý tin nhắn:", error);
     return res.status(500).json({
       success: false,
-      message: "An error occurred while processing the message",
+      message: "Đã xảy ra lỗi khi xử lý tin nhắn của bạn. Vui lòng thử lại sau.",
     });
   }
 };

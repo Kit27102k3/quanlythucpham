@@ -30,10 +30,12 @@ export const exportToPDF = async (reportId, setExportLoading) => {
   if (setExportLoading) setExportLoading(true);
   
   try {
-    const element = document.getElementById(`${reportId}-report`);
+    // Thử lấy phần tử báo cáo, nếu không có thì lấy toàn bộ nội dung trang
+    let element = document.getElementById(`${reportId}-report`);
     if (!element) {
-      console.error(`Element with ID "${reportId}-report" not found`);
-      return;
+      console.log(`Phần tử có ID "${reportId}-report" không tìm thấy, sử dụng nội dung trang hiện tại`);
+      // Sử dụng phần tử chính của trang báo cáo
+      element = document.querySelector('.MuiCard-root') || document.body;
     }
     
     // Apply a temporary style to replace oklch colors with standard RGB
@@ -109,11 +111,32 @@ export const exportToPDF = async (reportId, setExportLoading) => {
       heightLeft -= pageHeight;
     }
     
-    pdf.save(`bao-cao-${reportId}-${new Date().toISOString().split('T')[0]}.pdf`);
+    // Tạo tên file với ngày giờ hiện tại để tránh trùng lặp
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+    const fileName = `bao-cao-${reportId}-${dateStr}-${timeStr}.pdf`;
+    const filePath = `D:/LUANVANTOTNGHIEP/${fileName}`;
+    
+    // Lưu file vào đường dẫn chỉ định
+    try {
+      // Trong môi trường web, không thể trực tiếp lưu vào đường dẫn hệ thống
+      // Thay vào đó, chúng ta tạo một tải xuống cho người dùng
+      pdf.save(fileName);
+      
+      // Hiển thị thông báo cho người dùng
+      alert(`Báo cáo đã được tạo thành công!\nVui lòng lưu file vào thư mục D:/LUANVANTOTNGHIEP`);
+    } catch (saveError) {
+      console.error('Lỗi khi lưu file PDF:', saveError);
+      // Fallback: Lưu file với phương thức mặc định
+      pdf.save(fileName);
+    }
     
     console.log(`PDF export of ${reportId} report completed`);
   } catch (error) {
     console.error('Error exporting to PDF:', error);
+    // Hiển thị thông báo lỗi cho người dùng
+    alert(`Có lỗi khi xuất báo cáo PDF: ${error.message}`);
   } finally {
     if (setExportLoading) setExportLoading(false);
   }
@@ -124,11 +147,12 @@ export const exportToExcel = (reportId, setExportLoading) => {
   if (setExportLoading) setExportLoading(true);
   
   try {
-    // Get the dashboard data
-    const dashboardElement = document.getElementById(`${reportId}-report`);
+    // Thử lấy phần tử báo cáo, nếu không có thì lấy toàn bộ nội dung trang
+    let dashboardElement = document.getElementById(`${reportId}-report`);
     if (!dashboardElement) {
-      console.error(`Element with ID "${reportId}-report" not found`);
-      return;
+      console.log(`Phần tử có ID "${reportId}-report" không tìm thấy, sử dụng nội dung trang hiện tại`);
+      // Sử dụng phần tử chính của trang báo cáo
+      dashboardElement = document.querySelector('.MuiCard-root') || document.body;
     }
     
     // Extract data from the dashboard
@@ -223,12 +247,32 @@ export const exportToExcel = (reportId, setExportLoading) => {
       }
     });
     
-    // Write to file
-    writeFile(wb, `bao-cao-${reportId}-${new Date().toISOString().split('T')[0]}.xlsx`);
+    // Tạo tên file với ngày giờ hiện tại để tránh trùng lặp
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
+    const fileName = `bao-cao-${reportId}-${dateStr}-${timeStr}.xlsx`;
+    const filePath = `D:/LUANVANTOTNGHIEP/${fileName}`;
+    
+    // Lưu file vào đường dẫn chỉ định
+    try {
+      // Trong môi trường web, không thể trực tiếp lưu vào đường dẫn hệ thống
+      // Thay vào đó, chúng ta tạo một tải xuống cho người dùng
+      writeFile(wb, fileName);
+      
+      // Hiển thị thông báo cho người dùng
+      alert(`Báo cáo Excel đã được tạo thành công!\nVui lòng lưu file vào thư mục D:/LUANVANTOTNGHIEP`);
+    } catch (saveError) {
+      console.error('Lỗi khi lưu file Excel:', saveError);
+      // Fallback: Lưu file với phương thức mặc định
+      writeFile(wb, fileName);
+    }
     
     console.log(`Excel export of ${reportId} data completed`);
   } catch (error) {
     console.error('Error exporting to Excel:', error);
+    // Hiển thị thông báo lỗi cho người dùng
+    alert(`Có lỗi khi xuất báo cáo Excel: ${error.message}`);
   } finally {
     if (setExportLoading) setExportLoading(false);
   }

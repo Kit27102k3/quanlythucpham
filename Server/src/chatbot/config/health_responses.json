@@ -1,0 +1,249 @@
+{
+  "tieuDuong": {
+    "title": "Thực phẩm cho người tiểu đường",
+    "description": "Người tiểu đường nên ưu tiên thực phẩm có chỉ số đường huyết (GI) thấp, giàu chất xơ và kiểm soát lượng carbohydrate.",
+    "recommended": [
+      "Rau xanh các loại (rau muống, cải xanh, rau ngót...)",
+      "Các loại đậu (đậu đen, đậu nành, đậu lăng)",
+      "Ngũ cốc nguyên hạt (gạo lứt, yến mạch, quinoa)",
+      "Protein nạc (cá, thịt gà không da, đậu hũ)",
+      "Quả mọng (việt quất, dâu tây) và trái cây ít ngọt (táo, lê)",
+      "Các loại hạt (hạnh nhân, óc chó) không thêm muối đường",
+      "Dầu lành mạnh (dầu oliu, dầu mè)"
+    ],
+    "avoid": [
+      "Thực phẩm chế biến sẵn có nhiều đường",
+      "Nước ngọt, nước trái cây đóng hộp",
+      "Bánh kẹo, đồ ngọt",
+      "Gạo trắng, bánh mì trắng",
+      "Trái cây quá ngọt (xoài chín, dứa, chuối chín)"
+    ],
+    "examples": [
+      {
+        "question": "Tôi bị tiểu đường, nên ăn gì?",
+        "answer": "Với người tiểu đường, tôi khuyên bạn nên ăn thực phẩm có chỉ số đường huyết thấp như rau xanh, đậu các loại, gạo lứt, yến mạch, protein nạc và trái cây ít ngọt như táo, lê. Nên hạn chế đồ ngọt, nước ngọt, gạo trắng và trái cây quá ngọt. Cửa hàng chúng tôi có nhiều sản phẩm phù hợp với người tiểu đường như gạo lứt hữu cơ, yến mạch nguyên hạt và các loại đậu."
+      },
+      {
+        "question": "Đường huyết cao kiêng ăn gì?",
+        "answer": "Khi đường huyết cao, bạn nên kiêng các thực phẩm có nhiều đường như bánh kẹo, nước ngọt, nước trái cây đóng hộp, trái cây quá ngọt như xoài chín, dứa, chuối chín. Ngoài ra, nên hạn chế gạo trắng, bánh mì trắng và thực phẩm chế biến sẵn. Thay vào đó, hãy ưu tiên rau xanh, đậu các loại, ngũ cốc nguyên hạt và protein nạc."
+      }
+    ]
+  },
+  "huyetAp": {
+    "title": "Thực phẩm cho người huyết áp",
+    "description": "Người huyết áp cao nên ăn thực phẩm ít muối, giàu kali, magie và canxi để kiểm soát huyết áp.",
+    "recommended": [
+      "Rau lá xanh đậm (rau bina, cải xoăn)",
+      "Trái cây (chuối, cam, kiwi) giàu kali",
+      "Các loại đậu và hạt",
+      "Cá béo (cá hồi, cá thu) giàu omega-3",
+      "Sữa chua và các sản phẩm từ sữa ít béo",
+      "Socola đen (hàm lượng cacao >70%)",
+      "Quả bơ"
+    ],
+    "avoid": [
+      "Thực phẩm chế biến sẵn có nhiều muối",
+      "Thực phẩm đóng hộp, đồ ăn nhanh",
+      "Dưa muối, kim chi, các loại thực phẩm ngâm muối",
+      "Nước tương, bột ngọt, bột nêm",
+      "Thịt chế biến (xúc xích, thịt nguội)"
+    ],
+    "examples": [
+      {
+        "question": "Tôi bị cao huyết áp nên ăn gì?",
+        "answer": "Với người cao huyết áp, tôi khuyên bạn nên ăn thực phẩm ít muối và giàu kali như rau lá xanh đậm, chuối, cam, kiwi. Các loại cá béo giàu omega-3 như cá hồi, cá thu cũng rất tốt. Nên hạn chế thực phẩm có nhiều muối như đồ ăn nhanh, thực phẩm đóng hộp, dưa muối, nước tương và thịt chế biến. Cửa hàng chúng tôi có nhiều sản phẩm tươi sống và hữu cơ phù hợp với người cao huyết áp."
+      },
+      {
+        "question": "Huyết áp cao kiêng ăn gì?",
+        "answer": "Người huyết áp cao nên kiêng các thực phẩm có nhiều muối như thực phẩm chế biến sẵn, đồ ăn nhanh, thực phẩm đóng hộp, dưa muối, kim chi, nước tương, bột ngọt, bột nêm và thịt chế biến như xúc xích, thịt nguội. Thay vào đó, hãy ưu tiên rau lá xanh đậm, trái cây giàu kali, các loại đậu và hạt, cá béo giàu omega-3."
+      }
+    ]
+  },
+  "giamCan": {
+    "title": "Thực phẩm giúp giảm cân",
+    "description": "Để giảm cân hiệu quả và khỏe mạnh, nên ưu tiên thực phẩm giàu chất xơ, protein, ít calo và chất béo.",
+    "recommended": [
+      "Rau xanh các loại (càng nhiều càng tốt)",
+      "Protein nạc (thịt gà không da, cá, đậu hũ)",
+      "Trứng",
+      "Các loại đậu và ngũ cốc nguyên hạt",
+      "Trái cây ít đường (táo, dâu, quả mọng)",
+      "Sữa chua không đường",
+      "Các loại hạt không muối (hạnh nhân, óc chó) với lượng vừa phải"
+    ],
+    "avoid": [
+      "Thực phẩm chiên rán",
+      "Đồ ngọt, bánh kẹo",
+      "Nước ngọt, nước trái cây đóng hộp",
+      "Thực phẩm chế biến sẵn",
+      "Rượu bia",
+      "Thực phẩm nhiều tinh bột trắng (bánh mì trắng, cơm trắng)"
+    ],
+    "examples": [
+      {
+        "question": "Tôi cần thực phẩm giảm cân, có loại nào ít calo không?",
+        "answer": "Để giảm cân hiệu quả, tôi khuyên bạn nên ăn nhiều rau xanh, protein nạc như thịt gà không da, cá, đậu hũ, trứng, và trái cây ít đường như táo, dâu. Các loại đậu và ngũ cốc nguyên hạt cũng rất tốt vì chúng giàu chất xơ giúp no lâu. Nên hạn chế thực phẩm chiên rán, đồ ngọt, nước ngọt và thực phẩm chế biến sẵn. Cửa hàng chúng tôi có nhiều sản phẩm ít calo và giàu dinh dưỡng phù hợp với người đang giảm cân."
+      },
+      {
+        "question": "Có thực phẩm nào ít calo không?",
+        "answer": "Có rất nhiều thực phẩm ít calo mà vẫn đảm bảo dinh dưỡng. Các loại rau xanh như rau bina, xà lách, cải xoăn rất ít calo. Protein nạc như ức gà không da, cá hồi, đậu hũ cũng là lựa chọn tốt. Trái cây như dâu tây, việt quất, táo cũng ít calo và giàu chất xơ. Cửa hàng chúng tôi có nhiều sản phẩm hữu cơ và tự nhiên phù hợp với chế độ ăn kiêng."
+      }
+    ]
+  },
+  "anChay": {
+    "title": "Thực phẩm cho người ăn chay",
+    "description": "Người ăn chay cần đảm bảo đủ protein, vitamin B12, sắt, kẽm và omega-3 từ nguồn thực vật.",
+    "recommended": [
+      "Đậu các loại (đậu nành, đậu đen, đậu lăng)",
+      "Đậu hũ và các sản phẩm từ đậu nành",
+      "Các loại hạt (hạt điều, hạt óc chó, hạt chia)",
+      "Ngũ cốc nguyên hạt (gạo lứt, quinoa)",
+      "Rau lá xanh đậm",
+      "Trái cây tươi",
+      "Sữa thực vật được bổ sung vitamin B12 và canxi"
+    ],
+    "avoid": [
+      "Thực phẩm chứa gelatin (một số kẹo, bánh)",
+      "Một số loại phô mai (chứa rennet)",
+      "Thực phẩm chứa mỡ động vật",
+      "Mật ong (đối với người ăn chay trường)"
+    ],
+    "examples": [
+      {
+        "question": "Tôi đang ăn chay trường, có thực phẩm nào phù hợp không?",
+        "answer": "Với người ăn chay trường, cửa hàng chúng tôi có nhiều sản phẩm phù hợp như đậu hũ, tempeh, seitan, các loại đậu (đậu nành, đậu đen, đậu lăng), các loại hạt, ngũ cốc nguyên hạt, và nhiều loại rau củ quả hữu cơ. Chúng tôi cũng có sữa thực vật được bổ sung vitamin B12 và canxi. Lưu ý tránh các sản phẩm có chứa gelatin, một số loại phô mai chứa rennet, thực phẩm chứa mỡ động vật và mật ong."
+      },
+      {
+        "question": "Có món chay nào ngon không?",
+        "answer": "Cửa hàng chúng tôi có nhiều món chay ngon và bổ dưỡng như đậu hũ sốt nấm, tempeh xào rau củ, cơm gạo lứt với đậu lăng, salad quinoa, bánh mì nguyên cám kẹp rau củ và hummus, súp đậu lentil, và nhiều món khác. Các món này không chỉ ngon miệng mà còn cung cấp đầy đủ dinh dưỡng cần thiết cho người ăn chay."
+      }
+    ]
+  },
+  "tangCo": {
+    "title": "Thực phẩm giúp tăng cơ",
+    "description": "Để phát triển cơ bắp, cần ưu tiên thực phẩm giàu protein, carbohydrate phức hợp và chất béo lành mạnh.",
+    "recommended": [
+      "Thịt nạc (gà, bò, heo)",
+      "Cá (đặc biệt là cá hồi và cá ngừ)",
+      "Trứng",
+      "Sữa và các sản phẩm từ sữa",
+      "Đậu và các sản phẩm từ đậu nành",
+      "Ngũ cốc nguyên hạt",
+      "Khoai lang, khoai tây",
+      "Các loại hạt và quả bơ",
+      "Rau xanh (cung cấp vitamin và khoáng chất)"
+    ],
+    "avoid": [
+      "Thực phẩm nhiều đường",
+      "Thức ăn nhanh và thực phẩm chế biến sẵn",
+      "Rượu bia",
+      "Thực phẩm nhiều chất béo bão hòa"
+    ],
+    "examples": [
+      {
+        "question": "Đang tập gym cần thực phẩm giàu protein, cửa hàng có gì không?",
+        "answer": "Cửa hàng chúng tôi có nhiều thực phẩm giàu protein phù hợp cho người tập gym như thịt gà, thịt bò nạc, cá hồi, cá ngừ, trứng, sữa và các sản phẩm từ sữa, đậu và các sản phẩm từ đậu nành. Ngoài ra, chúng tôi còn có các sản phẩm bổ sung protein như whey protein, protein bar và bột protein thực vật. Để tăng cơ hiệu quả, bạn cũng nên kết hợp với carbohydrate phức hợp từ ngũ cốc nguyên hạt, khoai lang và rau xanh."
+      },
+      {
+        "question": "Tôi muốn tăng cơ bắp, nên ăn gì?",
+        "answer": "Để tăng cơ bắp hiệu quả, bạn nên ưu tiên thực phẩm giàu protein như thịt nạc (gà, bò, heo), cá (đặc biệt là cá hồi và cá ngừ), trứng, sữa và các sản phẩm từ sữa. Kết hợp với carbohydrate phức hợp từ ngũ cốc nguyên hạt, khoai lang, khoai tây và chất béo lành mạnh từ các loại hạt và quả bơ. Đừng quên bổ sung rau xanh để cung cấp vitamin và khoáng chất cần thiết. Cửa hàng chúng tôi có đầy đủ các sản phẩm này với chất lượng cao."
+      }
+    ]
+  },
+  "meBau": {
+    "title": "Thực phẩm cho mẹ bầu",
+    "description": "Mẹ bầu cần thực phẩm giàu folate, sắt, canxi, DHA và nhiều vitamin khoáng chất khác để hỗ trợ sự phát triển của thai nhi.",
+    "recommended": [
+      "Rau lá xanh đậm (rau bina, cải xoăn)",
+      "Trái cây tươi",
+      "Các loại đậu",
+      "Ngũ cốc nguyên hạt",
+      "Trứng",
+      "Sữa và các sản phẩm từ sữa",
+      "Cá béo (cá hồi, cá thu) giàu DHA",
+      "Thịt nạc",
+      "Các loại hạt"
+    ],
+    "avoid": [
+      "Cá có hàm lượng thủy ngân cao (cá kiếm, cá thu king)",
+      "Thịt sống hoặc chưa nấu chín",
+      "Trứng sống",
+      "Pho mát mềm chưa tiệt trùng",
+      "Cà phê, rượu bia",
+      "Thực phẩm chế biến sẵn có nhiều muối và chất bảo quản"
+    ],
+    "examples": [
+      {
+        "question": "Vợ tôi đang mang thai, cần thực phẩm bổ sung dinh dưỡng cho mẹ bầu",
+        "answer": "Cho mẹ bầu, cửa hàng chúng tôi có nhiều thực phẩm bổ dưỡng như rau lá xanh đậm (rau bina, cải xoăn) giàu folate, trái cây tươi, các loại đậu, ngũ cốc nguyên hạt, trứng, sữa và các sản phẩm từ sữa giàu canxi, cá hồi giàu DHA rất tốt cho sự phát triển não bộ của thai nhi. Chúng tôi cũng có các sản phẩm bổ sung vitamin tổng hợp cho bà bầu. Lưu ý tránh cá có hàm lượng thủy ngân cao, thịt sống, trứng sống, pho mát mềm chưa tiệt trùng, cà phê, rượu bia và thực phẩm chế biến sẵn có nhiều muối và chất bảo quản."
+      },
+      {
+        "question": "Mẹ bầu nên ăn gì để con thông minh?",
+        "answer": "Để hỗ trợ sự phát triển não bộ của thai nhi, mẹ bầu nên ưu tiên các thực phẩm giàu DHA và omega-3 như cá hồi, cá thu, các loại hạt (đặc biệt là hạt óc chó), trứng giàu DHA. Ngoài ra, thực phẩm giàu folate như rau lá xanh đậm, các loại đậu cũng rất quan trọng cho sự phát triển hệ thần kinh. Thực phẩm giàu choline như trứng, thịt, các loại hạt cũng góp phần phát triển não bộ. Cửa hàng chúng tôi có đầy đủ các sản phẩm này với chất lượng cao và nguồn gốc rõ ràng."
+      }
+    ]
+  },
+  "treSoSinh": {
+    "title": "Thực phẩm cho trẻ sơ sinh và trẻ nhỏ",
+    "description": "Trẻ sơ sinh và trẻ nhỏ cần thực phẩm an toàn, giàu dinh dưỡng và phù hợp với từng giai đoạn phát triển.",
+    "recommended": [
+      "Sữa mẹ (tốt nhất cho trẻ dưới 6 tháng)",
+      "Sữa công thức (nếu không thể cho bú)",
+      "Cháo, bột ngũ cốc (cho trẻ từ 6 tháng)",
+      "Rau củ quả nghiền (cho trẻ từ 6 tháng)",
+      "Thịt, cá, trứng nghiền nhuyễn (cho trẻ từ 7-8 tháng)",
+      "Sữa và các sản phẩm từ sữa (cho trẻ trên 1 tuổi)",
+      "Trái cây tươi cắt nhỏ (cho trẻ có thể nhai)"
+    ],
+    "avoid": [
+      "Mật ong (cho trẻ dưới 1 tuổi)",
+      "Sữa bò nguyên chất (cho trẻ dưới 1 tuổi)",
+      "Thực phẩm dễ gây hóc như ngô, nho nguyên hạt, xúc xích",
+      "Thực phẩm nhiều muối, đường",
+      "Thực phẩm chế biến sẵn có chất bảo quản",
+      "Nước ngọt, nước trái cây đóng hộp"
+    ],
+    "examples": [
+      {
+        "question": "Trẻ em biếng ăn nên mua thực phẩm gì bổ dưỡng?",
+        "answer": "Cho trẻ biếng ăn, tôi khuyên bạn nên chọn các thực phẩm giàu dinh dưỡng nhưng dễ ăn như súp rau củ với thịt/cá xay nhỏ, cháo đậu đỏ/đậu xanh với thịt bằm, sữa chua trái cây tự nhiên, sinh tố từ các loại trái cây và rau củ, bánh mì nguyên cám kẹp trứng hoặc thịt xay. Cửa hàng chúng tôi có nhiều sản phẩm hữu cơ dành cho trẻ em, không chứa chất bảo quản và phụ gia, giúp kích thích vị giác và cung cấp đầy đủ dinh dưỡng cho trẻ."
+      },
+      {
+        "question": "Em bé 1 tuổi nên ăn gì để phát triển tốt?",
+        "answer": "Trẻ 1 tuổi cần chế độ ăn đa dạng để phát triển toàn diện. Nên cho trẻ ăn thịt, cá, trứng đã nấu chín và nghiền/cắt nhỏ, các loại rau củ quả hấp chín, sữa và các sản phẩm từ sữa như sữa chua, phô mai, ngũ cốc nguyên hạt như cháo, bánh mì nguyên cám. Cửa hàng chúng tôi có nhiều sản phẩm hữu cơ và tự nhiên dành riêng cho trẻ nhỏ, không chứa chất bảo quản, phụ gia và hạn chế đường, muối."
+      }
+    ]
+  },
+  "nguoiGia": {
+    "title": "Thực phẩm cho người cao tuổi",
+    "description": "Người cao tuổi cần thực phẩm dễ tiêu hóa, giàu dinh dưỡng, hỗ trợ sức khỏe xương khớp và não bộ.",
+    "recommended": [
+      "Cá béo (cá hồi, cá thu) giàu omega-3",
+      "Rau lá xanh đậm",
+      "Trái cây tươi, đặc biệt là quả mọng",
+      "Các loại đậu",
+      "Sữa và các sản phẩm từ sữa giàu canxi",
+      "Ngũ cốc nguyên hạt",
+      "Thịt nạc",
+      "Các loại hạt",
+      "Thực phẩm giàu chất chống oxy hóa"
+    ],
+    "avoid": [
+      "Thực phẩm nhiều muối",
+      "Thực phẩm nhiều đường",
+      "Thực phẩm chiên rán",
+      "Thực phẩm chế biến sẵn có nhiều chất bảo quản",
+      "Thực phẩm cứng, khó nhai (tùy theo tình trạng răng miệng)"
+    ],
+    "examples": [
+      {
+        "question": "Cần thực phẩm cho người già dễ nhai và tiêu hóa",
+        "answer": "Cho người cao tuổi, cửa hàng chúng tôi có nhiều thực phẩm dễ nhai và tiêu hóa như cháo yến mạch, súp rau củ với thịt/cá, cá hấp mềm, đậu hũ, trứng chưng, rau củ hấp chín, trái cây mềm như chuối, đu đủ, lê. Các sản phẩm này không chỉ dễ ăn mà còn giàu dinh dưỡng, hỗ trợ sức khỏe xương khớp và não bộ. Chúng tôi cũng có các sản phẩm bổ sung canxi, vitamin D và omega-3 dành riêng cho người cao tuổi."
+      },
+      {
+        "question": "Người lớn tuổi nên ăn gì để khỏe mạnh?",
+        "answer": "Người cao tuổi nên ăn thực phẩm giàu dinh dưỡng nhưng dễ tiêu hóa như cá béo (cá hồi, cá thu) giàu omega-3 tốt cho não và tim mạch, rau lá xanh đậm, trái cây tươi đặc biệt là quả mọng giàu chất chống oxy hóa, các loại đậu, sữa và các sản phẩm từ sữa giàu canxi hỗ trợ xương khớp, ngũ cốc nguyên hạt cung cấp chất xơ. Cửa hàng chúng tôi có đầy đủ các sản phẩm này với chất lượng cao, đảm bảo an toàn và phù hợp với người cao tuổi."
+      }
+    ]
+  }
+} 

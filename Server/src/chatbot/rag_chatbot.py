@@ -37,23 +37,13 @@ class RagChatbot:
         # Load FAQ data for direct matching
         self.faq_data = self.load_faq_data()
             
-        # Create QA chain
+        # Create QA chain with optimized prompt
         if self.llm:
-            template = """
-            Bạn là trợ lý ảo của website siêu thị thực phẩm sạch. Hãy trả lời câu hỏi của khách hàng một cách chuyên nghiệp, 
-            thân thiện và hữu ích. Dựa vào thông tin được cung cấp bên dưới để trả lời.
-            Nếu không có thông tin, hãy nói rằng bạn không có thông tin để trả lời và đề nghị khách hàng 
-            liên hệ với bộ phận chăm sóc khách hàng.
-            
-            Thông tin: {context}
-            
-            Câu hỏi: {question}
-            
-            Trả lời:
-            """
+            # Đọc prompt từ file cấu hình nếu có
+            prompt_template = self.load_optimized_prompt()
             
             prompt = PromptTemplate(
-                template=template,
+                template=prompt_template,
                 input_variables=["context", "question"]
             )
             
@@ -63,6 +53,40 @@ class RagChatbot:
                 retriever=self.vector_db.as_retriever(search_kwargs={"k": 3}),
                 chain_type_kwargs={"prompt": prompt}
             )
+    
+    def load_optimized_prompt(self):
+        """Đọc prompt tối ưu từ file cấu hình"""
+        prompt_path = os.path.join(os.path.dirname(__file__), "config", "chatbot_prompt.txt")
+        
+        # Prompt mặc định nếu không tìm thấy file
+        default_prompt = """
+        Bạn là trợ lý ảo của website siêu thị thực phẩm sạch. Hãy trả lời câu hỏi của khách hàng một cách chuyên nghiệp, 
+        thân thiện và hữu ích. Dựa vào thông tin được cung cấp bên dưới để trả lời.
+        Nếu không có thông tin, hãy nói rằng bạn không có thông tin để trả lời và đề nghị khách hàng 
+        liên hệ với bộ phận chăm sóc khách hàng.
+        
+        Thông tin: {context}
+        
+        Câu hỏi: {question}
+        
+        Trả lời:
+        """
+        
+        try:
+            if os.path.exists(prompt_path):
+                with open(prompt_path, "r", encoding="utf-8") as f:
+                    prompt_content = f.read()
+                    
+                # Thêm các biến {context} và {question} vào prompt nếu chưa có
+                if "{context}" not in prompt_content or "{question}" not in prompt_content:
+                    prompt_content += "\n\nThông tin: {context}\n\nCâu hỏi: {question}\n\nTrả lời:"
+                    
+                return prompt_content
+            else:
+                return default_prompt
+        except Exception as e:
+            print(f"Error loading optimized prompt: {str(e)}")
+            return default_prompt
     
     def load_faq_data(self):
         """Load FAQ data for direct matching"""
@@ -75,51 +99,56 @@ class RagChatbot:
             return []
     
     def create_or_load_vector_db(self):
-        """Create or load the vector database with all documents"""
-        # Check if vector database exists
-        if os.path.exists("vector_db"):
-            # Load existing vector database
-            self.vector_db = FAISS.load_local("vector_db", self.embeddings)
+        """Create or load vector database"""
+        db_path = "vector_db"
+        
+        if os.path.exists(db_path):
+            try:
+                self.vector_db = FAISS.load_local(db_path, self.embeddings)
             print("Loaded existing vector database")
-        else:
-            # Create new vector database from documents
+                return
+            except Exception as e:
+                print(f"Error loading vector database: {str(e)}")
+                print("Creating new vector database...")
+        
+        # Create new vector database
             documents = self.prepare_documents()
             
-            # Create text splitter
+        if documents:
+            # Split documents into chunks
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=1000,
-                chunk_overlap=200
+                chunk_overlap=100
             )
-            
-            # Split documents
-            splits = text_splitter.split_documents(documents)
+            texts = text_splitter.split_documents(documents)
             
             # Create vector database
-            self.vector_db = FAISS.from_documents(splits, self.embeddings)
+            self.vector_db = FAISS.from_documents(texts, self.embeddings)
             
             # Save vector database
-            self.vector_db.save_local("vector_db")
+            os.makedirs(db_path, exist_ok=True)
+            self.vector_db.save_local(db_path)
             print("Created and saved new vector database")
+        else:
+            # Create empty vector database
+            self.vector_db = FAISS.from_texts(["Empty database"], self.embeddings)
+            print("Created empty vector database")
     
     def prepare_documents(self) -> List[Document]:
-        """Prepare documents from various sources"""
+        """Prepare documents for vector database"""
         documents = []
         
         # Add FAQ documents
         faq_docs = self.prepare_faq_documents()
+        if faq_docs:
         documents.extend(faq_docs)
+            print(f"Added {len(faq_docs)} FAQ documents")
         
         # Add product documents
         product_docs = self.prepare_product_documents()
+        if product_docs:
         documents.extend(product_docs)
-        
-        # Add policy documents
-        policy_docs = self.prepare_policy_documents()
-        documents.extend(policy_docs)
-        
-        # Add database documents
-        db_docs = self.prepare_db_documents()
-        documents.extend(db_docs)
+            print(f"Added {len(product_docs)} product documents")
         
         return documents
     
@@ -151,174 +180,142 @@ class RagChatbot:
     
     def prepare_product_documents(self) -> List[Document]:
         """Prepare product documents"""
-        # Load product data from json file
-        with open("data/products.json", "r", encoding="utf-8") as f:
-            product_data = json.load(f)
-        
-        # Also try to get product data from database
         try:
-            db_product_data = get_product_data()
-            if db_product_data:
-                product_data.extend(db_product_data)
-        except:
-            pass
-        
-        # Create documents
-        documents = []
-        for product in product_data:
-            content = f"""
-            Tên sản phẩm: {product['name']}
-            Mô tả: {product['description']}
-            Giá: {product['price']} đồng
-            Danh mục: {product['category']}
-            Nguồn gốc: {product.get('origin', 'Việt Nam')}
-            Chứng nhận: {', '.join(product.get('certifications', []))}
-            """
-            doc = Document(
-                page_content=content,
-                metadata={"source": "Product", "category": product["category"]}
-            )
-            documents.append(doc)
-        
-        return documents
-    
-    def prepare_policy_documents(self) -> List[Document]:
-        """Prepare policy documents"""
-        # Load policy data
-        policy_files = [
-            "data/shipping_policy.txt",
-            "data/return_policy.txt",
-            "data/payment_policy.txt",
-            "data/privacy_policy.txt"
-        ]
+            products = get_product_data()
+            
+            if not products:
+                return []
         
         documents = []
-        for file_path in policy_files:
-            if os.path.exists(file_path):
-                with open(file_path, "r", encoding="utf-8") as f:
-                    content = f.read()
+            for product in products:
+                # Create a detailed description of the product
+                content = f"""
+                Tên sản phẩm: {product.get('productName', 'Không có tên')}
+                Danh mục: {product.get('productCategory', 'Không có danh mục')}
+                Giá: {product.get('productPrice', 0)} VND
+                Mô tả: {product.get('productDescription', 'Không có mô tả')}
+                Chi tiết: {product.get('productDetails', 'Không có chi tiết')}
+                Thành phần: {product.get('ingredients', 'Không có thông tin')}
+                Xuất xứ: {product.get('origin', 'Không có thông tin')}
+                Chứng nhận: {product.get('certifications', 'Không có thông tin')}
+                Hướng dẫn sử dụng: {product.get('usageInstructions', 'Không có thông tin')}
+                Bảo quản: {product.get('storage', 'Không có thông tin')}
+                Hạn sử dụng: {product.get('expiryDate', 'Không có thông tin')}
+                Giá trị dinh dưỡng: {product.get('nutritionalValue', 'Không có thông tin')}
+                Phù hợp với: {product.get('suitableFor', 'Mọi người')}
+                """
                 
-                policy_type = os.path.basename(file_path).replace("_policy.txt", "").replace("_", " ").title()
+                # Add special dietary information if available
+                if product.get('isVegan'):
+                    content += "Sản phẩm chay: Có\n"
+                if product.get('isGlutenFree'):
+                    content += "Không chứa gluten: Có\n"
+                if product.get('isOrganic'):
+                    content += "Hữu cơ: Có\n"
+                if product.get('isLowSugar'):
+                    content += "Ít đường: Có\n"
+                if product.get('isLowFat'):
+                    content += "Ít chất béo: Có\n"
+                if product.get('isLowSodium'):
+                    content += "Ít muối: Có\n"
+                if product.get('isHighProtein'):
+                    content += "Giàu protein: Có\n"
                 
                 doc = Document(
                     page_content=content,
-                    metadata={"source": "Policy", "type": policy_type}
+                    metadata={
+                        "source": "Product",
+                        "id": str(product.get('_id', '')),
+                        "name": product.get('productName', ''),
+                        "category": product.get('productCategory', ''),
+                        "price": product.get('productPrice', 0)
+                    }
                 )
                 documents.append(doc)
         
         return documents
-    
-    def prepare_db_documents(self) -> List[Document]:
-        """Prepare documents from database"""
-        documents = []
-        
-        # Try to get order data from database
-        try:
-            order_data = get_order_data()
-            if order_data:
-                for order in order_data:
-                    content = f"""
-                    Mã đơn hàng: {order['order_id']}
-                    Trạng thái: {order['status']}
-                    Tổng tiền: {order['total']} đồng
-                    Phương thức thanh toán: {order['payment_method']}
-                    Phương thức vận chuyển: {order['shipping_method']}
-                    """
-                    doc = Document(
-                        page_content=content,
-                        metadata={"source": "Order", "order_id": order['order_id']}
-                    )
-                    documents.append(doc)
-        except:
-            pass
-        
-        return documents
-    
-    def find_direct_faq_match(self, question: str) -> str:
-        """Find a direct match in FAQ data"""
-        # Normalize the question for comparison
-        normalized_question = question.lower().strip()
-        
-        # Check for exact match
-        for item in self.faq_data:
-            if item['question'].lower().strip() == normalized_question:
-                return item['answer']
-        
-        # Check for substring match
-        for item in self.faq_data:
-            if normalized_question in item['question'].lower() or item['question'].lower() in normalized_question:
-                # Calculate similarity score (basic)
-                similarity = len(set(normalized_question.split()) & set(item['question'].lower().split())) / len(set(normalized_question.split() + item['question'].lower().split()))
-                if similarity > 0.6:  # Threshold for similarity
-                    return item['answer']
-        
-        return ""
-    
-    def get_cooking_recipe(self, dish_name: str) -> str:
-        """Get cooking recipe information using ChatGPT"""
-        if not self.llm:
-            return "Xin lỗi, tôi không thể truy cập được thông tin công thức nấu ăn lúc này."
-            
-        prompt = f"""
-        Bạn là một chuyên gia ẩm thực Việt Nam. Hãy cung cấp thông tin chi tiết về nguyên liệu cần thiết để nấu món {dish_name}.
-        
-        Yêu cầu:
-        1. Liệt kê đầy đủ các nguyên liệu cần thiết
-        2. Phân loại nguyên liệu thành các nhóm: nguyên liệu chính, gia vị, và nguyên liệu phụ (nếu có)
-        3. Ghi rõ số lượng cho mỗi nguyên liệu
-        4. Thêm một vài lưu ý quan trọng khi chọn nguyên liệu
-        5. Định dạng câu trả lời rõ ràng, dễ đọc với các emoji phù hợp
-        
-        Hãy trả lời bằng tiếng Việt và sử dụng định dạng markdown để trình bày đẹp mắt.
-        """
-        
-        try:
-            response = self.llm.predict(prompt)
-            # Thêm thông tin về nguồn dữ liệu
-            response += "\n\n💡 Thông tin được cung cấp bởi chuyên gia ẩm thực AI"
-            # Thêm gợi ý tìm kiếm nguyên liệu
-            response += "\n\n🔍 Bạn có thể gõ \"Tìm các nguyên liệu như trên\" để kiểm tra xem cửa hàng có sẵn những nguyên liệu này không."
-            return response
         except Exception as e:
-            print(f"Error getting cooking recipe: {str(e)}")
-            return "Xin lỗi, có lỗi xảy ra khi tìm thông tin công thức nấu ăn. Vui lòng thử lại sau."
-
-    def get_answer(self, question: str) -> str:
-        # Ưu tiên nhận diện câu hỏi về món ăn trước
-        cooking_keywords = ["nấu", "công thức", "nguyên liệu", "cách làm"]
-        if any(keyword in question.lower() for keyword in cooking_keywords):
-            # Extract dish name from question
-            dish_name = question.lower()
-            for keyword in cooking_keywords:
-                dish_name = dish_name.replace(keyword, "").strip()
-            return self.get_cooking_recipe(dish_name)
+            print(f"Error preparing product documents: {str(e)}")
+            return []
+    
+    def answer_question(self, question: str) -> Dict[str, Any]:
+        """Answer a question using the RAG system"""
+        if not question:
+            return {
+                "answer": "Vui lòng đặt câu hỏi.",
+                "source": "system"
+            }
         
-        # Nếu không phải câu hỏi về món ăn, mới tìm trong FAQ/sản phẩm
-        faq_answer = self.find_direct_faq_match(question)
-        if faq_answer:
-            return faq_answer
-
-        # Nếu không có, dùng QA chain
-        if self.llm:
+        # Check if question is in FAQ data first (direct matching)
+        for item in self.faq_data:
+            if question.lower() in item['question'].lower():
+                return {
+                    "answer": item['answer'],
+                    "source": "FAQ"
+                }
+        
+        # Use RAG system if available
+        if self.llm and self.qa_chain:
             try:
                 result = self.qa_chain({"query": question})
-                return result["result"]
+                return {
+                    "answer": result['result'],
+                    "source": "RAG"
+                }
             except Exception as e:
-                print(f"Error in QA chain: {str(e)}")
-                return self.generate_fallback_response(question)
+                print(f"Error in RAG system: {str(e)}")
+                return {
+                    "answer": "Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau.",
+                    "source": "error"
+                }
         else:
-            return self.generate_fallback_response(question)
+            # Fallback to simple response if no LLM available
+            return {
+                "answer": "Xin lỗi, tôi không thể trả lời câu hỏi này. Vui lòng liên hệ với bộ phận chăm sóc khách hàng để được hỗ trợ.",
+                "source": "fallback"
+            }
     
-    def generate_fallback_response(self, question: str) -> str:
-        """Generate a simple response based on retrieved documents"""
-        docs = self.vector_db.similarity_search(question, k=2)
-        
-        if not docs:
-            return "Xin lỗi, tôi không có thông tin để trả lời câu hỏi của bạn. Vui lòng liên hệ với bộ phận chăm sóc khách hàng qua số điện thoại 1900 1234 để được hỗ trợ."
-        
-        response = "Dựa trên thông tin tôi có:\n\n"
-        for i, doc in enumerate(docs):
-            response += f"{doc.page_content}\n\n"
-        
-        response += "Nếu bạn cần thêm thông tin, vui lòng liên hệ với chúng tôi qua số điện thoại 1900 1234."
-        return response 
+    def update_vector_db(self):
+        """Update vector database with new documents"""
+        try:
+            # Prepare new documents
+            documents = self.prepare_documents()
+            
+            if not documents:
+                return False
+            
+            # Split documents into chunks
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000,
+                chunk_overlap=100
+            )
+            texts = text_splitter.split_documents(documents)
+            
+            # Create new vector database
+            self.vector_db = FAISS.from_documents(texts, self.embeddings)
+            
+            # Save vector database
+            db_path = "vector_db"
+            os.makedirs(db_path, exist_ok=True)
+            self.vector_db.save_local(db_path)
+            
+            # Update QA chain
+            if self.llm:
+                prompt_template = self.load_optimized_prompt()
+                
+                prompt = PromptTemplate(
+                    template=prompt_template,
+                    input_variables=["context", "question"]
+                )
+                
+                self.qa_chain = RetrievalQA.from_chain_type(
+                    llm=self.llm,
+                    chain_type="stuff",
+                    retriever=self.vector_db.as_retriever(search_kwargs={"k": 3}),
+                    chain_type_kwargs={"prompt": prompt}
+                )
+            
+            return True
+        except Exception as e:
+            print(f"Error updating vector database: {str(e)}")
+            return False 

@@ -433,6 +433,23 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         // Lấy dữ liệu từ response
         const responseData = response.data;
         
+        // Handle health products recommendations
+        if (responseData.type === 'healthProducts' && responseData.products && Array.isArray(responseData.products)) {
+          console.log("Health products recommendations:", responseData.products);
+          
+          setTypingMessage({
+            type: 'healthProducts',
+            text: responseData.message || responseData.text || 'Sản phẩm phù hợp với nhu cầu sức khỏe của bạn:',
+            products: responseData.products,
+            title: responseData.title || 'Sản phẩm phù hợp',
+            sender: "bot"
+          });
+          
+          // Cập nhật intent mới nhất
+          setLastIntent('healthProducts');
+          return;
+        }
+        
         // Handle multi-product search results
         if (responseData.type === 'multiProductSearch' && responseData.data && Array.isArray(responseData.data)) {
           console.log("Multi-product search results:", responseData.data);
@@ -574,6 +591,25 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
           handler: () => handlePredefinedQuestion("Phương thức thanh toán")
         }
       ];
+    } else if (lastIntent === 'healthProducts' || lastIntent?.startsWith('health_')) {
+      return [
+        {
+          text: "Thực phẩm cho người tiểu đường",
+          handler: () => handlePredefinedQuestion("Tôi đang bị tiểu đường, nên ăn món ăn gì?")
+        },
+        {
+          text: "Thực phẩm giảm cân",
+          handler: () => handlePredefinedQuestion("Tôi muốn giảm cân, nên ăn gì?")
+        },
+        {
+          text: "Thực phẩm cho người cao huyết áp",
+          handler: () => handlePredefinedQuestion("Tôi bị cao huyết áp, nên ăn gì?")
+        },
+        {
+          text: "Thực phẩm cho mẹ bầu",
+          handler: () => handlePredefinedQuestion("Tôi đang mang thai, nên ăn gì?")
+        }
+      ];
     }
     
     // Trường hợp mặc định
@@ -591,12 +627,8 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         handler: () => handlePredefinedQuestion("Hướng dẫn cách đặt hàng")
       },
       {
-        text: "Nước giặt và nước rửa",
-        handler: () => handlePredefinedQuestion("Nước giặt và nước rửa chén")
-      },
-      {
-        text: "Thịt cá và rau củ",
-        handler: () => handlePredefinedQuestion("Thịt cá và rau củ")
+        text: "Thực phẩm cho sức khỏe",
+        handler: () => handlePredefinedQuestion("Tôi muốn tìm thực phẩm tốt cho sức khỏe")
       }
     ];
   }, [lastIntent, handlePredefinedQuestion]);
@@ -621,6 +653,28 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
             </div>
             <MultiProductSearchResult 
               searchResults={msg.data} 
+              handleProductClick={handleProductClick} 
+              getProductImageUrl={getProductImageUrl} 
+            />
+          </div>
+        </div>
+      );
+    }
+    
+    // Handle health products recommendations
+    if (msg.type === 'healthProducts') {
+      return (
+        <div key={`msg-${index}`} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"} mb-3`}>
+          <div className={`${msg.sender === "user" ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-800"} px-4 py-2 rounded-2xl max-w-[85%]`}>
+            <p className="whitespace-pre-line mb-3">{msg.text}</p>
+            {msg.title && (
+              <div className="text-sm font-medium mb-2">
+                <Tag className="inline mr-1 w-4 h-4" /> {msg.title}
+              </div>
+            )}
+            {/* Sử dụng component ProductList đã được memo hóa */}
+            <ProductList 
+              products={msg.products} 
               handleProductClick={handleProductClick} 
               getProductImageUrl={getProductImageUrl} 
             />
