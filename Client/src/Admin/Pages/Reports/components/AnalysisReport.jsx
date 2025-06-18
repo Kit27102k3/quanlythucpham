@@ -69,7 +69,7 @@ const AnalysisReport = ({ userRole, branchId }) => {
       setError(null);
       
       // Gọi API để lấy dữ liệu phân tích
-      const response = await reportsApi.getAnalysisData({
+      const response = await reportsApi.getAIAnalysisData({
         userRole: userRole,
         startDate: startDate,
         endDate: endDate,

@@ -1803,6 +1803,515 @@ Hãy trình bày phân tích một cách rõ ràng, dễ đọc và có cấu tr
       });
     }
   },
+
+  // Phân tích AI với GPT-4o Mini
+  getAIAnalysis: async (req, res) => {
+    try {
+      console.log("API getAIAnalysis được gọi với query:", req.query);
+      const { userRole, branchId, startDate, endDate } = req.query;
+      
+      // Kiểm tra quyền truy cập
+      if (!userRole) {
+        return res.status(400).json({ 
+          message: "Thiếu thông tin vai trò người dùng",
+          error: "MISSING_USER_ROLE" 
+        });
+      }
+
+      // Nếu là manager, phải có branchId và phải là chi nhánh của họ
+      if (userRole === 'manager' && (!branchId || branchId === 'all')) {
+        return res.status(403).json({ 
+          message: "Quản lý chỉ có thể phân tích chi nhánh của mình",
+          error: "PERMISSION_DENIED" 
+        });
+      }
+
+      // Tạo điều kiện lọc theo ngày nếu có
+      const dateFilter = {};
+      if (startDate && endDate) {
+        dateFilter.createdAt = {
+          $gte: new Date(startDate),
+          $lte: new Date(endDate)
+        };
+        console.log("Lọc dữ liệu theo khoảng thời gian:", startDate, "đến", endDate);
+      } else if (startDate) {
+        dateFilter.createdAt = { $gte: new Date(startDate) };
+        console.log("Lọc dữ liệu từ ngày:", startDate);
+      } else if (endDate) {
+        dateFilter.createdAt = { $lte: new Date(endDate) };
+        console.log("Lọc dữ liệu đến ngày:", endDate);
+      }
+      
+      // Lọc theo chi nhánh nếu có
+      const branchFilter = {};
+      if (branchId && branchId !== 'all') {
+        branchFilter._id = new mongoose.Types.ObjectId(branchId);
+      }
+      
+      // Lấy dữ liệu cần thiết cho phân tích
+      const [
+        orders,
+        products,
+        branches,
+        customers,
+        reviews
+      ] = await Promise.all([
+        // Lấy dữ liệu đơn hàng
+        Order.find({...dateFilter, ...(branchId && branchId !== 'all' ? {branchId: branchId} : {})}).lean(),
+        // Lấy dữ liệu sản phẩm
+        Product.find(branchId && branchId !== 'all' ? {branchId: branchId} : {}).lean(),
+        // Lấy danh sách chi nhánh
+        mongoose.model('Branch').find(branchFilter).lean(),
+        // Lấy dữ liệu khách hàng
+        User.find({role: "customer"}).lean(),
+        // Lấy dữ liệu đánh giá
+        mongoose.model('Review').find({...dateFilter, ...(branchId && branchId !== 'all' ? {branchId: branchId} : {})}).lean()
+      ]);
+
+      console.log("Dữ liệu đã lấy được:");
+      console.log("- orders:", orders.length, "bản ghi");
+      console.log("- products:", products.length, "bản ghi");
+      console.log("- branches:", branches.length, "bản ghi");
+      console.log("- customers:", customers.length, "bản ghi");
+      console.log("- reviews:", reviews.length, "bản ghi");
+      
+      // Tính toán các chỉ số tổng quan
+      const totalRevenue = orders
+        .filter(order => order.status === "completed" || order.status === "delivered")
+        .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+      
+      const totalOrders = orders.length;
+      const completedOrders = orders.filter(order => 
+        order.status === "completed" || order.status === "delivered"
+      ).length;
+      
+      const totalCustomers = customers.length;
+      const activeCustomers = customers.filter(customer => 
+        orders.some(order => 
+          order.userId && order.userId.toString() === customer._id.toString()
+        )
+      ).length;
+      
+      const totalProducts = products.length;
+      
+      // Phân tích chi tiết từng chi nhánh
+      const branchDetails = branches.map(branch => {
+        const branchId = branch._id.toString();
+        
+        // Lọc dữ liệu theo chi nhánh
+        const branchOrders = orders.filter(order => 
+          order.branchId && order.branchId.toString() === branchId
+        );
+        
+        const branchCompletedOrders = branchOrders.filter(order => 
+          order.status === "completed" || order.status === "delivered"
+        );
+        
+        const branchRevenue = branchCompletedOrders.reduce((sum, order) => 
+          sum + (order.totalAmount || 0), 0
+        );
+        
+        const branchProducts = products.filter(product => 
+          product.branchId && product.branchId.toString() === branchId
+        );
+        
+        const branchCustomers = customers.filter(customer => 
+          branchOrders.some(order => 
+            order.userId && order.userId.toString() === customer._id.toString()
+          )
+        );
+        
+        const branchReviews = reviews.filter(review => 
+          review.branchId && review.branchId.toString() === branchId
+        );
+        
+        // Tính toán các chỉ số
+        const returnRate = branchOrders.length > 0 ? 
+          branchOrders.filter(order => order.status === "returned").length / branchOrders.length : 0;
+        
+        const avgDeliveryTime = branchCompletedOrders.length > 0 ?
+          branchCompletedOrders.reduce((sum, order) => {
+            if (order.deliveredAt && order.createdAt) {
+              const deliveryTime = new Date(order.deliveredAt) - new Date(order.createdAt);
+              return sum + (deliveryTime / (1000 * 60 * 60)); // Chuyển đổi thành giờ
+            }
+            return sum;
+          }, 0) / branchCompletedOrders.length : 0;
+        
+        const cancelRate = branchOrders.length > 0 ?
+          branchOrders.filter(order => order.status === "cancelled").length / branchOrders.length : 0;
+        
+        const avgRating = branchReviews.length > 0 ?
+          branchReviews.reduce((sum, review) => sum + (review.rating || 0), 0) / branchReviews.length : 0;
+        
+        // Top sản phẩm bán chạy
+        const productSales = {};
+        branchCompletedOrders.forEach(order => {
+          if (order.items && Array.isArray(order.items)) {
+            order.items.forEach(item => {
+              const productId = item.productId.toString();
+              if (!productSales[productId]) {
+                productSales[productId] = {
+                  quantity: 0,
+                  revenue: 0,
+                  name: ''
+                };
+              }
+              productSales[productId].quantity += (item.quantity || 0);
+              productSales[productId].revenue += ((item.price || 0) * (item.quantity || 0));
+              
+              // Tìm tên sản phẩm
+              const product = branchProducts.find(p => p._id.toString() === productId);
+              if (product) {
+                productSales[productId].name = product.productName || product.name || `Sản phẩm ${productId.substring(0, 5)}`;
+              }
+            });
+          }
+        });
+        
+        const topProducts = Object.values(productSales)
+          .filter(product => product.name)
+          .sort((a, b) => b.revenue - a.revenue)
+          .slice(0, 5);
+        
+        return {
+          id: branchId,
+          name: branch.name || `Chi nhánh ${branchId.substring(0, 5)}`,
+          revenue: branchRevenue,
+          orders: branchOrders.length,
+          completedOrders: branchCompletedOrders.length,
+          customers: branchCustomers.length,
+          products: branchProducts.length,
+          returnRate: returnRate,
+          avgDeliveryTime: avgDeliveryTime,
+          cancelRate: cancelRate,
+          avgRating: avgRating,
+          topProducts: topProducts.map(p => ({
+            name: p.name,
+            sold: p.quantity,
+            revenue: p.revenue
+          }))
+        };
+      });
+      
+      // Lấy API key từ biến môi trường
+      const apiKey = process.env.OPENAI_API_KEY;
+      console.log("API Key OpenAI:", apiKey ? "Có" : "Không có");
+      
+      if (!apiKey) {
+        return res.status(500).json({ 
+          error: "Không tìm thấy API key cho dịch vụ AI. Vui lòng kiểm tra cấu hình server.",
+          message: "Lỗi cấu hình AI",
+          data: { 
+            overview: {
+              totalRevenue,
+              totalOrders,
+              completedOrders,
+              totalCustomers,
+              activeCustomers,
+              totalProducts
+            },
+            branches: branchDetails 
+          }
+        });
+      }
+      
+      // Danh sách các model để thử
+      const models = ["gpt-4o-mini"];
+      let lastError = null;
+      
+      // Xử lý phân tích dựa trên vai trò người dùng và chi nhánh được chọn
+      if (userRole === 'admin' && (!branchId || branchId === 'all')) {
+        // Admin phân tích toàn bộ hệ thống
+        let prompt = `
+Hãy phân tích dữ liệu kinh doanh của chuỗi siêu thị thực phẩm sạch và đưa ra phân tích chi tiết:
+
+1. Thông tin tổng quan:
+- Tổng doanh thu: ${totalRevenue.toLocaleString('vi-VN')}đ
+- Tổng số đơn hàng: ${totalOrders} (Hoàn thành: ${completedOrders})
+- Tổng số khách hàng: ${totalCustomers} (Hoạt động: ${activeCustomers})
+- Tỷ lệ hoàn thành đơn hàng: ${totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(2) : 0}%
+- Tỷ lệ khách hàng hoạt động: ${totalCustomers > 0 ? ((activeCustomers / totalCustomers) * 100).toFixed(2) : 0}%
+
+2. Chi tiết từng chi nhánh:
+${branchDetails.map(branch => `
+Chi nhánh: ${branch.name}
+- Doanh thu: ${branch.revenue.toLocaleString('vi-VN')}đ
+- Số đơn hàng: ${branch.orders} (Hoàn thành: ${branch.completedOrders})
+- Số khách hàng: ${branch.customers}
+- Tỷ lệ hoàn thành đơn hàng: ${branch.orders > 0 ? ((branch.completedOrders / branch.orders) * 100).toFixed(2) : 0}%
+- Tỷ lệ trả hàng: ${(branch.returnRate * 100).toFixed(2)}%
+- Tỷ lệ hủy đơn: ${(branch.cancelRate * 100).toFixed(2)}%
+- Thời gian giao hàng trung bình: ${branch.avgDeliveryTime.toFixed(2)} giờ
+- Đánh giá trung bình: ${branch.avgRating.toFixed(2)}/5
+- Top sản phẩm bán chạy: ${branch.topProducts.map(p => `${p.name} (Đã bán: ${p.sold}, Doanh thu: ${p.revenue.toLocaleString('vi-VN')}đ)`).join(', ')}
+`).join('\n')}
+
+Hãy phân tích chi tiết:
+
+1. Tổng quan tình hình kinh doanh:
+   - Đánh giá hiệu quả kinh doanh tổng thể
+   - Điểm mạnh và điểm yếu chính của chuỗi siêu thị
+   - Xu hướng và cơ hội phát triển
+
+2. Phân tích từng chi nhánh:
+   - Xếp hạng các chi nhánh theo hiệu suất (dựa trên doanh thu, số đơn hàng, khách hàng)
+   - Phân tích chi tiết 3 chi nhánh hoạt động tốt nhất và 3 chi nhánh hoạt động kém nhất
+   - Nguyên nhân dẫn đến sự chênh lệch hiệu suất giữa các chi nhánh
+
+3. Đề xuất chiến lược:
+   - 5 đề xuất cụ thể để cải thiện hiệu quả kinh doanh tổng thể
+   - Chiến lược phát triển cho từng nhóm chi nhánh (hiệu suất cao, trung bình, thấp)
+   - Kế hoạch hành động ngắn hạn (3 tháng) và dài hạn (1 năm)
+
+4. Quản lý chất lượng dịch vụ:
+   - Đánh giá tình trạng giao hàng và đánh giá của khách hàng
+   - Đề xuất giải pháp cải thiện chất lượng dịch vụ
+   - Chiến lược giảm tỷ lệ trả hàng và hủy đơn
+
+Hãy trình bày phân tích một cách rõ ràng, dễ đọc và có cấu trúc. Sử dụng ngôn ngữ đơn giản, chính xác và mang tính xây dựng.`;
+
+        // Gọi API OpenAI
+        for (const model of models) {
+          try {
+            console.log(`Bắt đầu gọi API OpenAI với model ${model}`);
+            const response = await fetch("https://api.openai.com/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+              },
+              body: JSON.stringify({
+                model: model,
+                messages: [
+                  {
+                    role: "system",
+                    content: "Bạn là một chuyên gia phân tích dữ liệu kinh doanh với nhiều năm kinh nghiệm trong lĩnh vực bán lẻ thực phẩm. Hãy đưa ra các phân tích chuyên sâu, chi tiết và đề xuất cụ thể dựa trên dữ liệu."
+                  },
+                  {
+                    role: "user",
+                    content: prompt
+                  }
+                ],
+                temperature: 0.7,
+                max_tokens: 3500
+              })
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`OpenAI API error với model ${model}:`, errorText);
+              lastError = new Error(`OpenAI API error với model ${model}: ${response.status} - ${errorText}`);
+              continue;
+            }
+            
+            const data = await response.json();
+            
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+              console.error(`Invalid API response structure với model ${model}:`, data);
+              lastError = new Error(`Invalid API response structure với model ${model}`);
+              continue;
+            }
+            
+            const analysis = data.choices[0].message.content;
+            console.log(`Độ dài phân tích từ model ${model}:`, analysis.length);
+            
+            // Trả về kết quả phân tích từ OpenAI
+            const responseData = {
+              analysis: analysis,
+              data: { 
+                overview: {
+                  totalRevenue,
+                  totalOrders,
+                  completedOrders,
+                  totalCustomers,
+                  activeCustomers,
+                  totalProducts
+                },
+                branches: branchDetails 
+              }
+            };
+            
+            console.log("Trả về phân tích thành công");
+            return res.json(responseData);
+          } catch (error) {
+            console.error(`Error calling OpenAI API với model ${model}:`, error);
+            lastError = error;
+          }
+        }
+      } else {
+        // Admin chọn một chi nhánh cụ thể hoặc Manager chỉ phân tích chi nhánh của mình
+        const branch = branchDetails.find(b => b.id === branchId);
+        
+        if (!branch) {
+          return res.status(404).json({ 
+            message: "Không tìm thấy chi nhánh",
+            data: { 
+              overview: {
+                totalRevenue,
+                totalOrders,
+                completedOrders,
+                totalCustomers,
+                activeCustomers,
+                totalProducts
+              },
+              branches: branchDetails 
+            }
+          });
+        }
+        
+        // Tạo prompt cho chi nhánh cụ thể
+        let prompt = `
+Hãy phân tích dữ liệu kinh doanh của chi nhánh ${branch.name} và đưa ra phân tích chi tiết:
+
+1. Thông tin chi nhánh:
+- Doanh thu: ${branch.revenue.toLocaleString('vi-VN')}đ
+- Số đơn hàng: ${branch.orders} (Hoàn thành: ${branch.completedOrders})
+- Tỷ lệ hoàn thành đơn hàng: ${branch.orders > 0 ? ((branch.completedOrders / branch.orders) * 100).toFixed(2) : 0}%
+- Số khách hàng: ${branch.customers}
+- Tỷ lệ trả hàng: ${(branch.returnRate * 100).toFixed(2)}%
+- Tỷ lệ hủy đơn: ${(branch.cancelRate * 100).toFixed(2)}%
+- Thời gian giao hàng trung bình: ${branch.avgDeliveryTime.toFixed(2)} giờ
+- Đánh giá trung bình: ${branch.avgRating.toFixed(2)}/5
+- Top sản phẩm bán chạy: ${branch.topProducts.map(p => `${p.name} (Đã bán: ${p.sold}, Doanh thu: ${p.revenue.toLocaleString('vi-VN')}đ)`).join(', ')}
+
+Hãy phân tích chi tiết:
+
+1. Tổng quan hiệu suất chi nhánh:
+   - Đánh giá hiệu quả kinh doanh tổng thể của chi nhánh
+   - Điểm mạnh và điểm yếu chính của chi nhánh
+   - So sánh với mức trung bình của ngành bán lẻ thực phẩm
+
+2. Phân tích chi tiết:
+   - Phân tích doanh thu và đơn hàng
+   - Phân tích chất lượng dịch vụ (thời gian giao hàng, đánh giá khách hàng)
+   - Phân tích hiệu suất sản phẩm (top sản phẩm, sản phẩm tiềm năng)
+
+3. Đề xuất cải thiện:
+   - 5 đề xuất cụ thể để cải thiện hiệu quả kinh doanh của chi nhánh
+   - Chiến lược tăng doanh thu và giảm tỷ lệ trả hàng/hủy đơn
+   - Kế hoạch hành động ngắn hạn (1 tháng) và trung hạn (3 tháng)
+
+4. Quản lý chất lượng dịch vụ:
+   - Đánh giá tình trạng giao hàng và đánh giá của khách hàng
+   - Đề xuất giải pháp cải thiện chất lượng dịch vụ
+   - Chiến lược giảm tỷ lệ trả hàng và hủy đơn
+
+Hãy trình bày phân tích một cách rõ ràng, dễ đọc và có cấu trúc. Sử dụng ngôn ngữ đơn giản, chính xác và mang tính xây dựng.`;
+
+        // Gọi API OpenAI
+        for (const model of models) {
+          try {
+            console.log(`Bắt đầu gọi API OpenAI với model ${model}`);
+            const response = await fetch("https://api.openai.com/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+              },
+              body: JSON.stringify({
+                model: model,
+                messages: [
+                  {
+                    role: "system",
+                    content: "Bạn là một chuyên gia phân tích dữ liệu kinh doanh với nhiều năm kinh nghiệm trong lĩnh vực bán lẻ thực phẩm. Hãy đưa ra các phân tích chuyên sâu, chi tiết và đề xuất cụ thể dựa trên dữ liệu."
+                  },
+                  {
+                    role: "user",
+                    content: prompt
+                  }
+                ],
+                temperature: 0.7,
+                max_tokens: 3000
+              })
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`OpenAI API error với model ${model}:`, errorText);
+              lastError = new Error(`OpenAI API error với model ${model}: ${response.status} - ${errorText}`);
+              continue;
+            }
+            
+            const data = await response.json();
+            
+            if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+              console.error(`Invalid API response structure với model ${model}:`, data);
+              lastError = new Error(`Invalid API response structure với model ${model}`);
+              continue;
+            }
+            
+            const analysis = data.choices[0].message.content;
+            console.log(`Độ dài phân tích từ model ${model}:`, analysis.length);
+            
+            // Trả về kết quả phân tích từ OpenAI
+            const responseData = {
+              analysis: analysis,
+              data: { 
+                branch: branch,
+                overview: {
+                  totalRevenue,
+                  totalOrders,
+                  completedOrders,
+                  totalCustomers,
+                  activeCustomers,
+                  totalProducts
+                }
+              }
+            };
+            
+            console.log("Trả về phân tích thành công");
+            return res.json(responseData);
+          } catch (error) {
+            console.error(`Error calling OpenAI API với model ${model}:`, error);
+            lastError = error;
+          }
+        }
+      }
+      
+      // Nếu tất cả các model đều thất bại
+      if (lastError) {
+        console.error("Tất cả các model đều thất bại:", lastError);
+        return res.status(500).json({ 
+          message: "Không thể kết nối đến dịch vụ AI. Vui lòng thử lại sau.",
+          error: lastError.message,
+          data: { 
+            overview: {
+              totalRevenue,
+              totalOrders,
+              completedOrders,
+              totalCustomers,
+              activeCustomers,
+              totalProducts
+            },
+            branches: branchDetails 
+          }
+        });
+      }
+      
+      // Fallback nếu không có model nào được gọi (không nên xảy ra)
+      return res.status(500).json({ 
+        message: "Lỗi không xác định khi phân tích dữ liệu",
+        data: { 
+          overview: {
+            totalRevenue,
+            totalOrders,
+            completedOrders,
+            totalCustomers,
+            activeCustomers,
+            totalProducts
+          },
+          branches: branchDetails 
+        }
+      });
+    } catch (error) {
+      console.error("Error in getAIAnalysis:", error);
+      res.status(500).json({ 
+        message: "Lỗi khi phân tích dữ liệu",
+        error: error.message
+      });
+    }
+  },
 };
 
 export default reportsController;

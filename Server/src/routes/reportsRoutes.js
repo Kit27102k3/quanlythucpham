@@ -15,6 +15,7 @@ router.get('/admin/activity-logs', reportsController.getSystemActivityData);
 router.get('/orders/delivery-stats', reportsController.getDeliveryData);
 router.get('/reviews/stats', reportsController.getFeedbackData);
 router.get('/analysis', reportsController.getAnalysisData);
+router.get('/ai-analysis', reportsController.getAIAnalysis);
 
 // Edge API endpoints (no authentication required)
 router.get('/reports/dashboard', reportsController.getDashboardStats);
@@ -28,5 +29,6 @@ router.get('/reports/system-activity', reportsController.getSystemActivityData);
 router.get('/reports/delivery', reportsController.getDeliveryData);
 router.get('/reports/feedback', reportsController.getFeedbackData);
 router.get('/reports/analysis', reportsController.getAnalysisData);
+router.get('/reports/ai-analysis', reportsController.getAIAnalysis);
 
 export default router; 

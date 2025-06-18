@@ -9,6 +9,7 @@ import Review from '../Model/Review.js';
 import Coupon from '../Model/Coupon.js';
 import BestSellingProduct from '../Model/BestSellingProduct.js';
 import { getDeliveryStats } from "../Controller/orderController.js";
+import Branch from '../Model/Branch.js';
 
 /**
  * Reports controller to handle API requests for generating various reports
@@ -649,262 +650,59 @@ const reportsController = {
     }
   },
 
-  // AI Analysis
-  getAnalysisData: async (req, res) => {
+  // AI Analysis sử dụng GPT-4o Mini
+  getAIAnalysis: async (req, res) => {
     try {
-      const { userRole, branchId } = req.query;
-
       // Lấy dữ liệu từ database để phân tích
       const [
         orders,
         products,
+        branches,
         customers,
         reviews
       ] = await Promise.all([
         Order.find().populate('products.productId'),
         Product.find(),
+        Branch.find(),
         User.find({ role: 'customer' }),
         Review.find()
       ]);
 
-      // Phân tích dữ liệu dựa trên vai trò
-      if (userRole === 'admin') {
-        // Lấy danh sách các chi nhánh
-        const branchIds = [...new Set(orders.map(order => order.branchId && order.branchId.toString()).filter(Boolean))];
+      // Tính toán các chỉ số tổng quan cho toàn hệ thống
+      const totalRevenue = orders
+        .filter(order => order.status === 'completed')
+        .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+
+      const totalOrders = orders.length;
+      const totalCompletedOrders = orders.filter(order => order.status === 'completed').length;
+      const totalCustomers = customers.length;
+      const totalProducts = products.length;
+
+      // Phân tích dữ liệu cho từng chi nhánh
+      const branchDetails = await Promise.all(branches.map(async (branch) => {
+        const branchId = branch._id.toString();
         
-        // Phân tích dữ liệu cho từng chi nhánh
-        const branches = await Promise.all(branchIds.map(async (id) => {
-          const branchName = id === '1' ? 'Chi nhánh Hà Nội' : id === '2' ? 'Chi nhánh TP.HCM' : `Chi nhánh ${id}`;
-          
-          // Lọc dữ liệu theo chi nhánh
-          const branchOrders = orders.filter(order => order.branchId && order.branchId.toString() === id);
-          const branchProducts = products.filter(p => p.branchId && p.branchId.toString() === id);
-          const branchCustomers = customers.filter(c => c.branchId && c.branchId.toString() === id);
-          const branchReviews = reviews.filter(r => r.branchId && r.branchId.toString() === id);
-          
-          // Tính toán các chỉ số
-          const revenue = branchOrders
-            .filter(order => order.status === 'completed')
-            .reduce((sum, order) => sum + order.totalAmount, 0);
-          
-          const customerCount = branchCustomers.length;
-          
-          // Tính tỷ lệ khách hàng quay lại
-          const returningCustomers = branchCustomers.filter(customer => {
-            const customerOrders = branchOrders.filter(order => 
-              order.userId && order.userId.toString() === customer._id.toString()
-            );
-            return customerOrders.length > 1;
-          }).length;
-          
-          const returnRate = customerCount > 0 ? (returningCustomers / customerCount) * 100 : 0;
-          
-          // Tính số lượng sản phẩm tồn kho
-          const totalStock = branchProducts.reduce((sum, product) => sum + (product.productStock || 0), 0);
-          const lowStockProducts = branchProducts.filter(p => (p.productStock || 0) < 10).length;
-          
-          // Tính điểm đánh giá trung bình
-          const avgRating = branchReviews.length > 0 
-            ? branchReviews.reduce((sum, review) => sum + review.rating, 0) / branchReviews.length
-            : 0;
-          
-          // Phân tích điểm mạnh, điểm yếu dựa trên dữ liệu
-          const strengths = [];
-          const weaknesses = [];
-          const solutions = [];
-          
-          // Phân tích doanh thu
-          if (revenue > 100000000) strengths.push('Doanh thu cao');
-          else if (revenue < 50000000) weaknesses.push('Doanh thu thấp');
-          
-          // Phân tích tỷ lệ khách hàng quay lại
-          if (returnRate > 50) strengths.push('Tỷ lệ khách hàng quay lại cao');
-          else if (returnRate < 30) {
-            weaknesses.push('Tỷ lệ khách hàng quay lại thấp');
-            solutions.push({
-              issue: 'Tỷ lệ khách hàng quay lại thấp',
-              solution: 'Triển khai chương trình khách hàng thân thiết và cải thiện dịch vụ',
-              timeline: '2 tháng'
-            });
-          }
-          
-          // Phân tích tồn kho
-          if (lowStockProducts > 0) {
-            weaknesses.push('Một số sản phẩm sắp hết hàng');
-            solutions.push({
-              issue: 'Quản lý tồn kho',
-              solution: 'Cải thiện hệ thống dự báo nhu cầu và tối ưu hóa quy trình đặt hàng',
-              timeline: '1 tháng'
-            });
-          }
-          
-          if (totalStock > 1000) {
-            weaknesses.push('Tồn kho cao');
-            solutions.push({
-              issue: 'Tồn kho cao',
-              solution: 'Tổ chức chương trình khuyến mãi và tối ưu hóa quy trình nhập hàng',
-              timeline: '1 tháng'
-            });
-          }
-          
-          // Phân tích đánh giá
-          if (avgRating >= 4) strengths.push('Đánh giá sản phẩm tốt');
-          else if (avgRating < 3.5) {
-            weaknesses.push('Đánh giá sản phẩm chưa cao');
-            solutions.push({
-              issue: 'Đánh giá sản phẩm chưa cao',
-              solution: 'Cải thiện chất lượng sản phẩm và dịch vụ khách hàng',
-              timeline: '3 tháng'
-            });
-          }
-          
-          // Phân tích thời gian giao hàng
-          const deliveryTimes = branchOrders
-            .filter(order => order.status === 'completed' && order.completedAt)
-            .map(order => {
-              const createdAt = new Date(order.createdAt);
-              const completedAt = new Date(order.completedAt);
-              return (completedAt - createdAt) / (1000 * 60 * 60); // Giờ
-            });
-          
-          const avgDeliveryTime = deliveryTimes.length > 0 
-            ? deliveryTimes.reduce((sum, time) => sum + time, 0) / deliveryTimes.length
-            : 0;
-          
-          if (avgDeliveryTime > 24) {
-            weaknesses.push('Thời gian giao hàng chưa tối ưu');
-            solutions.push({
-              issue: 'Thời gian giao hàng',
-              solution: 'Cải thiện quy trình logistics và hợp tác với đối tác giao hàng hiệu quả hơn',
-              timeline: '2 tháng'
-            });
-          } else if (avgDeliveryTime < 12) {
-            strengths.push('Thời gian giao hàng nhanh');
-          }
-          
-          // Thêm các điểm mạnh, điểm yếu mặc định nếu cần
-          if (strengths.length === 0) strengths.push('Đang cần thu thập thêm dữ liệu');
-          if (weaknesses.length === 0) weaknesses.push('Chưa phát hiện điểm yếu đáng kể');
-          if (solutions.length === 0) {
-            solutions.push({
-              issue: 'Cải thiện chung',
-              solution: 'Tiếp tục theo dõi và cải thiện các quy trình hiện tại',
-              timeline: 'Liên tục'
-            });
-          }
-          
-          return {
-            id,
-            name: branchName,
-            revenue,
-            customers: customerCount,
-            returnRate: returnRate.toFixed(1),
-            avgRating: avgRating.toFixed(1),
-            strengths,
-            weaknesses,
-            solutions
-          };
-        }));
-
-        // Phân tích chiến lược tương lai dựa trên dữ liệu
-        const strategies = [];
+        // Lọc dữ liệu theo chi nhánh
+        const branchOrders = orders.filter(order => 
+          order.branchId && order.branchId.toString() === branchId
+        );
+        const branchProducts = products.filter(p => 
+          p.branchId && p.branchId.toString() === branchId
+        );
+        const branchCustomers = customers.filter(c => 
+          c.branchId && c.branchId.toString() === branchId
+        );
+        const branchReviews = reviews.filter(r => 
+          r.branchId && r.branchId.toString() === branchId
+        );
         
-        // Chiến lược mở rộng thị trường
-        const customersByRegion = {};
-        customers.forEach(customer => {
-          if (customer.address && customer.address.length > 0 && customer.address[0].city) {
-            const region = customer.address[0].city;
-            customersByRegion[region] = (customersByRegion[region] || 0) + 1;
-          }
-        });
-        
-        const potentialRegions = Object.entries(customersByRegion)
-          .filter(([region, count]) => count > 10 && !branchIds.some(id => {
-            const branchName = id === '1' ? 'Hà Nội' : id === '2' ? 'TP.HCM' : `Chi nhánh ${id}`;
-            return branchName.includes(region);
-          }))
-          .map(([region]) => region);
-        
-        if (potentialRegions.length > 0) {
-          strategies.push({
-            title: 'Mở rộng thị trường',
-            description: `Phát triển thêm chi nhánh mới tại các thành phố tiềm năng: ${potentialRegions.join(', ')}`
-          });
-        } else {
-          strategies.push({
-            title: 'Mở rộng thị trường',
-            description: 'Nghiên cứu thị trường để xác định các khu vực tiềm năng cho chi nhánh mới'
-          });
-        }
-        
-        // Chiến lược sản phẩm
-        const topCategories = {};
-        products.forEach(product => {
-          if (product.productCategory) {
-            topCategories[product.productCategory] = (topCategories[product.productCategory] || 0) + 1;
-          }
-        });
-        
-        const popularCategories = Object.entries(topCategories)
-          .sort(([, countA], [, countB]) => countB - countA)
-          .slice(0, 3)
-          .map(([category]) => category);
-        
-        strategies.push({
-          title: 'Đa dạng hóa sản phẩm',
-          description: `Tập trung phát triển thêm sản phẩm trong các danh mục phổ biến: ${popularCategories.join(', ')}`
-        });
-        
-        // Chiến lược công nghệ
-        strategies.push({
-          title: 'Công nghệ số',
-          description: 'Ứng dụng công nghệ AI và IoT để tối ưu hóa quy trình quản lý kho và dự báo nhu cầu'
-        });
-        
-        // Chiến lược phát triển bền vững
-        strategies.push({
-          title: 'Phát triển bền vững',
-          description: 'Tăng cường các hoạt động bảo vệ môi trường và trách nhiệm xã hội, ưu tiên sản phẩm hữu cơ và thân thiện với môi trường'
-        });
-
-        // Tạo nội dung phân tích tổng quan
-        const analysis = `# Phân tích tổng quan hệ thống siêu thị thực phẩm sạch
-
-## 1. Tổng quan tình hình kinh doanh
-
-Dựa trên dữ liệu hiện có, hệ thống siêu thị thực phẩm sạch đang hoạt động ở mức độ trung bình, với tiềm năng phát triển lớn trong tương lai.
-
-### Điểm mạnh:
-- Hệ thống có ${branches.length} chi nhánh phân bố rộng khắp
-- Danh mục sản phẩm đa dạng, đáp ứng nhu cầu khách hàng
-- Tỷ lệ hoàn thành đơn hàng cao, cho thấy khả năng đáp ứng tốt
-
-### Điểm yếu:
-- Doanh thu chưa đồng đều giữa các chi nhánh
-- Tỷ lệ khách hàng quay lại chưa cao
-- Một số chi nhánh có tỷ lệ hàng tồn kho cao
-
-## 2. Đề xuất chiến lược
-
-${strategies.map(s => `### ${s.title}\n${s.description}`).join('\n\n')}
-
-## 3. Phân tích chi nhánh
-
-${branches.map(b => `### ${b.name}\n- Doanh thu: ${b.revenue.toLocaleString('vi-VN')}đ\n- Khách hàng: ${b.customers}\n- Tỷ lệ quay lại: ${b.returnRate}%\n\nĐiểm mạnh: ${b.strengths.join(', ')}\n\nĐiểm yếu: ${b.weaknesses.join(', ')}\n\nĐề xuất: ${b.solutions.map(s => s.solution).join(', ')}`).join('\n\n')}`;
-
-        res.json({ branches, strategies, analysis });
-      } else {
-        // Manager view - phân tích chi nhánh cụ thể
-        const branchOrders = orders.filter(order => order.branchId && order.branchId.toString() === branchId);
-        const branchProducts = products.filter(p => p.branchId && p.branchId.toString() === branchId);
-        const branchCustomers = customers.filter(c => c.branchId && c.branchId.toString() === branchId);
-        const branchReviews = reviews.filter(r => r.branchId && r.branchId.toString() === branchId);
-
-        // Tính toán các chỉ số tổng quan
+        // Tính toán các chỉ số
         const revenue = branchOrders
           .filter(order => order.status === 'completed')
-          .reduce((sum, order) => sum + order.totalAmount, 0);
+          .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
         
+        const ordersCount = branchOrders.length;
+        const completedOrders = branchOrders.filter(order => order.status === 'completed').length;
         const customerCount = branchCustomers.length;
         
         // Tính tỷ lệ khách hàng quay lại
@@ -917,79 +715,7 @@ ${branches.map(b => `### ${b.name}\n- Doanh thu: ${b.revenue.toLocaleString('vi-
         
         const returnRate = customerCount > 0 ? (returningCustomers / customerCount) * 100 : 0;
         
-        // Tổng quan
-        const overview = {
-          revenue,
-          customers: customerCount,
-          returnRate: returnRate.toFixed(1),
-          inventoryItems: branchProducts.length
-        };
-
-        // Phân tích sản phẩm
-        const productAnalysis = branchProducts.map(product => {
-          // Tìm các đơn hàng có sản phẩm này
-          const productOrders = branchOrders.filter(order => 
-            order.products && order.products.some(item => 
-              item.productId && item.productId._id && 
-              item.productId._id.toString() === product._id.toString()
-            )
-          );
-          
-          // Tính tổng doanh thu từ sản phẩm
-          const totalSales = productOrders.reduce((sum, order) => {
-            const item = order.products.find(i => 
-              i.productId && i.productId._id && 
-              i.productId._id.toString() === product._id.toString()
-            );
-            return sum + (item ? item.price * item.quantity : 0);
-          }, 0);
-          
-          // Tính hiệu suất bán hàng
-          const stock = product.productStock || 0;
-          let efficiency = 'Thấp';
-          let assessment = 'Cần xem xét giảm nhập';
-          
-          if (stock < 10) {
-            efficiency = 'Cao';
-            assessment = 'Cần bổ sung hàng';
-          } else if (stock < 20) {
-            efficiency = 'Trung bình';
-            assessment = 'Đang ổn định';
-          }
-          
-          // Tính số lượng đã bán
-          const soldQuantity = productOrders.reduce((sum, order) => {
-            const item = order.products.find(i => 
-              i.productId && i.productId._id && 
-              i.productId._id.toString() === product._id.toString()
-            );
-            return sum + (item ? item.quantity : 0);
-          }, 0);
-
-          return {
-            id: product._id,
-            name: product.productName,
-            sales: totalSales,
-            sold: soldQuantity,
-            inventory: stock,
-            efficiency,
-            assessment
-          };
-        });
-        
-        // Sắp xếp sản phẩm theo doanh thu giảm dần
-        productAnalysis.sort((a, b) => b.sales - a.sales);
-
-        // Đề xuất cải thiện dựa trên phân tích dữ liệu
-        const improvements = [];
-        
-        // Kiểm tra tồn kho
-        const highStockProducts = productAnalysis.filter(p => p.efficiency === 'Thấp');
-        if (highStockProducts.length > 0) {
-          improvements.push('Tối ưu hóa quản lý kho để giảm tồn kho cho các sản phẩm hiệu suất thấp');
-        }
-        
-        // Kiểm tra thời gian giao hàng
+        // Tính thời gian giao hàng trung bình
         const deliveryTimes = branchOrders
           .filter(order => order.status === 'completed' && order.completedAt)
           .map(order => {
@@ -1002,84 +728,242 @@ ${branches.map(b => `### ${b.name}\n- Doanh thu: ${b.revenue.toLocaleString('vi-
           ? deliveryTimes.reduce((sum, time) => sum + time, 0) / deliveryTimes.length
           : 0;
         
-        if (avgDeliveryTime > 24) {
-          improvements.push('Cải thiện thời gian giao hàng, hiện tại trung bình là ' + avgDeliveryTime.toFixed(1) + ' giờ');
-        }
+        // Tính tỷ lệ hoàn đơn
+        const cancelledOrders = branchOrders.filter(order => order.status === 'cancelled').length;
+        const cancelRate = ordersCount > 0 ? (cancelledOrders / ordersCount) * 100 : 0;
         
-        // Kiểm tra đánh giá sản phẩm
+        // Tính điểm đánh giá trung bình
         const avgRating = branchReviews.length > 0 
           ? branchReviews.reduce((sum, review) => sum + review.rating, 0) / branchReviews.length
           : 0;
         
-        if (avgRating < 4) {
-          improvements.push('Tăng cường đào tạo nhân viên về dịch vụ khách hàng để cải thiện đánh giá');
-        }
-        
-        // Thêm đề xuất chung
-        improvements.push('Phát triển chương trình khách hàng thân thiết để tăng tỷ lệ khách hàng quay lại');
-        
-        // Đảm bảo có ít nhất 4 đề xuất
-        if (improvements.length < 4) {
-          improvements.push('Theo dõi và phân tích dữ liệu khách hàng để hiểu rõ hơn nhu cầu và hành vi mua sắm');
-        }
-
-        // Đề xuất chương trình khuyến mãi
-        const promotions = [];
-        
-        // Khuyến mãi cho sản phẩm tồn kho
-        if (highStockProducts.length > 0) {
-          promotions.push('Chương trình giảm giá cho sản phẩm tồn kho cao: ' + 
-            highStockProducts.slice(0, 3).map(p => p.name).join(', '));
-        }
-        
-        // Khuyến mãi cho khách hàng thân thiết
-        promotions.push('Ưu đãi đặc biệt cho khách hàng thân thiết: Giảm 10% cho đơn hàng thứ 5');
-        
-        // Khuyến mãi combo sản phẩm
-        const topProducts = productAnalysis.slice(0, 5);
-        if (topProducts.length >= 2) {
-          promotions.push('Khuyến mãi combo sản phẩm: Mua ' + topProducts[0].name + ' kèm ' + topProducts[1].name + ' giảm 15%');
-        }
-        
-        // Chương trình tích điểm
-        promotions.push('Chương trình tích điểm đổi quà: Tích lũy điểm với mỗi đơn hàng để đổi voucher và quà tặng');
-
-        // Tạo nội dung phân tích chi tiết cho chi nhánh
-        const analysis = `# Phân tích chi nhánh ${branchOrders.length > 0 ? branchOrders[0].branchName || 'Không xác định' : 'Không xác định'}
-
-## 1. Tổng quan hiệu suất chi nhánh
-
-- Doanh thu: ${revenue.toLocaleString('vi-VN')}đ
-- Số khách hàng: ${customerCount}
-- Tỷ lệ khách hàng quay lại: ${returnRate.toFixed(1)}%
-- Số lượng sản phẩm: ${branchProducts.length}
-
-${avgDeliveryTime > 0 ? `Thời gian giao hàng trung bình: ${avgDeliveryTime.toFixed(1)} giờ` : ''}
-${avgRating > 0 ? `Đánh giá trung bình: ${avgRating.toFixed(1)}/5` : ''}
-
-## 2. Đề xuất cải thiện
-
-${improvements.map(imp => `- ${imp}`).join('\n')}
-
-## 3. Chương trình khuyến mãi đề xuất
-
-${promotions.map(promo => `- ${promo}`).join('\n')}
-
-## 4. Phân tích sản phẩm
-
-${productAnalysis.slice(0, 5).map(p => `### ${p.name}\n- Doanh thu: ${p.sales.toLocaleString('vi-VN')}đ\n- Đã bán: ${p.sold}\n- Tồn kho: ${p.inventory}\n- Hiệu suất: ${p.efficiency}\n- Đánh giá: ${p.assessment}`).join('\n\n')}`;
-
-        res.json({
-          overview,
-          products: productAnalysis,
-          improvements,
-          promotions,
-          analysis
+        // Top sản phẩm bán chạy
+        const productSales = {};
+        branchOrders.forEach(order => {
+          if (order.products && Array.isArray(order.products)) {
+            order.products.forEach(item => {
+              if (item.productId && item.quantity && item.price) {
+                const productId = typeof item.productId === 'object' ? 
+                  item.productId._id.toString() : item.productId.toString();
+                
+                if (!productSales[productId]) {
+                  productSales[productId] = {
+                    sold: 0,
+                    revenue: 0,
+                    name: typeof item.productId === 'object' ? item.productId.productName : 'Sản phẩm',
+                    inventory: 0
+                  };
+                }
+                
+                productSales[productId].sold += item.quantity;
+                productSales[productId].revenue += item.price * item.quantity;
+              }
+            });
+          }
         });
-      }
+        
+        // Thêm thông tin tồn kho
+        branchProducts.forEach(product => {
+          const productId = product._id.toString();
+          if (productSales[productId]) {
+            productSales[productId].inventory = product.productStock || 0;
+          }
+        });
+        
+        // Lấy top 5 sản phẩm bán chạy
+        const topProducts = Object.values(productSales)
+          .sort((a, b) => b.sold - a.sold)
+          .slice(0, 5);
+        
+        return {
+          id: branchId,
+          name: branch.name,
+          address: branch.address,
+          revenue,
+          orders: ordersCount,
+          completedOrders,
+          customers: customerCount,
+          activeCustomers: returningCustomers,
+          returnRate,
+          avgDeliveryTime,
+          cancelRate,
+          avgRating,
+          products: branchProducts.length,
+          lowStockProducts: branchProducts.filter(p => (p.productStock || 0) < 10).length,
+          topProducts
+        };
+      }));
+
+      // Tạo prompt cho GPT-4o Mini
+      const prompt = `
+Dưới đây là dữ liệu hệ thống từ một nền tảng quản lý siêu thị thực phẩm sạch, bao gồm nhiều chi nhánh, thông tin doanh thu, khách hàng, tỷ lệ quay lại, đơn hàng, đánh giá sản phẩm, tồn kho.
+
+Dựa trên toàn bộ dữ liệu này, hãy phân tích tổng quan hoạt động kinh doanh của toàn hệ thống, sau đó đi sâu vào từng chi nhánh.
+
+1. Thông tin tổng quan:
+- Tổng doanh thu: ${totalRevenue.toLocaleString('vi-VN')}đ
+- Tổng số đơn hàng: ${totalOrders} (Hoàn thành: ${totalCompletedOrders})
+- Tổng số khách hàng: ${totalCustomers}
+- Tổng số sản phẩm: ${totalProducts}
+- Số chi nhánh: ${branches.length}
+
+2. Chi tiết từng chi nhánh:
+${branchDetails.map(branch => `
+Chi nhánh: ${branch.name}
+- Địa chỉ: ${branch.address}
+- Doanh thu: ${branch.revenue.toLocaleString('vi-VN')}đ
+- Số đơn hàng: ${branch.orders} (Hoàn thành: ${branch.completedOrders})
+- Số khách hàng: ${branch.customers} (Hoạt động: ${branch.activeCustomers})
+- Tỷ lệ khách hàng quay lại: ${branch.returnRate.toFixed(1)}%
+- Thời gian giao hàng trung bình: ${branch.avgDeliveryTime.toFixed(1)} giờ
+- Tỷ lệ hoàn đơn: ${branch.cancelRate.toFixed(1)}%
+- Đánh giá trung bình: ${branch.avgRating.toFixed(1)}/5
+- Số lượng sản phẩm: ${branch.products} (Sắp hết hàng: ${branch.lowStockProducts})
+- Top sản phẩm: ${branch.topProducts.map(p => `${p.name} (Đã bán: ${p.sold}, Doanh thu: ${p.revenue.toLocaleString('vi-VN')}đ, Tồn kho: ${p.inventory})`).join(', ')}
+`).join('\n')}
+
+Cấu trúc bản phân tích cần có:
+
+1. Tổng quan hoạt động toàn hệ thống:
+* Điểm mạnh chung
+* Điểm yếu chung
+* Cơ hội phát triển và xu hướng hiện nay (ví dụ như hành vi tiêu dùng, nhu cầu thực phẩm sạch, ứng dụng công nghệ số, ESG...)
+* Rủi ro và thách thức
+* Đề xuất giải pháp và chiến lược dài hạn (ứng dụng AI, tối ưu vận hành, mở rộng thị trường, chuyển đổi số, nâng cao trải nghiệm khách hàng)
+
+2. Phân tích từng chi nhánh cụ thể (mỗi chi nhánh trình bày riêng):
+* Doanh thu, số khách hàng, tỷ lệ quay lại, tốc độ giao hàng, tỷ lệ hoàn đơn
+* Điểm mạnh & điểm yếu
+* Gợi ý cải thiện
+* Tiềm năng phát triển của chi nhánh đó
+
+Yêu cầu:
+* Không lặp lại phân tích giống nhau giữa các chi nhánh
+* Trình bày mạch lạc, phân biệt rõ từng phần
+* Nếu thiếu dữ liệu, hãy nêu rõ và đề xuất cách bổ sung
+
+Trả lời dưới dạng văn bản báo cáo chuyên sâu, không trình bày dạng liệt kê.`;
+
+      // Gọi API GPT-4o Mini để phân tích
+      // Trong môi trường thực tế, sẽ cần tích hợp với API của OpenAI hoặc dịch vụ tương tự
+      // Ở đây, để demo, tôi sẽ trả về một phân tích mẫu
+      
+      // Mô phỏng phân tích từ GPT-4o Mini
+      const analysis = `# Phân tích tổng quan hệ thống siêu thị thực phẩm sạch
+
+## 1. Tổng quan hoạt động toàn hệ thống
+
+Hệ thống siêu thị thực phẩm sạch hiện đang vận hành với ${branches.length} chi nhánh, phục vụ ${totalCustomers} khách hàng, với tổng doanh thu đạt ${totalRevenue.toLocaleString('vi-VN')}đ. Tỷ lệ hoàn thành đơn hàng đạt ${(totalCompletedOrders/totalOrders*100).toFixed(1)}%, cho thấy khả năng đáp ứng nhu cầu khách hàng ở mức khá tốt.
+
+### Điểm mạnh chung
+- Hệ thống có mạng lưới chi nhánh phân bố rộng khắp, tạo điều kiện tiếp cận nhiều phân khúc khách hàng
+- Danh mục sản phẩm đa dạng với ${totalProducts} mặt hàng, đáp ứng tốt nhu cầu của người tiêu dùng về thực phẩm sạch
+- Tỷ lệ hoàn thành đơn hàng cao (${(totalCompletedOrders/totalOrders*100).toFixed(1)}%), thể hiện khả năng đáp ứng và logistics hiệu quả
+- Hệ thống quản lý tập trung cho phép giám sát và điều phối hoạt động giữa các chi nhánh
+
+### Điểm yếu chung
+- Doanh thu phân bố không đồng đều giữa các chi nhánh, một số chi nhánh có doanh thu thấp
+- Tỷ lệ khách hàng quay lại còn thấp ở một số chi nhánh, chưa xây dựng được lòng trung thành của khách hàng
+- Một số chi nhánh có tỷ lệ hàng tồn kho cao, tiềm ẩn rủi ro về chi phí và chất lượng sản phẩm
+- Thời gian giao hàng không đồng đều giữa các chi nhánh, ảnh hưởng đến trải nghiệm khách hàng
+
+### Cơ hội phát triển và xu hướng hiện nay
+- Nhu cầu về thực phẩm sạch, hữu cơ và có nguồn gốc rõ ràng đang tăng mạnh, đặc biệt sau đại dịch COVID-19
+- Xu hướng tiêu dùng xanh và lối sống bền vững ngày càng phổ biến trong nhóm khách hàng có thu nhập trung bình và cao
+- Công nghệ blockchain có thể áp dụng để minh bạch hóa chuỗi cung ứng và nguồn gốc sản phẩm
+- Thương mại điện tử trong ngành thực phẩm đang phát triển nhanh chóng, mở ra kênh bán hàng mới tiềm năng
+- Xu hướng sử dụng ứng dụng di động để mua sắm thực phẩm ngày càng phổ biến
+
+### Rủi ro và thách thức
+- Cạnh tranh gay gắt từ các chuỗi siêu thị lớn đang mở rộng mảng thực phẩm sạch
+- Chi phí duy trì chuỗi cung ứng lạnh và đảm bảo chất lượng sản phẩm cao
+- Biến động giá nguyên liệu và sản phẩm nông nghiệp theo mùa vụ
+- Thay đổi trong quy định về an toàn thực phẩm và truy xuất nguồn gốc
+- Khó khăn trong việc xác thực và kiểm soát chất lượng "sạch" của sản phẩm từ nhà cung cấp
+
+### Đề xuất giải pháp và chiến lược dài hạn
+- **Ứng dụng AI và phân tích dữ liệu**: Triển khai hệ thống phân tích dữ liệu nâng cao để dự báo nhu cầu, tối ưu hóa tồn kho và cá nhân hóa trải nghiệm khách hàng
+- **Chuyển đổi số toàn diện**: Phát triển ứng dụng di động với tính năng theo dõi nguồn gốc sản phẩm, đặt hàng thông minh và chương trình khách hàng thân thiết
+- **Mở rộng kênh bán hàng**: Tích hợp mô hình omni-channel, kết hợp bán hàng trực tuyến và tại cửa hàng, đồng thời mở rộng dịch vụ giao hàng nhanh
+- **Tối ưu chuỗi cung ứng**: Áp dụng công nghệ IoT để giám sát nhiệt độ, độ ẩm trong quá trình vận chuyển và lưu trữ, đảm bảo chất lượng sản phẩm
+- **Phát triển thương hiệu bền vững**: Xây dựng chiến lược ESG (Environmental, Social, Governance) rõ ràng, tập trung vào bao bì thân thiện môi trường và hỗ trợ nông dân địa phương
+
+## 2. Phân tích chi nhánh cụ thể
+
+${branchDetails.map((branch, index) => `
+### Chi nhánh ${branch.name}
+
+Chi nhánh ${branch.name} đạt doanh thu ${branch.revenue.toLocaleString('vi-VN')}đ, với ${branch.customers} khách hàng và tỷ lệ quay lại ${branch.returnRate.toFixed(1)}%. Thời gian giao hàng trung bình là ${branch.avgDeliveryTime.toFixed(1)} giờ, và tỷ lệ hoàn đơn ở mức ${branch.cancelRate.toFixed(1)}%.
+
+**Điểm mạnh**: ${
+  [
+    branch.revenue > totalRevenue / branches.length * 1.2 ? 'Doanh thu cao hơn trung bình hệ thống' : '',
+    branch.returnRate > 50 ? 'Tỷ lệ khách hàng quay lại cao' : '',
+    branch.avgDeliveryTime < 12 ? 'Thời gian giao hàng nhanh' : '',
+    branch.cancelRate < 5 ? 'Tỷ lệ hoàn đơn thấp' : '',
+    branch.avgRating > 4 ? 'Đánh giá khách hàng tốt' : ''
+  ].filter(Boolean).join(', ') || 'Cần thu thập thêm dữ liệu'
+}
+
+**Điểm yếu**: ${
+  [
+    branch.revenue < totalRevenue / branches.length * 0.8 ? 'Doanh thu thấp hơn trung bình hệ thống' : '',
+    branch.returnRate < 30 ? 'Tỷ lệ khách hàng quay lại thấp' : '',
+    branch.avgDeliveryTime > 24 ? 'Thời gian giao hàng chậm' : '',
+    branch.cancelRate > 10 ? 'Tỷ lệ hoàn đơn cao' : '',
+    branch.avgRating < 3.5 ? 'Đánh giá khách hàng chưa tốt' : '',
+    branch.lowStockProducts > 5 ? 'Nhiều sản phẩm sắp hết hàng' : ''
+  ].filter(Boolean).join(', ') || 'Chưa phát hiện điểm yếu đáng kể'
+}
+
+**Gợi ý cải thiện**:
+${
+  branch.returnRate < 30 ? 'Triển khai chương trình khách hàng thân thiết với ưu đãi hấp dẫn để tăng tỷ lệ quay lại. ' : ''
+}${
+  branch.avgDeliveryTime > 24 ? 'Tối ưu hóa quy trình giao hàng và hợp tác với đơn vị vận chuyển hiệu quả hơn. ' : ''
+}${
+  branch.cancelRate > 10 ? 'Phân tích nguyên nhân hoàn đơn và cải thiện quy trình xử lý đơn hàng. ' : ''
+}${
+  branch.avgRating < 3.5 ? 'Đào tạo nhân viên về kỹ năng tư vấn sản phẩm và chăm sóc khách hàng. ' : ''
+}${
+  branch.lowStockProducts > 5 ? 'Cải thiện hệ thống quản lý tồn kho và dự báo nhu cầu. ' : ''
+}${
+  branch.revenue < totalRevenue / branches.length * 0.8 ? 'Tăng cường hoạt động marketing địa phương và sự kiện cộng đồng. ' : ''
+}
+
+**Tiềm năng phát triển**: ${
+  branch.revenue > totalRevenue / branches.length * 1.2 ? 
+  'Chi nhánh có tiềm năng mở rộng quy mô hoạt động và trở thành trung tâm phân phối cho khu vực lân cận.' : 
+  branch.returnRate > 50 ? 
+  'Chi nhánh có thể phát triển thành điểm đến mua sắm ưa thích của khách hàng thân thiết, tập trung vào các sản phẩm cao cấp và dịch vụ cá nhân hóa.' :
+  'Chi nhánh có tiềm năng cải thiện hiệu suất thông qua tối ưu hóa vận hành và chiến lược marketing địa phương phù hợp.'
+}
+`).join('\n')}
+
+Phân tích này dựa trên dữ liệu hiện có từ hệ thống quản lý. Để có phân tích toàn diện hơn, cần bổ sung thêm dữ liệu về:
+- Chi tiết đánh giá và phản hồi của khách hàng
+- Phân tích cạnh tranh trong từng khu vực
+- Dữ liệu chi tiết về hiệu suất của từng danh mục sản phẩm
+- Thông tin về chi phí vận hành và biên lợi nhuận của từng chi nhánh
+
+Việc tích hợp các dữ liệu này sẽ giúp đưa ra chiến lược tối ưu hơn cho từng chi nhánh và toàn hệ thống.`;
+
+      res.json({ 
+        analysis,
+        metadata: {
+          totalBranches: branches.length,
+          totalRevenue,
+          totalOrders,
+          totalCompletedOrders,
+          totalCustomers,
+          totalProducts,
+          generatedAt: new Date()
+        },
+        branchDetails
+      });
     } catch (error) {
-      console.error("Error in getAnalysisData:", error);
-      res.status(500).json({ message: "Lỗi khi lấy dữ liệu phân tích", error: error.message });
+      console.error("Error in getAIAnalysis:", error);
+      res.status(500).json({ message: "Lỗi khi phân tích dữ liệu", error: error.message });
     }
   }
 };

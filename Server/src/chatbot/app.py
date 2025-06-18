@@ -13,6 +13,30 @@ from dotenv import load_dotenv
 from db_connector import get_product_data
 from flask_cors import CORS
 
+# Thêm đường dẫn hiện tại vào sys.path để có thể import các module local
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.append(parent_dir)
+
+# Debug thông tin về đường dẫn và module
+print(f"Đường dẫn hiện tại: {os.getcwd()}")
+print(f"Đường dẫn file app.py: {current_dir}")
+print(f"sys.path: {sys.path}")
+print(f"Kiểm tra thư mục handlers: {os.path.exists(os.path.join(current_dir, 'handlers'))}")
+print(f"Kiểm tra file semanticSearchHandler.py: {os.path.exists(os.path.join(current_dir, 'handlers', 'semanticSearchHandler.py'))}")
+
+# Thử import handlers
+try:
+    from handlers.semanticSearchHandler import semanticSearch, semantic_search_products
+    print("Import semanticSearchHandler thành công!")
+except ImportError as e:
+    print(f"Lỗi khi import semanticSearchHandler: {e}")
+    semanticSearch = None
+    semantic_search_products = None
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -23,6 +47,9 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Lưu trữ câu trả lời cuối cùng cho mỗi phiên
 last_responses = {}
+
+# Lưu trữ ngữ cảnh người dùng
+user_contexts = {}
 
 @app.route('/api/chatbot/ask', methods=['POST'])
 def ask():
@@ -709,8 +736,17 @@ def check_ingredient_availability(ingredients):
     return result
 
 def format_price(price):
-    """Format price with commas and VND"""
-    return f"{price:,} VND"
+    """
+    Định dạng giá tiền với dấu phân cách hàng nghìn
+    """
+    try:
+        # Chuyển đổi giá thành số nguyên
+        price_int = int(price)
+        # Định dạng với dấu phân cách hàng nghìn
+        return "{:,}".format(price_int).replace(",", ".")
+    except (ValueError, TypeError):
+        # Nếu không thể chuyển đổi, trả về giá gốc
+        return str(price)
 
 def suggest_alternative_products(ingredient):
     """Gợi ý các sản phẩm thay thế khi không tìm thấy nguyên liệu"""
@@ -867,6 +903,677 @@ def suggest_alternative_products(ingredient):
     
     # Giới hạn số lượng gợi ý
     return unique_alternatives[:3]
+
+def process_message(message, userId):
+    """
+    Xử lý tin nhắn từ người dùng
+    """
+    try:
+        log_debug("Xử lý tin nhắn từ người dùng", userId, message)
+        
+        # Kiểm tra từ khóa liên quan đến trái cây ít đường
+        fruit_keywords = ["trái cây", "hoa quả", "quả", "trái"]
+        low_sugar_keywords = ["ít đường", "đường thấp", "không đường", "ăn kiêng", "giảm cân", "tiểu đường"]
+        
+        message_lower = message.lower()
+        is_fruit_query = any(kw in message_lower for kw in fruit_keywords)
+        is_low_sugar_query = any(kw in message_lower for kw in low_sugar_keywords)
+        is_low_sugar_fruit_query = is_fruit_query and is_low_sugar_query
+        
+        log_debug("Phân tích tin nhắn:", 
+                  "is_fruit_query=", is_fruit_query, 
+                  "is_low_sugar_query=", is_low_sugar_query,
+                  "is_low_sugar_fruit_query=", is_low_sugar_fruit_query)
+        
+        # Kiểm tra các mẫu câu cụ thể về trái cây ít đường
+        low_sugar_fruit_patterns = [
+            r"trái cây nào ít đường",
+            r"trái cây ít đường",
+            r"hoa quả ít đường",
+            r"quả nào ít đường",
+            r"trái cây phù hợp cho người tiểu đường",
+            r"hoa quả phù hợp cho người ăn kiêng",
+            r"trái cây tốt cho người giảm cân"
+        ]
+        
+        for pattern in low_sugar_fruit_patterns:
+            if re.search(pattern, message_lower):
+                is_low_sugar_fruit_query = True
+                log_debug("Phát hiện mẫu câu về trái cây ít đường:", pattern)
+                break
+        
+        # Xử lý câu hỏi về trái cây ít đường
+        if is_low_sugar_fruit_query:
+            log_debug("Chuyển hướng xử lý sang handle_low_sugar_fruit_query")
+            return handle_low_sugar_fruit_query(message, userId)
+        
+        # Phân tích ý định
+        intent = analyze_intent(message)
+        log_debug("Phân tích ý định:", intent)
+        
+        # Xử lý theo ý định
+        if intent == "greeting":
+            log_debug("Xử lý lời chào")
+            return "Xin chào! Tôi là trợ lý ảo của cửa hàng thực phẩm. Tôi có thể giúp bạn tìm kiếm sản phẩm, kiểm tra giá cả hoặc thông tin về khuyến mãi. Bạn cần giúp đỡ gì không?"
+        
+        elif intent == "price_inquiry":
+            log_debug("Xử lý hỏi giá")
+            # Lấy thông tin sản phẩm từ context
+            context = get_or_create_context(userId)
+            if 'current_product' in context:
+                product = context['current_product']
+                product_name = product.get('productName', 'Sản phẩm')
+                product_price = f"{int(product.get('productPrice', 0)):,}đ"
+                return f"Giá của {product_name} là {product_price}."
+            else:
+                return "Bạn muốn biết giá của sản phẩm nào? Vui lòng cho tôi biết tên sản phẩm."
+        
+        elif intent == "promotion_inquiry":
+            log_debug("Xử lý hỏi khuyến mãi")
+            return "Hiện tại cửa hàng đang có chương trình giảm giá 10% cho tất cả các sản phẩm rau củ quả tươi và 15% cho các sản phẩm hữu cơ. Khuyến mãi áp dụng đến hết tháng này."
+        
+        else:  # product_search là mặc định
+            log_debug("Xử lý tìm kiếm sản phẩm")
+            # Tìm kiếm sản phẩm
+            products = search_products(message)
+            log_debug("Kết quả tìm kiếm:", len(products) if products else 0, "sản phẩm")
+            
+            if products and len(products) > 0:
+                response = format_product_response(message, products, userId)
+                log_debug("Đã tạo câu trả lời từ format_product_response")
+                return response
+            else:
+                log_debug("Không tìm thấy sản phẩm phù hợp")
+                return "Xin lỗi, tôi không tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Bạn có thể mô tả chi tiết hơn hoặc thử tìm kiếm với từ khóa khác không?"
+    
+    except Exception as e:
+        log_debug("Lỗi khi xử lý tin nhắn:", str(e))
+        return f"Xin lỗi, đã xảy ra lỗi khi xử lý yêu cầu của bạn. Chi tiết lỗi: {str(e)}"
+
+# Thêm hàm xử lý câu hỏi về trái cây ít đường
+def handle_low_sugar_fruit_query(message, context):
+    print("Xử lý câu hỏi về trái cây ít đường")
+    
+    # Tìm kiếm sản phẩm trái cây trong database
+    try:
+        # Thử sử dụng tìm kiếm ngữ nghĩa nếu có
+        products = []
+        if 'semantic_search_products' in globals() and semantic_search_products is not None:
+            print("Sử dụng tìm kiếm ngữ nghĩa cho trái cây ít đường")
+            products = semantic_search_products(message)
+            print(f"Tìm thấy {len(products) if products else 0} sản phẩm trái cây ít đường bằng tìm kiếm ngữ nghĩa")
+        
+        # Nếu không tìm thấy sản phẩm bằng tìm kiếm ngữ nghĩa, thử sử dụng tìm kiếm thông thường
+        if not products or len(products) == 0:
+            print("Không tìm thấy sản phẩm bằng tìm kiếm ngữ nghĩa, thử tìm kiếm thông thường")
+            
+            # Đảm bảo tìm kiếm trong danh mục Trái cây
+            print("Đặt danh mục thành Trái cây cho truy vấn về trái cây ít đường")
+            
+            # Sử dụng hàm search_products với từ khóa đặc biệt
+            search_message = "trái cây ít đường ăn kiêng"
+            products = search_products(search_message)
+            print(f"Tìm thấy {len(products) if products else 0} sản phẩm trái cây ít đường bằng tìm kiếm thông thường")
+            
+            # Nếu vẫn không tìm thấy, thử tìm kiếm trực tiếp trong danh mục Trái cây
+            if not products or len(products) == 0:
+                print("Vẫn không tìm thấy, thử tìm kiếm trực tiếp trong danh mục Trái cây")
+                products = search_products_by_category("Trái cây", ["ít đường", "ăn kiêng"], None)
+                
+                # Nếu vẫn không tìm thấy, lấy tất cả trái cây
+                if not products or len(products) == 0:
+                    print("Vẫn không tìm thấy, thử tìm tất cả trái cây")
+                    products = search_products_by_category('Trái cây', [], None)
+    except Exception as e:
+        print(f"Lỗi khi tìm kiếm sản phẩm: {e}")
+        products = []
+    
+    # Tạo câu trả lời
+    response = "Dựa trên yêu cầu của bạn về trái cây ít đường phù hợp cho người ăn kiêng, tôi xin giới thiệu:\n\n"
+    
+    # Nếu tìm thấy sản phẩm trái cây trong database
+    if products and len(products) > 0:
+        # Giới hạn số lượng sản phẩm hiển thị
+        max_products = min(5, len(products))
+        
+        for i, product in enumerate(products[:max_products]):
+            response += f"{i+1}. {product.get('productName', product.get('name', 'Sản phẩm'))} - {format_price(product.get('productPrice', product.get('price', 0)))} đồng\n"
+            if 'productDescription' in product and product['productDescription']:
+                response += f"   • {product['productDescription'][0]}\n"
+            response += "\n"
+        
+        response += "Những loại trái cây này đều có hàm lượng đường thấp, phù hợp cho người ăn kiêng hoặc người cần kiểm soát lượng đường. Bạn có muốn biết thêm chi tiết về sản phẩm nào không?"
+    else:
+        # Nếu không tìm thấy sản phẩm, thông báo cho người dùng
+        response = "Xin lỗi, hiện tại cửa hàng chúng tôi không tìm thấy sản phẩm trái cây phù hợp với yêu cầu của bạn. Vui lòng thử lại sau hoặc liên hệ với nhân viên cửa hàng để được tư vấn thêm."
+    
+    # Lưu ngữ cảnh
+    if products and len(products) > 0:
+        save_product_context(context.get('userId', 'anonymous'), products[0], products)
+    
+    return response
+
+# Hàm trích xuất danh mục sản phẩm từ tin nhắn
+def extract_product_category(message):
+    """
+    Trích xuất danh mục sản phẩm từ tin nhắn
+    """
+    message_lower = message.lower()
+    
+    # Kiểm tra từ khóa liên quan đến trái cây ít đường
+    fruit_keywords = ["trái cây", "hoa quả", "quả", "trái"]
+    low_sugar_keywords = ["ít đường", "đường thấp", "không đường", "ăn kiêng", "giảm cân", "tiểu đường"]
+    
+    is_fruit_query = any(kw in message_lower for kw in fruit_keywords)
+    is_low_sugar_query = any(kw in message_lower for kw in low_sugar_keywords)
+    
+    # Nếu là truy vấn về trái cây ít đường, luôn trả về danh mục Trái cây
+    if is_fruit_query and is_low_sugar_query:
+        log_debug("Phát hiện truy vấn trái cây ít đường, trả về danh mục Trái cây")
+        return "Trái cây"
+    
+    # Danh sách các danh mục và từ khóa tương ứng
+    categories = {
+        "Rau củ quả": ["rau", "củ", "rau củ", "rau xanh", "rau sống", "rau củ quả", "cà chua", "cà rốt", "bắp cải", "súp lơ"],
+        "Trái cây": ["trái cây", "hoa quả", "quả", "trái", "táo", "cam", "xoài", "chuối", "dưa hấu", "dưa lưới"],
+        "Thịt": ["thịt", "thịt heo", "thịt bò", "thịt gà", "thịt vịt", "thịt cừu", "thịt dê", "thịt trâu", "thịt tươi", "thịt đông lạnh"],
+        "Hải sản": ["hải sản", "cá", "tôm", "cua", "ghẹ", "mực", "bạch tuộc", "sò", "ốc", "ngao", "sushi", "sashimi"],
+        "Đồ khô": ["đồ khô", "thực phẩm khô", "hạt", "đậu", "gạo", "ngũ cốc", "bột", "mì", "miến", "nui"],
+        "Đồ uống": ["đồ uống", "nước", "nước ngọt", "bia", "rượu", "trà", "cà phê", "sữa", "nước ép", "sinh tố"]
+    }
+    
+    # Tìm danh mục phù hợp nhất
+    max_matches = 0
+    best_category = None
+    
+    for category, keywords in categories.items():
+        matches = sum(1 for keyword in keywords if keyword in message_lower)
+        if matches > max_matches:
+            max_matches = matches
+            best_category = category
+    
+    if best_category:
+        log_debug("Phát hiện danh mục", best_category, "với", max_matches, "từ khóa khớp")
+    else:
+        log_debug("Không phát hiện danh mục cụ thể")
+    
+    return best_category
+
+# Hàm trích xuất khoảng giá từ tin nhắn
+def extract_price_range(message):
+    """
+    Trích xuất khoảng giá từ tin nhắn
+    """
+    price_range = {'min': None, 'max': None}
+    message_lower = message.lower()
+    
+    # Mẫu giá tối thiểu
+    min_price_patterns = [
+        r'từ (\d+)[kK]',
+        r'từ (\d+)\s*\.\s*\d{3}',
+        r'từ (\d+)\s*nghìn',
+        r'trên (\d+)[kK]',
+        r'trên (\d+)\s*\.\s*\d{3}',
+        r'trên (\d+)\s*nghìn',
+        r'lớn hơn (\d+)[kK]',
+        r'lớn hơn (\d+)\s*\.\s*\d{3}',
+        r'lớn hơn (\d+)\s*nghìn'
+    ]
+    
+    # Mẫu giá tối đa
+    max_price_patterns = [
+        r'dưới (\d+)[kK]',
+        r'dưới (\d+)\s*\.\s*\d{3}',
+        r'dưới (\d+)\s*nghìn',
+        r'nhỏ hơn (\d+)[kK]',
+        r'nhỏ hơn (\d+)\s*\.\s*\d{3}',
+        r'nhỏ hơn (\d+)\s*nghìn',
+        r'không quá (\d+)[kK]',
+        r'không quá (\d+)\s*\.\s*\d{3}',
+        r'không quá (\d+)\s*nghìn',
+        r'tối đa (\d+)[kK]',
+        r'tối đa (\d+)\s*\.\s*\d{3}',
+        r'tối đa (\d+)\s*nghìn',
+        r'đến (\d+)[kK]',
+        r'đến (\d+)\s*\.\s*\d{3}',
+        r'đến (\d+)\s*nghìn'
+    ]
+    
+    # Mẫu khoảng giá
+    range_patterns = [
+        r'từ (\d+)[kK] đến (\d+)[kK]',
+        r'từ (\d+)\s*\.\s*\d{3} đến (\d+)\s*\.\s*\d{3}',
+        r'từ (\d+)\s*nghìn đến (\d+)\s*nghìn',
+        r'khoảng (\d+)[kK] đến (\d+)[kK]',
+        r'khoảng (\d+)\s*\.\s*\d{3} đến (\d+)\s*\.\s*\d{3}',
+        r'khoảng (\d+)\s*nghìn đến (\d+)\s*nghìn',
+        r'giá (\d+)[kK] đến (\d+)[kK]',
+        r'giá (\d+)\s*\.\s*\d{3} đến (\d+)\s*\.\s*\d{3}',
+        r'giá (\d+)\s*nghìn đến (\d+)\s*nghìn'
+    ]
+    
+    # Kiểm tra mẫu khoảng giá
+    for pattern in range_patterns:
+        matches = re.search(pattern, message_lower)
+        if matches:
+            try:
+                min_price = int(matches.group(1)) * 1000
+                max_price = int(matches.group(2)) * 1000
+                price_range['min'] = min_price
+                price_range['max'] = max_price
+                log_debug("Phát hiện khoảng giá từ", min_price, "đến", max_price)
+                return price_range
+            except:
+                pass
+    
+    # Kiểm tra mẫu giá tối thiểu
+    for pattern in min_price_patterns:
+        matches = re.search(pattern, message_lower)
+        if matches:
+            try:
+                min_price = int(matches.group(1)) * 1000
+                price_range['min'] = min_price
+                log_debug("Phát hiện giá tối thiểu:", min_price)
+                break
+            except:
+                pass
+    
+    # Kiểm tra mẫu giá tối đa
+    for pattern in max_price_patterns:
+        matches = re.search(pattern, message_lower)
+        if matches:
+            try:
+                max_price = int(matches.group(1)) * 1000
+                price_range['max'] = max_price
+                log_debug("Phát hiện giá tối đa:", max_price)
+                break
+            except:
+                pass
+    
+    # Kiểm tra nếu có khoảng giá
+    if price_range['min'] is not None or price_range['max'] is not None:
+        log_debug("Kết quả trích xuất khoảng giá:", price_range)
+        return price_range
+    
+    log_debug("Không phát hiện khoảng giá")
+    return None
+
+# Hàm trích xuất từ khóa từ tin nhắn
+def extract_keywords(message):
+    """
+    Trích xuất từ khóa tìm kiếm từ tin nhắn
+    """
+    message_lower = message.lower()
+    
+    # Danh sách từ dừng (stopwords) tiếng Việt
+    stopwords = [
+        "của", "và", "các", "có", "được", "là", "trong", "cho", "với", "để", "trên", "này", "đến", "từ", 
+        "những", "một", "về", "như", "nhiều", "đã", "không", "nào", "tôi", "muốn", "cần", "giúp", "tìm",
+        "kiếm", "mua", "bán", "giá", "tiền", "đồng", "vnd", "k", "nghìn", "giúp", "tôi", "mình", "bạn",
+        "tôi", "tìm", "kiếm", "mua", "bán", "giá", "tiền", "đồng", "vnd", "k", "nghìn", "giúp", "tôi", 
+        "mình", "bạn", "tôi", "có", "không", "đây", "kia", "đó", "thế", "vậy", "đang", "sẽ", "rất", "quá",
+        "lắm", "thì", "mà", "là", "đi", "đến", "từ", "tại", "trong", "ngoài", "dưới", "trên", "xin", "vui",
+        "lòng", "làm", "ơn", "hãy", "đừng", "chưa", "đã", "sẽ", "nên", "cần", "phải", "thể", "thể", "biết",
+        "hay", "thích", "muốn", "được", "thấy", "còn", "nữa", "lại", "đang", "đó", "này", "kia", "thế", "vậy"
+    ]
+    
+    # Loại bỏ dấu câu
+    message_clean = re.sub(r'[.,;:!?"()]', ' ', message_lower)
+    
+    # Tách từ
+    words = message_clean.split()
+    
+    # Lọc bỏ stopwords và từ quá ngắn
+    keywords = [word for word in words if word not in stopwords and len(word) > 1]
+    
+    # Thêm từ ghép
+    bigrams = []
+    for i in range(len(words) - 1):
+        bigram = words[i] + " " + words[i+1]
+        if not any(word in stopwords for word in bigram.split()):
+            bigrams.append(bigram)
+    
+    # Kết hợp từ đơn và từ ghép
+    all_keywords = keywords + bigrams
+    
+    # Loại bỏ trùng lặp và sắp xếp theo độ dài (ưu tiên từ dài hơn)
+    unique_keywords = sorted(set(all_keywords), key=len, reverse=True)
+    
+    # Giới hạn số lượng từ khóa
+    result = unique_keywords[:10]
+    
+    log_debug("Trích xuất từ khóa:", result)
+    return result
+
+# Hàm tìm kiếm sản phẩm theo danh mục
+def search_products_by_category(category, keywords=None, price_range=None):
+    """
+    Tìm kiếm sản phẩm theo danh mục và từ khóa
+    """
+    try:
+        # Lấy collection sản phẩm
+        from db import getProductsCollection
+        products_collection = getProductsCollection()
+        
+        # Xây dựng bộ lọc
+        filter_query = {}
+        
+        # Đảm bảo danh mục là Trái cây khi tìm kiếm trái cây ít đường
+        is_low_sugar_fruit_search = False
+        if keywords and any(kw in ["ít đường", "đường thấp", "ăn kiêng", "giảm cân"] for kw in keywords):
+            if category == 'Trái cây' or any(kw in ["trái cây", "hoa quả", "quả", "trái"] for kw in keywords):
+                category = "Trái cây"
+                is_low_sugar_fruit_search = True
+                log_debug("Đã xác định là tìm kiếm trái cây ít đường, đặt danh mục thành Trái cây")
+        
+        # Lọc theo danh mục
+        if category:
+            filter_query['productCategory'] = category
+            print(f"Tìm kiếm trong danh mục: {category}")
+        
+        # Kiểm tra xem có phải tìm kiếm trái cây ít đường không
+        if not is_low_sugar_fruit_search:
+            is_low_sugar_fruit_search = category == 'Trái cây' and keywords and any(kw in ["ít đường", "đường thấp", "ăn kiêng", "giảm cân"] for kw in keywords)
+        
+        # Lọc theo từ khóa
+        if keywords and len(keywords) > 0:
+            # Nếu là tìm kiếm trái cây ít đường, sử dụng bộ lọc đặc biệt
+            if is_low_sugar_fruit_search:
+                print("Áp dụng bộ lọc đặc biệt cho trái cây ít đường")
+                filter_query['$or'] = [
+                    {'productName': {'$regex': 'ít đường|đường thấp|không đường|ăn kiêng|giảm cân', '$options': 'i'}},
+                    {'productDescription': {'$regex': 'ít đường|đường thấp|không đường|hàm lượng đường thấp|ăn kiêng|giảm cân|tiểu đường', '$options': 'i'}}
+                ]
+            else:
+                # Tạo điều kiện tìm kiếm thông thường
+                keyword_conditions = []
+                for keyword in keywords:
+                    keyword_conditions.append({'productName': {'$regex': keyword, '$options': 'i'}})
+                    keyword_conditions.append({'productDescription': {'$regex': keyword, '$options': 'i'}})
+                
+                if len(keyword_conditions) > 0:
+                    filter_query['$or'] = keyword_conditions
+        
+        # Lọc theo khoảng giá
+        if price_range:
+            price_filter = {}
+            if 'min' in price_range and price_range['min'] is not None:
+                price_filter['$gte'] = price_range['min']
+            if 'max' in price_range and price_range['max'] is not None:
+                price_filter['$lte'] = price_range['max']
+            
+            if price_filter:
+                filter_query['productPrice'] = price_filter
+        
+        print(f"Filter tìm kiếm: {filter_query}")
+        
+        # Thực hiện truy vấn
+        products = list(products_collection.find(filter_query).limit(10))
+        
+        # Nếu không tìm thấy sản phẩm và là tìm kiếm trái cây ít đường, thử tìm tất cả trái cây và sắp xếp theo điểm phù hợp
+        if is_low_sugar_fruit_search and (not products or len(products) == 0):
+            print("Không tìm thấy trái cây ít đường, thử tìm tất cả trái cây và đánh giá độ phù hợp")
+            all_fruits = list(products_collection.find({'productCategory': 'Trái cây'}).limit(20))
+            
+            # Đánh giá độ phù hợp cho mỗi trái cây
+            scored_fruits = []
+            for fruit in all_fruits:
+                score = 0
+                fruit_name = fruit.get('productName', '').lower()
+                fruit_desc = ' '.join(fruit.get('productDescription', [])).lower() if fruit.get('productDescription') else ''
+                
+                # Tính điểm dựa trên tên và mô tả
+                low_sugar_patterns = ['ít đường', 'đường thấp', 'không đường', 'hàm lượng đường thấp', 'ăn kiêng', 'giảm cân']
+                for pattern in low_sugar_patterns:
+                    if pattern in fruit_name:
+                        score += 10
+                    elif pattern in fruit_desc:
+                        score += 5
+                
+                # Kiểm tra nếu có đề cập đến hàm lượng đường cụ thể
+                sugar_content_patterns = [
+                    r'(\d+[.,]?\d*)g đường', 
+                    r'đường: (\d+[.,]?\d*)g',
+                    r'hàm lượng đường (\d+[.,]?\d*)g',
+                    r'(\d+[.,]?\d*)% đường'
+                ]
+                
+                for pattern in sugar_content_patterns:
+                    matches = re.findall(pattern, fruit_desc)
+                    if matches:
+                        try:
+                            sugar_content = float(matches[0].replace(',', '.'))
+                            # Điểm cao hơn cho sản phẩm có hàm lượng đường thấp
+                            if sugar_content < 5:
+                                score += 15
+                            elif sugar_content < 10:
+                                score += 10
+                            elif sugar_content < 15:
+                                score += 5
+                        except:
+                            score += 2
+                
+                # Thêm vào danh sách với điểm
+                fruit['relevance_score'] = score
+                scored_fruits.append(fruit)
+            
+            # Lọc các trái cây có điểm > 0 và sắp xếp theo điểm giảm dần
+            relevant_fruits = [f for f in scored_fruits if f['relevance_score'] > 0]
+            relevant_fruits.sort(key=lambda x: x['relevance_score'], reverse=True)
+            
+            if relevant_fruits:
+                print(f"Tìm thấy {len(relevant_fruits)} sản phẩm bằng từ khóa với điểm phù hợp")
+                return relevant_fruits
+            else:
+                # Nếu không có trái cây nào phù hợp, trả về tất cả
+                print("Không tìm thấy trái cây phù hợp, trả về tất cả trái cây")
+                return all_fruits
+        
+        return products
+    except Exception as e:
+        print(f"Lỗi khi tìm kiếm sản phẩm theo danh mục: {e}")
+        return []
+
+# Hàm ghi log debug
+def log_debug(message, *args):
+    """
+    Ghi log debug với thông tin chi tiết
+    """
+    log_message = f"[DEBUG] {message}"
+    if args:
+        log_message += ": " + ", ".join(str(arg) for arg in args)
+    print(log_message)
+
+# Sửa lại hàm search_products để sử dụng log_debug
+def search_products(message):
+    """
+    Tìm kiếm sản phẩm dựa trên tin nhắn của người dùng
+    """
+    try:
+        log_debug("Bắt đầu tìm kiếm sản phẩm cho tin nhắn:", message)
+        
+        # Kiểm tra từ khóa liên quan đến trái cây ít đường
+        fruit_keywords = ["trái cây", "hoa quả", "quả", "trái"]
+        low_sugar_keywords = ["ít đường", "đường thấp", "không đường", "ăn kiêng", "giảm cân", "tiểu đường"]
+        
+        message_lower = message.lower()
+        is_fruit_query = any(kw in message_lower for kw in fruit_keywords)
+        is_low_sugar_query = any(kw in message_lower for kw in low_sugar_keywords)
+        is_low_sugar_fruit_query = is_fruit_query and is_low_sugar_query
+        
+        # Nếu là truy vấn về trái cây ít đường, đặt danh mục là Trái cây
+        category = None
+        if is_low_sugar_fruit_query:
+            category = "Trái cây"
+            log_debug("Phát hiện truy vấn trái cây ít đường, đặt danh mục thành Trái cây")
+        else:
+            # Trích xuất danh mục từ tin nhắn
+            category = extract_product_category(message)
+            log_debug("Trích xuất danh mục:", category)
+        
+        # Trích xuất khoảng giá
+        price_range = extract_price_range(message)
+        log_debug("Trích xuất khoảng giá:", price_range)
+        
+        # Trích xuất từ khóa
+        keywords = extract_keywords(message)
+        log_debug("Trích xuất từ khóa:", keywords)
+        
+        # Đảm bảo rằng nếu là truy vấn về trái cây ít đường, danh mục vẫn là Trái cây
+        if is_low_sugar_fruit_query:
+            category = "Trái cây"
+            # Thêm từ khóa liên quan đến ít đường nếu chưa có
+            low_sugar_terms = ["ít đường", "đường thấp", "ăn kiêng"]
+            for term in low_sugar_terms:
+                if term not in keywords:
+                    keywords.append(term)
+            log_debug("Đã thêm từ khóa liên quan đến ít đường:", keywords)
+        
+        # Tìm kiếm sản phẩm
+        products = search_products_by_category(category, keywords, price_range)
+        log_debug("Kết quả tìm kiếm:", len(products) if products else 0, "sản phẩm")
+        
+        return products
+    except Exception as e:
+        log_debug("Lỗi khi tìm kiếm sản phẩm:", str(e))
+        return []
+
+# Hàm định dạng câu trả lời về sản phẩm
+def format_product_response(user_message, products, user_id):
+    """
+    Format câu trả lời về sản phẩm dựa trên kết quả tìm kiếm
+    """
+    # Kiểm tra xem có phải là truy vấn về trái cây ít đường không
+    fruit_keywords = ["trái cây", "hoa quả", "quả", "trái"]
+    low_sugar_keywords = ["ít đường", "đường thấp", "không đường", "ăn kiêng", "giảm cân", "tiểu đường"]
+    
+    message_lower = user_message.lower()
+    is_fruit_query = any(kw in message_lower for kw in fruit_keywords)
+    is_low_sugar_query = any(kw in message_lower for kw in low_sugar_keywords)
+    is_low_sugar_fruit_query = is_fruit_query and is_low_sugar_query
+    
+    # Kiểm tra xem tất cả sản phẩm có thuộc danh mục Trái cây không
+    all_fruits = all(product.get('productCategory') == 'Trái cây' for product in products) if products else False
+    
+    log_debug("Format câu trả lời sản phẩm:", 
+              "is_fruit_query=", is_fruit_query, 
+              "is_low_sugar_query=", is_low_sugar_query,
+              "all_fruits=", all_fruits)
+    
+    # Xây dựng câu trả lời
+    if is_low_sugar_fruit_query or (is_low_sugar_query and all_fruits):
+        log_debug("Định dạng câu trả lời cho trái cây ít đường")
+        response = "Dưới đây là một số trái cây có hàm lượng đường thấp phù hợp cho người ăn kiêng hoặc bệnh nhân tiểu đường:\n\n"
+    else:
+        log_debug("Định dạng câu trả lời cho sản phẩm thông thường")
+        response = "Dưới đây là một số sản phẩm phù hợp với yêu cầu của bạn:\n\n"
+    
+    # Lưu context sản phẩm cho người dùng
+    save_product_context(user_id, products)
+    
+    # Hiển thị tối đa 5 sản phẩm
+    for i, product in enumerate(products[:5]):
+        product_name = product.get('productName', 'Không có tên')
+        product_price = f"{int(product.get('productPrice', 0)):,}đ"
+        product_desc = product.get('productDescription', [])
+        desc_text = product_desc[0] if product_desc and len(product_desc) > 0 else "Không có mô tả"
+        
+        # Thêm điểm phù hợp nếu là truy vấn trái cây ít đường
+        relevance_info = ""
+        if (is_low_sugar_fruit_query or (is_low_sugar_query and all_fruits)) and 'relevance_score' in product:
+            if product['relevance_score'] >= 15:
+                relevance_info = " (Rất phù hợp cho chế độ ăn ít đường)"
+            elif product['relevance_score'] >= 10:
+                relevance_info = " (Phù hợp cho chế độ ăn ít đường)"
+            elif product['relevance_score'] >= 5:
+                relevance_info = " (Khá phù hợp cho chế độ ăn ít đường)"
+        
+        response += f"{i+1}. {product_name}{relevance_info}\n   Giá: {product_price}\n   {desc_text}\n\n"
+    
+    response += "Bạn có muốn biết thêm thông tin về sản phẩm cụ thể nào không?"
+    log_debug("Đã tạo câu trả lời với", min(5, len(products)), "sản phẩm")
+    return response
+
+# Hàm lưu ngữ cảnh sản phẩm
+def save_product_context(user_id, current_product, all_products=None):
+    """
+    Lưu ngữ cảnh sản phẩm cho người dùng
+    """
+    context = get_or_create_context(user_id)
+    context['currentProduct'] = current_product
+    if all_products:
+        context['productList'] = all_products
+    return context
+
+# Hàm lấy hoặc tạo ngữ cảnh cho người dùng
+def get_or_create_context(user_id):
+    """
+    Lấy hoặc tạo mới ngữ cảnh cho người dùng
+    """
+    global user_contexts
+    if user_id not in user_contexts:
+        log_debug("Tạo mới ngữ cảnh cho user", user_id)
+        user_contexts[user_id] = {}
+    return user_contexts[user_id]
+
+# Hàm phân tích ý định của tin nhắn
+def analyze_intent(message):
+    """
+    Phân tích ý định của tin nhắn người dùng
+    """
+    message_lower = message.lower()
+    
+    # Kiểm tra lời chào
+    greeting_patterns = ["xin chào", "chào", "hi ", "hello", "hey", "good morning", "good afternoon", "good evening"]
+    if any(pattern in message_lower for pattern in greeting_patterns):
+        log_debug("Phát hiện ý định: greeting")
+        return "greeting"
+    
+    # Kiểm tra hỏi giá
+    price_patterns = ["giá", "bao nhiêu tiền", "giá bao nhiêu", "giá cả", "mấy tiền", "đắt không", "rẻ không"]
+    if any(pattern in message_lower for pattern in price_patterns):
+        log_debug("Phát hiện ý định: price_inquiry")
+        return "price_inquiry"
+    
+    # Kiểm tra hỏi khuyến mãi
+    promotion_patterns = ["khuyến mãi", "giảm giá", "ưu đãi", "sale", "discount", "voucher", "coupon"]
+    if any(pattern in message_lower for pattern in promotion_patterns):
+        log_debug("Phát hiện ý định: promotion_inquiry")
+        return "promotion_inquiry"
+    
+    # Mặc định là tìm kiếm sản phẩm
+    log_debug("Phát hiện ý định mặc định: product_search")
+    return "product_search"
+
+@app.route('/api/chatbot/process_message', methods=['POST'])
+def api_process_message():
+    """
+    API endpoint để xử lý tin nhắn từ người dùng
+    """
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        userId = data.get('userId', 'anonymous')
+        
+        log_debug("Nhận tin nhắn từ user", userId, ":", message)
+        
+        # Kiểm tra nếu tin nhắn trống
+        if not message.strip():
+            log_debug("Tin nhắn trống, trả về lời chào")
+            return jsonify({
+                'response': 'Xin chào! Tôi là trợ lý ảo của cửa hàng thực phẩm. Bạn cần giúp gì không?'
+            })
+        
+        # Xử lý tin nhắn bằng hàm process_message
+        response = process_message(message, userId)
+        log_debug("Trả về câu trả lời:", response[:100] + "..." if len(response) > 100 else response)
+        
+        return jsonify({'response': response})
+    except Exception as e:
+        log_debug("Lỗi khi xử lý API request:", str(e))
+        return jsonify({
+            'response': 'Xin lỗi, đã xảy ra lỗi khi xử lý yêu cầu của bạn. Vui lòng thử lại sau.'
+        })
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True) 
