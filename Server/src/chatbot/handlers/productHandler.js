@@ -1,5 +1,11 @@
+/**
+ * Module xử lý sản phẩm cho chatbot
+ */
+
+import Product from '../../../Model/Products.js';
+
 // Cải thiện hàm tìm kiếm sản phẩm theo danh mục
-async function searchProductsByCategory(category, keywords, priceRange) {
+const searchProductsByCategory = async (category, keywords, priceRange) => {
   console.log(`Tìm sản phẩm thuộc danh mục: ${category}`);
   
   // Tạo bộ lọc cơ bản
@@ -10,25 +16,25 @@ async function searchProductsByCategory(category, keywords, priceRange) {
     filter.category = category;
   }
   
+  // Tạo danh sách từ khóa quan trọng và trọng số
+  const keywordWeights = {
+    'ít đường': 10,
+    'đường': 8,
+    'ăn kiêng': 10,
+    'kiêng': 9,
+    'ít calo': 10,
+    'calo': 8,
+    'dinh dưỡng': 7,
+    'trái cây': 6,
+    'hoa quả': 6,
+    'rau': 5,
+    'củ': 5,
+    'quả': 5
+  };
+  
   // Xử lý từ khóa tìm kiếm
   if (keywords && keywords.length > 0) {
     console.log("Từ khóa tìm kiếm:", keywords);
-    
-    // Tạo danh sách từ khóa quan trọng và trọng số
-    const keywordWeights = {
-      'ít đường': 10,
-      'đường': 8,
-      'ăn kiêng': 10,
-      'kiêng': 9,
-      'ít calo': 10,
-      'calo': 8,
-      'dinh dưỡng': 7,
-      'trái cây': 6,
-      'hoa quả': 6,
-      'rau': 5,
-      'củ': 5,
-      'quả': 5
-    };
     
     // Tạo mảng điều kiện tìm kiếm với trọng số
     const searchConditions = [];
@@ -95,7 +101,7 @@ async function searchProductsByCategory(category, keywords, priceRange) {
       
       // Tính điểm dựa trên từ khóa
       if (keywords && keywords.length > 0) {
-        const productText = `${product.productName} ${product.productInfo} ${product.productDetails} ${(product.productDescription || []).join(' ')}`.toLowerCase();
+        const productText = `${product.productName} ${product.productInfo || ''} ${product.productDetails || ''} ${(product.productDescription || []).join(' ')}`.toLowerCase();
         
         // Tính điểm cho cụm từ quan trọng
         for (const phrase of Object.keys(keywordWeights)) {
@@ -138,4 +144,7 @@ async function searchProductsByCategory(category, keywords, priceRange) {
     console.error("Lỗi khi tìm kiếm sản phẩm:", error);
     return [];
   }
-} 
+};
+
+export { searchProductsByCategory };
+export default { searchProductsByCategory }; 

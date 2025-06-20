@@ -1,0 +1,265 @@
+{
+  "tieuDuong": {
+    "title": "Thực phẩm cho người tiểu đường",
+    "description": "Người tiểu đường cần chế độ ăn uống cân bằng, kiểm soát lượng carbohydrate và ưu tiên thực phẩm có chỉ số đường huyết thấp.",
+    "recommended": [
+      "Rau xanh các loại",
+      "Các loại đậu",
+      "Ngũ cốc nguyên hạt",
+      "Trái cây ít đường (táo, dâu, việt quất)",
+      "Cá, thịt nạc",
+      "Các loại hạt không muối",
+      "Sữa và sản phẩm từ sữa ít béo"
+    ],
+    "avoid": [
+      "Đồ ngọt, bánh kẹo",
+      "Nước ngọt, đồ uống có đường",
+      "Trái cây có nhiều đường (chuối chín, xoài, nho)",
+      "Gạo trắng, bánh mì trắng",
+      "Thực phẩm chế biến sẵn",
+      "Mỡ động vật"
+    ],
+    "productKeywords": ["đường huyết thấp", "ít đường", "không đường", "cho người tiểu đường", "chỉ số GI thấp"],
+    "productCategories": ["Thực phẩm chức năng", "Đồ uống không đường", "Thực phẩm dinh dưỡng"],
+    "examples": [
+      {
+        "question": "Người tiểu đường nên ăn gì?",
+        "answer": "Người tiểu đường nên ăn nhiều rau xanh, đậu các loại, ngũ cốc nguyên hạt, trái cây ít đường như táo và dâu tây, cá và thịt nạc. Nên hạn chế đồ ngọt, bánh kẹo, nước ngọt và thực phẩm chế biến sẵn."
+      },
+      {
+        "question": "Trái cây nào tốt cho người tiểu đường?",
+        "answer": "Người tiểu đường nên chọn các loại trái cây có chỉ số đường huyết thấp như táo, dâu tây, việt quất, lê, quýt. Nên hạn chế các loại trái cây ngọt như chuối chín, xoài, nho, vì chúng có thể làm tăng đường huyết nhanh chóng."
+      }
+    ]
+  },
+  "huyetAp": {
+    "title": "Thực phẩm cho người huyết áp",
+    "description": "Người huyết áp cao nên áp dụng chế độ ăn DASH với ít muối, nhiều rau xanh và trái cây, hạn chế chất béo bão hòa và cholesterol.",
+    "recommended": [
+      "Rau lá xanh đậm",
+      "Trái cây tươi",
+      "Các loại đậu",
+      "Ngũ cốc nguyên hạt",
+      "Các loại hạt không muối",
+      "Cá giàu omega-3",
+      "Sữa và các sản phẩm từ sữa ít béo"
+    ],
+    "avoid": [
+      "Thực phẩm chứa nhiều muối",
+      "Thực phẩm chế biến sẵn",
+      "Đồ uống có caffeine",
+      "Rượu bia",
+      "Thực phẩm nhiều chất béo bão hòa",
+      "Đồ ngọt và bánh kẹo"
+    ],
+    "productKeywords": ["ít muối", "không muối", "giảm huyết áp", "DASH", "tim mạch"],
+    "productCategories": ["Thực phẩm chức năng", "Đồ uống tốt cho tim mạch", "Thực phẩm dinh dưỡng"],
+    "examples": [
+      {
+        "question": "Người huyết áp cao nên ăn gì?",
+        "answer": "Người huyết áp cao nên ăn nhiều rau lá xanh đậm, trái cây tươi, các loại đậu, ngũ cốc nguyên hạt, và cá giàu omega-3. Nên hạn chế thực phẩm chứa nhiều muối, thực phẩm chế biến sẵn, đồ uống có caffeine và rượu bia."
+      },
+      {
+        "question": "Người huyết áp cao nên kiêng gì?",
+        "answer": "Người huyết áp cao nên kiêng thực phẩm chứa nhiều muối (mì gói, thức ăn đóng hộp, đồ ăn nhanh), thực phẩm chế biến sẵn, đồ uống có caffeine, rượu bia, thực phẩm nhiều chất béo bão hòa và đồ ngọt."
+      }
+    ]
+  },
+  "giamCan": {
+    "title": "Thực phẩm cho người giảm cân",
+    "description": "Người muốn giảm cân nên ưu tiên thực phẩm giàu protein, chất xơ, ít calo và chất béo, đồng thời duy trì chế độ ăn uống cân bằng.",
+    "recommended": [
+      "Rau xanh các loại",
+      "Trái cây ít đường",
+      "Protein nạc (thịt gà, cá, đậu)",
+      "Ngũ cốc nguyên hạt",
+      "Sữa và sản phẩm từ sữa ít béo",
+      "Nước lọc, trà xanh không đường"
+    ],
+    "avoid": [
+      "Thực phẩm chiên rán",
+      "Đồ ngọt, bánh kẹo",
+      "Nước ngọt, đồ uống có đường",
+      "Thực phẩm chế biến sẵn",
+      "Rượu bia",
+      "Thực phẩm giàu tinh bột trắng"
+    ],
+    "productKeywords": ["giảm cân", "ít calo", "đốt mỡ", "kiểm soát cân nặng", "chất xơ"],
+    "productCategories": ["Thực phẩm chức năng", "Đồ uống không đường", "Thực phẩm dinh dưỡng"],
+    "examples": [
+      {
+        "question": "Nên ăn gì để giảm cân?",
+        "answer": "Để giảm cân hiệu quả, bạn nên ăn nhiều rau xanh, trái cây ít đường, protein nạc (thịt gà, cá, đậu), ngũ cốc nguyên hạt và uống nhiều nước. Nên hạn chế thực phẩm chiên rán, đồ ngọt, nước ngọt và thực phẩm chế biến sẵn."
+      },
+      {
+        "question": "Thực phẩm nào giúp đốt mỡ?",
+        "answer": "Một số thực phẩm có thể hỗ trợ đốt mỡ như: trà xanh, ớt cay, gừng, quế, protein nạc, các loại rau xanh và thực phẩm giàu chất xơ. Tuy nhiên, để giảm cân hiệu quả, bạn cần kết hợp chế độ ăn uống cân bằng với tập luyện đều đặn."
+      }
+    ]
+  },
+  "anChay": {
+    "title": "Thực phẩm cho người ăn chay",
+    "description": "Người ăn chay cần đảm bảo đủ protein, sắt, kẽm, vitamin B12 và omega-3 từ các nguồn thực vật.",
+    "recommended": [
+      "Các loại đậu (đậu phụ, đậu lăng, đậu gà)",
+      "Các loại hạt và hạt giống",
+      "Ngũ cốc nguyên hạt",
+      "Rau lá xanh đậm",
+      "Trái cây tươi",
+      "Sữa thực vật được bổ sung vitamin",
+      "Thực phẩm lên men (tempeh, miso)"
+    ],
+    "avoid": [
+      "Thực phẩm chay chế biến sẵn có nhiều muối",
+      "Thực phẩm chay chiên rán",
+      "Đồ ngọt và bánh kẹo",
+      "Thực phẩm chay nhiều dầu mỡ"
+    ],
+    "productKeywords": ["chay", "thuần chay", "đạm thực vật", "không động vật", "thực vật"],
+    "productCategories": ["Thực phẩm chay", "Đồ uống thực vật", "Thực phẩm dinh dưỡng"],
+    "examples": [
+      {
+        "question": "Người ăn chay lấy protein từ đâu?",
+        "answer": "Người ăn chay có thể lấy protein từ các loại đậu (đậu phụ, đậu lăng, đậu gà), các loại hạt (hạt điều, hạnh nhân), các sản phẩm từ đậu nành (tempeh, miso), quinoa và các loại ngũ cốc nguyên hạt."
+      },
+      {
+        "question": "Người ăn chay cần bổ sung gì?",
+        "answer": "Người ăn chay thường cần bổ sung vitamin B12 (có trong sữa thực vật được bổ sung vitamin), sắt (từ rau lá xanh đậm, đậu lăng), kẽm (từ các loại hạt, đậu), omega-3 (từ hạt lanh, hạt chia) và canxi (từ rau lá xanh, đậu phụ, sữa thực vật được bổ sung)."
+      }
+    ]
+  },
+  "tangCo": {
+    "title": "Thực phẩm cho người tăng cơ",
+    "description": "Người tập gym và muốn tăng cơ cần chế độ ăn giàu protein, carbohydrate phức hợp và chất béo lành mạnh.",
+    "recommended": [
+      "Thịt nạc (gà, bò, cá)",
+      "Trứng",
+      "Các loại đậu",
+      "Sữa và sản phẩm từ sữa",
+      "Ngũ cốc nguyên hạt",
+      "Các loại hạt và hạt giống",
+      "Trái cây và rau xanh",
+      "Protein whey"
+    ],
+    "avoid": [
+      "Thực phẩm chế biến sẵn",
+      "Đồ ăn nhanh",
+      "Đồ ngọt và bánh kẹo",
+      "Rượu bia",
+      "Thực phẩm nhiều đường"
+    ],
+    "productKeywords": ["protein", "tăng cơ", "whey", "bcaa", "creatine", "tập gym"],
+    "productCategories": ["Thực phẩm bổ sung", "Protein", "Thực phẩm dinh dưỡng"],
+    "examples": [
+      {
+        "question": "Nên ăn gì để tăng cơ?",
+        "answer": "Để tăng cơ hiệu quả, bạn nên ăn nhiều thực phẩm giàu protein như thịt nạc (gà, bò, cá), trứng, các loại đậu, sữa và sản phẩm từ sữa. Ngoài ra, cần bổ sung carbohydrate phức hợp từ ngũ cốc nguyên hạt và chất béo lành mạnh từ các loại hạt."
+      },
+      {
+        "question": "Protein whey có tác dụng gì?",
+        "answer": "Protein whey là nguồn protein chất lượng cao, dễ hấp thu và giàu axit amin chuỗi nhánh (BCAA). Nó giúp phục hồi và xây dựng cơ bắp sau tập luyện, hỗ trợ tăng cơ và giảm mỡ. Whey protein thường được sử dụng như một bữa ăn phụ hoặc sau khi tập luyện."
+      }
+    ]
+  },
+  "meBau": {
+    "title": "Thực phẩm cho mẹ bầu",
+    "description": "Mẹ bầu cần thực phẩm giàu folate, sắt, canxi, DHA và nhiều vitamin khoáng chất khác để hỗ trợ sự phát triển của thai nhi.",
+    "recommended": [
+      "Rau lá xanh đậm (rau bina, cải xoăn)",
+      "Trái cây tươi",
+      "Các loại đậu",
+      "Ngũ cốc nguyên hạt",
+      "Trứng",
+      "Sữa và các sản phẩm từ sữa",
+      "Cá béo (cá hồi, cá thu) giàu DHA",
+      "Thịt nạc",
+      "Các loại hạt"
+    ],
+    "avoid": [
+      "Cá có hàm lượng thủy ngân cao (cá kiếm, cá thu king)",
+      "Thịt sống hoặc chưa nấu chín",
+      "Trứng sống",
+      "Pho mát mềm chưa tiệt trùng",
+      "Cà phê, rượu bia",
+      "Thực phẩm chế biến sẵn có nhiều muối và chất bảo quản"
+    ],
+    "productKeywords": ["mẹ bầu", "bà bầu", "thai kỳ", "DHA", "folate", "sắt", "canxi", "vitamin"],
+    "productCategories": ["Thực phẩm cho mẹ bầu", "Sữa bầu", "Thực phẩm bổ sung"],
+    "examples": [
+      {
+        "question": "Mẹ bầu nên ăn gì?",
+        "answer": "Mẹ bầu nên ăn nhiều rau lá xanh đậm (giàu folate), trái cây tươi, các loại đậu, ngũ cốc nguyên hạt, trứng, sữa và các sản phẩm từ sữa (giàu canxi), cá béo như cá hồi (giàu DHA), thịt nạc (giàu sắt) và các loại hạt."
+      },
+      {
+        "question": "Mẹ bầu nên kiêng gì?",
+        "answer": "Mẹ bầu nên kiêng cá có hàm lượng thủy ngân cao (cá kiếm, cá thu king), thịt sống hoặc chưa nấu chín, trứng sống, pho mát mềm chưa tiệt trùng, cà phê, rượu bia và thực phẩm chế biến sẵn có nhiều muối và chất bảo quản."
+      }
+    ]
+  },
+  "treSoSinh": {
+    "title": "Thực phẩm cho trẻ sơ sinh và trẻ nhỏ",
+    "description": "Trẻ sơ sinh và trẻ nhỏ cần dinh dưỡng đầy đủ và cân bằng để phát triển toàn diện về thể chất và trí tuệ.",
+    "recommended": [
+      "Sữa mẹ (tốt nhất cho trẻ sơ sinh)",
+      "Sữa công thức (nếu không có sữa mẹ)",
+      "Cháo, bột ngũ cốc (cho trẻ trên 6 tháng)",
+      "Rau củ quả nghiền nhuyễn",
+      "Thịt, cá, trứng nghiền nhuyễn",
+      "Trái cây tươi nghiền",
+      "Sữa và các sản phẩm từ sữa (cho trẻ trên 1 tuổi)"
+    ],
+    "avoid": [
+      "Mật ong (cho trẻ dưới 1 tuổi)",
+      "Sữa bò tươi (cho trẻ dưới 1 tuổi)",
+      "Thực phẩm dễ gây dị ứng (cho trẻ dưới 1 tuổi)",
+      "Thực phẩm cứng, tròn dễ gây hóc",
+      "Thực phẩm nhiều đường, muối",
+      "Đồ ăn nhanh, thực phẩm chế biến sẵn"
+    ],
+    "productKeywords": ["trẻ em", "trẻ sơ sinh", "em bé", "sữa công thức", "bột ăn dặm", "dinh dưỡng trẻ"],
+    "productCategories": ["Sữa công thức", "Thực phẩm ăn dặm", "Thực phẩm cho trẻ em"],
+    "examples": [
+      {
+        "question": "Trẻ 6 tháng nên ăn gì?",
+        "answer": "Trẻ 6 tháng nên tiếp tục bú sữa mẹ hoặc sữa công thức, đồng thời bắt đầu ăn dặm với bột ngũ cốc pha loãng, rau củ quả nghiền nhuyễn (như khoai tây, cà rốt, bí đỏ). Nên cho trẻ làm quen với từng loại thực phẩm mới, mỗi lần một loại và theo dõi phản ứng của trẻ."
+      },
+      {
+        "question": "Trẻ 1 tuổi nên ăn gì?",
+        "answer": "Trẻ 1 tuổi nên có chế độ ăn đa dạng bao gồm: cháo hoặc cơm nát với thịt, cá, trứng băm nhỏ; rau củ quả nấu mềm; trái cây tươi; sữa và các sản phẩm từ sữa. Trẻ có thể ăn cùng bữa với gia đình nhưng thức ăn cần được chuẩn bị phù hợp (không cay, không nhiều gia vị, thái nhỏ)."
+      }
+    ]
+  },
+  "nguoiGia": {
+    "title": "Thực phẩm cho người cao tuổi",
+    "description": "Người cao tuổi cần chế độ ăn giàu dinh dưỡng, dễ tiêu hóa, bổ sung canxi và vitamin D để duy trì sức khỏe và phòng ngừa các bệnh lý tuổi già.",
+    "recommended": [
+      "Rau xanh và trái cây tươi",
+      "Ngũ cốc nguyên hạt",
+      "Protein nạc (thịt gà, cá, đậu)",
+      "Sữa và các sản phẩm từ sữa giàu canxi",
+      "Các loại hạt không muối",
+      "Thực phẩm giàu omega-3",
+      "Thực phẩm dễ nhai, dễ tiêu hóa"
+    ],
+    "avoid": [
+      "Thực phẩm nhiều muối",
+      "Thực phẩm nhiều đường",
+      "Thực phẩm chế biến sẵn",
+      "Thực phẩm nhiều chất béo bão hòa",
+      "Rượu bia",
+      "Thực phẩm cứng, khó nhai"
+    ],
+    "productKeywords": ["người cao tuổi", "người già", "xương khớp", "canxi", "vitamin D", "dễ tiêu hóa"],
+    "productCategories": ["Thực phẩm chức năng", "Sữa cho người cao tuổi", "Thực phẩm dinh dưỡng"],
+    "examples": [
+      {
+        "question": "Người già nên ăn gì?",
+        "answer": "Người cao tuổi nên ăn nhiều rau xanh và trái cây tươi, ngũ cốc nguyên hạt, protein nạc (thịt gà, cá, đậu), sữa và các sản phẩm từ sữa giàu canxi. Thực phẩm nên được chế biến mềm, dễ nhai và tiêu hóa. Cần bổ sung đủ nước và chia nhỏ bữa ăn trong ngày."
+      },
+      {
+        "question": "Thực phẩm tốt cho xương khớp người già?",
+        "answer": "Thực phẩm tốt cho xương khớp người già bao gồm: sữa và các sản phẩm từ sữa (giàu canxi), cá béo như cá hồi (giàu vitamin D và omega-3), các loại đậu, rau lá xanh đậm (giàu canxi), các loại hạt, trái cây họ cam quýt (giàu vitamin C giúp tổng hợp collagen). Nên hạn chế muối, đường, thực phẩm chế biến sẵn và rượu bia."
+      }
+    ]
+  }
+} 

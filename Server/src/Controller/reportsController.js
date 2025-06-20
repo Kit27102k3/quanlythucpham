@@ -2,14 +2,14 @@
  * @deprecated - Đây là phiên bản cũ của reportsController, không nên sử dụng.
  * Vui lòng sử dụng phiên bản mới trong thư mục Server/controllers/reportsController.js
  */
-import Order from '../Model/Order.js';
-import Product from '../Model/Products.js';
-import User from '../Model/Register.js';
-import Review from '../Model/Review.js';
-import Coupon from '../Model/Coupon.js';
-import BestSellingProduct from '../Model/BestSellingProduct.js';
+import Order from "../Model/Order.js";
+import Product from "../Model/Products.js";
+import User from "../Model/Register.js";
+import Review from "../Model/Review.js";
+import Coupon from "../Model/Coupon.js";
+import BestSellingProduct from "../Model/BestSellingProduct.js";
 import { getDeliveryStats } from "../Controller/orderController.js";
-import Branch from '../Model/Branch.js';
+import Branch from "../Model/Branch.js";
 
 /**
  * Reports controller to handle API requests for generating various reports
@@ -23,62 +23,69 @@ const reportsController = {
       const totalOrders = await Order.countDocuments();
       const totalProducts = await Product.countDocuments();
       const totalCustomers = await User.countDocuments();
-      
+
       // Calculate total revenue from completed orders
       const revenueData = await Order.aggregate([
         { $match: { status: "completed" } },
-        { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
       ]);
       const totalRevenue = revenueData.length > 0 ? revenueData[0].total : 0;
-      
+
       // Get recent activities
       const recentOrders = await Order.find()
         .sort({ createdAt: -1 })
         .limit(3)
-        .populate('userId', 'firstName lastName userName');
-      
+        .populate("userId", "firstName lastName userName");
+
       const recentProductUpdates = await Product.find()
         .sort({ updatedAt: -1 })
         .limit(2);
-      
-      const recentUsers = await User.find()
-        .sort({ createdAt: -1 })
-        .limit(2);
-      
+
+      const recentUsers = await User.find().sort({ createdAt: -1 }).limit(2);
+
       // Format recent activities
       const recentActivities = [
-        ...recentOrders.map(order => ({
+        ...recentOrders.map((order) => ({
           id: order._id,
-          type: 'order',
-          message: `Đơn hàng mới #${order.orderCode} từ ${order.userId ? (order.userId.firstName + ' ' + order.userId.lastName || order.userId.userName) : 'Khách hàng'}`,
-          timestamp: order.createdAt
+          type: "order",
+          message: `Đơn hàng mới #${order.orderCode} từ ${
+            order.userId
+              ? order.userId.firstName + " " + order.userId.lastName ||
+                order.userId.userName
+              : "Khách hàng"
+          }`,
+          timestamp: order.createdAt,
         })),
-        ...recentProductUpdates.map(product => ({
+        ...recentProductUpdates.map((product) => ({
           id: product._id,
-          type: 'product',
+          type: "product",
           message: `Sản phẩm "${product.productName}" đã được cập nhật`,
-          timestamp: product.updatedAt
+          timestamp: product.updatedAt,
         })),
-        ...recentUsers.map(user => ({
+        ...recentUsers.map((user) => ({
           id: user._id,
-          type: 'user',
-          message: `Người dùng mới ${user.firstName ? (user.firstName + ' ' + user.lastName) : user.userName} đã đăng ký`,
-          timestamp: user.createdAt
-        }))
+          type: "user",
+          message: `Người dùng mới ${
+            user.firstName
+              ? user.firstName + " " + user.lastName
+              : user.userName
+          } đã đăng ký`,
+          timestamp: user.createdAt,
+        })),
       ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-      
+
       const stats = {
         totalOrders,
         totalRevenue,
         totalCustomers,
         totalProducts,
-        recentActivities: recentActivities.slice(0, 5)
+        recentActivities: recentActivities.slice(0, 5),
       };
-      
+
       res.json(stats);
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu thống kê' });
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu thống kê" });
     }
   },
 
@@ -86,112 +93,136 @@ const reportsController = {
   getRevenueData: async (req, res) => {
     try {
       // Không cần kiểm tra token xác thực ở đây - trả về dữ liệu cho mọi request
-      const { timeRange = 'week', paymentMethod = 'all', region = 'all' } = req.query;
-      
+      const {
+        timeRange = "week",
+        paymentMethod = "all",
+        region = "all",
+      } = req.query;
+
       // Set date range based on timeRange
       const currentDate = new Date();
       let startDate;
-      
+
       switch (timeRange) {
-        case 'year':
-          startDate = new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), currentDate.getDate());
+        case "year":
+          startDate = new Date(
+            currentDate.getFullYear() - 1,
+            currentDate.getMonth(),
+            currentDate.getDate()
+          );
           break;
-        case 'month':
-          startDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, currentDate.getDate());
+        case "month":
+          startDate = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth() - 1,
+            currentDate.getDate()
+          );
           break;
-        case 'week':
+        case "week":
         default:
-          startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 7);
+          startDate = new Date(
+            currentDate.getFullYear(),
+            currentDate.getMonth(),
+            currentDate.getDate() - 7
+          );
       }
-      
+
       // Build match criteria
-      const matchCriteria = { 
-        createdAt: { $gte: startDate, $lte: currentDate }
+      const matchCriteria = {
+        createdAt: { $gte: startDate, $lte: currentDate },
       };
-      
+
       // Add payment method filter if specified
-      if (paymentMethod && paymentMethod !== 'all') {
+      if (paymentMethod && paymentMethod !== "all") {
         matchCriteria.paymentMethod = paymentMethod;
       }
-      
+
       // Add region filter if specified
-      if (region && region !== 'all') {
-        matchCriteria['shippingInfo.city'] = region;
+      if (region && region !== "all") {
+        matchCriteria["shippingInfo.city"] = region;
       }
-      
+
       // Revenue aggregation based on time range
       let groupBy;
       let dateFormat;
-      
-      if (timeRange === 'year') {
+
+      if (timeRange === "year") {
         // Group by month for yearly data
         groupBy = {
           year: { $year: "$createdAt" },
-          month: { $month: "$createdAt" }
+          month: { $month: "$createdAt" },
         };
         dateFormat = (item) => `Tháng ${item._id.month}/${item._id.year}`;
-      } else if (timeRange === 'month') {
+      } else if (timeRange === "month") {
         // Group by day for monthly data
         groupBy = {
           year: { $year: "$createdAt" },
           month: { $month: "$createdAt" },
-          day: { $dayOfMonth: "$createdAt" }
+          day: { $dayOfMonth: "$createdAt" },
         };
         dateFormat = (item) => {
-          const date = new Date(item._id.year, item._id.month - 1, item._id.day);
-          return date.toLocaleDateString('vi-VN');
+          const date = new Date(
+            item._id.year,
+            item._id.month - 1,
+            item._id.day
+          );
+          return date.toLocaleDateString("vi-VN");
         };
       } else {
         // Group by day for weekly data (default)
         groupBy = {
           year: { $year: "$createdAt" },
           month: { $month: "$createdAt" },
-          day: { $dayOfMonth: "$createdAt" }
+          day: { $dayOfMonth: "$createdAt" },
         };
         dateFormat = (item) => {
-          const date = new Date(item._id.year, item._id.month - 1, item._id.day);
-          return date.toLocaleDateString('vi-VN');
+          const date = new Date(
+            item._id.year,
+            item._id.month - 1,
+            item._id.day
+          );
+          return date.toLocaleDateString("vi-VN");
         };
       }
-      
+
       // Aggregate revenue data
       const revenueAggregation = await Order.aggregate([
         { $match: matchCriteria },
-        { 
+        {
           $group: {
             _id: groupBy,
             revenue: { $sum: "$totalAmount" },
-            orders: { $sum: 1 }
-          }
+            orders: { $sum: 1 },
+          },
         },
-        { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
+        { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
       ]);
-      
+
       // Format the results
-      let revenueData = revenueAggregation.map(item => ({
+      let revenueData = revenueAggregation.map((item) => ({
         date: dateFormat(item),
         doanh_thu: item.revenue,
-        don_hang: item.orders
+        don_hang: item.orders,
       }));
-      
+
       // Nếu không có dữ liệu, tạo dữ liệu trống cho các ngày trong khoảng
       if (revenueData.length === 0) {
-        console.log('No revenue data found, generating empty dates');
-        
+        console.log("No revenue data found, generating empty dates");
+
         // Tạo mảng các ngày
         const dateArray = [];
         let currentDateIter = new Date(startDate);
-        
+
         // Tạo chuỗi ngày rỗng
         while (currentDateIter <= currentDate) {
           dateArray.push({
-            date: currentDateIter.toLocaleDateString('vi-VN'),
+            date: currentDateIter.toLocaleDateString("vi-VN"),
             doanh_thu: 0,
-            don_hang: 0
+            don_hang: 0,
           });
-          
+
           // Tăng ngày lên 1
-          if (timeRange === 'year') {
+          if (timeRange === "year") {
             // Tăng 1 tháng
             currentDateIter.setMonth(currentDateIter.getMonth() + 1);
           } else {
@@ -199,14 +230,19 @@ const reportsController = {
             currentDateIter.setDate(currentDateIter.getDate() + 1);
           }
         }
-        
+
         revenueData = dateArray;
       }
-      
+
       return res.json(revenueData);
     } catch (error) {
-      console.error('Error fetching revenue data:', error);
-      return res.status(500).json({ message: 'Lỗi khi lấy dữ liệu doanh thu', error: error.message });
+      console.error("Error fetching revenue data:", error);
+      return res
+        .status(500)
+        .json({
+          message: "Lỗi khi lấy dữ liệu doanh thu",
+          error: error.message,
+        });
     }
   },
 
@@ -217,20 +253,22 @@ const reportsController = {
       const results = await BestSellingProduct.find()
         .sort({ soldCount: -1 })
         .limit(5);
-      
+
       // Format the results
-      const formattedResults = results.map(product => ({
+      const formattedResults = results.map((product) => ({
         name: product.productName,
         sold: product.soldCount || 0,
-        category: product.productCategory || 'Không phân loại',
+        category: product.productCategory || "Không phân loại",
         price: product.productPrice || 0,
-        revenue: product.totalRevenue || 0
+        revenue: product.totalRevenue || 0,
       }));
-      
+
       res.json(formattedResults);
     } catch (error) {
-      console.error('Error fetching top products:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu sản phẩm bán chạy' });
+      console.error("Error fetching top products:", error);
+      res
+        .status(500)
+        .json({ message: "Lỗi khi lấy dữ liệu sản phẩm bán chạy" });
     }
   },
 
@@ -238,46 +276,50 @@ const reportsController = {
   getInventoryData: async (req, res) => {
     try {
       // Lấy dữ liệu thực từ collection Product - không cần kiểm tra token ở đây
-      const products = await Product.find({}).select('_id productName productCategory productPrice productStock productCode productImages productBrand productStatus productOrigin productWeight productUnit');
-      
+      const products = await Product.find({}).select(
+        "_id productName productCategory productPrice productStock productCode productImages productBrand productStatus productOrigin productWeight productUnit"
+      );
+
       if (!products || products.length === 0) {
         return res.status(200).json([]);
       }
-      
+
       // Biến đổi dữ liệu sản phẩm sang định dạng tồn kho
-      const inventoryData = products.map(product => {
+      const inventoryData = products.map((product) => {
         const stock = product.productStock || 0;
-        let status = 'Còn hàng';
-        
-        if (stock <= 0) status = 'Hết hàng';
-        else if (stock <= 5) status = 'Sắp hết';
-        else if (stock <= 20) status = 'Sắp hết';
-        
+        let status = "Còn hàng";
+
+        if (stock <= 0) status = "Hết hàng";
+        else if (stock <= 5) status = "Sắp hết";
+        else if (stock <= 20) status = "Sắp hết";
+
         return {
           id: product._id,
-          name: product.productName || 'Không xác định',
+          name: product.productName || "Không xác định",
           stock: product.productStock || 0,
           value: (product.productPrice || 0) * (product.productStock || 0),
           status: status,
-          category: product.productCategory || 'Không phân loại',
+          category: product.productCategory || "Không phân loại",
           price: product.productPrice || 0,
-          sku: product.productCode || '',
-          image: Array.isArray(product.productImages) && product.productImages.length > 0 
-            ? product.productImages[0] 
-            : '',
-          brand: product.productBrand || '',
+          sku: product.productCode || "",
+          image:
+            Array.isArray(product.productImages) &&
+            product.productImages.length > 0
+              ? product.productImages[0]
+              : "",
+          brand: product.productBrand || "",
           weight: product.productWeight || 0,
-          unit: product.productUnit || 'gram',
-          origin: product.productOrigin || ''
+          unit: product.productUnit || "gram",
+          origin: product.productOrigin || "",
         };
       });
-      
+
       return res.status(200).json(inventoryData);
     } catch (error) {
-      console.error('Error fetching inventory data:', error);
-      return res.status(500).json({ 
-        message: 'Lỗi khi lấy dữ liệu tồn kho', 
-        error: error.message 
+      console.error("Error fetching inventory data:", error);
+      return res.status(500).json({
+        message: "Lỗi khi lấy dữ liệu tồn kho",
+        error: error.message,
       });
     }
   },
@@ -289,51 +331,53 @@ const reportsController = {
       const totalUsers = await User.countDocuments();
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
       const newUsers = await User.countDocuments({
-        createdAt: { $gte: thirtyDaysAgo }
+        createdAt: { $gte: thirtyDaysAgo },
       });
-      
+
       // Count active users (with orders in last 30 days)
-      const activeUserIds = await Order.distinct('userId', {
-        createdAt: { $gte: thirtyDaysAgo }
+      const activeUserIds = await Order.distinct("userId", {
+        createdAt: { $gte: thirtyDaysAgo },
       });
       const activeUsers = activeUserIds.length;
-      
+
       // Get user demographics
       const usersByRegion = await User.aggregate([
-        { 
+        {
           $group: {
-            _id: { 
-              region: { 
-                $cond: { 
-                  if: { $isArray: "$address" }, 
-                  then: { $ifNull: [ { $arrayElemAt: ["$address.city", 0] }, "Khác" ] }, 
-                  else: "Khác" 
-                } 
-              } 
+            _id: {
+              region: {
+                $cond: {
+                  if: { $isArray: "$address" },
+                  then: {
+                    $ifNull: [{ $arrayElemAt: ["$address.city", 0] }, "Khác"],
+                  },
+                  else: "Khác",
+                },
+              },
             },
-            count: { $sum: 1 }
-          }
+            count: { $sum: 1 },
+          },
         },
-        { $project: { _id: 0, region: "$_id.region", count: 1 } }
+        { $project: { _id: 0, region: "$_id.region", count: 1 } },
       ]);
-      
+
       // Format the user data
       const userData = {
         totalUsers,
         newUsers,
         activeUsers,
-        usersByRegion: usersByRegion.map(item => ({
-          region: item.region || 'Khác',
-          count: item.count
-        }))
+        usersByRegion: usersByRegion.map((item) => ({
+          region: item.region || "Khác",
+          count: item.count,
+        })),
       };
-      
+
       res.json(userData);
     } catch (error) {
-      console.error('Error fetching user data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu người dùng' });
+      console.error("Error fetching user data:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu người dùng" });
     }
   },
 
@@ -342,52 +386,68 @@ const reportsController = {
     try {
       // Count orders by status
       const totalOrders = await Order.countDocuments();
-      const completedOrders = await Order.countDocuments({ status: 'completed' });
-      const pendingOrders = await Order.countDocuments({ status: 'pending' });
-      const cancelledOrders = await Order.countDocuments({ status: 'cancelled' });
-      
+      const completedOrders = await Order.countDocuments({
+        status: "completed",
+      });
+      const pendingOrders = await Order.countDocuments({ status: "pending" });
+      const cancelledOrders = await Order.countDocuments({
+        status: "cancelled",
+      });
+
       // Calculate average order value
       const avgOrderValueResult = await Order.aggregate([
-        { $match: { status: { $ne: 'cancelled' } } },
-        { $group: { _id: null, avgValue: { $avg: "$totalAmount" } } }
+        { $match: { status: { $ne: "cancelled" } } },
+        { $group: { _id: null, avgValue: { $avg: "$totalAmount" } } },
       ]);
-      const averageOrderValue = avgOrderValueResult.length > 0 ? avgOrderValueResult[0].avgValue : 0;
-      
+      const averageOrderValue =
+        avgOrderValueResult.length > 0 ? avgOrderValueResult[0].avgValue : 0;
+
       // Get orders by status
       const ordersByStatusResult = await Order.aggregate([
-        { $group: { _id: "$status", count: { $sum: 1 } } }
+        { $group: { _id: "$status", count: { $sum: 1 } } },
       ]);
-      
-      const ordersByStatus = ordersByStatusResult.map(item => {
+
+      const ordersByStatus = ordersByStatusResult.map((item) => {
         let statusName = item._id;
         // Translate status to Vietnamese if needed
-        switch(item._id) {
-          case 'pending': statusName = 'Đang xử lý'; break;
-          case 'awaiting_payment': statusName = 'Chờ thanh toán'; break;
-          case 'completed': statusName = 'Hoàn thành'; break;
-          case 'cancelled': statusName = 'Đã hủy'; break;
-          case 'shipping': statusName = 'Đang giao hàng'; break;
+        switch (item._id) {
+          case "pending":
+            statusName = "Đang xử lý";
+            break;
+          case "awaiting_payment":
+            statusName = "Chờ thanh toán";
+            break;
+          case "completed":
+            statusName = "Hoàn thành";
+            break;
+          case "cancelled":
+            statusName = "Đã hủy";
+            break;
+          case "shipping":
+            statusName = "Đang giao hàng";
+            break;
         }
         return { status: statusName, count: item.count };
       });
-      
+
       // Get recent orders with user info
       const recentOrders = await Order.find()
         .sort({ createdAt: -1 })
         .limit(5)
-        .populate('userId', 'firstName lastName userName');
-      
-      const formattedRecentOrders = recentOrders.map(order => ({
+        .populate("userId", "firstName lastName userName");
+
+      const formattedRecentOrders = recentOrders.map((order) => ({
         id: order._id,
         orderCode: order.orderCode,
-        customer: order.userId 
-          ? (order.userId.firstName + ' ' + order.userId.lastName || order.userId.userName) 
-          : 'Khách hàng',
+        customer: order.userId
+          ? order.userId.firstName + " " + order.userId.lastName ||
+            order.userId.userName
+          : "Khách hàng",
         total: order.totalAmount,
         status: order.status,
-        date: order.createdAt
+        date: order.createdAt,
       }));
-      
+
       // Combine all order data
       const orderData = {
         totalOrders,
@@ -396,13 +456,13 @@ const reportsController = {
         cancelledOrders,
         averageOrderValue,
         ordersByStatus,
-        recentOrders: formattedRecentOrders
+        recentOrders: formattedRecentOrders,
       };
-      
+
       res.json(orderData);
     } catch (error) {
-      console.error('Error fetching order data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu đơn hàng' });
+      console.error("Error fetching order data:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu đơn hàng" });
     }
   },
 
@@ -411,112 +471,124 @@ const reportsController = {
     try {
       // Count reviews
       const totalReviews = await Review.countDocuments();
-      
+
       // Average rating
       const ratingResult = await Review.aggregate([
-        { $group: { _id: null, avgRating: { $avg: "$rating" } } }
+        { $group: { _id: null, avgRating: { $avg: "$rating" } } },
       ]);
-      const averageRating = ratingResult.length > 0 ? parseFloat(ratingResult[0].avgRating.toFixed(1)) : 0;
-      
+      const averageRating =
+        ratingResult.length > 0
+          ? parseFloat(ratingResult[0].avgRating.toFixed(1))
+          : 0;
+
       // Reviews by rating
       const reviewsByRating = await Review.aggregate([
         { $group: { _id: "$rating", count: { $sum: 1 } } },
-        { $sort: { _id: -1 } }
+        { $sort: { _id: -1 } },
       ]);
-      
+
       // Chuyển đổi phân phối đánh giá theo yêu cầu của biểu đồ
       const ratingDistribution = [];
       for (let i = 5; i >= 1; i--) {
-        const ratingItem = reviewsByRating.find(item => item._id === i);
+        const ratingItem = reviewsByRating.find((item) => item._id === i);
         ratingDistribution.push({
           rating: i,
-          count: ratingItem ? ratingItem.count : 0
+          count: ratingItem ? ratingItem.count : 0,
         });
       }
-      
+
       // Recent reviews
       const recentReviews = await Review.find()
         .sort({ createdAt: -1 })
         .limit(10)
-        .populate('productId', 'productName productImages')
-        .populate('userId', 'firstName lastName userName profileImage');
-      
-      const formattedRecentReviews = recentReviews.map(review => ({
+        .populate("productId", "productName productImages")
+        .populate("userId", "firstName lastName userName profileImage");
+
+      const formattedRecentReviews = recentReviews.map((review) => ({
         id: review._id,
-        product: review.productId ? review.productId.productName : 'Sản phẩm không rõ',
-        productImage: review.productId && review.productId.productImages && review.productId.productImages.length > 0 
-          ? review.productId.productImages[0] 
-          : '',
-        user: review.userId 
-          ? (review.userId.firstName + ' ' + review.userId.lastName || review.userId.userName) 
+        product: review.productId
+          ? review.productId.productName
+          : "Sản phẩm không rõ",
+        productImage:
+          review.productId &&
+          review.productId.productImages &&
+          review.productId.productImages.length > 0
+            ? review.productId.productImages[0]
+            : "",
+        user: review.userId
+          ? review.userId.firstName + " " + review.userId.lastName ||
+            review.userId.userName
           : review.userName,
-        userImage: review.userId ? review.userId.profileImage : '',
+        userImage: review.userId ? review.userId.profileImage : "",
         rating: review.rating,
         comment: review.comment,
         date: review.createdAt,
         isVerified: review.isVerified,
-        isPublished: review.isPublished
+        isPublished: review.isPublished,
       }));
-      
+
       // Đánh giá theo thời gian
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
+
       const reviewsOverTime = await Review.aggregate([
-        { 
-          $match: { 
-            createdAt: { $gte: thirtyDaysAgo } 
-          } 
+        {
+          $match: {
+            createdAt: { $gte: thirtyDaysAgo },
+          },
         },
         {
           $group: {
-            _id: { 
-              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } 
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
             },
             count: { $sum: 1 },
-            avgRating: { $avg: "$rating" }
-          }
+            avgRating: { $avg: "$rating" },
+          },
         },
-        { $sort: { _id: 1 } }
+        { $sort: { _id: 1 } },
       ]);
-      
-      const formattedReviewsOverTime = reviewsOverTime.map(item => ({
+
+      const formattedReviewsOverTime = reviewsOverTime.map((item) => ({
         date: item._id,
         count: item.count,
-        avgRating: parseFloat(item.avgRating.toFixed(1))
+        avgRating: parseFloat(item.avgRating.toFixed(1)),
       }));
-      
+
       // Phản hồi sản phẩm hàng đầu (top products by reviews)
       const topReviewedProducts = await Review.aggregate([
         {
           $group: {
             _id: "$productId",
             count: { $sum: 1 },
-            avgRating: { $avg: "$rating" }
-          }
+            avgRating: { $avg: "$rating" },
+          },
         },
         { $sort: { count: -1 } },
-        { $limit: 5 }
+        { $limit: 5 },
       ]);
-      
+
       // Lấy chi tiết sản phẩm cho các sản phẩm được đánh giá nhiều nhất
-      const productIds = topReviewedProducts.map(item => item._id);
+      const productIds = topReviewedProducts.map((item) => item._id);
       const products = await Product.find({ _id: { $in: productIds } });
-      
-      const formattedTopProducts = topReviewedProducts.map(item => {
-        const product = products.find(p => p._id.toString() === item._id.toString());
+
+      const formattedTopProducts = topReviewedProducts.map((item) => {
+        const product = products.find(
+          (p) => p._id.toString() === item._id.toString()
+        );
         return {
           id: item._id,
-          name: product ? product.productName : 'Sản phẩm không rõ',
-          category: product ? product.productCategory : 'Không phân loại',
-          image: product && product.productImages && product.productImages.length > 0 
-            ? product.productImages[0] 
-            : '',
+          name: product ? product.productName : "Sản phẩm không rõ",
+          category: product ? product.productCategory : "Không phân loại",
+          image:
+            product && product.productImages && product.productImages.length > 0
+              ? product.productImages[0]
+              : "",
           reviewCount: item.count,
-          avgRating: parseFloat(item.avgRating.toFixed(1))
+          avgRating: parseFloat(item.avgRating.toFixed(1)),
         };
       });
-      
+
       // Combine all feedback data
       const feedbackData = {
         totalReviews,
@@ -524,15 +596,15 @@ const reportsController = {
         ratingDistribution,
         reviewsOverTime: formattedReviewsOverTime,
         topReviewedProducts: formattedTopProducts,
-        recentReviews: formattedRecentReviews
+        recentReviews: formattedRecentReviews,
       };
-      
+
       res.json(feedbackData);
     } catch (error) {
-      console.error('Error fetching feedback data:', error);
-      res.status(500).json({ 
-        message: 'Lỗi khi lấy dữ liệu phản hồi',
-        error: error.message
+      console.error("Error fetching feedback data:", error);
+      res.status(500).json({
+        message: "Lỗi khi lấy dữ liệu phản hồi",
+        error: error.message,
       });
     }
   },
@@ -542,37 +614,46 @@ const reportsController = {
     try {
       // Get coupon data from database
       const coupons = await Coupon.find();
-      
+
       // Calculate usage statistics
-      const voucherStats = coupons.map(coupon => {
+      const voucherStats = coupons.map((coupon) => {
         // Ensure discount value is defined before calling toLocaleString
         const discountValue = coupon.discountValue || 0;
-        const discountDisplay = coupon.discountType === 'percentage' 
-          ? `${discountValue}%` 
-          : `${discountValue.toLocaleString()}đ`;
-          
+        const discountDisplay =
+          coupon.discountType === "percentage"
+            ? `${discountValue}%`
+            : `${discountValue.toLocaleString()}đ`;
+
         return {
-          code: coupon.code || 'Không có mã',
-          type: coupon.discountType || 'unknown',
+          code: coupon.code || "Không có mã",
+          type: coupon.discountType || "unknown",
           discount: discountDisplay,
           used: coupon.usedCount || 0,
           limit: coupon.maxUses || 0,
           expiresAt: coupon.expiryDate || new Date(),
-          active: coupon.expiryDate ? (new Date(coupon.expiryDate) > new Date() && !coupon.isDisabled) : false
+          active: coupon.expiryDate
+            ? new Date(coupon.expiryDate) > new Date() && !coupon.isDisabled
+            : false,
         };
       });
-      
+
       const promotionData = {
         totalVouchers: coupons.length,
-        activeVouchers: coupons.filter(c => c.expiryDate && new Date(c.expiryDate) > new Date() && !c.isDisabled).length,
-        usedVouchers: coupons.reduce((total, coupon) => total + (coupon.usedCount || 0), 0),
-        voucherStats
+        activeVouchers: coupons.filter(
+          (c) =>
+            c.expiryDate && new Date(c.expiryDate) > new Date() && !c.isDisabled
+        ).length,
+        usedVouchers: coupons.reduce(
+          (total, coupon) => total + (coupon.usedCount || 0),
+          0
+        ),
+        voucherStats,
       };
-      
+
       res.json(promotionData);
     } catch (error) {
-      console.error('Error fetching promotion data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu khuyến mãi' });
+      console.error("Error fetching promotion data:", error);
+      res.status(500).json({ message: "Lỗi khi lấy dữ liệu khuyến mãi" });
     }
   },
 
@@ -587,44 +668,69 @@ const reportsController = {
         apiCalls: 1578,
         errorRate: 0.025,
         activityByHour: [
-          { hour: '00:00', count: 12 },
-          { hour: '01:00', count: 8 },
-          { hour: '02:00', count: 5 },
-          { hour: '03:00', count: 3 },
-          { hour: '04:00', count: 2 },
-          { hour: '05:00', count: 4 },
-          { hour: '06:00', count: 10 },
-          { hour: '07:00', count: 25 },
-          { hour: '08:00', count: 55 },
-          { hour: '09:00', count: 80 },
-          { hour: '10:00', count: 96 },
-          { hour: '11:00', count: 104 },
-          { hour: '12:00', count: 98 },
-          { hour: '13:00', count: 83 },
-          { hour: '14:00', count: 75 },
-          { hour: '15:00', count: 68 },
-          { hour: '16:00', count: 72 },
-          { hour: '17:00', count: 85 },
-          { hour: '18:00', count: 92 },
-          { hour: '19:00', count: 101 },
-          { hour: '20:00', count: 110 },
-          { hour: '21:00', count: 85 },
-          { hour: '22:00', count: 65 },
-          { hour: '23:00', count: 35 }
+          { hour: "00:00", count: 12 },
+          { hour: "01:00", count: 8 },
+          { hour: "02:00", count: 5 },
+          { hour: "03:00", count: 3 },
+          { hour: "04:00", count: 2 },
+          { hour: "05:00", count: 4 },
+          { hour: "06:00", count: 10 },
+          { hour: "07:00", count: 25 },
+          { hour: "08:00", count: 55 },
+          { hour: "09:00", count: 80 },
+          { hour: "10:00", count: 96 },
+          { hour: "11:00", count: 104 },
+          { hour: "12:00", count: 98 },
+          { hour: "13:00", count: 83 },
+          { hour: "14:00", count: 75 },
+          { hour: "15:00", count: 68 },
+          { hour: "16:00", count: 72 },
+          { hour: "17:00", count: 85 },
+          { hour: "18:00", count: 92 },
+          { hour: "19:00", count: 101 },
+          { hour: "20:00", count: 110 },
+          { hour: "21:00", count: 85 },
+          { hour: "22:00", count: 65 },
+          { hour: "23:00", count: 35 },
         ],
         recentActivity: [
-          { type: 'login', user: 'admin', timestamp: new Date(Date.now() - 1000 * 60 * 5) },
-          { type: 'product_update', user: 'admin', item: 'Táo xanh Mỹ cao cấp', timestamp: new Date(Date.now() - 1000 * 60 * 15) },
-          { type: 'order_update', user: 'system', item: 'ORD12345', timestamp: new Date(Date.now() - 1000 * 60 * 25) },
-          { type: 'login', user: 'manager', timestamp: new Date(Date.now() - 1000 * 60 * 35) },
-          { type: 'coupon_create', user: 'marketing', item: 'SUMMER25', timestamp: new Date(Date.now() - 1000 * 60 * 55) }
-        ]
+          {
+            type: "login",
+            user: "admin",
+            timestamp: new Date(Date.now() - 1000 * 60 * 5),
+          },
+          {
+            type: "product_update",
+            user: "admin",
+            item: "Táo xanh Mỹ cao cấp",
+            timestamp: new Date(Date.now() - 1000 * 60 * 15),
+          },
+          {
+            type: "order_update",
+            user: "system",
+            item: "ORD12345",
+            timestamp: new Date(Date.now() - 1000 * 60 * 25),
+          },
+          {
+            type: "login",
+            user: "manager",
+            timestamp: new Date(Date.now() - 1000 * 60 * 35),
+          },
+          {
+            type: "coupon_create",
+            user: "marketing",
+            item: "SUMMER25",
+            timestamp: new Date(Date.now() - 1000 * 60 * 55),
+          },
+        ],
       };
-      
+
       res.json(systemActivityData);
     } catch (error) {
-      console.error('Error fetching system activity data:', error);
-      res.status(500).json({ message: 'Lỗi khi lấy dữ liệu hoạt động hệ thống' });
+      console.error("Error fetching system activity data:", error);
+      res
+        .status(500)
+        .json({ message: "Lỗi khi lấy dữ liệu hoạt động hệ thống" });
     }
   },
 
@@ -634,18 +740,18 @@ const reportsController = {
       // Gọi trực tiếp hàm getDeliveryStats từ orderController
       return getDeliveryStats(req, res);
     } catch (err) {
-      console.error('Error fetching delivery data:', err);
+      console.error("Error fetching delivery data:", err);
       return res.status(200).json({
         statistics: {
           completed: 0,
           inProgress: 0,
           delayed: 0,
           total: 0,
-          avgDeliveryTime: "N/A"
+          avgDeliveryTime: "N/A",
         },
         deliveryPartners: [],
         deliveryTimeByRegion: [],
-        deliveries: []
+        deliveries: [],
       });
     }
   },
@@ -654,145 +760,165 @@ const reportsController = {
   getAIAnalysis: async (req, res) => {
     try {
       // Lấy dữ liệu từ database để phân tích
-      const [
-        orders,
-        products,
-        branches,
-        customers,
-        reviews
-      ] = await Promise.all([
-        Order.find().populate('products.productId'),
-        Product.find(),
-        Branch.find(),
-        User.find({ role: 'customer' }),
-        Review.find()
-      ]);
+      const [orders, products, branches, customers, reviews] =
+        await Promise.all([
+          Order.find().populate("products.productId"),
+          Product.find(),
+          Branch.find(),
+          User.find({ role: "customer" }),
+          Review.find(),
+        ]);
 
       // Tính toán các chỉ số tổng quan cho toàn hệ thống
       const totalRevenue = orders
-        .filter(order => order.status === 'completed')
+        .filter((order) => order.status === "completed")
         .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
 
       const totalOrders = orders.length;
-      const totalCompletedOrders = orders.filter(order => order.status === 'completed').length;
+      const totalCompletedOrders = orders.filter(
+        (order) => order.status === "completed"
+      ).length;
       const totalCustomers = customers.length;
       const totalProducts = products.length;
 
       // Phân tích dữ liệu cho từng chi nhánh
-      const branchDetails = await Promise.all(branches.map(async (branch) => {
-        const branchId = branch._id.toString();
-        
-        // Lọc dữ liệu theo chi nhánh
-        const branchOrders = orders.filter(order => 
-          order.branchId && order.branchId.toString() === branchId
-        );
-        const branchProducts = products.filter(p => 
-          p.branchId && p.branchId.toString() === branchId
-        );
-        const branchCustomers = customers.filter(c => 
-          c.branchId && c.branchId.toString() === branchId
-        );
-        const branchReviews = reviews.filter(r => 
-          r.branchId && r.branchId.toString() === branchId
-        );
-        
-        // Tính toán các chỉ số
-        const revenue = branchOrders
-          .filter(order => order.status === 'completed')
-          .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
-        
-        const ordersCount = branchOrders.length;
-        const completedOrders = branchOrders.filter(order => order.status === 'completed').length;
-        const customerCount = branchCustomers.length;
-        
-        // Tính tỷ lệ khách hàng quay lại
-        const returningCustomers = branchCustomers.filter(customer => {
-          const customerOrders = branchOrders.filter(order => 
-            order.userId && order.userId.toString() === customer._id.toString()
+      const branchDetails = await Promise.all(
+        branches.map(async (branch) => {
+          const branchId = branch._id.toString();
+
+          // Lọc dữ liệu theo chi nhánh
+          const branchOrders = orders.filter(
+            (order) => order.branchId && order.branchId.toString() === branchId
           );
-          return customerOrders.length > 1;
-        }).length;
-        
-        const returnRate = customerCount > 0 ? (returningCustomers / customerCount) * 100 : 0;
-        
-        // Tính thời gian giao hàng trung bình
-        const deliveryTimes = branchOrders
-          .filter(order => order.status === 'completed' && order.completedAt)
-          .map(order => {
-            const createdAt = new Date(order.createdAt);
-            const completedAt = new Date(order.completedAt);
-            return (completedAt - createdAt) / (1000 * 60 * 60); // Giờ
-          });
-        
-        const avgDeliveryTime = deliveryTimes.length > 0 
-          ? deliveryTimes.reduce((sum, time) => sum + time, 0) / deliveryTimes.length
-          : 0;
-        
-        // Tính tỷ lệ hoàn đơn
-        const cancelledOrders = branchOrders.filter(order => order.status === 'cancelled').length;
-        const cancelRate = ordersCount > 0 ? (cancelledOrders / ordersCount) * 100 : 0;
-        
-        // Tính điểm đánh giá trung bình
-        const avgRating = branchReviews.length > 0 
-          ? branchReviews.reduce((sum, review) => sum + review.rating, 0) / branchReviews.length
-          : 0;
-        
-        // Top sản phẩm bán chạy
-        const productSales = {};
-        branchOrders.forEach(order => {
-          if (order.products && Array.isArray(order.products)) {
-            order.products.forEach(item => {
-              if (item.productId && item.quantity && item.price) {
-                const productId = typeof item.productId === 'object' ? 
-                  item.productId._id.toString() : item.productId.toString();
-                
-                if (!productSales[productId]) {
-                  productSales[productId] = {
-                    sold: 0,
-                    revenue: 0,
-                    name: typeof item.productId === 'object' ? item.productId.productName : 'Sản phẩm',
-                    inventory: 0
-                  };
-                }
-                
-                productSales[productId].sold += item.quantity;
-                productSales[productId].revenue += item.price * item.quantity;
-              }
+          const branchProducts = products.filter(
+            (p) => p.branchId && p.branchId.toString() === branchId
+          );
+          const branchCustomers = customers.filter(
+            (c) => c.branchId && c.branchId.toString() === branchId
+          );
+          const branchReviews = reviews.filter(
+            (r) => r.branchId && r.branchId.toString() === branchId
+          );
+
+          // Tính toán các chỉ số
+          const revenue = branchOrders
+            .filter((order) => order.status === "completed")
+            .reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+
+          const ordersCount = branchOrders.length;
+          const completedOrders = branchOrders.filter(
+            (order) => order.status === "completed"
+          ).length;
+          const customerCount = branchCustomers.length;
+
+          // Tính tỷ lệ khách hàng quay lại
+          const returningCustomers = branchCustomers.filter((customer) => {
+            const customerOrders = branchOrders.filter(
+              (order) =>
+                order.userId &&
+                order.userId.toString() === customer._id.toString()
+            );
+            return customerOrders.length > 1;
+          }).length;
+
+          const returnRate =
+            customerCount > 0 ? (returningCustomers / customerCount) * 100 : 0;
+
+          // Tính thời gian giao hàng trung bình
+          const deliveryTimes = branchOrders
+            .filter(
+              (order) => order.status === "completed" && order.completedAt
+            )
+            .map((order) => {
+              const createdAt = new Date(order.createdAt);
+              const completedAt = new Date(order.completedAt);
+              return (completedAt - createdAt) / (1000 * 60 * 60); // Giờ
             });
-          }
-        });
-        
-        // Thêm thông tin tồn kho
-        branchProducts.forEach(product => {
-          const productId = product._id.toString();
-          if (productSales[productId]) {
-            productSales[productId].inventory = product.productStock || 0;
-          }
-        });
-        
-        // Lấy top 5 sản phẩm bán chạy
-        const topProducts = Object.values(productSales)
-          .sort((a, b) => b.sold - a.sold)
-          .slice(0, 5);
-        
-        return {
-          id: branchId,
-          name: branch.name,
-          address: branch.address,
-          revenue,
-          orders: ordersCount,
-          completedOrders,
-          customers: customerCount,
-          activeCustomers: returningCustomers,
-          returnRate,
-          avgDeliveryTime,
-          cancelRate,
-          avgRating,
-          products: branchProducts.length,
-          lowStockProducts: branchProducts.filter(p => (p.productStock || 0) < 10).length,
-          topProducts
-        };
-      }));
+
+          const avgDeliveryTime =
+            deliveryTimes.length > 0
+              ? deliveryTimes.reduce((sum, time) => sum + time, 0) /
+                deliveryTimes.length
+              : 0;
+
+          // Tính tỷ lệ hoàn đơn
+          const cancelledOrders = branchOrders.filter(
+            (order) => order.status === "cancelled"
+          ).length;
+          const cancelRate =
+            ordersCount > 0 ? (cancelledOrders / ordersCount) * 100 : 0;
+
+          // Tính điểm đánh giá trung bình
+          const avgRating =
+            branchReviews.length > 0
+              ? branchReviews.reduce((sum, review) => sum + review.rating, 0) /
+                branchReviews.length
+              : 0;
+
+          // Top sản phẩm bán chạy
+          const productSales = {};
+          branchOrders.forEach((order) => {
+            if (order.products && Array.isArray(order.products)) {
+              order.products.forEach((item) => {
+                if (item.productId && item.quantity && item.price) {
+                  const productId =
+                    typeof item.productId === "object"
+                      ? item.productId._id.toString()
+                      : item.productId.toString();
+
+                  if (!productSales[productId]) {
+                    productSales[productId] = {
+                      sold: 0,
+                      revenue: 0,
+                      name:
+                        typeof item.productId === "object"
+                          ? item.productId.productName
+                          : "Sản phẩm",
+                      inventory: 0,
+                    };
+                  }
+
+                  productSales[productId].sold += item.quantity;
+                  productSales[productId].revenue += item.price * item.quantity;
+                }
+              });
+            }
+          });
+
+          // Thêm thông tin tồn kho
+          branchProducts.forEach((product) => {
+            const productId = product._id.toString();
+            if (productSales[productId]) {
+              productSales[productId].inventory = product.productStock || 0;
+            }
+          });
+
+          // Lấy top 5 sản phẩm bán chạy
+          const topProducts = Object.values(productSales)
+            .sort((a, b) => b.sold - a.sold)
+            .slice(0, 5);
+
+          return {
+            id: branchId,
+            name: branch.name,
+            address: branch.address,
+            revenue,
+            orders: ordersCount,
+            completedOrders,
+            customers: customerCount,
+            activeCustomers: returningCustomers,
+            returnRate,
+            avgDeliveryTime,
+            cancelRate,
+            avgRating,
+            products: branchProducts.length,
+            lowStockProducts: branchProducts.filter(
+              (p) => (p.productStock || 0) < 10
+            ).length,
+            topProducts,
+          };
+        })
+      );
 
       // Tạo prompt cho GPT-4o Mini
       const prompt = `
@@ -801,26 +927,39 @@ Dưới đây là dữ liệu hệ thống từ một nền tảng quản lý si
 Dựa trên toàn bộ dữ liệu này, hãy phân tích tổng quan hoạt động kinh doanh của toàn hệ thống, sau đó đi sâu vào từng chi nhánh.
 
 1. Thông tin tổng quan:
-- Tổng doanh thu: ${totalRevenue.toLocaleString('vi-VN')}đ
+- Tổng doanh thu: ${totalRevenue.toLocaleString("vi-VN")}đ
 - Tổng số đơn hàng: ${totalOrders} (Hoàn thành: ${totalCompletedOrders})
 - Tổng số khách hàng: ${totalCustomers}
 - Tổng số sản phẩm: ${totalProducts}
 - Số chi nhánh: ${branches.length}
 
 2. Chi tiết từng chi nhánh:
-${branchDetails.map(branch => `
+${branchDetails
+  .map(
+    (branch) => `
 Chi nhánh: ${branch.name}
 - Địa chỉ: ${branch.address}
-- Doanh thu: ${branch.revenue.toLocaleString('vi-VN')}đ
+- Doanh thu: ${branch.revenue.toLocaleString("vi-VN")}đ
 - Số đơn hàng: ${branch.orders} (Hoàn thành: ${branch.completedOrders})
 - Số khách hàng: ${branch.customers} (Hoạt động: ${branch.activeCustomers})
 - Tỷ lệ khách hàng quay lại: ${branch.returnRate.toFixed(1)}%
 - Thời gian giao hàng trung bình: ${branch.avgDeliveryTime.toFixed(1)} giờ
 - Tỷ lệ hoàn đơn: ${branch.cancelRate.toFixed(1)}%
 - Đánh giá trung bình: ${branch.avgRating.toFixed(1)}/5
-- Số lượng sản phẩm: ${branch.products} (Sắp hết hàng: ${branch.lowStockProducts})
-- Top sản phẩm: ${branch.topProducts.map(p => `${p.name} (Đã bán: ${p.sold}, Doanh thu: ${p.revenue.toLocaleString('vi-VN')}đ, Tồn kho: ${p.inventory})`).join(', ')}
-`).join('\n')}
+- Số lượng sản phẩm: ${branch.products} (Sắp hết hàng: ${
+      branch.lowStockProducts
+    })
+- Top sản phẩm: ${branch.topProducts
+      .map(
+        (p) =>
+          `${p.name} (Đã bán: ${p.sold}, Doanh thu: ${p.revenue.toLocaleString(
+            "vi-VN"
+          )}đ, Tồn kho: ${p.inventory})`
+      )
+      .join(", ")}
+`
+  )
+  .join("\n")}
 
 Cấu trúc bản phân tích cần có:
 
@@ -847,18 +986,30 @@ Trả lời dưới dạng văn bản báo cáo chuyên sâu, không trình bày
       // Gọi API GPT-4o Mini để phân tích
       // Trong môi trường thực tế, sẽ cần tích hợp với API của OpenAI hoặc dịch vụ tương tự
       // Ở đây, để demo, tôi sẽ trả về một phân tích mẫu
-      
+
       // Mô phỏng phân tích từ GPT-4o Mini
       const analysis = `# Phân tích tổng quan hệ thống siêu thị thực phẩm sạch
 
 ## 1. Tổng quan hoạt động toàn hệ thống
 
-Hệ thống siêu thị thực phẩm sạch hiện đang vận hành với ${branches.length} chi nhánh, phục vụ ${totalCustomers} khách hàng, với tổng doanh thu đạt ${totalRevenue.toLocaleString('vi-VN')}đ. Tỷ lệ hoàn thành đơn hàng đạt ${(totalCompletedOrders/totalOrders*100).toFixed(1)}%, cho thấy khả năng đáp ứng nhu cầu khách hàng ở mức khá tốt.
+Hệ thống siêu thị thực phẩm sạch hiện đang vận hành với ${
+        branches.length
+      } chi nhánh, phục vụ ${totalCustomers} khách hàng, với tổng doanh thu đạt ${totalRevenue.toLocaleString(
+        "vi-VN"
+      )}đ. Tỷ lệ hoàn thành đơn hàng đạt ${(
+        (totalCompletedOrders / totalOrders) *
+        100
+      ).toFixed(
+        1
+      )}%, cho thấy khả năng đáp ứng nhu cầu khách hàng ở mức khá tốt.
 
 ### Điểm mạnh chung
 - Hệ thống có mạng lưới chi nhánh phân bố rộng khắp, tạo điều kiện tiếp cận nhiều phân khúc khách hàng
 - Danh mục sản phẩm đa dạng với ${totalProducts} mặt hàng, đáp ứng tốt nhu cầu của người tiêu dùng về thực phẩm sạch
-- Tỷ lệ hoàn thành đơn hàng cao (${(totalCompletedOrders/totalOrders*100).toFixed(1)}%), thể hiện khả năng đáp ứng và logistics hiệu quả
+- Tỷ lệ hoàn thành đơn hàng cao (${(
+        (totalCompletedOrders / totalOrders) *
+        100
+      ).toFixed(1)}%), thể hiện khả năng đáp ứng và logistics hiệu quả
 - Hệ thống quản lý tập trung cho phép giám sát và điều phối hoạt động giữa các chi nhánh
 
 ### Điểm yếu chung
@@ -890,55 +1041,87 @@ Hệ thống siêu thị thực phẩm sạch hiện đang vận hành với ${b
 
 ## 2. Phân tích chi nhánh cụ thể
 
-${branchDetails.map((branch, index) => `
+${branchDetails
+  .map(
+    (branch, index) => `
 ### Chi nhánh ${branch.name}
 
-Chi nhánh ${branch.name} đạt doanh thu ${branch.revenue.toLocaleString('vi-VN')}đ, với ${branch.customers} khách hàng và tỷ lệ quay lại ${branch.returnRate.toFixed(1)}%. Thời gian giao hàng trung bình là ${branch.avgDeliveryTime.toFixed(1)} giờ, và tỷ lệ hoàn đơn ở mức ${branch.cancelRate.toFixed(1)}%.
+Chi nhánh ${branch.name} đạt doanh thu ${branch.revenue.toLocaleString(
+      "vi-VN"
+    )}đ, với ${
+      branch.customers
+    } khách hàng và tỷ lệ quay lại ${branch.returnRate.toFixed(
+      1
+    )}%. Thời gian giao hàng trung bình là ${branch.avgDeliveryTime.toFixed(
+      1
+    )} giờ, và tỷ lệ hoàn đơn ở mức ${branch.cancelRate.toFixed(1)}%.
 
 **Điểm mạnh**: ${
-  [
-    branch.revenue > totalRevenue / branches.length * 1.2 ? 'Doanh thu cao hơn trung bình hệ thống' : '',
-    branch.returnRate > 50 ? 'Tỷ lệ khách hàng quay lại cao' : '',
-    branch.avgDeliveryTime < 12 ? 'Thời gian giao hàng nhanh' : '',
-    branch.cancelRate < 5 ? 'Tỷ lệ hoàn đơn thấp' : '',
-    branch.avgRating > 4 ? 'Đánh giá khách hàng tốt' : ''
-  ].filter(Boolean).join(', ') || 'Cần thu thập thêm dữ liệu'
-}
+      [
+        branch.revenue > (totalRevenue / branches.length) * 1.2
+          ? "Doanh thu cao hơn trung bình hệ thống"
+          : "",
+        branch.returnRate > 50 ? "Tỷ lệ khách hàng quay lại cao" : "",
+        branch.avgDeliveryTime < 12 ? "Thời gian giao hàng nhanh" : "",
+        branch.cancelRate < 5 ? "Tỷ lệ hoàn đơn thấp" : "",
+        branch.avgRating > 4 ? "Đánh giá khách hàng tốt" : "",
+      ]
+        .filter(Boolean)
+        .join(", ") || "Cần thu thập thêm dữ liệu"
+    }
 
 **Điểm yếu**: ${
-  [
-    branch.revenue < totalRevenue / branches.length * 0.8 ? 'Doanh thu thấp hơn trung bình hệ thống' : '',
-    branch.returnRate < 30 ? 'Tỷ lệ khách hàng quay lại thấp' : '',
-    branch.avgDeliveryTime > 24 ? 'Thời gian giao hàng chậm' : '',
-    branch.cancelRate > 10 ? 'Tỷ lệ hoàn đơn cao' : '',
-    branch.avgRating < 3.5 ? 'Đánh giá khách hàng chưa tốt' : '',
-    branch.lowStockProducts > 5 ? 'Nhiều sản phẩm sắp hết hàng' : ''
-  ].filter(Boolean).join(', ') || 'Chưa phát hiện điểm yếu đáng kể'
-}
+      [
+        branch.revenue < (totalRevenue / branches.length) * 0.8
+          ? "Doanh thu thấp hơn trung bình hệ thống"
+          : "",
+        branch.returnRate < 30 ? "Tỷ lệ khách hàng quay lại thấp" : "",
+        branch.avgDeliveryTime > 24 ? "Thời gian giao hàng chậm" : "",
+        branch.cancelRate > 10 ? "Tỷ lệ hoàn đơn cao" : "",
+        branch.avgRating < 3.5 ? "Đánh giá khách hàng chưa tốt" : "",
+        branch.lowStockProducts > 5 ? "Nhiều sản phẩm sắp hết hàng" : "",
+      ]
+        .filter(Boolean)
+        .join(", ") || "Chưa phát hiện điểm yếu đáng kể"
+    }
 
 **Gợi ý cải thiện**:
 ${
-  branch.returnRate < 30 ? 'Triển khai chương trình khách hàng thân thiết với ưu đãi hấp dẫn để tăng tỷ lệ quay lại. ' : ''
+  branch.returnRate < 30
+    ? "Triển khai chương trình khách hàng thân thiết với ưu đãi hấp dẫn để tăng tỷ lệ quay lại. "
+    : ""
 }${
-  branch.avgDeliveryTime > 24 ? 'Tối ưu hóa quy trình giao hàng và hợp tác với đơn vị vận chuyển hiệu quả hơn. ' : ''
-}${
-  branch.cancelRate > 10 ? 'Phân tích nguyên nhân hoàn đơn và cải thiện quy trình xử lý đơn hàng. ' : ''
-}${
-  branch.avgRating < 3.5 ? 'Đào tạo nhân viên về kỹ năng tư vấn sản phẩm và chăm sóc khách hàng. ' : ''
-}${
-  branch.lowStockProducts > 5 ? 'Cải thiện hệ thống quản lý tồn kho và dự báo nhu cầu. ' : ''
-}${
-  branch.revenue < totalRevenue / branches.length * 0.8 ? 'Tăng cường hoạt động marketing địa phương và sự kiện cộng đồng. ' : ''
-}
+      branch.avgDeliveryTime > 24
+        ? "Tối ưu hóa quy trình giao hàng và hợp tác với đơn vị vận chuyển hiệu quả hơn. "
+        : ""
+    }${
+      branch.cancelRate > 10
+        ? "Phân tích nguyên nhân hoàn đơn và cải thiện quy trình xử lý đơn hàng. "
+        : ""
+    }${
+      branch.avgRating < 3.5
+        ? "Đào tạo nhân viên về kỹ năng tư vấn sản phẩm và chăm sóc khách hàng. "
+        : ""
+    }${
+      branch.lowStockProducts > 5
+        ? "Cải thiện hệ thống quản lý tồn kho và dự báo nhu cầu. "
+        : ""
+    }${
+      branch.revenue < (totalRevenue / branches.length) * 0.8
+        ? "Tăng cường hoạt động marketing địa phương và sự kiện cộng đồng. "
+        : ""
+    }
 
 **Tiềm năng phát triển**: ${
-  branch.revenue > totalRevenue / branches.length * 1.2 ? 
-  'Chi nhánh có tiềm năng mở rộng quy mô hoạt động và trở thành trung tâm phân phối cho khu vực lân cận.' : 
-  branch.returnRate > 50 ? 
-  'Chi nhánh có thể phát triển thành điểm đến mua sắm ưa thích của khách hàng thân thiết, tập trung vào các sản phẩm cao cấp và dịch vụ cá nhân hóa.' :
-  'Chi nhánh có tiềm năng cải thiện hiệu suất thông qua tối ưu hóa vận hành và chiến lược marketing địa phương phù hợp.'
-}
-`).join('\n')}
+      branch.revenue > (totalRevenue / branches.length) * 1.2
+        ? "Chi nhánh có tiềm năng mở rộng quy mô hoạt động và trở thành trung tâm phân phối cho khu vực lân cận."
+        : branch.returnRate > 50
+        ? "Chi nhánh có thể phát triển thành điểm đến mua sắm ưa thích của khách hàng thân thiết, tập trung vào các sản phẩm cao cấp và dịch vụ cá nhân hóa."
+        : "Chi nhánh có tiềm năng cải thiện hiệu suất thông qua tối ưu hóa vận hành và chiến lược marketing địa phương phù hợp."
+    }
+`
+  )
+  .join("\n")}
 
 Phân tích này dựa trên dữ liệu hiện có từ hệ thống quản lý. Để có phân tích toàn diện hơn, cần bổ sung thêm dữ liệu về:
 - Chi tiết đánh giá và phản hồi của khách hàng
@@ -948,7 +1131,7 @@ Phân tích này dựa trên dữ liệu hiện có từ hệ thống quản lý
 
 Việc tích hợp các dữ liệu này sẽ giúp đưa ra chiến lược tối ưu hơn cho từng chi nhánh và toàn hệ thống.`;
 
-      res.json({ 
+      res.json({
         analysis,
         metadata: {
           totalBranches: branches.length,
@@ -957,15 +1140,17 @@ Việc tích hợp các dữ liệu này sẽ giúp đưa ra chiến lược t�
           totalCompletedOrders,
           totalCustomers,
           totalProducts,
-          generatedAt: new Date()
+          generatedAt: new Date(),
         },
-        branchDetails
+        branchDetails,
       });
     } catch (error) {
       console.error("Error in getAIAnalysis:", error);
-      res.status(500).json({ message: "Lỗi khi phân tích dữ liệu", error: error.message });
+      res
+        .status(500)
+        .json({ message: "Lỗi khi phân tích dữ liệu", error: error.message });
     }
-  }
+  },
 };
 
 export default reportsController;

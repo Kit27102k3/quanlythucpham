@@ -1,5 +1,5 @@
 import express from 'express';
-import { handleMessage, handleRasaWebhook, processMessage, handleProductComparison } from '../Controller/Chatbot/chatbotController.js';
+import { handleMessage, processMessage, handleProductComparison } from '../Controller/Chatbot/chatbotController.js';
 import { verifyToken } from '../Middleware/verifyToken.js';
 import chatbotTrainer from '../chatbot/training_data/chatbot_trainer.js';
 import { spawn } from 'child_process';
@@ -14,9 +14,6 @@ const __dirname = path.dirname(__filename);
 
 // Route cho chatbot
 router.post('/', handleMessage);
-
-// Route cho webhook từ Rasa
-router.post('/webhook', handleRasaWebhook);
 
 // Xử lý tin nhắn chatbot
 router.post("/message", verifyToken, processMessage);

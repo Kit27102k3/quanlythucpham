@@ -1,251 +1,375 @@
-// Cải thiện hàm xử lý câu hỏi về sản phẩm
-async function handleProductQuery(message, context) {
-  console.log(`Nhận tin nhắn về sản phẩm: "${message}"`);
-  
-  // Lấy thông tin sản phẩm đang xem từ ngữ cảnh (nếu có)
-  const productId = context && context.productId ? context.productId : null;
-  console.log(`Thông tin sản phẩm đang xem (productId): ${productId}`);
-  
-  // Kiểm tra xem tin nhắn có phải là yêu cầu so sánh sản phẩm không
-  const isComparisonQuery = checkIfComparisonQuery(message);
-  console.log(`Kiểm tra tin nhắn có phải yêu cầu so sánh không: "${message}"`);
-  
-  if (isComparisonQuery) {
-    return await handleProductComparison(message, context);
-  }
-  
-  // Kiểm tra xem câu hỏi có phụ thuộc vào ngữ cảnh không
-  const isContextDependent = checkIfContextDependent(message);
-  console.log(`Kiểm tra câu hỏi phụ thuộc ngữ cảnh: ${isContextDependent}`);
-  
-  // Nếu câu hỏi phụ thuộc ngữ cảnh và có thông tin sản phẩm trong ngữ cảnh
-  if (isContextDependent && context && context.lastProduct) {
-    return await handleProductInfoQuery(message, context.lastProduct);
-  }
-  
-  // Phân loại loại câu hỏi về sản phẩm
-  const queryType = classifyProductQuery(message);
-  console.log(`Intent được phát hiện: ${queryType}`);
-  
-  // Xử lý theo loại câu hỏi
-  switch (queryType) {
-    case 'product_search':
-      return await searchProducts(message);
-    case 'product_info':
-      if (productId) {
-        const product = await getProductById(productId);
-        if (product) {
-          return await handleProductInfoQuery(message, product);
-        }
-      }
-      return "Bạn muốn biết thông tin về sản phẩm nào? Vui lòng cho tôi biết tên sản phẩm.";
-    case 'product_price':
-      if (productId) {
-        const product = await getProductById(productId);
-        if (product) {
-          return `Giá của ${product.productName} là ${formatPrice(product.productPrice)} đồng.`;
-        }
-      }
-      return "Bạn muốn biết giá của sản phẩm nào? Vui lòng cho tôi biết tên sản phẩm.";
-    default:
-      return await searchProducts(message);
-  }
-}
+import { semanticSearch } from "./semanticSearchHandler.js";
+import Product from "../../../Model/Products.js";
 
-// Cải thiện hàm phân loại câu hỏi về sản phẩm
-function classifyProductQuery(message) {
+export const handleProductQuery = async (message, context = {}) => {
+  const productId = context?.productId;
+
+  if (message.match(/so sánh|đối chiếu|khác nhau/i)) {
+    return {
+      type: "product_comparison",
+      message:
+        "Tính năng so sánh sản phẩm đang được phát triển. Bạn có thể xem thông tin chi tiết của từng sản phẩm để so sánh.",
+    };
+  }
+
+  if (
+    productId &&
+    message.match(/giá bao nhiêu|giá tiền|bao nhiêu tiền|mấy|giá|giá cả/i)
+  ) {
+    try {
+      const product = await Product.findById(productId);
+      if (product) {
+        return {
+          type: "product_price",
+          message: `${
+            product.productName
+          } có giá ${product.productPrice.toLocaleString("vi-VN")} đồng.`,
+          product,
+        };
+      }
+    } catch (error) {
+      console.error("Lỗi khi tìm kiếm sản phẩm:", error);
+      return {
+        type: "error",
+        message: "Đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau.",
+      };
+    }
+  }
+
+  const queryType = classifyProductQuery(message);
+  
+  switch (queryType) {
+    case "product_search":
+      return await searchProducts(message, context);
+
+    case "product_info":
+      return {
+        type: "product_info",
+        message:
+          "Để biết thông tin chi tiết về sản phẩm, bạn vui lòng cung cấp tên cụ thể của sản phẩm.",
+      };
+
+    case "product_price":
+      return {
+        type: "product_price",
+        message:
+          "Để biết giá của sản phẩm, bạn vui lòng cung cấp tên cụ thể của sản phẩm.",
+      };
+
+    default:
+      return {
+        type: "unknown_product_query",
+        message:
+          "Tôi không hiểu rõ yêu cầu về sản phẩm của bạn. Bạn có thể nói rõ hơn được không?",
+      };
+  }
+};
+
+const classifyProductQuery = (message) => {
   const lowerMessage = message.toLowerCase();
   
-  // Các từ khóa cho từng loại câu hỏi
-  const queryKeywords = {
-    product_search: [
-      'tìm', 'có bán', 'mua', 'kiếm', 'loại', 'nào', 'ít đường', 'ăn kiêng',
-      'dinh dưỡng', 'trái cây', 'rau củ', 'thực phẩm'
-    ],
-    product_info: [
-      'thông tin', 'chi tiết', 'mô tả', 'đặc điểm', 'tính năng', 'thành phần',
-      'xuất xứ', 'sản xuất', 'hạn sử dụng', 'bảo quản', 'cách dùng'
-    ],
-    product_price: [
-      'giá', 'bao nhiêu', 'giá tiền', 'giá cả', 'đắt', 'rẻ', 'tiền'
-    ]
-  };
-  
-  // Các mẫu câu hỏi đặc biệt
-  const specialPatterns = {
-    product_search: [
-      /loại .* nào/i,
-      /có .* không/i,
-      /bán .* không/i,
-      /tìm .* ít đường/i,
-      /tìm .* ăn kiêng/i,
-      /sản phẩm .* cho người/i,
-      /trái cây nào/i,
-      /rau củ nào/i,
-      /thực phẩm nào/i
-    ],
-    product_info: [
-      /thông tin .* như thế nào/i,
-      /chi tiết về .*/i,
-      /mô tả .*/i,
-      /thành phần của .*/i
-    ],
-    product_price: [
-      /giá .* là bao nhiêu/i,
-      /bao nhiêu tiền/i,
-      /.* giá bao nhiêu/i
-    ]
-  };
-  
-  // Kiểm tra các mẫu câu đặc biệt
-  for (const [type, patterns] of Object.entries(specialPatterns)) {
-    for (const pattern of patterns) {
-      if (pattern.test(lowerMessage)) {
-        return type;
-      }
+  const searchKeywords = [
+    "tìm",
+    "kiếm",
+    "có bán",
+    "mua",
+    "tìm kiếm",
+    "muốn mua",
+    "cần mua",
+    "đang tìm",
+  ];
+  const infoKeywords = [
+    "thông tin",
+    "chi tiết",
+    "mô tả",
+    "thành phần",
+    "xuất xứ",
+    "sản xuất",
+    "hạn sử dụng",
+    "bảo quản",
+  ];
+  const priceKeywords = [
+    "giá",
+    "giá cả",
+    "giá tiền",
+    "giá bao nhiêu",
+    "bao nhiêu tiền",
+    "mấy tiền",
+    "đắt không",
+    "rẻ không",
+  ];
+
+  const lowSugarFruitPattern =
+    /(trái cây|hoa quả|quả).*(ít đường|không đường|đường thấp|tiểu đường|đái tháo đường|ăn kiêng|giảm cân)/i;
+  const diabeticPattern =
+    /(tiểu đường|đái tháo đường).*(trái cây|hoa quả|quả|ăn được|nên ăn)/i;
+
+  if (
+    lowSugarFruitPattern.test(lowerMessage) ||
+    diabeticPattern.test(lowerMessage)
+  ) {
+    return "product_search";
+  }
+
+  for (const keyword of searchKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      return "product_search";
     }
   }
-  
-  // Kiểm tra từng loại câu hỏi dựa trên từ khóa
-  let bestType = 'product_search'; // Mặc định là tìm kiếm sản phẩm
-  let highestScore = 0;
-  
-  for (const [type, keywords] of Object.entries(queryKeywords)) {
-    let score = 0;
-    for (const keyword of keywords) {
+
+  for (const keyword of priceKeywords) {
       if (lowerMessage.includes(keyword)) {
-        score += 1;
-      }
-    }
-    
-    if (score > highestScore) {
-      highestScore = score;
-      bestType = type;
+      return "product_price";
     }
   }
-  
-  // Ưu tiên đặc biệt cho các câu hỏi về trái cây ít đường hoặc ăn kiêng
-  if (lowerMessage.includes('trái cây') && 
-      (lowerMessage.includes('ít đường') || lowerMessage.includes('ăn kiêng'))) {
-    return 'product_search';
-  }
-  
-  return bestType;
-}
 
-// Import hàm tìm kiếm ngữ nghĩa
-const { semanticSearch } = require('./semanticSearchHandler');
+  for (const keyword of infoKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      return "product_info";
+    }
+  }
 
-// Cập nhật hàm tìm kiếm sản phẩm để sử dụng tìm kiếm ngữ nghĩa
-async function searchProducts(message) {
-  console.log(`Đang tìm kiếm sản phẩm với query: ${message}`);
-  
-  // Sử dụng tìm kiếm ngữ nghĩa thay vì tìm kiếm từng từ khóa riêng lẻ
-  let products = await semanticSearch(message);
-  
-  // Nếu không tìm thấy sản phẩm nào bằng tìm kiếm ngữ nghĩa, thử phương pháp cũ
-  if (products.length === 0) {
-    console.log("Không tìm thấy sản phẩm bằng tìm kiếm ngữ nghĩa, thử phương pháp cũ");
-    
-    // Phân tích câu hỏi để xác định danh mục sản phẩm
-    const category = extractProductCategory(message);
-    console.log(`Tìm sản phẩm thuộc danh mục: ${category}`);
-    
-    // Phân tích câu hỏi để xác định khoảng giá
-    const priceRange = extractPriceRange(message);
-    console.log(`Từ khóa giá: ${JSON.stringify(priceRange)}`);
-    
-    // Phân tích câu hỏi để lấy từ khóa tìm kiếm
-    const keywords = extractKeywords(message);
-    console.log(`Từ khóa tìm kiếm: ${JSON.stringify(keywords)}`);
-    
-    // Tìm kiếm sản phẩm theo danh mục và từ khóa
-    if ((message.toLowerCase().includes('ít đường') || message.toLowerCase().includes('ăn kiêng')) && 
-        (message.toLowerCase().includes('trái cây') || message.toLowerCase().includes('hoa quả') || message.toLowerCase().includes('quả'))) {
-      
-      console.log("Tìm sản phẩm trái cây ít đường hoặc cho người ăn kiêng");
-      
-      // Tìm trong danh mục Trái cây
-      products = await searchProductsByCategory('Trái cây', [...keywords, 'ít đường', 'ăn kiêng'], priceRange);
-      
-      // Nếu không tìm thấy đủ sản phẩm, thử tìm trong danh mục Rau củ quả
-      if (products.length < 3) {
-        const moreProducts = await searchProductsByCategory('Rau củ quả', [...keywords, 'ít đường', 'ăn kiêng'], priceRange);
-        products = [...products, ...moreProducts].slice(0, 5);
-      }
-      
-      // Nếu vẫn không tìm thấy, thử tìm với từ khóa chung
-      if (products.length === 0) {
-        console.log("Không tìm thấy sản phẩm, thử tìm chỉ với từ khóa");
-        products = await searchProductsByKeywords([...keywords, 'ít đường', 'ăn kiêng']);
-      }
-    } else {
-      // Tìm kiếm thông thường
-      products = await searchProductsByCategory(category, keywords, priceRange);
-      
-      // Nếu không tìm thấy, thử tìm với từ khóa
-      if (products.length === 0) {
-        console.log("Không tìm thấy sản phẩm, thử tìm chỉ với từ khóa");
-        products = await searchProductsByKeywords(keywords);
-      }
-    }
-  } else {
-    console.log(`Tìm thấy ${products.length} sản phẩm bằng tìm kiếm ngữ nghĩa`);
+  return "product_search";
+};
+
+const searchProducts = async (message, context = {}) => {
+  const healthPattern =
+    /sức khỏe|bệnh|tiểu đường|huyết áp|tim mạch|béo phì|giảm cân|tăng cân|tăng cơ|ăn chay|mang thai|người già|trẻ em|dị ứng|không dung nạp|tốt cho|có lợi|phòng bệnh|chữa bệnh/i;
+
+  if (
+    healthPattern.test(message) &&
+    !message.match(/tìm|kiếm|có bán|mua|muốn mua|cần mua/i)
+  ) {
+    return {
+      type: "health_inquiry",
+      message:
+        "Đây có vẻ là câu hỏi về sức khỏe. Nếu bạn muốn tìm sản phẩm phù hợp, vui lòng nêu rõ loại sản phẩm bạn đang tìm kiếm.",
+    };
   }
-  
-  // Nếu không tìm thấy sản phẩm nào
-  if (products.length === 0) {
-    return "Xin lỗi, tôi không tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Bạn có thể mô tả chi tiết hơn hoặc tìm kiếm với từ khóa khác.";
-  }
-  
-  // Lưu thông tin sản phẩm vào ngữ cảnh
-  await saveProductContext(context ? context.userId : null, products[0], products);
-  
-  // Tạo câu trả lời với thông tin sản phẩm
-  let response = "";
-  
-  // Trường hợp đặc biệt cho câu hỏi về trái cây ít đường hoặc ăn kiêng
-  if ((message.toLowerCase().includes('ít đường') || message.toLowerCase().includes('ăn kiêng')) && 
-      (message.toLowerCase().includes('trái cây') || message.toLowerCase().includes('hoa quả') || message.toLowerCase().includes('quả'))) {
-    
-    response = "Dựa trên yêu cầu của bạn về trái cây ít đường phù hợp cho người ăn kiêng, tôi xin giới thiệu:\n\n";
-    
-    // Lọc sản phẩm thuộc danh mục Trái cây hoặc Rau củ quả
-    const filteredProducts = products.filter(p => 
-      p.productCategory === 'Trái cây' || p.productCategory === 'Rau củ quả'
-    );
-    
-    if (filteredProducts.length > 0) {
-      filteredProducts.slice(0, 3).forEach((product, index) => {
-        response += `${index + 1}. ${product.productName} - ${formatPrice(product.productPrice)} đồng\n`;
-        if (product.productDescription && product.productDescription.length > 0) {
-          response += `   • ${product.productDescription.slice(0, 2).join('\n   • ')}\n`;
-        }
-        response += '\n';
-      });
-      
-      response += "Những loại trái cây này đều có hàm lượng đường thấp, phù hợp cho người ăn kiêng hoặc người cần kiểm soát lượng đường. Bạn có muốn biết thêm thông tin chi tiết về sản phẩm nào không?";
-    } else {
-      response = "Xin lỗi, hiện tại cửa hàng chúng tôi không có sản phẩm trái cây đặc biệt cho người ăn kiêng. Tuy nhiên, tôi có thể giới thiệu một số loại trái cây tự nhiên có hàm lượng đường thấp như: quả bơ, quả chanh, quả dưa chuột, quả dâu tây, quả việt quất. Bạn có thể tìm kiếm các sản phẩm này trong danh mục Trái cây của chúng tôi.";
+
+  try {
+    const products = await semanticSearch(message);
+
+    if (context?.userId && products.length > 0) {
+      context.productId = products[0]._id;
     }
-  } else {
-    // Câu trả lời thông thường
-    response = `Tôi đã tìm thấy ${products.length} sản phẩm phù hợp với yêu cầu của bạn:\n\n`;
-    
-    products.slice(0, 3).forEach((product, index) => {
-      response += `${index + 1}. ${product.productName} - ${formatPrice(product.productPrice)} đồng\n`;
+
+    if (!products || products.length === 0) {
+      return await fallbackSearch(message);
+    }
+
+    const topProducts = products.slice(0, 3);
+    let response = `Tôi đã tìm thấy ${products.length} sản phẩm phù hợp với yêu cầu của bạn. Dưới đây là một số gợi ý:\n\n`;
+
+    topProducts.forEach((product, index) => {
+      response += `${index + 1}. ${
+        product.productName
+      } - ${product.productPrice.toLocaleString("vi-VN")} đồng\n`;
       if (product.productDescription && product.productDescription.length > 0) {
-        response += `   • ${product.productDescription.slice(0, 1).join('\n   • ')}\n`;
+        response += `   ${product.productDescription[0]}\n`;
       }
-      response += '\n';
+      response += "\n";
     });
-    
-    if (products.length > 3) {
-      response += `...và ${products.length - 3} sản phẩm khác.\n\n`;
-    }
-    
-    response += "Bạn có muốn biết thêm thông tin chi tiết về sản phẩm nào không?";
+
+    response +=
+      "Bạn có muốn xem thêm thông tin chi tiết về sản phẩm nào không?";
+
+    return {
+      type: "product_search_results",
+      message: response,
+      products: topProducts,
+    };
+  } catch (error) {
+    console.error("Lỗi khi tìm kiếm sản phẩm:", error);
+    return {
+      type: "error",
+      message: "Đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau.",
+    };
   }
-  
-  return response;
-} 
+};
+
+const fallbackSearch = async (message) => {
+  try {
+    const categories = extractCategories(message);
+    const priceRange = extractPriceRange(message);
+    const keywords = extractKeywords(message);
+
+    const filter = {};
+
+    if (categories.length > 0) {
+      filter.productCategory = { $in: categories };
+    }
+
+    if (priceRange) {
+      filter.productPrice = {};
+      if (priceRange.min !== undefined) {
+        filter.productPrice.$gte = priceRange.min;
+      }
+      if (priceRange.max !== undefined) {
+        filter.productPrice.$lte = priceRange.max;
+      }
+    }
+
+    if (keywords.length > 0) {
+      const keywordRegex = keywords.map((keyword) => new RegExp(keyword, "i"));
+      filter.$or = [
+        { productName: { $in: keywordRegex } },
+        { productDescription: { $in: keywordRegex } },
+      ];
+    }
+
+    let products = [];
+
+    if (Object.keys(filter).length > 0) {
+      products = await Product.find(filter).limit(5);
+    } else {
+      return {
+        type: "no_results",
+        message:
+          "Tôi không tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Vui lòng thử lại với từ khóa khác.",
+      };
+    }
+
+    if (products.length === 0) {
+      return {
+        type: "no_results",
+        message:
+          "Tôi không tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Vui lòng thử lại với từ khóa khác.",
+      };
+    }
+
+    let response = `Tôi đã tìm thấy ${products.length} sản phẩm có thể phù hợp với yêu cầu của bạn:\n\n`;
+
+    products.forEach((product, index) => {
+      response += `${index + 1}. ${
+        product.productName
+      } - ${product.productPrice.toLocaleString("vi-VN")} đồng\n`;
+      if (product.productDescription && product.productDescription.length > 0) {
+        response += `   ${product.productDescription[0]}\n`;
+      }
+      response += "\n";
+    });
+
+    response +=
+      "Bạn có muốn xem thêm thông tin chi tiết về sản phẩm nào không?";
+
+    return {
+      type: "product_search_results",
+      message: response,
+      products,
+    };
+  } catch (error) {
+    console.error("Lỗi khi tìm kiếm sản phẩm:", error);
+    return {
+      type: "error",
+      message: "Đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau.",
+    };
+  }
+};
+
+const extractCategories = (message) => {
+  const lowerMessage = message.toLowerCase();
+  const categories = [];
+
+  const categoryMap = {
+    "trái cây": "Trái cây",
+    "hoa quả": "Trái cây",
+    quả: "Trái cây",
+    rau: "Rau củ quả",
+    củ: "Rau củ quả",
+    "rau củ": "Rau củ quả",
+    thịt: "Thịt",
+    cá: "Hải sản",
+    "hải sản": "Hải sản",
+    "đồ uống": "Đồ uống",
+    nước: "Đồ uống",
+    bánh: "Bánh kẹo",
+    kẹo: "Bánh kẹo",
+    "bánh kẹo": "Bánh kẹo",
+    "gia vị": "Gia vị",
+    "đồ khô": "Đồ khô",
+    sữa: "Sữa và các sản phẩm từ sữa",
+    "đồ hộp": "Đồ hộp",
+    "đồ đông lạnh": "Đồ đông lạnh",
+  };
+
+  for (const [keyword, category] of Object.entries(categoryMap)) {
+    if (lowerMessage.includes(keyword)) {
+      categories.push(category);
+    }
+  }
+
+  return [...new Set(categories)];
+};
+
+const extractPriceRange = (message) => {
+  const lowerMessage = message.toLowerCase();
+
+  const underMatch = lowerMessage.match(
+    /dưới\s*(\d+)(?:\s*nghìn|\s*ngàn|\s*k|\s*\.\d+)?/i
+  );
+  if (underMatch) {
+    const value = parseFloat(underMatch[1]);
+    return { max: value * 1000 };
+  }
+
+  const overMatch = lowerMessage.match(
+    /trên\s*(\d+)(?:\s*nghìn|\s*ngàn|\s*k|\s*\.\d+)?/i
+  );
+  if (overMatch) {
+    const value = parseFloat(overMatch[1]);
+    return { min: value * 1000 };
+  }
+
+  const rangeMatch = lowerMessage.match(
+    /từ\s*(\d+)(?:\s*nghìn|\s*ngàn|\s*k)?\s*đến\s*(\d+)(?:\s*nghìn|\s*ngàn|\s*k)?/i
+  );
+  if (rangeMatch) {
+    const min = parseFloat(rangeMatch[1]);
+    const max = parseFloat(rangeMatch[2]);
+    return {
+      min: min * 1000,
+      max: max * 1000,
+    };
+  }
+
+  return null;
+};
+
+const extractKeywords = (message) => {
+  const lowerMessage = message.toLowerCase();
+
+  const stopWords = [
+    "tìm",
+    "kiếm",
+    "mua",
+    "bán",
+    "sản phẩm",
+    "có",
+    "không",
+    "và",
+    "hoặc",
+    "là",
+    "của",
+    "cho",
+    "tôi",
+    "bạn",
+    "muốn",
+    "cần",
+    "đang",
+  ];
+
+  const words = lowerMessage.split(/\s+/);
+
+  const filteredWords = words.filter((word) => {
+    return word.length >= 2 && !stopWords.includes(word);
+  });
+
+  return [...new Set(filteredWords)];
+};
+
+export default {
+  handleProductQuery,
+  classifyProductQuery,
+  searchProducts,
+};

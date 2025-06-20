@@ -1867,13 +1867,6 @@ Hãy trình bày phân tích một cách rõ ràng, dễ đọc và có cấu tr
         // Lấy dữ liệu đánh giá
         mongoose.model('Review').find({...dateFilter, ...(branchId && branchId !== 'all' ? {branchId: branchId} : {})}).lean()
       ]);
-
-      console.log("Dữ liệu đã lấy được:");
-      console.log("- orders:", orders.length, "bản ghi");
-      console.log("- products:", products.length, "bản ghi");
-      console.log("- branches:", branches.length, "bản ghi");
-      console.log("- customers:", customers.length, "bản ghi");
-      console.log("- reviews:", reviews.length, "bản ghi");
       
       // Tính toán các chỉ số tổng quan
       const totalRevenue = orders

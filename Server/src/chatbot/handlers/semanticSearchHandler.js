@@ -2,38 +2,14 @@
  * Module xử lý tìm kiếm ngữ nghĩa cho chatbot
  */
 
-// Thử import với đường dẫn tương đối
-let getProductsCollection;
-try {
-    const db = require('../db');
-    getProductsCollection = db.getProductsCollection;
-    console.log("Import db thành công với đường dẫn tương đối");
-} catch (error) {
-    // Nếu không thành công, thử với đường dẫn tuyệt đối
-    try {
-        const db = require('../../db');
-        getProductsCollection = db.getProductsCollection;
-        console.log("Import db thành công với đường dẫn tuyệt đối");
-    } catch (error) {
-        console.error("Lỗi khi import db:", error);
-        // Tạo một hàm giả để tránh lỗi
-        getProductsCollection = async () => {
-            console.error("Không thể kết nối đến database");
-            return {
-                find: () => ({
-                    toArray: async () => []
-                })
-            };
-        };
-    }
-}
+import Product from '../../../Model/Products.js';
 
 /**
  * Phân tích ngữ nghĩa của câu hỏi để xác định ý định, danh mục, thuộc tính, đối tượng, giá...
  * @param {string} query - Câu hỏi của người dùng
  * @returns {Object} Thông tin ngữ nghĩa của câu hỏi
  */
-function analyzeQuerySemantics(query) {
+const analyzeQuerySemantics = (query) => {
     const lowerQuery = query.toLowerCase();
     
     // Khởi tạo kết quả phân tích
@@ -150,14 +126,14 @@ function analyzeQuerySemantics(query) {
     }
     
     return semantics;
-}
+};
 
 /**
  * Xây dựng bộ lọc MongoDB dựa trên kết quả phân tích ngữ nghĩa
  * @param {Object} semantics - Kết quả phân tích ngữ nghĩa
  * @returns {Object} Bộ lọc MongoDB
  */
-function buildSemanticFilter(semantics) {
+const buildSemanticFilter = (semantics) => {
     const filter = {};
     
     // Lọc theo danh mục
@@ -212,14 +188,14 @@ function buildSemanticFilter(semantics) {
     }
     
     return filter;
-}
+};
 
 /**
  * Xây dựng bộ lọc nới lỏng hơn nếu không tìm thấy kết quả với bộ lọc chặt chẽ
  * @param {Object} semantics - Kết quả phân tích ngữ nghĩa
  * @returns {Object} Bộ lọc MongoDB nới lỏng
  */
-function buildRelaxedFilter(semantics) {
+const buildRelaxedFilter = (semantics) => {
     const filter = {};
     
     // Chỉ giữ lại điều kiện về danh mục
@@ -233,7 +209,7 @@ function buildRelaxedFilter(semantics) {
     }
     
     return filter;
-}
+};
 
 /**
  * Tính điểm liên quan của sản phẩm với truy vấn
@@ -241,7 +217,7 @@ function buildRelaxedFilter(semantics) {
  * @param {Object} semantics - Kết quả phân tích ngữ nghĩa
  * @returns {number} Điểm liên quan
  */
-function calculateRelevanceScore(product, semantics) {
+const calculateRelevanceScore = (product, semantics) => {
     let score = 0;
     const productName = product.productName.toLowerCase();
     const productDesc = product.productDescription ? product.productDescription.join(' ').toLowerCase() : '';
@@ -252,118 +228,100 @@ function calculateRelevanceScore(product, semantics) {
     }
     
     // Điểm cho thuộc tính
-    if (semantics.attributes.includes('low_sugar')) {
-        const lowSugarPatterns = ['ít đường', 'đường thấp', 'không đường', 'hàm lượng đường thấp'];
-        for (const pattern of lowSugarPatterns) {
-            if (productName.includes(pattern) || productDesc.includes(pattern)) {
-                score += 5;
-            }
+    for (const attribute of semantics.attributes) {
+        if (attribute === 'low_sugar' && 
+            (productName.includes('ít đường') || 
+             productName.includes('không đường') || 
+             productDesc.includes('ít đường') || 
+             productDesc.includes('không đường'))) {
+            score += 5;
         }
-    }
-    
-    if (semantics.attributes.includes('organic')) {
-        const organicPatterns = ['hữu cơ', 'organic'];
-        for (const pattern of organicPatterns) {
-            if (productName.includes(pattern) || productDesc.includes(pattern)) {
-                score += 5;
-            }
+        
+        if (attribute === 'organic' && 
+            (productName.includes('hữu cơ') || 
+             productName.includes('organic') || 
+             productDesc.includes('hữu cơ') || 
+             productDesc.includes('organic'))) {
+            score += 5;
         }
     }
     
     // Điểm cho đối tượng sử dụng
-    if (semantics.targetAudience === 'dieter') {
-        const dieterPatterns = ['ăn kiêng', 'giảm cân', 'diet', 'ít calo', 'ít béo'];
-        for (const pattern of dieterPatterns) {
-            if (productName.includes(pattern) || productDesc.includes(pattern)) {
-                score += 5;
-            }
-        }
+    if (semantics.targetAudience === 'diabetic' && 
+        (productName.includes('tiểu đường') || 
+         productDesc.includes('tiểu đường') || 
+         productDesc.includes('đái tháo đường'))) {
+        score += 8;
+    }
+    
+    if (semantics.targetAudience === 'dieter' && 
+        (productName.includes('ăn kiêng') || 
+         productName.includes('giảm cân') || 
+         productDesc.includes('ăn kiêng') || 
+         productDesc.includes('giảm cân'))) {
+        score += 8;
     }
     
     return score;
-}
+};
 
 /**
  * Tìm kiếm sản phẩm dựa trên ngữ nghĩa của câu hỏi
  * @param {string} query - Câu hỏi của người dùng
  * @returns {Promise<Array>} Danh sách sản phẩm phù hợp
  */
-async function semanticSearch(query) {
+export const semanticSearch = async (query) => {
     try {
         // Phân tích ngữ nghĩa của câu hỏi
         const semantics = analyzeQuerySemantics(query);
+        console.log('Phân tích ngữ nghĩa:', semantics);
         
-        // Xây dựng bộ lọc
+        // Xây dựng bộ lọc MongoDB
         const filter = buildSemanticFilter(semantics);
+        console.log('Bộ lọc tìm kiếm:', filter);
         
-        // Lấy collection sản phẩm
-        const productsCollection = await getProductsCollection();
+        // Tìm kiếm sản phẩm
+        let products = await Product.find(filter).limit(semantics.limit);
         
-        // Thực hiện tìm kiếm với bộ lọc
-        let products = await productsCollection.find(filter).toArray();
-        
-        // Nếu không tìm thấy sản phẩm nào, thử với bộ lọc nới lỏng hơn
-        if (!products || products.length === 0) {
+        // Nếu không tìm thấy kết quả, thử với bộ lọc nới lỏng hơn
+        if (products.length === 0) {
+            console.log('Không tìm thấy kết quả, thử với bộ lọc nới lỏng');
             const relaxedFilter = buildRelaxedFilter(semantics);
-            products = await productsCollection.find(relaxedFilter).toArray();
+            console.log('Bộ lọc nới lỏng:', relaxedFilter);
+            products = await Product.find(relaxedFilter).limit(semantics.limit);
         }
         
         // Tính điểm liên quan và sắp xếp kết quả
-        if (products && products.length > 0) {
-            products.forEach(product => {
-                product.relevanceScore = calculateRelevanceScore(product, semantics);
-            });
-            
-            products.sort((a, b) => b.relevanceScore - a.relevanceScore);
-        }
+        products = products.map(product => {
+            const score = calculateRelevanceScore(product, semantics);
+            return { ...product.toObject(), relevanceScore: score };
+        });
         
-        // Giới hạn số lượng kết quả
-        return products.slice(0, semantics.limit);
+        products.sort((a, b) => b.relevanceScore - a.relevanceScore);
+        
+        console.log(`Tìm thấy ${products.length} sản phẩm phù hợp`);
+        return products;
     } catch (error) {
-        console.error('Lỗi khi thực hiện tìm kiếm ngữ nghĩa:', error);
+        console.error('Lỗi khi tìm kiếm sản phẩm:', error);
         return [];
     }
-}
+};
 
 /**
- * Tìm kiếm sản phẩm trái cây ít đường cho người ăn kiêng
+ * Tìm kiếm sản phẩm dựa trên ngữ nghĩa của câu hỏi (phiên bản cũ)
  * @param {string} query - Câu hỏi của người dùng
  * @returns {Promise<Array>} Danh sách sản phẩm phù hợp
  */
-async function semantic_search_products(query) {
+export const semantic_search_products = async (query) => {
     try {
-        // Tạo bộ lọc đặc biệt cho trái cây ít đường
-        const filter = {
-            productCategory: "Trái cây",
-            $or: [
-                { productName: { $regex: /ít đường|đường thấp|không đường/i } },
-                { productDescription: { $regex: /ít đường|đường thấp|không đường|hàm lượng đường thấp/i } }
-            ]
-        };
-        
-        // Lấy collection sản phẩm
-        const productsCollection = await getProductsCollection();
-        
-        // Thực hiện tìm kiếm với bộ lọc
-        let products = await productsCollection.find(filter).toArray();
-        
-        // Nếu không tìm thấy sản phẩm nào, thử tìm tất cả trái cây
-        if (!products || products.length === 0) {
-            products = await productsCollection.find({ productCategory: "Trái cây" }).toArray();
-            
-            // Sắp xếp theo tên (để đảm bảo kết quả ổn định)
-            products.sort((a, b) => a.productName.localeCompare(b.productName));
-        }
-        
-        return products;
+        return await semanticSearch(query);
     } catch (error) {
-        console.error('Lỗi khi thực hiện tìm kiếm trái cây ít đường:', error);
+        console.error('Lỗi khi tìm kiếm sản phẩm:', error);
         return [];
     }
-}
+};
 
-module.exports = {
+export default {
     semanticSearch,
-    semantic_search_products,
-    analyzeQuerySemantics
-}; 
+    semantic_search_products
+};

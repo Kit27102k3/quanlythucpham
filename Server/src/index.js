@@ -140,19 +140,14 @@ const connectWithRetry = async (retries = 5, delay = 5000) => {
         const Order = OrderModule.default;
         
         const orders = await Order.find();
-        console.log(`Found ${orders.length} orders in database`);
-        console.log("Orders:", orders.map(order => ({
-          id: order._id,
-          status: order.status,
-          amount: order.totalAmount
-        })));
+       
         
         // Kiểm tra tổng doanh thu
         const revenueResult = await Order.aggregate([
           { $match: { status: { $in: ["completed", "delivered"] } } },
           { $group: { _id: null, total: { $sum: "$totalAmount" } } },
         ]);
-        console.log("Total revenue:", revenueResult);
+       
       } catch (err) {
         console.error("Error processing orders:", err);
       }

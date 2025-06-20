@@ -1,5 +1,9 @@
+/**
+ * Module xử lý nhận diện ý định người dùng cho chatbot
+ */
+
 // Cải thiện hàm phát hiện ý định
-function detectIntent(message, context) {
+const detectIntent = (message, context) => {
   const lowerMessage = message.toLowerCase();
   
   // Các từ khóa cho từng ý định
@@ -82,4 +86,7 @@ function detectIntent(message, context) {
   
   // Mặc định là faq nếu không phát hiện ý định rõ ràng
   return "faq";
-} 
+};
+
+export { detectIntent };
+export default { detectIntent }; 

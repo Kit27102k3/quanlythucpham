@@ -433,6 +433,22 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         // Lấy dữ liệu từ response
         const responseData = response.data;
         
+        // Handle product search results
+        if (responseData.type === 'productSearch' && responseData.products && Array.isArray(responseData.products)) {
+          console.log("Product search results:", responseData.products);
+          
+          setTypingMessage({
+            type: 'productSearch',
+            text: responseData.message || 'Kết quả tìm kiếm sản phẩm:',
+            products: responseData.products,
+            sender: "bot"
+          });
+          
+          // Cập nhật intent mới nhất
+          setLastIntent('productSearch');
+          return;
+        }
+        
         // Handle health products recommendations
         if (responseData.type === 'healthProducts' && responseData.products && Array.isArray(responseData.products)) {
           console.log("Health products recommendations:", responseData.products);

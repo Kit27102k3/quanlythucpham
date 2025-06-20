@@ -4,9 +4,7 @@
  */
 
 import Product from "../../Model/Products.js";
-import { getContext, saveContext } from "./chatbotController.js";
-import { handleIntentWithProductCategory, handleIntentWithProductType, handleIntentWithProductBrand, handleIntentWithProductOrigin, handleIntentWithPriceRange } from "./ProductIntentHandlers.js";
-import axios from "axios";
+import { saveContext, getUserContext } from "../../Model/UserContext.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,363 +13,552 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Đường dẫn đến file cấu hình phản hồi sức khỏe
-const healthResponsesPath = path.join(__dirname, "..", "..", "chatbot", "config", "health_responses.json");
+// Import health recommendations data
+const healthResponsesPath = path.join(
+  __dirname,
+  "../../chatbot/config/health_responses.json"
+);
+let healthRecommendations = {};
 
-// Đọc file cấu hình phản hồi sức khỏe
-let healthResponses = {};
 try {
+  // Kiểm tra xem file có tồn tại không
   if (fs.existsSync(healthResponsesPath)) {
-    const healthResponsesData = fs.readFileSync(healthResponsesPath, "utf8");
-    healthResponses = JSON.parse(healthResponsesData);
-    console.log("Đã tải cấu hình phản hồi sức khỏe");
+    const healthResponsesData = JSON.parse(
+      fs.readFileSync(healthResponsesPath, "utf8")
+    );
+    healthRecommendations = healthResponsesData;
+    console.log("Đã tải thành công dữ liệu health_responses.json");
   } else {
-    console.log("Không tìm thấy file cấu hình phản hồi sức khỏe, sẽ sử dụng cấu hình mặc định");
+    console.log(
+      "File health_responses.json không tồn tại tại đường dẫn:",
+      healthResponsesPath
+    );
+    // Tạo dữ liệu mặc định
+    healthRecommendations = {
+      meBau: {
+        title: "Thực phẩm cho mẹ bầu",
+        description:
+          "Mẹ bầu cần thực phẩm giàu folate, sắt, canxi, DHA và nhiều vitamin khoáng chất khác để hỗ trợ sự phát triển của thai nhi.",
+        recommended: [
+          "Rau lá xanh đậm (rau bina, cải xoăn)",
+          "Trái cây tươi",
+          "Các loại đậu",
+          "Ngũ cốc nguyên hạt",
+          "Trứng",
+          "Sữa và các sản phẩm từ sữa",
+          "Cá béo (cá hồi, cá thu) giàu DHA",
+          "Thịt nạc",
+          "Các loại hạt",
+        ],
+        avoid: [
+          "Cá có hàm lượng thủy ngân cao (cá kiếm, cá thu king)",
+          "Thịt sống hoặc chưa nấu chín",
+          "Trứng sống",
+          "Pho mát mềm chưa tiệt trùng",
+          "Cà phê, rượu bia",
+          "Thực phẩm chế biến sẵn có nhiều muối và chất bảo quản",
+        ],
+        productKeywords: [
+          "mẹ bầu",
+          "bà bầu",
+          "thai kỳ",
+          "DHA",
+          "folate",
+          "sắt",
+          "canxi",
+          "vitamin",
+        ],
+        productCategories: [
+          "Thực phẩm cho mẹ bầu",
+          "Sữa bầu",
+          "Thực phẩm bổ sung",
+        ],
+      },
+    };
   }
 } catch (error) {
-  console.error("Lỗi khi đọc file cấu hình phản hồi sức khỏe:", error);
+  console.error("Lỗi khi đọc file health_responses.json:", error);
+  // Tạo dữ liệu mặc định nếu có lỗi
+  healthRecommendations = {
+    meBau: {
+      title: "Thực phẩm cho mẹ bầu",
+      description:
+        "Mẹ bầu cần thực phẩm giàu folate, sắt, canxi, DHA và nhiều vitamin khoáng chất khác để hỗ trợ sự phát triển của thai nhi.",
+      recommended: [
+        "Rau lá xanh đậm (rau bina, cải xoăn)",
+        "Trái cây tươi",
+        "Các loại đậu",
+        "Ngũ cốc nguyên hạt",
+        "Trứng",
+        "Sữa và các sản phẩm từ sữa",
+        "Cá béo (cá hồi, cá thu) giàu DHA",
+        "Thịt nạc",
+        "Các loại hạt",
+      ],
+      avoid: [
+        "Cá có hàm lượng thủy ngân cao (cá kiếm, cá thu king)",
+        "Thịt sống hoặc chưa nấu chín",
+        "Trứng sống",
+        "Pho mát mềm chưa tiệt trùng",
+        "Cà phê, rượu bia",
+        "Thực phẩm chế biến sẵn có nhiều muối và chất bảo quản",
+      ],
+      productKeywords: [
+        "mẹ bầu",
+        "bà bầu",
+        "thai kỳ",
+        "DHA",
+        "folate",
+        "sắt",
+        "canxi",
+        "vitamin",
+      ],
+      productCategories: [
+        "Thực phẩm cho mẹ bầu",
+        "Sữa bầu",
+        "Thực phẩm bổ sung",
+      ],
+    },
+  };
+}
+
+// Define health keywords based on the health recommendations data
+const healthKeywords = {
+  tieuDuong: [
+    "tiểu đường",
+    "đường huyết",
+    "đường trong máu",
+    "tiểu nhiều",
+    "khát nước",
+    "insulin",
+  ],
+  huyetAp: [
+    "huyết áp",
+    "cao huyết áp",
+    "tăng huyết áp",
+    "hạ huyết áp",
+    "đau đầu",
+    "chóng mặt",
+  ],
+  giamCan: [
+    "giảm cân",
+    "béo phì",
+    "thừa cân",
+    "giảm mỡ",
+    "đốt mỡ",
+    "calo thấp",
+  ],
+  anChay: [
+    "ăn chay",
+    "chay trường",
+    "thuần chay",
+    "không thịt",
+    "không động vật",
+    "đạm thực vật",
+  ],
+  tangCo: [
+    "tăng cơ",
+    "phát triển cơ bắp",
+    "protein",
+    "tập gym",
+    "thể hình",
+    "whey",
+  ],
+  meBau: [
+    "mẹ bầu",
+    "bà bầu",
+    "mang thai",
+    "thai kỳ",
+    "thai nhi",
+    "đang mang thai",
+  ],
+  treSoSinh: [
+    "trẻ sơ sinh",
+    "em bé",
+    "trẻ nhỏ",
+    "trẻ em",
+    "dinh dưỡng trẻ",
+    "bé",
+  ],
+  nguoiGia: [
+    "người già",
+    "cao tuổi",
+    "người lớn tuổi",
+    "tuổi cao",
+    "xương khớp",
+    "trí nhớ",
+  ],
+};
+
+/**
+ * Tạo phản hồi cho nhu cầu sức khỏe
+ * @param {string} healthNeed - Loại nhu cầu sức khỏe
+ * @param {Array} products - Danh sách sản phẩm phù hợp
+ * @returns {string|Object} - Phản hồi cho người dùng
+ */
+export const generateHealthResponse = (healthNeed, products) => {
+  console.log(
+    `Tạo phản hồi cho nhu cầu sức khỏe: ${healthNeed} với ${products.length} sản phẩm`
+  );
+
+  // Xử lý đặc biệt cho "meBau" (phụ nữ mang thai)
+  if (healthNeed === "meBau") {
+    // Tìm các sản phẩm phù hợp cho phụ nữ mang thai
+    console.log(
+      `Tìm thấy ${products.length} sản phẩm phù hợp cho phụ nữ mang thai`
+    );
+
+    // Chuẩn bị danh sách sản phẩm để hiển thị
+    const formattedProducts = products.map((product) => ({
+      _id: product._id,
+      productName: product.productName,
+      productPrice: product.productPrice,
+      productDiscount: product.productDiscount || 0,
+      productImage:
+        product.productImages && product.productImages.length > 0
+          ? product.productImages[0]
+          : null,
+      productImageURL:
+        product.productImageURLs && product.productImageURLs.length > 0
+          ? product.productImageURLs[0]
+          : null,
+      imageBase64: product.productImageBase64 || null,
+    }));
+
+    // Tạo phản hồi
+    if (products.length > 0) {
+      return {
+        type: "healthProducts",
+        title: "Thực phẩm dành cho mẹ bầu",
+        text: "- Thực phẩm chế biến sẵn có nhiều muối và chất bảo quản\n\nHiện tại cửa hàng có các sản phẩm phù hợp cho mẹ bầu:",
+        products: formattedProducts,
+      };
+    } else {
+      return {
+        type: "text",
+        text: "Hiện tại cửa hàng chưa có sản phẩm cụ thể dành cho mẹ bầu. Vui lòng liên hệ nhân viên tư vấn để được hỗ trợ thêm.",
+      };
+    }
+  }
+
+  // Xử lý đặc biệt cho "nguoiGia" (người lớn tuổi)
+  if (healthNeed === "nguoiGia") {
+    // Tìm các sản phẩm phù hợp cho người cao tuổi
+    console.log(
+      `Tìm thấy ${products.length} sản phẩm phù hợp cho người cao tuổi`
+    );
+
+    // Chuẩn bị danh sách sản phẩm để hiển thị
+    const formattedProducts = products.map((product) => ({
+      _id: product._id,
+      productName: product.productName,
+      productPrice: product.productPrice,
+      productDiscount: product.productDiscount || 0,
+      productImage:
+        product.productImages && product.productImages.length > 0
+          ? product.productImages[0]
+          : null,
+      productImageURL:
+        product.productImageURLs && product.productImageURLs.length > 0
+          ? product.productImageURLs[0]
+          : null,
+      imageBase64: product.productImageBase64 || null,
+    }));
+
+    // Danh sách thực phẩm nên ăn
+    const recommendedFoods = [
+      "Cá (đặc biệt cá béo như cá hồi, cá thu, cá mòi giàu omega-3)",
+      "Trái cây tươi (đặc biệt là việt quất, dâu tây, cam quýt giàu chất chống oxy hóa)",
+      "Rau lá xanh đậm (cải xoăn, rau bina, cải xoong giàu vitamin K)",
+      "Các loại đậu (đậu đỏ, đậu đen, đậu nành giàu protein thực vật)",
+      "Các loại hạt (hạnh nhân, óc chó, hạt lanh giàu chất béo lành mạnh)",
+      "Sữa chua và các sản phẩm từ sữa lên men (giàu probiotics tốt cho hệ tiêu hóa)",
+      "Ngũ cốc nguyên hạt (gạo lứt, yến mạch, quinoa giàu chất xơ)",
+      "Thịt nạc (gà, thịt bò nạc giàu protein)",
+      "Trứng (giàu protein chất lượng cao và vitamin D)",
+      "Nước và các loại trà thảo mộc (giúp giữ nước và chống oxy hóa)",
+    ];
+
+    // Danh sách thực phẩm nên hạn chế
+    const foodsToAvoid = [
+      "Thực phẩm nhiều muối (mì ăn liền, đồ hộp, thực phẩm chế biến sẵn)",
+      "Thực phẩm nhiều đường (bánh kẹo, nước ngọt, đồ ngọt)",
+      "Thực phẩm chiên rán (nhiều dầu mỡ, khó tiêu hóa)",
+      "Thực phẩm chứa nhiều chất béo bão hòa (bơ thực vật, mỡ động vật)",
+      "Đồ uống có cồn (ảnh hưởng đến gan, não và tương tác với thuốc)",
+      "Caffeine (có thể gây mất ngủ, tăng huyết áp)",
+      "Thực phẩm cay nóng (có thể gây kích ứng dạ dày)",
+      "Thực phẩm khó tiêu (thịt đỏ nhiều mỡ, đồ ăn cứng)",
+    ];
+
+    // Tạo phản hồi
+    if (products.length > 0) {
+      return {
+        type: "healthProducts",
+        title: "Thực phẩm dành cho người lớn tuổi",
+        text:
+          `Người cao tuổi cần thực phẩm dễ tiêu hóa, giàu dinh dưỡng, hỗ trợ sức khỏe xương khớp và não bộ.\n\n` +
+          `✅ *Nên ăn:*\n${recommendedFoods
+            .map((food) => `• ${food}`)
+            .join("\n")}\n\n` +
+          `❌ *Nên hạn chế:*\n${foodsToAvoid
+            .map((food) => `• ${food}`)
+            .join("\n")}\n\n` +
+          `🛒 *Hiện tại cửa hàng có các sản phẩm phù hợp cho người cao tuổi:*`,
+        products: formattedProducts,
+      };
+    } else {
+      return {
+        type: "text",
+        text:
+          `Người cao tuổi cần thực phẩm dễ tiêu hóa, giàu dinh dưỡng, hỗ trợ sức khỏe xương khớp và não bộ.\n\n` +
+          `✅ *Nên ăn:*\n${recommendedFoods
+            .map((food) => `• ${food}`)
+            .join("\n")}\n\n` +
+          `❌ *Nên hạn chế:*\n${foodsToAvoid
+            .map((food) => `• ${food}`)
+            .join("\n")}\n\n` +
+          `Hiện tại cửa hàng chưa có sản phẩm cụ thể dành cho người cao tuổi. Vui lòng liên hệ nhân viên tư vấn để được hỗ trợ thêm.`,
+      };
+    }
+  }
+
+  // Xử lý các nhu cầu sức khỏe khác
+  // Tạo phản hồi tùy theo nhu cầu sức khỏe
+  let responseText = '';
+  let recommendedFoods = [];
+  let foodsToAvoid = [];
+  
+  switch(healthNeed) {
+    case 'tieuDuong':
+      responseText = "Với người bị tiểu đường, nên ưu tiên thực phẩm có chỉ số đường huyết thấp, giàu chất xơ và protein, hạn chế carbohydrate đơn giản.";
+      
+      recommendedFoods = [
+        "Rau lá xanh (rau bina, cải xoăn, cải thìa)",
+        "Rau không chứa tinh bột (bông cải xanh, súp lơ, đậu cô ve)",
+        "Trái cây ít ngọt (táo, dâu tây, việt quất, cam quýt)",
+        "Ngũ cốc nguyên hạt (gạo lứt, yến mạch)",
+        "Các loại đậu (đậu đen, đậu đỏ, đậu gà)",
+        "Các loại hạt (hạnh nhân, óc chó, hạt chia)",
+        "Protein nạc (cá, ức gà, thịt bò nạc)",
+        "Trứng",
+        "Các loại dầu lành mạnh (dầu oliu, dầu mè)",
+        "Các loại gia vị tự nhiên (quế, nghệ)"
+      ];
+      
+      foodsToAvoid = [
+        "Thực phẩm chứa đường tinh luyện (bánh ngọt, kẹo, nước ngọt)",
+        "Nước ép trái cây (ngay cả 100% tự nhiên)",
+        "Gạo trắng, bánh mì trắng, mì ống",
+        "Khoai tây, ngô, khoai lang số lượng lớn",
+        "Trái cây khô (nho khô, chà là)",
+        "Thực phẩm chiên rán",
+        "Thực phẩm chế biến sẵn",
+        "Các loại sốt có đường (tương cà, tương ớt)",
+        "Rượu bia"
+      ];
+      break;
+    case 'huyetAp':
+      responseText = "Với người bị huyết áp cao, nên ưu tiên thực phẩm ít muối, giàu kali, magiê và canxi, tránh thực phẩm chế biến sẵn.";
+      
+      recommendedFoods = [
+        "Rau lá xanh đậm (rau bina, cải xoăn)",
+        "Trái cây giàu kali (chuối, kiwi, cam, cà chua)",
+        "Các loại quả mọng (việt quất, dâu tây, mâm xôi)",
+        "Các loại hạt không muối (hạnh nhân, óc chó)",
+        "Ngũ cốc nguyên hạt (yến mạch, gạo lứt, quinoa)",
+        "Cá béo (cá hồi, cá thu, cá mòi)",
+        "Sữa chua và các sản phẩm từ sữa ít béo",
+        "Các loại đậu và đậu lăng",
+        "Chocolate đen (hàm lượng cacao trên 70%)",
+        "Tỏi và nghệ"
+      ];
+      
+      foodsToAvoid = [
+        "Thực phẩm chế biến sẵn (đồ hộp, thực phẩm đông lạnh)",
+        "Thực phẩm đóng gói (snack, bánh quy mặn)",
+        "Thịt chế biến (xúc xích, thịt nguội, giăm bông)",
+        "Nước sốt đóng chai và súp đóng hộp",
+        "Thực phẩm đồ ăn nhanh",
+        "Đồ ngọt và nước ngọt",
+        "Bơ thực vật và margarine",
+        "Rượu bia",
+        "Thực phẩm nhiều muối (dưa muối, cà muối)",
+        "Các loại pho mát cứng"
+      ];
+      break;
+    case 'giamCan':
+      responseText = "Với người muốn giảm cân, nên ưu tiên thực phẩm giàu protein, ít carbohydrate, nhiều chất xơ và uống đủ nước.";
+      
+      recommendedFoods = [
+        "Protein nạc (ức gà, cá, đậu phụ)",
+        "Trứng",
+        "Rau xanh không hạn chế (rau bina, cải xoăn, xà lách)",
+        "Rau giàu chất xơ (bông cải xanh, súp lơ, cải Brussels)",
+        "Trái cây ít đường (táo, dâu tây, quả mọng)",
+        "Các loại hạt với lượng vừa phải (hạnh nhân, óc chó)",
+        "Các loại đậu và đậu lăng",
+        "Ngũ cốc nguyên hạt với lượng vừa phải",
+        "Sữa chua Hy Lạp không đường",
+        "Nước, trà xanh, cà phê không đường"
+      ];
+      
+      foodsToAvoid = [
+        "Thực phẩm chế biến sẵn",
+        "Đồ ăn nhanh",
+        "Thực phẩm chiên rán",
+        "Bánh kẹo, đồ ngọt",
+        "Nước ngọt, nước ép trái cây",
+        "Rượu bia",
+        "Bánh mì trắng, gạo trắng",
+        "Các loại sốt béo (mayonnaise, sốt kem)",
+        "Thực phẩm có nhãn 'ít béo' nhưng nhiều đường",
+        "Các loại thịt chế biến (xúc xích, thịt xông khói)"
+      ];
+      break;
+    case 'tangCo':
+      responseText = "Với người muốn tăng cơ, nên ưu tiên thực phẩm giàu protein, carbohydrate phức hợp, chất béo lành mạnh và ăn nhiều bữa nhỏ trong ngày.";
+      
+      recommendedFoods = [
+        "Protein chất lượng cao (thịt bò nạc, ức gà, cá hồi, trứng)",
+        "Các sản phẩm từ sữa (sữa, phô mai, sữa chua Hy Lạp)",
+        "Protein thực vật (đậu phụ, tempeh, seitan, các loại đậu)",
+        "Carbohydrate phức hợp (gạo lứt, khoai lang, yến mạch)",
+        "Trái cây (chuối, táo, dứa)",
+        "Rau xanh (rau bina, cải xoăn, bông cải xanh)",
+        "Chất béo lành mạnh (bơ, dầu oliu, các loại hạt)",
+        "Các loại hạt và bơ hạt (đậu phộng, hạnh nhân)",
+        "Ngũ cốc nguyên hạt",
+        "Nước và các loại đồ uống bổ sung protein"
+      ];
+      
+      foodsToAvoid = [
+        "Thực phẩm chế biến sẵn",
+        "Đồ ăn nhanh",
+        "Thực phẩm nhiều đường",
+        "Rượu bia",
+        "Thực phẩm giàu chất béo bão hòa",
+        "Thức ăn vặt nhiều muối",
+        "Đồ uống có ga",
+        "Carbohydrate tinh chế (bánh mì trắng, gạo trắng)",
+        "Thực phẩm gây viêm"
+      ];
+      break;
+    case 'cholesterol':
+      responseText = "Với người có cholesterol cao, nên ưu tiên thực phẩm giàu chất xơ hòa tan, omega-3, hạn chế chất béo bão hòa và chất béo chuyển hóa.";
+      
+      recommendedFoods = [
+        "Yến mạch và các loại ngũ cốc giàu chất xơ hòa tan",
+        "Các loại đậu và đậu lăng",
+        "Trái cây giàu pectin (táo, lê, cam quýt)",
+        "Các loại quả mọng",
+        "Cá béo (cá hồi, cá thu, cá mòi)",
+        "Các loại hạt (hạnh nhân, óc chó)",
+        "Dầu oliu và dầu canola",
+        "Rau xanh và rau giàu chất xơ",
+        "Đậu nành và các sản phẩm từ đậu nành",
+        "Tỏi và gừng"
+      ];
+      
+      foodsToAvoid = [
+        "Thịt đỏ béo",
+        "Da gà và da vịt",
+        "Thực phẩm chiên rán",
+        "Bơ và các sản phẩm từ sữa nguyên kem",
+        "Thực phẩm chứa dầu dừa và dầu cọ",
+        "Thực phẩm chế biến sẵn chứa chất béo chuyển hóa",
+        "Bánh ngọt, bánh quy, bánh nướng",
+        "Thực phẩm nhanh",
+        "Lòng đỏ trứng với số lượng lớn",
+        "Các loại pho mát cứng"
+      ];
+      break;
+    default:
+      responseText = "Để duy trì sức khỏe tốt, nên ưu tiên chế độ ăn cân bằng với nhiều rau xanh, trái cây, protein nạc và ngũ cốc nguyên hạt.";
+      
+      recommendedFoods = [
+        "Rau xanh đa dạng (rau bina, cải xoăn, xà lách)",
+        "Trái cây tươi theo mùa",
+        "Protein nạc (gà, cá, đậu phụ)",
+        "Ngũ cốc nguyên hạt (gạo lứt, yến mạch)",
+        "Các loại đậu và đậu lăng",
+        "Các loại hạt không muối",
+        "Chất béo lành mạnh (dầu oliu, bơ)",
+        "Sữa chua và các sản phẩm từ sữa ít béo",
+        "Trứng",
+        "Nước và trà thảo mộc"
+      ];
+      
+      foodsToAvoid = [
+        "Thực phẩm chế biến sẵn",
+        "Đồ ăn nhanh",
+        "Thực phẩm nhiều đường",
+        "Đồ uống có ga và nước ngọt",
+        "Thực phẩm chiên rán",
+        "Thực phẩm nhiều muối",
+        "Rượu bia với lượng lớn",
+        "Thịt đỏ với lượng lớn",
+        "Bánh kẹo và đồ ngọt",
+        "Carbohydrate tinh chế (bánh mì trắng, gạo trắng)"
+      ];
+  }
+  
+  // Chuẩn bị danh sách sản phẩm để hiển thị
+  const formattedProducts = products.map(product => ({
+    _id: product._id,
+    productName: product.productName,
+    productPrice: product.productPrice,
+    productDiscount: product.productDiscount || 0,
+    productImage: product.productImages && product.productImages.length > 0 ? product.productImages[0] : null,
+    productImageURL: product.productImageURLs && product.productImageURLs.length > 0 ? product.productImageURLs[0] : null,
+    imageBase64: product.productImageBase64 || null
+  }));
+  
+  // Tạo phản hồi
+  if (products.length > 0) {
+    return {
+      type: 'healthProducts',
+      title: `Thực phẩm cho ${getHealthNeedDisplayName(healthNeed)}`,
+      text: `${responseText}\n\n` +
+            `✅ *Nên ăn:*\n${recommendedFoods.map(food => `• ${food}`).join('\n')}\n\n` +
+            `❌ *Nên hạn chế:*\n${foodsToAvoid.map(food => `• ${food}`).join('\n')}\n\n` +
+            `🛒 *Hiện tại cửa hàng có các sản phẩm phù hợp:*`,
+      products: formattedProducts
+    };
+  } else {
+    return {
+      type: 'text',
+      text: `${responseText}\n\n` +
+            `✅ *Nên ăn:*\n${recommendedFoods.map(food => `• ${food}`).join('\n')}\n\n` +
+            `❌ *Nên hạn chế:*\n${foodsToAvoid.map(food => `• ${food}`).join('\n')}\n\n` +
+            `Hiện tại cửa hàng chưa có sản phẩm cụ thể phù hợp với nhu cầu của bạn. Vui lòng liên hệ nhân viên tư vấn để được hỗ trợ thêm.`
+    };
+  }
+};
+
+// Hàm hỗ trợ để hiển thị tên nhu cầu sức khỏe
+function getHealthNeedDisplayName(healthNeed) {
+  const displayNames = {
+    tieuDuong: "người tiểu đường",
+    huyetAp: "người huyết áp cao",
+    giamCan: "người muốn giảm cân",
+    tangCo: "người muốn tăng cân",
+    cholesterol: "người có cholesterol cao",
+    meBau: "mẹ bầu",
+    nguoiGia: "người cao tuổi",
+    treSoSinh: "trẻ sơ sinh",
+  };
+
+  return displayNames[healthNeed] || "sức khỏe tốt";
 }
 
 /**
- * Các từ khóa liên quan đến nhu cầu sức khỏe
- */
-const healthKeywords = {
-  tieuDuong: ["tiểu đường", "đường huyết", "đường trong máu", "tiểu đường", "tiêu đường", "đái tháo đường", "glucose", "đường", "glycemic", "blood sugar", "diabetes"],
-  huyetAp: ["huyết áp", "cao huyết áp", "tăng huyết áp", "hạ huyết áp", "huyết áp cao", "huyết áp thấp", "hypertension", "hypotension", "blood pressure"],
-  giamCan: ["giảm cân", "giảm béo", "giảm mỡ", "giảm kg", "giảm kí", "giảm ký", "giảm cân nhanh", "giảm cân an toàn", "giảm cân hiệu quả", "giảm cân khỏe mạnh", "diet", "weight loss", "ít calo", "ít béo", "low calorie"],
-  tangCan: ["tăng cân", "tăng cân nhanh", "tăng cân an toàn", "tăng cân hiệu quả", "tăng cân khỏe mạnh", "tăng kg", "tăng kí", "tăng ký", "weight gain"],
-  anChay: ["ăn chay", "chay", "thuần chay", "chay trường", "chay kỳ", "đồ chay", "thực phẩm chay", "vegan", "vegetarian"],
-  tangCo: ["tăng cơ", "phát triển cơ bắp", "tăng cơ bắp", "xây dựng cơ bắp", "tăng cơ nhanh", "tăng cơ hiệu quả", "tăng cơ khỏe mạnh", "cơ bắp", "gym", "thể hình", "muscle", "bodybuilding"],
-  meBau: ["mẹ bầu", "bà bầu", "phụ nữ mang thai", "thai phụ", "thai kỳ", "mang thai", "có thai", "pregnancy", "pregnant"],
-  treSoSinh: ["trẻ sơ sinh", "em bé", "bé sơ sinh", "trẻ nhỏ", "trẻ em", "baby", "infant", "newborn"],
-  nguoiGia: ["người già", "người cao tuổi", "cao tuổi", "lớn tuổi", "già", "tuổi cao", "elderly", "senior"],
-  cholesterol: ["cholesterol", "mỡ máu", "máu nhiễm mỡ", "rối loạn mỡ máu", "lipid máu", "mỡ trong máu"],
-  tieu_hoa: ["tiêu hóa", "dạ dày", "đường ruột", "đại tràng", "ruột", "tiêu chảy", "táo bón", "khó tiêu", "đầy hơi", "ợ chua", "trào ngược", "digestion", "digestive", "stomach", "gut"],
-  gluten: ["gluten", "không gluten", "gluten-free", "celiac"],
-  lactose: ["lactose", "không lactose", "lactose-free", "sữa", "bơ", "phô mai"],
-  duong: ["đường", "ít đường", "không đường", "low sugar", "sugar-free"],
-  muoi: ["muối", "ít muối", "không muối", "low salt", "salt-free", "sodium"],
-  chat_beo: ["chất béo", "ít béo", "không béo", "low fat", "fat-free"],
-  protein: ["protein", "đạm", "chất đạm", "nhiều đạm", "high protein"],
-  chat_xo: ["chất xơ", "nhiều chất xơ", "fiber", "high fiber"],
-  vitamin: ["vitamin", "khoáng chất", "vi chất", "vitamin A", "vitamin B", "vitamin C", "vitamin D", "vitamin E", "kẽm", "sắt", "canxi", "magie", "minerals"]
-};
-
-/**
- * Thông tin dinh dưỡng và khuyến nghị cho từng nhu cầu sức khỏe
- */
-const healthRecommendations = {
-  tieuDuong: {
-    title: "Thực phẩm cho người tiểu đường",
-    description: "Người tiểu đường nên ưu tiên thực phẩm có chỉ số đường huyết (GI) thấp, giàu chất xơ và kiểm soát lượng carbohydrate.",
-    recommended: [
-      "Rau xanh các loại (rau muống, cải xanh, rau ngót...)",
-      "Các loại đậu (đậu đen, đậu nành, đậu lăng)",
-      "Ngũ cốc nguyên hạt (gạo lứt, yến mạch, quinoa)",
-      "Protein nạc (cá, thịt gà không da, đậu hũ)",
-      "Quả mọng (việt quất, dâu tây) và trái cây ít ngọt (táo, lê)",
-      "Các loại hạt (hạnh nhân, óc chó) không thêm muối đường",
-      "Dầu lành mạnh (dầu oliu, dầu mè)"
-    ],
-    avoid: [
-      "Thực phẩm chế biến sẵn có nhiều đường",
-      "Nước ngọt, nước trái cây đóng hộp",
-      "Bánh kẹo, đồ ngọt",
-      "Gạo trắng, bánh mì trắng",
-      "Trái cây quá ngọt (xoài chín, dứa, chuối chín)"
-    ],
-    productCategories: ["Thực phẩm ít đường", "Ngũ cốc nguyên hạt", "Rau củ", "Đậu", "Thực phẩm hữu cơ"],
-    productKeywords: ["ít đường", "đường thấp", "chỉ số GI thấp", "tiểu đường", "gạo lứt", "yến mạch", "hữu cơ", "không đường"]
-  },
-  huyetAp: {
-    title: "Thực phẩm cho người huyết áp",
-    description: "Người huyết áp cao nên ăn thực phẩm ít muối, giàu kali, magie và canxi để kiểm soát huyết áp.",
-    recommended: [
-      "Rau lá xanh đậm (rau bina, cải xoăn)",
-      "Trái cây (chuối, cam, kiwi) giàu kali",
-      "Các loại đậu và hạt",
-      "Cá béo (cá hồi, cá thu) giàu omega-3",
-      "Sữa chua và các sản phẩm từ sữa ít béo",
-      "Socola đen (hàm lượng cacao >70%)",
-      "Quả bơ"
-    ],
-    avoid: [
-      "Thực phẩm chế biến sẵn có nhiều muối",
-      "Thực phẩm đóng hộp, đồ ăn nhanh",
-      "Dưa muối, kim chi, các loại thực phẩm ngâm muối",
-      "Nước tương, bột ngọt, bột nêm",
-      "Thịt chế biến (xúc xích, thịt nguội)"
-    ],
-    productCategories: ["Thực phẩm ít muối", "Rau củ", "Trái cây", "Hải sản", "Thực phẩm hữu cơ"],
-    productKeywords: ["ít muối", "không muối", "huyết áp", "omega-3", "hữu cơ", "tự nhiên", "không gia vị"]
-  },
-  giamCan: {
-    title: "Thực phẩm giúp giảm cân",
-    description: "Để giảm cân hiệu quả và khỏe mạnh, nên ưu tiên thực phẩm giàu chất xơ, protein, ít calo và chất béo.",
-    recommended: [
-      "Rau xanh các loại (càng nhiều càng tốt)",
-      "Protein nạc (thịt gà không da, cá, đậu hũ)",
-      "Trứng",
-      "Các loại đậu và ngũ cốc nguyên hạt",
-      "Trái cây ít đường (táo, dâu, quả mọng)",
-      "Sữa chua không đường",
-      "Các loại hạt không muối (hạnh nhân, óc chó) với lượng vừa phải"
-    ],
-    avoid: [
-      "Thực phẩm chiên rán",
-      "Đồ ngọt, bánh kẹo",
-      "Nước ngọt, nước trái cây đóng hộp",
-      "Thực phẩm chế biến sẵn",
-      "Rượu bia",
-      "Thực phẩm nhiều tinh bột trắng (bánh mì trắng, cơm trắng)"
-    ],
-    productCategories: ["Thực phẩm ít calo", "Protein", "Rau củ", "Thực phẩm hữu cơ", "Thực phẩm ít béo"],
-    productKeywords: ["giảm cân", "ít calo", "ít béo", "protein", "không đường", "hữu cơ", "chất xơ", "detox"]
-  },
-  anChay: {
-    title: "Thực phẩm cho người ăn chay",
-    description: "Người ăn chay cần đảm bảo đủ protein, vitamin B12, sắt, kẽm và omega-3 từ nguồn thực vật.",
-    recommended: [
-      "Đậu các loại (đậu nành, đậu đen, đậu lăng)",
-      "Đậu hũ và các sản phẩm từ đậu nành",
-      "Các loại hạt (hạt điều, hạt óc chó, hạt chia)",
-      "Ngũ cốc nguyên hạt (gạo lứt, quinoa)",
-      "Rau lá xanh đậm",
-      "Trái cây tươi",
-      "Sữa thực vật được bổ sung vitamin B12 và canxi"
-    ],
-    avoid: [
-      "Thực phẩm chứa gelatin (một số kẹo, bánh)",
-      "Một số loại phô mai (chứa rennet)",
-      "Thực phẩm chứa mỡ động vật",
-      "Mật ong (đối với người ăn chay trường)"
-    ],
-    productCategories: ["Thực phẩm chay", "Đậu", "Ngũ cốc", "Rau củ", "Hạt", "Sữa thực vật"],
-    productKeywords: ["chay", "thuần chay", "vegan", "vegetarian", "đậu", "hạt", "ngũ cốc", "sữa thực vật"]
-  },
-  tangCo: {
-    title: "Thực phẩm giúp tăng cơ",
-    description: "Để phát triển cơ bắp, cần ưu tiên thực phẩm giàu protein, carbohydrate phức hợp và chất béo lành mạnh.",
-    recommended: [
-      "Thịt nạc (gà, bò, heo)",
-      "Cá (đặc biệt là cá hồi và cá ngừ)",
-      "Trứng",
-      "Sữa và các sản phẩm từ sữa",
-      "Đậu và các sản phẩm từ đậu nành",
-      "Ngũ cốc nguyên hạt",
-      "Khoai lang, khoai tây",
-      "Các loại hạt và quả bơ",
-      "Rau xanh (cung cấp vitamin và khoáng chất)"
-    ],
-    avoid: [
-      "Thực phẩm nhiều đường",
-      "Thức ăn nhanh và thực phẩm chế biến sẵn",
-      "Rượu bia",
-      "Thực phẩm nhiều chất béo bão hòa"
-    ],
-    productCategories: ["Protein", "Thực phẩm tăng cơ", "Thực phẩm bổ sung", "Ngũ cốc", "Thịt"],
-    productKeywords: ["protein", "tăng cơ", "whey", "đạm", "thể thao", "tập gym", "bổ sung", "amino acid"]
-  },
-  meBau: {
-    title: "Thực phẩm cho mẹ bầu",
-    description: "Mẹ bầu cần thực phẩm giàu folate, sắt, canxi, DHA và nhiều vitamin khoáng chất khác để hỗ trợ sự phát triển của thai nhi.",
-    recommended: [
-      "Rau lá xanh đậm (rau bina, cải xoăn)",
-      "Trái cây tươi",
-      "Các loại đậu",
-      "Ngũ cốc nguyên hạt",
-      "Trứng",
-      "Sữa và các sản phẩm từ sữa",
-      "Cá béo (cá hồi, cá thu) giàu DHA",
-      "Thịt nạc",
-      "Các loại hạt"
-    ],
-    avoid: [
-      "Cá có hàm lượng thủy ngân cao (cá kiếm, cá thu king)",
-      "Thịt sống hoặc chưa nấu chín",
-      "Trứng sống",
-      "Pho mát mềm chưa tiệt trùng",
-      "Cà phê, rượu bia",
-      "Thực phẩm chế biến sẵn có nhiều muối và chất bảo quản"
-    ],
-    productCategories: ["Thực phẩm cho mẹ bầu", "Sữa bầu", "Thực phẩm bổ sung", "Rau củ", "Trái cây", "Hải sản"],
-    productKeywords: ["mẹ bầu", "bà bầu", "thai kỳ", "DHA", "folate", "sắt", "canxi", "vitamin", "hữu cơ", "tự nhiên"]
-  },
-  treSoSinh: {
-    title: "Thực phẩm cho trẻ sơ sinh và trẻ nhỏ",
-    description: "Trẻ sơ sinh và trẻ nhỏ cần thực phẩm an toàn, dễ tiêu hóa và giàu dinh dưỡng để phát triển toàn diện.",
-    recommended: [
-      "Sữa mẹ (tốt nhất cho trẻ sơ sinh)",
-      "Sữa công thức (nếu không thể cho bú)",
-      "Cháo, bột ngũ cốc cho trẻ",
-      "Rau củ quả nghiền nhuyễn",
-      "Thịt, cá nghiền nhỏ (cho trẻ trên 6 tháng)",
-      "Trứng (cho trẻ trên 6 tháng)",
-      "Sữa chua không đường (cho trẻ trên 12 tháng)"
-    ],
-    avoid: [
-      "Mật ong (cho trẻ dưới 12 tháng)",
-      "Sữa bò nguyên chất (cho trẻ dưới 12 tháng)",
-      "Thực phẩm dễ gây dị ứng (đậu phộng, hải sản)",
-      "Thực phẩm cứng, tròn dễ gây hóc (nho, đậu, kẹo cứng)",
-      "Thực phẩm nhiều muối, đường",
-      "Nước ngọt, nước ép đóng hộp"
-    ],
-    productCategories: ["Sữa công thức", "Thực phẩm trẻ em", "Bột ăn dặm", "Ngũ cốc trẻ em", "Thực phẩm hữu cơ"],
-    productKeywords: ["trẻ em", "em bé", "sơ sinh", "ăn dặm", "bột", "cháo", "sữa", "hữu cơ", "không hóa chất"]
-  },
-  nguoiGia: {
-    title: "Thực phẩm cho người cao tuổi",
-    description: "Người cao tuổi cần thực phẩm dễ tiêu hóa, giàu canxi, protein và các vitamin khoáng chất để duy trì sức khỏe và phòng ngừa bệnh tật.",
-    recommended: [
-      "Rau xanh và trái cây tươi",
-      "Protein dễ tiêu hóa (cá, thịt gà, đậu hũ)",
-      "Sữa và các sản phẩm từ sữa giàu canxi",
-      "Ngũ cốc nguyên hạt",
-      "Các loại hạt và dầu thực vật",
-      "Thực phẩm giàu omega-3 (cá hồi, hạt chia)",
-      "Nước và các loại trà thảo mộc"
-    ],
-    avoid: [
-      "Thực phẩm nhiều muối",
-      "Thực phẩm nhiều đường",
-      "Thực phẩm chế biến sẵn",
-      "Thực phẩm chiên rán",
-      "Rượu bia",
-      "Thực phẩm khó tiêu hóa"
-    ],
-    productCategories: ["Thực phẩm người cao tuổi", "Thực phẩm bổ sung", "Sữa", "Ngũ cốc", "Thực phẩm hữu cơ"],
-    productKeywords: ["người già", "cao tuổi", "canxi", "dễ tiêu", "mềm", "dinh dưỡng", "vitamin", "bổ sung"]
-  },
-  cholesterol: {
-    title: "Thực phẩm cho người mỡ máu cao",
-    description: "Người có mỡ máu cao cần ưu tiên thực phẩm ít chất béo bão hòa, giàu chất xơ và chất béo không bão hòa để giảm cholesterol xấu (LDL).",
-    recommended: [
-      "Yến mạch và ngũ cốc nguyên hạt",
-      "Các loại đậu và đậu nành",
-      "Trái cây tươi, đặc biệt là táo, lê và quả mọng",
-      "Rau xanh các loại",
-      "Cá béo (cá hồi, cá thu, cá trích) giàu omega-3",
-      "Các loại hạt (hạnh nhân, óc chó)",
-      "Dầu oliu, dầu hạt cải"
-    ],
-    avoid: [
-      "Thịt đỏ và thịt chế biến sẵn",
-      "Thực phẩm chiên rán",
-      "Bơ, phô mai và các sản phẩm từ sữa nguyên kem",
-      "Bánh ngọt và bánh quy",
-      "Thực phẩm chứa dầu dừa, dầu cọ",
-      "Nội tạng động vật"
-    ],
-    productCategories: ["Thực phẩm ít béo", "Ngũ cốc nguyên hạt", "Hải sản", "Rau củ", "Thực phẩm hữu cơ"],
-    productKeywords: ["cholesterol", "mỡ máu", "ít béo", "omega-3", "chất xơ", "hữu cơ", "nguyên hạt"]
-  },
-  tieuHoa: {
-    title: "Thực phẩm cho người có vấn đề tiêu hóa",
-    description: "Người có vấn đề tiêu hóa cần thực phẩm dễ tiêu, giàu chất xơ hòa tan và men vi sinh để cải thiện hệ tiêu hóa.",
-    recommended: [
-      "Sữa chua và thực phẩm lên men (kim chi, dưa chua)",
-      "Chuối chín",
-      "Gạo trắng và bánh mì trắng (khi bị tiêu chảy)",
-      "Thực phẩm giàu chất xơ hòa tan (yến mạch, táo)",
-      "Nước và trà thảo mộc",
-      "Thịt nạc và cá hấp",
-      "Rau củ nấu chín kỹ"
-    ],
-    avoid: [
-      "Thực phẩm cay nóng",
-      "Thực phẩm nhiều dầu mỡ",
-      "Đồ uống có ga và caffeine",
-      "Rượu bia",
-      "Sữa (nếu không dung nạp lactose)",
-      "Thực phẩm gây đầy hơi (đậu, bắp cải)"
-    ],
-    productCategories: ["Thực phẩm dễ tiêu", "Sữa chua", "Thực phẩm lên men", "Ngũ cốc", "Thực phẩm hữu cơ"],
-    productKeywords: ["tiêu hóa", "dễ tiêu", "men vi sinh", "probiotic", "chất xơ", "lên men", "không cay", "nhẹ bụng"]
-  },
-  gan: {
-    title: "Thực phẩm tốt cho gan",
-    description: "Người có vấn đề về gan cần thực phẩm giàu chất chống oxy hóa, ít chất béo và không chứa rượu để bảo vệ và phục hồi chức năng gan.",
-    recommended: [
-      "Rau xanh đậm (cải xoăn, rau bina)",
-      "Trái cây họ cam quýt",
-      "Cà phê (lượng vừa phải)",
-      "Trà xanh",
-      "Tỏi",
-      "Các loại hạt",
-      "Cá béo giàu omega-3",
-      "Thực phẩm giàu choline (trứng, thịt gà)"
-    ],
-    avoid: [
-      "Rượu bia",
-      "Thực phẩm chiên rán",
-      "Thịt đỏ",
-      "Thực phẩm nhiều đường",
-      "Muối",
-      "Thực phẩm chế biến sẵn"
-    ],
-    productCategories: ["Thực phẩm hữu cơ", "Rau củ", "Trà", "Thực phẩm bổ sung", "Hải sản"],
-    productKeywords: ["gan", "detox", "giải độc", "chống oxy hóa", "hữu cơ", "tự nhiên", "không cồn", "ít béo"]
-  },
-  than: {
-    title: "Thực phẩm cho người bệnh thận",
-    description: "Người bệnh thận cần kiểm soát lượng natri, kali, phospho và protein để giảm gánh nặng cho thận.",
-    recommended: [
-      "Rau củ đã luộc để giảm kali (nếu cần)",
-      "Trái cây ít kali (táo, việt quất, dâu tây)",
-      "Bánh mì trắng, gạo trắng",
-      "Protein chất lượng cao với lượng vừa phải",
-      "Dầu oliu và các loại dầu thực vật",
-      "Gia vị thảo mộc thay thế muối"
-    ],
-    avoid: [
-      "Thực phẩm nhiều muối",
-      "Thực phẩm chế biến sẵn",
-      "Thực phẩm nhiều kali (chuối, khoai tây, cà chua)",
-      "Thực phẩm nhiều phospho (sữa, phô mai, đồ uống có ga)",
-      "Protein động vật quá nhiều"
-    ],
-    productCategories: ["Thực phẩm ít muối", "Thực phẩm ít kali", "Thực phẩm ít phospho", "Rau củ", "Thực phẩm hữu cơ"],
-    productKeywords: ["thận", "ít muối", "ít kali", "ít phospho", "hữu cơ", "tự nhiên", "không gia vị"]
-  },
-  xương: {
-    title: "Thực phẩm tốt cho xương khớp",
-    description: "Người có vấn đề về xương khớp cần thực phẩm giàu canxi, vitamin D, magie và các chất chống viêm để bảo vệ và tăng cường sức khỏe xương.",
-    recommended: [
-      "Sữa và các sản phẩm từ sữa",
-      "Rau lá xanh đậm (cải xoăn, rau bina)",
-      "Cá béo (cá hồi, cá thu) giàu vitamin D",
-      "Các loại đậu",
-      "Các loại hạt (hạnh nhân, hạt chia)",
-      "Thực phẩm giàu magie (bơ, chuối)",
-      "Trái cây họ cam quýt"
-    ],
-    avoid: [
-      "Thực phẩm nhiều muối",
-      "Đồ uống có caffeine quá nhiều",
-      "Rượu bia",
-      "Thực phẩm chế biến sẵn",
-      "Thực phẩm nhiều đường"
-    ],
-    productCategories: ["Thực phẩm giàu canxi", "Sữa", "Hải sản", "Thực phẩm bổ sung", "Thực phẩm hữu cơ"],
-    productKeywords: ["xương", "khớp", "canxi", "vitamin D", "magie", "omega-3", "chống viêm", "collagen"]
-  }
-};
-
-/**
- * Định dạng số tiền sang VND
- * @param {number} amount - Số tiền
- * @returns {string} - Chuỗi tiền đã định dạng
+ * Định dạng số tiền thành chuỗi có dấu phân cách hàng nghìn
+ * @param {number} amount - Số tiền cần định dạng
+ * @returns {string} - Chuỗi đã được định dạng
  */
 const formatCurrency = (amount) => {
-  // Đảm bảo amount là số
-  const validAmount = Number(amount) || 0;
-  
-  return new Intl.NumberFormat('vi-VN', { 
-    style: 'currency', 
-    currency: 'VND',
-    maximumFractionDigits: 0
-  }).format(validAmount);
+  return new Intl.NumberFormat("vi-VN").format(amount);
 };
 
 /**
@@ -385,79 +572,95 @@ export const detectProductPageIntent = (message) => {
   const lowerMessage = message.toLowerCase().trim();
   
   // Công dụng sản phẩm (productDetails)
-  if (lowerMessage.includes('công dụng') || 
-      lowerMessage.includes('tác dụng') || 
-      lowerMessage.includes('dùng để làm gì') ||
-      lowerMessage.includes('dùng làm gì') ||
-      lowerMessage.includes('sử dụng') || 
-      lowerMessage.includes('tác dụng gì')) {
-    return 'productUsage';
+  if (
+    lowerMessage.includes("công dụng") ||
+    lowerMessage.includes("tác dụng") ||
+    lowerMessage.includes("dùng để làm gì") ||
+    lowerMessage.includes("dùng làm gì") ||
+    lowerMessage.includes("sử dụng") ||
+    lowerMessage.includes("tác dụng gì")
+  ) {
+    return "productUsage";
   }
   
   // Giới thiệu sản phẩm (productIntroduction)
-  if (lowerMessage.includes('giới thiệu') || 
-      lowerMessage.includes('nói về') || 
-      lowerMessage.includes('giới thiệu về') ||
-      lowerMessage.includes('thông tin về') ||
-      lowerMessage.includes('mô tả')) {
-    return 'productIntro';
+  if (
+    lowerMessage.includes("giới thiệu") ||
+    lowerMessage.includes("nói về") ||
+    lowerMessage.includes("giới thiệu về") ||
+    lowerMessage.includes("thông tin về") ||
+    lowerMessage.includes("mô tả")
+  ) {
+    return "productIntro";
   }
   
   // Giá sản phẩm (productPrice, productPromoPrice)
-  if (lowerMessage.includes('giá') || 
-      lowerMessage.includes('bao nhiêu tiền') || 
-      lowerMessage.includes('giá cả') ||
-      lowerMessage.includes('giá bao nhiêu')) {
-    return 'productPrice';
+  if (
+    lowerMessage.includes("giá") ||
+    lowerMessage.includes("bao nhiêu tiền") ||
+    lowerMessage.includes("giá cả") ||
+    lowerMessage.includes("giá bao nhiêu")
+  ) {
+    return "productPrice";
   }
   
   // Sản phẩm liên quan (productCategory)
-  if (lowerMessage.includes('liên quan') || 
-      lowerMessage.includes('tương tự') || 
-      lowerMessage.includes('sản phẩm khác') ||
-      lowerMessage.includes('sản phẩm cùng loại') ||
-      lowerMessage.includes('còn gì khác') ||
-      lowerMessage.includes('gợi ý')) {
-    return 'relatedProducts';
+  if (
+    lowerMessage.includes("liên quan") ||
+    lowerMessage.includes("tương tự") ||
+    lowerMessage.includes("sản phẩm khác") ||
+    lowerMessage.includes("sản phẩm cùng loại") ||
+    lowerMessage.includes("còn gì khác") ||
+    lowerMessage.includes("gợi ý")
+  ) {
+    return "relatedProducts";
   }
   
   // Xuất xứ sản phẩm
-  if (lowerMessage.includes('xuất xứ') || 
-      lowerMessage.includes('nguồn gốc') || 
-      lowerMessage.includes('sản xuất ở đâu') ||
-      lowerMessage.includes('nước nào') ||
-      lowerMessage.includes('hãng nào')) {
-    return 'productOrigin';
+  if (
+    lowerMessage.includes("xuất xứ") ||
+    lowerMessage.includes("nguồn gốc") ||
+    lowerMessage.includes("sản xuất ở đâu") ||
+    lowerMessage.includes("nước nào") ||
+    lowerMessage.includes("hãng nào")
+  ) {
+    return "productOrigin";
   }
   
   // Thành phần sản phẩm
-  if (lowerMessage.includes('thành phần') || 
-      lowerMessage.includes('nguyên liệu') || 
-      lowerMessage.includes('có chứa') ||
-      lowerMessage.includes('làm từ') ||
-      lowerMessage.includes('được làm từ') ||
-      lowerMessage.includes('chất liệu')) {
-    return 'productIngredients';
+  if (
+    lowerMessage.includes("thành phần") ||
+    lowerMessage.includes("nguyên liệu") ||
+    lowerMessage.includes("có chứa") ||
+    lowerMessage.includes("làm từ") ||
+    lowerMessage.includes("được làm từ") ||
+    lowerMessage.includes("chất liệu")
+  ) {
+    return "productIngredients";
   }
   
   // Hạn sử dụng sản phẩm
-  if (lowerMessage.includes('hạn sử dụng') || 
-      lowerMessage.includes('date') || 
-      lowerMessage.includes('hết hạn') ||
-      lowerMessage.includes('dùng được bao lâu') ||
-      lowerMessage.includes('bảo quản')) {
-    return 'productExpiry';
+  if (
+    lowerMessage.includes("hạn sử dụng") ||
+    lowerMessage.includes("date") ||
+    lowerMessage.includes("hết hạn") ||
+    lowerMessage.includes("dùng được bao lâu") ||
+    lowerMessage.includes("bảo quản")
+  ) {
+    return "productExpiry";
   }
   
   // Đánh giá sản phẩm
-  if (lowerMessage.includes('đánh giá') || 
-      lowerMessage.includes('review') || 
-      lowerMessage.includes('feedback') ||
-      lowerMessage.includes('nhận xét') ||
-      lowerMessage.includes('tốt không') ||
-      lowerMessage.includes('có ngon không') ||
-      lowerMessage.includes('có tốt không')) {
-    return 'productReviews';
+  if (
+    lowerMessage.includes("đánh giá") ||
+    lowerMessage.includes("review") ||
+    lowerMessage.includes("feedback") ||
+    lowerMessage.includes("nhận xét") ||
+    lowerMessage.includes("tốt không") ||
+    lowerMessage.includes("có ngon không") ||
+    lowerMessage.includes("có tốt không")
+  ) {
+    return "productReviews";
   }
   
   return null;
@@ -469,14 +672,17 @@ export const detectProductPageIntent = (message) => {
  * @returns {object} - Phản hồi
  */
 export const handleProductUsageQuestion = (product) => {
-  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  if (!product)
+    return { success: false, message: "Không tìm thấy thông tin sản phẩm" };
   
-  const usage = product.productDetails || 'Hiện chưa có thông tin chi tiết về công dụng của sản phẩm này.';
+  const usage =
+    product.productDetails ||
+    "Hiện chưa có thông tin chi tiết về công dụng của sản phẩm này.";
   
   return {
     success: true,
     message: `<strong>Công dụng của ${product.productName}:</strong><br>${usage}`,
-    intent: 'productUsage'
+    intent: "productUsage",
   };
 };
 
@@ -486,14 +692,17 @@ export const handleProductUsageQuestion = (product) => {
  * @returns {object} - Phản hồi
  */
 export const handleProductIntroQuestion = (product) => {
-  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  if (!product)
+    return { success: false, message: "Không tìm thấy thông tin sản phẩm" };
   
-  const intro = product.productIntroduction || 'Hiện chưa có thông tin giới thiệu về sản phẩm này.';
+  const intro =
+    product.productIntroduction ||
+    "Hiện chưa có thông tin giới thiệu về sản phẩm này.";
   
   return {
     success: true,
     message: `<strong>Giới thiệu về ${product.productName}:</strong><br>${intro}`,
-    intent: 'productIntro'
+    intent: "productIntro",
   };
 };
 
@@ -503,25 +712,36 @@ export const handleProductIntroQuestion = (product) => {
  * @returns {object} - Phản hồi
  */
 export const handleProductPriceQuestion = (product) => {
-  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  if (!product)
+    return { success: false, message: "Không tìm thấy thông tin sản phẩm" };
   
   const originalPrice = product.productPrice;
   const discount = product.productDiscount || 0;
-  const promoPrice = product.productPromoPrice || (discount > 0 ? Math.round(originalPrice * (1 - discount/100)) : originalPrice);
+  const promoPrice =
+    product.productPromoPrice ||
+    (discount > 0
+      ? Math.round(originalPrice * (1 - discount / 100))
+      : originalPrice);
   
   let priceMessage = `<strong>Giá ${product.productName}:</strong><br>`;
   
   if (discount > 0) {
-    priceMessage += `<span style="text-decoration: line-through;">${formatCurrency(originalPrice)}đ</span><br>`;
-    priceMessage += `<strong style="color: red;">${formatCurrency(promoPrice)}đ</strong> (Giảm ${discount}%)`;
+    priceMessage += `<span style="text-decoration: line-through;">${formatCurrency(
+      originalPrice
+    )}đ</span><br>`;
+    priceMessage += `<strong style="color: red;">${formatCurrency(
+      promoPrice
+    )}đ</strong> (Giảm ${discount}%)`;
   } else {
-    priceMessage += `<strong style="color: red;">${formatCurrency(originalPrice)}đ</strong>`;
+    priceMessage += `<strong style="color: red;">${formatCurrency(
+      originalPrice
+    )}đ</strong>`;
   }
   
   return {
     success: true,
     message: priceMessage,
-    intent: 'productPrice'
+    intent: "productPrice",
   };
 };
 
@@ -531,49 +751,57 @@ export const handleProductPriceQuestion = (product) => {
  * @returns {object} - Phản hồi
  */
 export const handleRelatedProductsQuestion = async (product) => {
-  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  if (!product)
+    return { success: false, message: "Không tìm thấy thông tin sản phẩm" };
   
   try {
     // Tìm các sản phẩm cùng danh mục
     const relatedProducts = await Product.find({
       productCategory: product.productCategory,
-      _id: { $ne: product._id } // Loại trừ sản phẩm hiện tại
+      _id: { $ne: product._id }, // Loại trừ sản phẩm hiện tại
     }).limit(5);
     
     if (!relatedProducts || relatedProducts.length === 0) {
       return {
         success: true,
         message: `Hiện không có sản phẩm nào khác trong danh mục "${product.productCategory}".`,
-        intent: 'relatedProducts'
+        intent: "relatedProducts",
       };
     }
     
     // Format sản phẩm để hiển thị
-    const formattedProducts = relatedProducts.map(p => ({
+    const formattedProducts = relatedProducts.map((p) => ({
       id: p._id,
       name: p.productName,
       price: p.productPrice,
       discount: p.productDiscount || 0,
-      promotionalPrice: p.productPromoPrice || (p.productDiscount ? Math.round(p.productPrice * (1 - p.productDiscount/100)) : p.productPrice),
-      image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : 'default-product.jpg',
-      description: p.productInfo || p.productDetails || ''
+      promotionalPrice:
+        p.productPromoPrice ||
+        (p.productDiscount
+          ? Math.round(p.productPrice * (1 - p.productDiscount / 100))
+          : p.productPrice),
+      image:
+        p.productImages && p.productImages.length > 0
+          ? p.productImages[0]
+          : "default-product.jpg",
+      description: p.productInfo || p.productDetails || "",
     }));
     
     return {
       success: true,
       message: `Các sản phẩm liên quan đến ${product.productName}:`,
       data: formattedProducts,
-      type: 'relatedProducts',
+      type: "relatedProducts",
       text: `Các sản phẩm liên quan đến ${product.productName}:`,
-      intent: 'relatedProducts',
-      nameCategory: `Sản phẩm cùng loại "${product.productCategory}"`
+      intent: "relatedProducts",
+      nameCategory: `Sản phẩm cùng loại "${product.productCategory}"`,
     };
   } catch (error) {
-    console.error('Lỗi khi tìm sản phẩm liên quan:', error);
+    console.error("Lỗi khi tìm sản phẩm liên quan:", error);
     return {
       success: false,
-      message: 'Có lỗi xảy ra khi tìm sản phẩm liên quan.',
-      intent: 'error'
+      message: "Có lỗi xảy ra khi tìm sản phẩm liên quan.",
+      intent: "error",
     };
   }
 };
@@ -584,12 +812,15 @@ export const handleRelatedProductsQuestion = async (product) => {
  * @returns {object} - Phản hồi
  */
 export const handleProductOriginQuestion = (product) => {
-  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  if (!product)
+    return { success: false, message: "Không tìm thấy thông tin sản phẩm" };
   
-  let originInfo = '';
+  let originInfo = "";
   
   if (product.productOrigin || product.origin) {
-    originInfo = `<strong>Xuất xứ ${product.productName}:</strong><br>${product.productOrigin || product.origin}`;
+    originInfo = `<strong>Xuất xứ ${product.productName}:</strong><br>${
+      product.productOrigin || product.origin
+    }`;
     
     if (product.productBrand) {
       originInfo += `<br>Thương hiệu: ${product.productBrand}`;
@@ -605,7 +836,7 @@ export const handleProductOriginQuestion = (product) => {
   return {
     success: true,
     message: originInfo,
-    intent: 'productOrigin'
+    intent: "productOrigin",
   };
 };
 
@@ -615,12 +846,15 @@ export const handleProductOriginQuestion = (product) => {
  * @returns {object} - Phản hồi
  */
 export const handleProductIngredientsQuestion = (product) => {
-  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  if (!product)
+    return { success: false, message: "Không tìm thấy thông tin sản phẩm" };
   
-  let ingredientsInfo = '';
+  let ingredientsInfo = "";
   
   if (product.productIngredients || product.ingredients) {
-    ingredientsInfo = `<strong>Thành phần của ${product.productName}:</strong><br>${product.productIngredients || product.ingredients}`;
+    ingredientsInfo = `<strong>Thành phần của ${
+      product.productName
+    }:</strong><br>${product.productIngredients || product.ingredients}`;
   } else {
     ingredientsInfo = `<strong>Thành phần của ${product.productName}:</strong><br>Thông tin chi tiết về thành phần sản phẩm được ghi rõ trên bao bì.`;
   }
@@ -628,7 +862,7 @@ export const handleProductIngredientsQuestion = (product) => {
   return {
     success: true,
     message: ingredientsInfo,
-    intent: 'productIngredients'
+    intent: "productIngredients",
   };
 };
 
@@ -638,25 +872,30 @@ export const handleProductIngredientsQuestion = (product) => {
  * @returns {object} - Phản hồi
  */
 export const handleProductExpiryQuestion = (product) => {
-  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  if (!product)
+    return { success: false, message: "Không tìm thấy thông tin sản phẩm" };
   
-  let expiryInfo = '';
+  let expiryInfo = "";
   
   if (product.expiryDate || product.productExpiry) {
-    expiryInfo = `<strong>Hạn sử dụng ${product.productName}:</strong><br>${product.expiryDate || product.productExpiry}`;
+    expiryInfo = `<strong>Hạn sử dụng ${product.productName}:</strong><br>${
+      product.expiryDate || product.productExpiry
+    }`;
   } else {
     expiryInfo = `<strong>Hạn sử dụng ${product.productName}:</strong><br>Thông tin về hạn sử dụng được in trên bao bì sản phẩm. 
     Vui lòng kiểm tra khi nhận hàng.`;
   }
   
   if (product.storageInfo || product.productStorage) {
-    expiryInfo += `<br><br><strong>Hướng dẫn bảo quản:</strong><br>${product.storageInfo || product.productStorage}`;
+    expiryInfo += `<br><br><strong>Hướng dẫn bảo quản:</strong><br>${
+      product.storageInfo || product.productStorage
+    }`;
   }
   
   return {
     success: true,
     message: expiryInfo,
-    intent: 'productExpiry'
+    intent: "productExpiry",
   };
 };
 
@@ -666,9 +905,10 @@ export const handleProductExpiryQuestion = (product) => {
  * @returns {object} - Phản hồi
  */
 export const handleProductReviewsQuestion = (product) => {
-  if (!product) return { success: false, message: 'Không tìm thấy thông tin sản phẩm' };
+  if (!product)
+    return { success: false, message: "Không tìm thấy thông tin sản phẩm" };
   
-  let reviewInfo = '';
+  let reviewInfo = "";
   
   if (product.averageRating) {
     reviewInfo = `<strong>Đánh giá ${product.productName}:</strong><br>
@@ -686,7 +926,7 @@ export const handleProductReviewsQuestion = (product) => {
   return {
     success: true,
     message: reviewInfo,
-    intent: 'productReviews'
+    intent: "productReviews",
   };
 };
 
@@ -705,12 +945,24 @@ export const detectHealthNeeds = (message) => {
   const normalizedMessage = message.toLowerCase();
   const healthNeeds = [];
 
+  // Kiểm tra trường hợp đặc biệt cho mẹ bầu
+  if (
+    normalizedMessage.includes("mẹ bầu") ||
+    normalizedMessage.includes("bà bầu") ||
+    normalizedMessage.includes("mang thai")
+  ) {
+    healthNeeds.push({ need: "meBau", keyword: "mẹ bầu", score: 10 });
+    return healthNeeds;
+  }
+
   // Kiểm tra các từ khóa liên quan đến sức khỏe
   for (const [need, keywords] of Object.entries(healthKeywords)) {
     for (const keyword of keywords) {
       if (normalizedMessage.includes(keyword)) {
         // Tính điểm dựa trên độ dài từ khóa và vị trí xuất hiện
-        const score = keyword.length * (1 + 1/Math.max(1, normalizedMessage.indexOf(keyword)));
+        const score =
+          keyword.length *
+          (1 + 1 / Math.max(1, normalizedMessage.indexOf(keyword)));
         healthNeeds.push({ need, keyword, score });
         break; // Chỉ tính điểm cho từ khóa đầu tiên tìm thấy trong mỗi nhóm
       }
@@ -719,110 +971,8 @@ export const detectHealthNeeds = (message) => {
 
   // Sắp xếp theo điểm số giảm dần
   healthNeeds.sort((a, b) => b.score - a.score);
-  
+
   return healthNeeds;
-};
-
-/**
- * Kiểm tra xem câu hỏi có khớp với câu hỏi mẫu không
- * @param {string} message - Câu hỏi của người dùng
- * @param {string} healthNeed - Nhu cầu sức khỏe
- * @returns {string|null} - Câu trả lời mẫu nếu khớp, null nếu không khớp
- */
-const checkExampleQuestions = (message, healthNeed) => {
-  if (!message || !healthNeed || !healthResponses[healthNeed] || !healthResponses[healthNeed].examples) {
-    return null;
-  }
-
-  const normalizedMessage = message.toLowerCase();
-  const examples = healthResponses[healthNeed].examples;
-
-  for (const example of examples) {
-    const normalizedQuestion = example.question.toLowerCase();
-    
-    // Kiểm tra xem câu hỏi có tương tự với câu hỏi mẫu không
-    if (normalizedMessage === normalizedQuestion || 
-        normalizedMessage.includes(normalizedQuestion) || 
-        normalizedQuestion.includes(normalizedMessage)) {
-      return example.answer;
-    }
-    
-    // Tính số từ trùng nhau
-    const messageWords = normalizedMessage.split(/\s+/);
-    const questionWords = normalizedQuestion.split(/\s+/);
-    const commonWords = messageWords.filter(word => questionWords.includes(word));
-    
-    // Nếu có ít nhất 3 từ trùng nhau và chiếm hơn 60% số từ trong câu hỏi mẫu
-    if (commonWords.length >= 3 && commonWords.length / questionWords.length > 0.6) {
-      return example.answer;
-    }
-  }
-
-  return null;
-};
-
-/**
- * Tạo phản hồi cho nhu cầu sức khỏe cụ thể
- * @param {string} healthNeed - Nhu cầu sức khỏe
- * @param {Array} products - Danh sách sản phẩm phù hợp (nếu có)
- * @returns {string|Object} - Phản hồi cho người dùng
- */
-export const generateHealthResponse = (healthNeed, products = []) => {
-  try {
-    // Nếu có cấu hình phản hồi cho nhu cầu sức khỏe này, sử dụng nó
-    if (healthResponses[healthNeed] && healthResponses[healthNeed].responses) {
-      // Lấy ngẫu nhiên một câu trả lời từ danh sách
-      const responses = healthResponses[healthNeed].responses;
-      const randomIndex = Math.floor(Math.random() * responses.length);
-      return responses[randomIndex];
-    }
-    
-    // Nếu không có cấu hình, sử dụng khuyến nghị mặc định
-    if (!healthRecommendations[healthNeed]) {
-      return "Tôi không có thông tin cụ thể về nhu cầu sức khỏe của bạn. Hãy tham khảo ý kiến của chuyên gia dinh dưỡng hoặc bác sĩ.";
-    }
-    
-    const recommendation = healthRecommendations[healthNeed];
-    
-    let response = `${recommendation.description}\n\n`;
-    response += "Nên ăn:\n";
-    recommendation.recommended.forEach(food => {
-      response += `- ${food}\n`;
-    });
-    
-    response += "\nNên hạn chế:\n";
-    recommendation.avoid.forEach(food => {
-      response += `- ${food}\n`;
-    });
-    
-    // Thêm thông tin về sản phẩm nếu có
-    if (products && products.length > 0) {
-      // Tạo danh sách sản phẩm được định dạng để hiển thị với hình ảnh
-      const formattedProducts = products.slice(0, 5).map(product => ({
-        id: product._id,
-        name: product.productName,
-        price: product.productPrice,
-        discount: product.productDiscount || 0,
-        promotionalPrice: product.productPromoPrice || 
-          (product.productDiscount ? Math.round(product.productPrice * (1 - product.productDiscount/100)) : product.productPrice),
-        image: product.productImages && product.productImages.length > 0 ? product.productImages[0] : 'default-product.jpg',
-        description: product.productInfo || product.productDetails || ''
-      }));
-      
-      // Trả về đối tượng với cả text và danh sách sản phẩm
-      return {
-        text: response,
-        products: formattedProducts,
-        title: `Sản phẩm phù hợp cho ${recommendation.title}`,
-        type: 'healthProducts'
-      };
-    }
-    
-    return response;
-  } catch (error) {
-    console.error("Lỗi khi tạo câu trả lời về sức khỏe:", error);
-    return "Đã xảy ra lỗi khi tạo câu trả lời về sức khỏe. Vui lòng thử lại sau.";
-  }
 };
 
 /**
@@ -832,35 +982,183 @@ export const generateHealthResponse = (healthNeed, products = []) => {
  */
 export const findProductsForHealthNeed = async (healthNeed) => {
   try {
-    if (!healthNeed || !healthRecommendations[healthNeed]) {
-      console.log(`Không tìm thấy khuyến nghị cho nhu cầu sức khỏe: ${healthNeed}`);
+    if (!healthNeed) {
+      console.log(`Không có nhu cầu sức khỏe được chỉ định`);
       return [];
     }
-    
-    const recommendation = healthRecommendations[healthNeed];
+
     console.log(`Tìm sản phẩm cho nhu cầu sức khỏe: ${healthNeed}`);
-    
+
+    // Xác định từ khóa tìm kiếm dựa trên nhu cầu sức khỏe
+    let keywords = [];
+    let categories = [];
+
+    // Xử lý đặc biệt cho mẹ bầu
+    if (healthNeed === "meBau") {
+      keywords = [
+        "mẹ bầu",
+        "bà bầu",
+        "thai kỳ",
+        "DHA",
+        "folate",
+        "sắt",
+        "canxi",
+        "vitamin",
+      ];
+      categories = [
+        "Thực phẩm cho mẹ bầu",
+        "Sữa bầu",
+        "Thực phẩm bổ sung",
+        "Vitamin và khoáng chất",
+      ];
+    }
+    // Xử lý cho các nhu cầu sức khỏe khác
+    else if (healthRecommendations && healthRecommendations[healthNeed]) {
+      const recommendation = healthRecommendations[healthNeed];
+      keywords = recommendation.productKeywords || [];
+      categories = recommendation.productCategories || [];
+    }
+    // Fallback nếu không có dữ liệu
+    else {
+      // Fallback keywords cho các nhu cầu sức khỏe phổ biến
+      const fallbackKeywords = {
+        tieuDuong: [
+          "đường huyết thấp",
+          "ít đường",
+          "không đường",
+          "cho người tiểu đường",
+          "chỉ số GI thấp",
+        ],
+        huyetAp: ["ít muối", "không muối", "giảm huyết áp", "DASH", "tim mạch"],
+        giamCan: [
+          "giảm cân",
+          "ít calo",
+          "đốt mỡ",
+          "kiểm soát cân nặng",
+          "chất xơ",
+        ],
+        anChay: [
+          "chay",
+          "thuần chay",
+          "đạm thực vật",
+          "không động vật",
+          "thực vật",
+        ],
+        tangCo: ["protein", "tăng cơ", "whey", "bcaa", "creatine", "tập gym"],
+        treSoSinh: [
+          "trẻ em",
+          "trẻ sơ sinh",
+          "em bé",
+          "sữa công thức",
+          "bột ăn dặm",
+          "dinh dưỡng trẻ",
+        ],
+        nguoiGia: [
+          "người cao tuổi",
+          "người già",
+          "xương khớp",
+          "canxi",
+          "vitamin D",
+          "dễ tiêu hóa",
+        ],
+      };
+
+      const fallbackCategories = {
+        tieuDuong: [
+          "Thực phẩm chức năng",
+          "Đồ uống không đường",
+          "Thực phẩm dinh dưỡng",
+        ],
+        huyetAp: [
+          "Thực phẩm chức năng",
+          "Đồ uống tốt cho tim mạch",
+          "Thực phẩm dinh dưỡng",
+        ],
+        giamCan: [
+          "Thực phẩm chức năng",
+          "Đồ uống không đường",
+          "Thực phẩm dinh dưỡng",
+        ],
+        anChay: ["Thực phẩm chay", "Đồ uống thực vật", "Thực phẩm dinh dưỡng"],
+        tangCo: ["Thực phẩm bổ sung", "Protein", "Thực phẩm dinh dưỡng"],
+        treSoSinh: [
+          "Sữa công thức",
+          "Thực phẩm ăn dặm",
+          "Thực phẩm cho trẻ em",
+        ],
+        nguoiGia: [
+          "Thực phẩm chức năng",
+          "Sữa cho người cao tuổi",
+          "Thực phẩm dinh dưỡng",
+        ],
+      };
+
+      keywords = fallbackKeywords[healthNeed] || [
+        "thực phẩm",
+        "dinh dưỡng",
+        "sức khỏe",
+      ];
+      categories = fallbackCategories[healthNeed] || [
+        "Thực phẩm chức năng",
+        "Thực phẩm dinh dưỡng",
+      ];
+    }
+
+    console.log(`Từ khóa tìm kiếm: ${keywords.join(", ")}`);
+    console.log(`Danh mục tìm kiếm: ${categories.join(", ")}`);
+
+    // Danh sách các từ khóa/danh mục thực phẩm (ăn/uống được)
+    const foodInclude = [
+      "thực phẩm", "đồ ăn", "sữa", "nước uống", "ngũ cốc", "bánh", "kẹo", "trái cây", "rau", "củ", "quả", "thức uống", "protein", "dinh dưỡng", "bột", "cháo", "súp", "sữa chua", "nước ép", "đậu", "hạt", "mật ong", "dầu ăn", "gia vị"
+    ];
+    // Danh sách loại trừ các sản phẩm không phải thực phẩm
+    const foodExclude = [
+      "kem đánh răng", "xà phòng", "bột giặt", "nước rửa", "mỹ phẩm", "dầu gội", "sữa tắm", "nước lau", "nước tẩy", "băng vệ sinh", "bỉm", "tã", "khăn giấy", "giấy vệ sinh", "nước hoa", "nước xịt", "thuốc", "vitamin tổng hợp", "thực phẩm chức năng" // có thể giữ lại tùy nhu cầu
+    ];
+
     // Xây dựng query tìm kiếm
     const searchQuery = {
-      $or: [
-        // Tìm theo từ khóa trong tên sản phẩm
-        { productName: { $regex: recommendation.productKeywords.join('|'), $options: 'i' } },
-        // Tìm theo danh mục
-        { productCategory: { $in: recommendation.productCategories } },
-        // Tìm trong mô tả sản phẩm
-        { productDescription: { $regex: recommendation.productKeywords.join('|'), $options: 'i' } }
+      $and: [
+        {
+          $or: [
+            // Tìm theo từ khóa trong tên sản phẩm
+            { productName: { $regex: keywords.join("|"), $options: "i" } },
+            // Tìm theo danh mục
+            { productCategory: { $in: categories } },
+            // Tìm trong mô tả sản phẩm
+            { productDescription: { $regex: keywords.join("|"), $options: "i" } },
+          ],
+        },
+        {
+          $or: [
+            // Chỉ lấy các sản phẩm thực phẩm (ăn/uống được)
+            { productCategory: { $regex: foodInclude.join("|"), $options: "i" } },
+            { productName: { $regex: foodInclude.join("|"), $options: "i" } },
+          ],
+        },
+        {
+          // Loại trừ các sản phẩm không phải thực phẩm
+          productCategory: { $not: { $regex: foodExclude.join("|"), $options: "i" } },
+        },
+        {
+          // Đảm bảo sản phẩm còn hàng
+          productStatus: { $ne: "Hết hàng" },
+        },
       ],
-      // Đảm bảo sản phẩm còn hàng
-      productStatus: { $ne: "Hết hàng" }
     };
-    
+
     // Tìm kiếm sản phẩm
     const products = await Product.find(searchQuery).limit(10);
-    console.log(`Tìm thấy ${products.length} sản phẩm cho nhu cầu sức khỏe ${healthNeed}`);
-    
+    console.log(
+      `Tìm thấy ${products.length} sản phẩm cho nhu cầu sức khỏe ${healthNeed}`
+    );
+
     return products;
   } catch (error) {
-    console.error(`Lỗi khi tìm sản phẩm cho nhu cầu sức khỏe ${healthNeed}:`, error);
+    console.error(
+      `Lỗi khi tìm sản phẩm cho nhu cầu sức khỏe ${healthNeed}:`,
+      error
+    );
     return [];
   }
 };
@@ -868,97 +1166,672 @@ export const findProductsForHealthNeed = async (healthNeed) => {
 /**
  * Xử lý câu hỏi liên quan đến sản phẩm
  * @param {string} message - Câu hỏi của người dùng
- * @param {string} productId - ID sản phẩm (nếu có)
- * @param {string} userId - ID người dùng
+ * @param {string} productIntent - Loại câu hỏi sản phẩm đã được phân loại
  * @returns {Promise<Object>} - Phản hồi cho người dùng
  */
-export const handleProductPageQuestion = async (message, productId, userId) => {
+export const handleProductQuery = async (message, context) => {
   try {
     console.log(`Xử lý câu hỏi: "${message}"`);
-    
-    // Phát hiện nhu cầu sức khỏe từ câu hỏi
-    const healthNeeds = detectHealthNeeds(message);
-    console.log("Nhu cầu sức khỏe phát hiện được:", healthNeeds);
-    
-    // Nếu phát hiện nhu cầu sức khỏe, ưu tiên trả lời theo hướng đó
-    if (healthNeeds.length > 0) {
-      const primaryNeed = healthNeeds[0].need;
-      console.log(`Phát hiện nhu cầu sức khỏe chính: ${primaryNeed}`);
-      
-      // Kiểm tra xem câu hỏi có khớp với câu hỏi mẫu không
-      const exampleAnswer = checkExampleQuestions(message, primaryNeed);
-      if (exampleAnswer) {
-        console.log("Tìm thấy câu trả lời mẫu");
-        
-        // Lưu ngữ cảnh để sử dụng sau này
-        if (userId) {
-          saveContext(userId, {
-            lastHealthNeed: primaryNeed
-          });
-        }
-  
-        return {
-          success: true,
-          message: exampleAnswer,
-          type: 'text',
-          intent: `health_${primaryNeed}`
-        };
+
+    // Tìm kiếm sản phẩm dựa trên tin nhắn
+    const products = await searchProductsMongoDB(message);
+    console.log(`Tìm thấy ${products.length} sản phẩm phù hợp`);
+
+    if (products && products.length > 0) {
+      // Lưu ngữ cảnh nếu có userId
+      if (context && context.userId) {
+        saveContext(context.userId, {
+          lastProducts: products,
+          lastProduct: products[0],
+          lastQuery: message,
+        });
       }
-      
-      // Tìm sản phẩm phù hợp với nhu cầu sức khỏe
-      const products = await findProductsForHealthNeed(primaryNeed);
-      console.log(`Tìm thấy ${products.length} sản phẩm phù hợp với nhu cầu sức khỏe ${primaryNeed}`);
-      
-      // Tạo phản hồi cho nhu cầu sức khỏe
-      const healthResponse = generateHealthResponse(primaryNeed, products);
-      
-      if (healthResponse) {
-        // Lưu ngữ cảnh để sử dụng sau này
-        if (userId) {
-          saveContext(userId, {
-            lastHealthNeed: primaryNeed,
-            lastHealthProducts: products.map(p => p._id)
+
+      // Chuẩn bị danh sách sản phẩm để hiển thị
+      const formattedProducts = products.map((product) => ({
+        _id: product._id,
+        productName: product.productName,
+        productPrice: product.productPrice,
+        productDiscount: product.productDiscount || 0,
+        productImage:
+          product.productImages && product.productImages.length > 0
+            ? product.productImages[0]
+            : null,
+        productImageURL:
+          product.productImageURLs && product.productImageURLs.length > 0
+            ? product.productImageURLs[0]
+            : null,
+        imageBase64: product.productImageBase64 || null,
+      }));
+
+      console.log(
+        "Sản phẩm đã định dạng:",
+        JSON.stringify(formattedProducts[0])
+      );
+
+      // Tạo phản hồi với danh sách sản phẩm
+    return {
+      success: true,
+        message: `Tôi đã tìm thấy ${products.length} sản phẩm phù hợp với yêu cầu của bạn:`,
+        products: formattedProducts,
+        type: "productSearch",
+      };
+    } else {
+      return {
+        success: true,
+        message:
+          "Tôi không tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Vui lòng thử lại với từ khóa khác.",
+        products: [],
+        type: "text",
+      };
+    }
+  } catch (error) {
+    console.error("Lỗi khi tìm kiếm sản phẩm:", error);
+    return {
+      success: false,
+      message: "Đã xảy ra lỗi khi tìm kiếm sản phẩm. Vui lòng thử lại sau.",
+      type: "text",
+    };
+  }
+};
+
+/**
+ * Tìm kiếm sản phẩm trong MongoDB
+ * @param {string} searchText - Từ khóa tìm kiếm
+ * @returns {Promise<Array>} - Danh sách sản phẩm
+ */
+const searchProductsMongoDB = async (searchText) => {
+  try {
+    console.log("Đang tìm kiếm sản phẩm với query:", searchText);
+
+    // Xử lý query để tìm từ khóa quan trọng
+    const lowerQuery = searchText.toLowerCase();
+
+    // Tìm kiếm sản phẩm theo giá
+    const priceMatch =
+      lowerQuery.match(/dưới (\d+)k/i) ||
+      lowerQuery.match(/< (\d+)k/i) ||
+      lowerQuery.match(/nhỏ hơn (\d+)k/i);
+    const priceHighMatch =
+      lowerQuery.match(/trên (\d+)k/i) ||
+      lowerQuery.match(/> (\d+)k/i) ||
+      lowerQuery.match(/lớn hơn (\d+)k/i);
+    const priceBetweenMatch =
+      lowerQuery.match(/từ (\d+)k đến (\d+)k/i) ||
+      lowerQuery.match(/(\d+)k - (\d+)k/i);
+
+    // Mảng các điều kiện tìm kiếm
+    const conditions = [];
+    let isPriceQuery = false;
+
+    // Xử lý tìm kiếm theo khoảng giá
+    if (priceMatch) {
+      const maxPrice = parseInt(priceMatch[1]) * 1000;
+      conditions.push({
+        $or: [
+          { price: { $lte: maxPrice } },
+          { productPrice: { $lte: maxPrice } },
+        ],
+      });
+      isPriceQuery = true;
+      console.log("Tìm sản phẩm có giá dưới:", maxPrice);
+    } else if (priceHighMatch) {
+      const minPrice = parseInt(priceHighMatch[1]) * 1000;
+      conditions.push({
+        $or: [
+          { price: { $gte: minPrice } },
+          { productPrice: { $gte: minPrice } },
+        ],
+      });
+      isPriceQuery = true;
+      console.log("Tìm sản phẩm có giá trên:", minPrice);
+    } else if (priceBetweenMatch) {
+      const minPrice = parseInt(priceBetweenMatch[1]) * 1000;
+      const maxPrice = parseInt(priceBetweenMatch[2]) * 1000;
+      conditions.push({
+        $or: [
+          { price: { $gte: minPrice, $lte: maxPrice } },
+          { productPrice: { $gte: minPrice, $lte: maxPrice } },
+        ],
+      });
+      isPriceQuery = true;
+      console.log("Tìm sản phẩm có giá từ", minPrice, "đến", maxPrice);
+    }
+
+    // Kiểm tra xem có cụm từ cụ thể không
+    const specificPhrases = [
+      { phrase: "nước giặt", category: "Đồ gia dụng" },
+      { phrase: "nước rửa chén", category: "Đồ gia dụng" },
+      { phrase: "nước lau sàn", category: "Đồ gia dụng" },
+      { phrase: "nước giải khát", category: "Đồ uống" },
+      { phrase: "nước ngọt", category: "Đồ uống" },
+      { phrase: "nước tương", category: "Gia vị" },
+    ];
+
+    let foundSpecificPhrase = false;
+    for (const item of specificPhrases) {
+      if (lowerQuery.includes(item.phrase)) {
+        foundSpecificPhrase = true;
+        conditions.push({
+          $or: [
+            { productName: { $regex: item.phrase, $options: "i" } },
+            { productDescription: { $regex: item.phrase, $options: "i" } },
+            { productCategory: item.category },
+            { category: item.category },
+          ],
+        });
+        console.log(
+          `Tìm sản phẩm với cụm từ cụ thể: "${item.phrase}" thuộc danh mục ${item.category}`
+        );
+        break;
+      }
+    }
+
+    // Xử lý tìm kiếm theo danh mục/loại sản phẩm nếu không tìm được cụm từ cụ thể và không phải là câu hỏi về giá
+    if (!foundSpecificPhrase && !isPriceQuery) {
+      const categoryKeywords = [
+        {
+          keywords: ["rau", "củ", "quả", "rau củ", "rau quả", "trái cây"],
+          category: "Rau củ quả",
+        },
+        {
+          keywords: ["thịt", "cá", "hải sản", "thịt cá", "thủy hải sản"],
+          category: "Thịt và hải sản",
+        },
+        {
+          keywords: ["đồ uống", "nước ngọt", "bia", "rượu"],
+          category: "Đồ uống",
+        },
+        {
+          keywords: [
+            "gia vị",
+            "dầu ăn",
+            "nước mắm",
+            "muối",
+            "đường",
+            "mì chính",
+          ],
+          category: "Gia vị",
+        },
+        {
+          keywords: ["bánh", "kẹo", "snack", "đồ ăn vặt"],
+          category: "Bánh kẹo",
+        },
+        {
+          keywords: ["mì", "bún", "phở", "miến", "hủ tiếu"],
+          category: "Mì, bún, phở",
+        },
+        {
+          keywords: ["giặt", "xà phòng", "nước rửa", "lau", "vệ sinh"],
+          category: "Đồ gia dụng",
+        },
+      ];
+
+      for (const item of categoryKeywords) {
+        if (item.keywords.some((keyword) => lowerQuery.includes(keyword))) {
+          conditions.push({
+            $or: [
+              { productCategory: item.category },
+              { category: item.category },
+            ],
           });
-        }
-        
-        // Kiểm tra xem phản hồi là đối tượng hay chuỗi
-        if (typeof healthResponse === 'object' && healthResponse.type === 'healthProducts') {
-          return {
-            success: true,
-            message: healthResponse.text,
-            products: healthResponse.products,
-            title: healthResponse.title,
-            type: healthResponse.type,
-            intent: `health_${primaryNeed}`
-          };
-        } else {
-          return {
-            success: true,
-            message: healthResponse,
-            type: 'text',
-            intent: `health_${primaryNeed}`
-          };
+          console.log("Tìm sản phẩm thuộc danh mục:", item.category);
+          break;
         }
       }
     }
-    
-    // Nếu không phát hiện nhu cầu sức khỏe hoặc không có phản hồi phù hợp,
-    // tiếp tục xử lý câu hỏi về sản phẩm như trước đây
-    // (Phần code xử lý câu hỏi sản phẩm thông thường)
-    
-    // Đây là phản hồi mặc định nếu không xử lý được câu hỏi
-    return {
-      success: true,
-      message: "Tôi không tìm thấy thông tin phù hợp với câu hỏi của bạn. Vui lòng hỏi rõ hơn hoặc liên hệ với nhân viên tư vấn để được hỗ trợ.",
-      type: 'text'
-    };
-    
+
+    // Tìm theo từ khóa cụ thể (tên sản phẩm)
+    const stopWords = [
+      "tìm",
+      "kiếm",
+      "sản",
+      "phẩm",
+      "sản phẩm",
+      "hàng",
+      "giá",
+      "mua",
+      "bán",
+      "các",
+      "có",
+      "không",
+      "vậy",
+      "shop",
+      "cửa hàng",
+      "thì",
+      "là",
+      "và",
+      "hay",
+      "hoặc",
+      "nhé",
+      "ạ",
+      "dưới",
+      "trên",
+      "khoảng",
+      "từ",
+      "đến",
+    ];
+    const words = lowerQuery.split(/\s+/);
+
+    // Lọc bỏ từ khóa giá (100k, 50k)
+    const priceKeywords = words.filter((word) => word.match(/\d+k$/i));
+    const keywords = words.filter(
+      (word) =>
+        !stopWords.includes(word) && word.length > 1 && !word.match(/\d+k$/i)
+    );
+
+    console.log("Từ khóa giá:", priceKeywords);
+    console.log("Từ khóa tìm kiếm:", keywords);
+
+    // Nếu không có điều kiện nào, thêm điều kiện tìm kiếm theo từ khóa
+    if (conditions.length === 0 && keywords.length > 0) {
+      const keywordConditions = keywords.map((keyword) => ({
+        $or: [
+          { productName: { $regex: keyword, $options: "i" } },
+          { productDescription: { $regex: keyword, $options: "i" } },
+          { productCategory: { $regex: keyword, $options: "i" } },
+        ],
+      }));
+
+      if (keywordConditions.length > 0) {
+        conditions.push({ $and: keywordConditions });
+      }
+    }
+
+    // Tìm kiếm sản phẩm với các điều kiện đã xác định
+    let queryCondition = {};
+    if (conditions.length > 0) {
+      queryCondition = { $or: conditions };
+    }
+
+    console.log("Query tìm kiếm:", JSON.stringify(queryCondition));
+
+    // Thực hiện tìm kiếm
+    const products = await Product.find(queryCondition).limit(10);
+    console.log(`Tìm thấy ${products.length} sản phẩm`);
+
+    return products;
   } catch (error) {
-    console.error("Lỗi khi xử lý câu hỏi về sản phẩm:", error);
+    console.error("Lỗi khi tìm kiếm sản phẩm:", error);
+    return [];
+  }
+};
+
+/**
+ * Xử lý so sánh sản phẩm
+ * @param {string} message - Câu hỏi của người dùng
+ * @param {object} context - Thông tin ngữ cảnh
+ * @returns {Promise<Object>} - Phản hồi cho người dùng
+ */
+export const handleCompareProducts = async (message, context) => {
+  try {
+    console.log("Xử lý so sánh sản phẩm:", message);
+
+    // Kiểm tra xem có sản phẩm trong context không
+    if (!context || !context.userId) {
+      return {
+        success: true,
+        message: "Vui lòng chọn sản phẩm bạn muốn so sánh trước.",
+        type: "text",
+      };
+    }
+
+    // Lấy thông tin sản phẩm từ context
+    const userContext = await getUserContext(context.userId);
+    console.log("Context người dùng:", userContext);
+
+    // Kiểm tra xem có sản phẩm đã lưu không
+    if (
+      !userContext ||
+      !userContext.lastProducts ||
+      userContext.lastProducts.length < 1
+    ) {
+  return {
+    success: true,
+        message:
+          "Bạn chưa xem sản phẩm nào gần đây để so sánh. Vui lòng tìm kiếm sản phẩm trước.",
+        type: "text",
+      };
+    }
+
+    // Lấy 2 sản phẩm gần đây nhất để so sánh
+    const productsToCompare = userContext.lastProducts.slice(0, 2);
+    console.log(`Sản phẩm để so sánh: ${productsToCompare.length} sản phẩm`);
+
+    if (productsToCompare.length < 2) {
+      // Nếu chỉ có 1 sản phẩm, tìm thêm sản phẩm tương tự
+      const product = productsToCompare[0];
+      const similarProducts = await Product.find({
+        productCategory: product.productCategory,
+        _id: { $ne: product._id },
+      }).limit(1);
+
+      if (similarProducts.length > 0) {
+        productsToCompare.push(similarProducts[0]);
+      }
+    }
+
+    // Nếu có ít nhất 2 sản phẩm, tiến hành so sánh
+    if (productsToCompare.length >= 2) {
+      // Chuẩn bị danh sách sản phẩm để hiển thị
+      const formattedProducts = productsToCompare.map((product) => ({
+        _id: product._id,
+        productName: product.productName,
+        productPrice: product.productPrice,
+        productDiscount: product.productDiscount || 0,
+        productImage:
+          product.productImages && product.productImages.length > 0
+            ? product.productImages[0]
+            : null,
+        productImageURL:
+          product.productImageURLs && product.productImageURLs.length > 0
+            ? product.productImageURLs[0]
+            : null,
+        imageBase64: product.productImageBase64 || null,
+        productCategory: product.productCategory,
+        productDescription: product.productDescription,
+        productBrand: product.productBrand,
+        productWeight: product.productWeight,
+        productOrigin: product.productOrigin,
+        productDetails: product.productDetails,
+        averageRating: product.averageRating,
+      }));
+
+      // Tạo so sánh chi tiết giữa các sản phẩm
+      let comparisonText = "So sánh chi tiết giữa các sản phẩm:\n\n";
+
+      // Lấy tên sản phẩm ngắn gọn để dễ so sánh
+      const product1ShortName = formattedProducts[0].productName
+        .split(" ")
+        .slice(0, 3)
+        .join(" ");
+      const product2ShortName = formattedProducts[1].productName
+        .split(" ")
+        .slice(0, 3)
+        .join(" ");
+
+      // So sánh giá
+      comparisonText += "🔹 Về giá: ";
+      const priceDiff = Math.abs(
+        formattedProducts[0].productPrice - formattedProducts[1].productPrice
+      );
+      const priceDiffPercent = Math.round(
+        (priceDiff /
+          Math.min(
+            formattedProducts[0].productPrice,
+            formattedProducts[1].productPrice
+          )) *
+          100
+      );
+
+      if (
+        formattedProducts[0].productPrice > formattedProducts[1].productPrice
+      ) {
+        comparisonText += `${product2ShortName} rẻ hơn ${product1ShortName} ${formatCurrency(
+          priceDiff
+        )}đ (khoảng ${priceDiffPercent}%).\n\n`;
+      } else if (
+        formattedProducts[0].productPrice < formattedProducts[1].productPrice
+      ) {
+        comparisonText += `${product1ShortName} rẻ hơn ${product2ShortName} ${formatCurrency(
+          priceDiff
+        )}đ (khoảng ${priceDiffPercent}%).\n\n`;
+  } else {
+        comparisonText += "Hai sản phẩm có giá tương đương nhau.\n\n";
+      }
+
+      // So sánh thương hiệu
+      if (
+        formattedProducts[0].productBrand &&
+        formattedProducts[1].productBrand
+      ) {
+        comparisonText += `🔹 Về thương hiệu: ${product1ShortName} là sản phẩm của ${formattedProducts[0].productBrand}, trong khi ${product2ShortName} là sản phẩm của ${formattedProducts[1].productBrand}.\n\n`;
+      }
+
+      // So sánh khối lượng/dung tích
+      if (
+        formattedProducts[0].productWeight &&
+        formattedProducts[1].productWeight
+      ) {
+        comparisonText += "🔹 Về khối lượng/dung tích: ";
+
+        // Xác định đơn vị đo (kg, L, g, ml)
+        const getUnit = (productName) => {
+          if (productName.includes("kg") || productName.includes("Kg"))
+            return "kg";
+          if (productName.includes("g") && !productName.includes("kg"))
+            return "g";
+          if (productName.includes("L") || productName.includes("l"))
+            return "L";
+          if (productName.includes("ml")) return "ml";
+          return "";
+        };
+
+        const unit1 = getUnit(formattedProducts[0].productName);
+        const unit2 = getUnit(formattedProducts[1].productName);
+
+        // Tính giá trên đơn vị
+        const calculateUnitPrice = (price, weight, unit) => {
+          if (unit === "kg") return price / weight;
+          if (unit === "g") return price / (weight / 1000);
+          if (unit === "L") return price / weight;
+          if (unit === "ml") return price / (weight / 1000);
+          return price / weight;
+        };
+
+        const unitPrice1 = calculateUnitPrice(
+          formattedProducts[0].productPrice,
+          formattedProducts[0].productWeight,
+          unit1
+        );
+        const unitPrice2 = calculateUnitPrice(
+          formattedProducts[1].productPrice,
+          formattedProducts[1].productWeight,
+          unit2
+        );
+
+        comparisonText += `${product1ShortName} có ${formattedProducts[0].productWeight}${unit1}, trong khi ${product2ShortName} có ${formattedProducts[1].productWeight}${unit2}.\n\n`;
+
+        // So sánh giá trị (giá trên đơn vị)
+        comparisonText += "🔹 Về giá trị kinh tế: ";
+        if (unitPrice1 < unitPrice2) {
+          comparisonText += `${product1ShortName} có giá trị kinh tế tốt hơn với giá ${formatCurrency(
+            Math.round(unitPrice1)
+          )}đ/${
+            unit1 === "g" ? "kg" : unit1 === "ml" ? "L" : unit1
+          }, trong khi ${product2ShortName} có giá ${formatCurrency(
+            Math.round(unitPrice2)
+          )}đ/${unit2 === "g" ? "kg" : unit2 === "ml" ? "L" : unit2}.\n\n`;
+        } else if (unitPrice1 > unitPrice2) {
+          comparisonText += `${product2ShortName} có giá trị kinh tế tốt hơn với giá ${formatCurrency(
+            Math.round(unitPrice2)
+          )}đ/${
+            unit2 === "g" ? "kg" : unit2 === "ml" ? "L" : unit2
+          }, trong khi ${product1ShortName} có giá ${formatCurrency(
+            Math.round(unitPrice1)
+          )}đ/${unit1 === "g" ? "kg" : unit1 === "ml" ? "L" : unit1}.\n\n`;
+  } else {
+          comparisonText +=
+            "Hai sản phẩm có giá trị kinh tế tương đương nhau.\n\n";
+        }
+      }
+
+      // So sánh đánh giá
+      if (
+        formattedProducts[0].averageRating &&
+        formattedProducts[1].averageRating
+      ) {
+        comparisonText += "🔹 Về đánh giá: ";
+        if (
+          formattedProducts[0].averageRating >
+          formattedProducts[1].averageRating
+        ) {
+          comparisonText += `${product1ShortName} được đánh giá cao hơn với ${formattedProducts[0].averageRating}/5 sao, trong khi ${product2ShortName} được đánh giá ${formattedProducts[1].averageRating}/5 sao.\n\n`;
+        } else if (
+          formattedProducts[0].averageRating <
+          formattedProducts[1].averageRating
+        ) {
+          comparisonText += `${product2ShortName} được đánh giá cao hơn với ${formattedProducts[1].averageRating}/5 sao, trong khi ${product1ShortName} được đánh giá ${formattedProducts[0].averageRating}/5 sao.\n\n`;
+    } else {
+          comparisonText += `Cả hai sản phẩm đều có đánh giá ${formattedProducts[0].averageRating}/5 sao.\n\n`;
+        }
+      }
+
+      // So sánh công dụng
+      if (
+        formattedProducts[0].productDescription &&
+        formattedProducts[1].productDescription
+      ) {
+        comparisonText += "🔹 Về công dụng:\n";
+        comparisonText += `${product1ShortName}: ${
+          Array.isArray(formattedProducts[0].productDescription)
+            ? formattedProducts[0].productDescription.join(", ")
+            : formattedProducts[0].productDescription
+        }\n`;
+        comparisonText += `${product2ShortName}: ${
+          Array.isArray(formattedProducts[1].productDescription)
+            ? formattedProducts[1].productDescription.join(", ")
+            : formattedProducts[1].productDescription
+        }\n\n`;
+      }
+
+      // Kết luận và đề xuất
+      comparisonText += "🔹 Kết luận:\n";
+      // Tính điểm cho từng sản phẩm dựa trên các tiêu chí
+      let score1 = 0;
+      let score2 = 0;
+
+      // Điểm cho giá
+      if (
+        formattedProducts[0].productPrice < formattedProducts[1].productPrice
+      ) {
+        score1 += 1;
+      } else if (
+        formattedProducts[0].productPrice > formattedProducts[1].productPrice
+      ) {
+        score2 += 1;
+      }
+
+      // Điểm cho giá trị kinh tế
+      const getUnit = (productName) => {
+        if (productName.includes("kg") || productName.includes("Kg"))
+          return "kg";
+        if (productName.includes("g") && !productName.includes("kg"))
+          return "g";
+        if (productName.includes("L") || productName.includes("l")) return "L";
+        if (productName.includes("ml")) return "ml";
+        return "";
+      };
+
+      const unit1 = getUnit(formattedProducts[0].productName);
+      const unit2 = getUnit(formattedProducts[1].productName);
+
+      const calculateUnitPrice = (price, weight, unit) => {
+        if (unit === "kg") return price / weight;
+        if (unit === "g") return price / (weight / 1000);
+        if (unit === "L") return price / weight;
+        if (unit === "ml") return price / (weight / 1000);
+        return price / weight;
+      };
+
+      if (
+        formattedProducts[0].productWeight &&
+        formattedProducts[1].productWeight
+      ) {
+        const unitPrice1 = calculateUnitPrice(
+          formattedProducts[0].productPrice,
+          formattedProducts[0].productWeight,
+          unit1
+        );
+        const unitPrice2 = calculateUnitPrice(
+          formattedProducts[1].productPrice,
+          formattedProducts[1].productWeight,
+          unit2
+        );
+
+        if (unitPrice1 < unitPrice2) {
+          score1 += 2;
+        } else if (unitPrice1 > unitPrice2) {
+          score2 += 2;
+        }
+      }
+
+      // Điểm cho đánh giá
+      if (
+        formattedProducts[0].averageRating &&
+        formattedProducts[1].averageRating
+      ) {
+        if (
+          formattedProducts[0].averageRating >
+          formattedProducts[1].averageRating
+        ) {
+          score1 += 1.5;
+        } else if (
+          formattedProducts[0].averageRating <
+          formattedProducts[1].averageRating
+        ) {
+          score2 += 1.5;
+        }
+      }
+
+      // Đề xuất dựa trên điểm số
+      if (score1 > score2) {
+        comparisonText += `Dựa trên phân tích, ${product1ShortName} có vẻ lựa chọn tốt hơn nếu bạn đang tìm kiếm sản phẩm có giá trị kinh tế tốt hơn.\n\n`;
+      } else if (score1 < score2) {
+        comparisonText += `Dựa trên phân tích, ${product2ShortName} có vẻ lựa chọn tốt hơn nếu bạn đang tìm kiếm sản phẩm có giá trị kinh tế tốt hơn.\n\n`;
+      } else {
+        comparisonText += "Cả hai sản phẩm đều có những ưu điểm riêng. Bạn có thể chọn dựa trên nhu cầu cụ thể của mình.\n\n";
+      }
+
+      // Thêm lời khuyên
+      if (
+        formattedProducts[0].productWeight &&
+        formattedProducts[1].productWeight
+      ) {
+        const unitPrice1 = calculateUnitPrice(
+          formattedProducts[0].productPrice,
+          formattedProducts[0].productWeight,
+          unit1
+        );
+        const unitPrice2 = calculateUnitPrice(
+          formattedProducts[1].productPrice,
+          formattedProducts[1].productWeight,
+          unit2
+        );
+
+        if (
+          unitPrice1 < unitPrice2 &&
+          formattedProducts[0].productPrice > formattedProducts[1].productPrice
+        ) {
+          comparisonText += `💡 Lời khuyên: Mặc dù ${product1ShortName} có giá cao hơn, nhưng xét về lâu dài, sản phẩm này có giá trị kinh tế tốt hơn do có khối lượng/dung tích lớn hơn nhiều so với mức chênh lệch giá.\n\n`;
+        } else if (
+          unitPrice2 < unitPrice1 &&
+          formattedProducts[1].productPrice > formattedProducts[0].productPrice
+        ) {
+          comparisonText += `💡 Lời khuyên: Mặc dù ${product2ShortName} có giá cao hơn, nhưng xét về lâu dài, sản phẩm này có giá trị kinh tế tốt hơn do có khối lượng/dung tích lớn hơn nhiều so với mức chênh lệch giá.\n\n`;
+        }
+      }
+
+      return {
+        success: true,
+        message: comparisonText,
+        products: formattedProducts,
+        type: "productSearch",
+      };
+    } else {
+      return {
+        success: true,
+        message:
+          "Không đủ sản phẩm để so sánh. Vui lòng tìm kiếm thêm sản phẩm.",
+        type: "text",
+      };
+    }
+  } catch (error) {
+    console.error("Lỗi khi so sánh sản phẩm:", error);
     return {
       success: false,
-      message: "Đã xảy ra lỗi khi xử lý câu hỏi của bạn. Vui lòng thử lại sau.",
-      type: 'text'
+      message: "Đã xảy ra lỗi khi so sánh sản phẩm. Vui lòng thử lại sau.",
+      type: "text",
     };
   }
-}; 
+};
