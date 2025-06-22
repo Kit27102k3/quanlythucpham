@@ -398,313 +398,280 @@ const handleDietQuestion = async (message, productId) => {
  */
 export const handleMessage = async (req, res) => {
   try {
-    const { message, userId } = req.body;
+    const message = req.body.message;
+    const userId = req.body.userId;
 
     if (!message) {
-      return res.status(400).json({ success: false, message: 'Tin nhắn không được để trống' });
-    }
-
-    console.log(`Nhận tin nhắn từ user ${userId}: "${message}"`);
-
-    // Lấy thông tin người dùng nếu có
-    let userContext = null;
-    if (userId) {
-      try {
-        const user = await User.findById(userId);
-        if (user) {
-          userContext = {
-            name: user.name,
-            email: user.email,
-            healthProfile: user.healthProfile || null
-          };
-            }
-          } catch (error) {
-        console.log('Lỗi khi lấy thông tin người dùng:', error);
-      }
-    }
-
-    console.log('Ngữ cảnh hiện tại:', userContext);
-
-    // Phân loại ý định chính của tin nhắn
-    const mainIntent = classifyMainIntent(message);
-    console.log(`Phân loại ý định chính: ${mainIntent}`);
-
-    // Nếu là intent FAQ thì trả lời FAQ luôn, không tìm sản phẩm
-    const faqIntents = [
-      'faq_product_quality',
-      'faq_return_policy',
-      'faq_customer_support',
-      'faq_store_location',
-      'faq_payment_methods',
-      'faq_shipping_time',
-      'faq_promotions',
-      'faq_trending_products',
-      'faq_shipping_fee',
-      'faq_membership',
-      'faq_organic_products',
-      'faq_dietary_options',
-      'faq_gift_services',
-      'faq_bulk_orders',
-      'faq_chatbot_help',
-      'faq_product_not_found'
-    ];
-    if (faqIntents.includes(mainIntent)) {
-      const faqResponse = await handleFAQQuestion(mainIntent, message);
-      return res.json({
-        success: true,
-        message: faqResponse.message,
-        type: 'faq',
-        intent: mainIntent
+      return res.status(400).json({
+        success: false,
+        message: "Vui lòng cung cấp tin nhắn"
       });
     }
 
-    // Xử lý theo ý định chính
-    switch (mainIntent) {
+    console.log(`Nhận tin nhắn từ user ${userId}: "${message}"`);
+    
+    // Lấy ngữ cảnh của người dùng nếu có
+    const context = userId ? getContext(userId) : {};
+    console.log("Ngữ cảnh hiện tại:", context);
+    
+    // Phân loại intent
+    const intent = classifyMainIntent(message);
+    console.log("Phân loại ý định chính:", intent);
+    
+    // Trích xuất entities
+    const entities = extractEntities(message);
+    console.log("Entities:", entities);
+    
+    // Khai báo biến ở đây để tránh lỗi "Unexpected lexical declaration in case block"
+    let healthNeeds;
+    let healthInfo;
+    let progressData;
+    let healthProfile;
+    let currentHealthInfo;
+    let compareResponse;
+    let productResponse;
+    let faqResponse;
+    
+    // Xử lý theo intent
+    switch (intent) {
+      case 'greeting':
+        return res.json({
+          success: true,
+          message: "Xin chào! Tôi là trợ lý ảo của DNCFOOD. Tôi có thể giúp bạn tìm kiếm sản phẩm, trả lời câu hỏi về sức khỏe và dinh dưỡng, hoặc cung cấp thông tin về cửa hàng. Bạn cần hỗ trợ gì?"
+        });
+      
       case 'health_inquiry':
-        // Phát hiện nhu cầu sức khỏe
-        const healthNeeds = detectHealthNeeds(message);
+        healthNeeds = detectPersonalHealthInfo(message);
+        
+        // Nếu không phát hiện nhu cầu sức khỏe cụ thể, hỏi thêm thông tin
         if (!healthNeeds || healthNeeds.length === 0) {
           return res.json({
             success: true,
-            message: 'Bạn có thể nói về bệnh của bạn cho tôi nghe được không? Tôi sẽ tìm sản phẩm phù hợp với bạn.',
-            type: 'ask_health_need'
+            message: "Bạn quan tâm đến vấn đề sức khỏe nào? Ví dụ: tiểu đường, huyết áp, giảm cân, tăng cường miễn dịch, v.v. Tôi có thể gợi ý các thực phẩm phù hợp."
           });
         }
-        if (healthNeeds && healthNeeds.length > 0) {
-          console.log('Phát hiện nhu cầu sức khỏe:', healthNeeds);
-          const primaryNeed = healthNeeds[0].need;
-          const products = await findProductsForHealthNeed(primaryNeed);
-          const response = generateHealthResponse(primaryNeed, products);
-          
-          // Lưu ngữ cảnh nếu có userId
-          if (userId) {
-            try {
-              await saveContext(userId, {
-                lastHealthNeed: primaryNeed,
-                lastHealthProducts: products.map(p => p._id)
-              });
-            } catch (error) {
-              console.error("Lỗi khi lưu ngữ cảnh:", error);
-            }
-          }
-          
-          // Kiểm tra loại response và trả về đúng định dạng
-          if (typeof response === 'object' && response.type === 'healthProducts') {
-            return res.json({
-              success: true,
-              message: response.text,
-              products: response.products,
-              title: response.title,
-              type: 'healthProducts'
-            });
-          } else {
-            return res.json({
-              success: true,
-              message: response,
-              type: 'text'
-            });
-          }
-        }
-        break;
-
-      case 'health_profile_update':
-        // Phát hiện thông tin sức khỏe cá nhân
-        const healthInfo = detectPersonalHealthInfo(message);
-        if (healthInfo && userId) {
-          // Cập nhật thông tin sức khỏe của người dùng
-          try {
-            await User.findByIdAndUpdate(userId, {
-              $set: { healthProfile: { ...healthInfo, updatedAt: new Date() } }
-            });
-            console.log('Đã cập nhật thông tin sức khỏe cho người dùng:', userId);
-          } catch (error) {
-            console.log('Lỗi khi cập nhật thông tin sức khỏe:', error);
-          }
-        }
-        break;
-
-      case 'health_progress_update':
-        // Phát hiện cập nhật tiến trình sức khỏe
-        const progressData = detectHealthProgressUpdate(message);
-        if (progressData && userId) {
-          // Xử lý cập nhật tiến trình sức khỏe
-          try {
-            // Cập nhật tiến trình sức khỏe của người dùng
-            await updateHealthProgress(userId, progressData);
-            
-            // Tạo phản hồi dựa trên dữ liệu tiến trình
-            let response = "Cảm ơn bạn đã cập nhật tiến trình sức khỏe! ";
-            
-            if (progressData.weightChange) {
-              const direction = progressData.weightChange.direction === 'decrease' ? 'giảm' : 'tăng';
-              const amount = progressData.weightChange.amount;
-              response += `Bạn đã ${direction} ${amount}kg. `;
-              
-              if (direction === 'giảm' && userContext?.healthProfile?.weightLoss) {
-                response += "Đó là một tiến triển tuyệt vời cho mục tiêu giảm cân của bạn! ";
-              } else if (direction === 'tăng' && userContext?.healthProfile?.weightGain) {
-                response += "Đó là một tiến triển tốt cho mục tiêu tăng cân của bạn! ";
-              }
-            }
-            
-            if (progressData.mealCompliance) {
-              response += `Bạn đã tuân thủ ${progressData.mealCompliance}% kế hoạch ăn uống. `;
-              if (progressData.mealCompliance >= 80) {
-                response += "Tuyệt vời! Việc duy trì chế độ ăn uống lành mạnh sẽ mang lại kết quả tích cực. ";
-              } else if (progressData.mealCompliance >= 50) {
-                response += "Khá tốt! Hãy cố gắng cải thiện hơn nữa trong những ngày tới. ";
-        } else {
-                response += "Đừng nản lòng! Mỗi ngày là một cơ hội mới để cải thiện. ";
-              }
-            }
-            
-            if (progressData.symptoms) {
-              if (progressData.symptoms === 'better') {
-                response += "Rất vui khi biết các triệu chứng của bạn đã cải thiện! ";
-              } else if (progressData.symptoms === 'worse') {
-                response += "Rất tiếc khi nghe về tình trạng triệu chứng của bạn. Hãy cân nhắc tham khảo ý kiến bác sĩ nếu tình trạng không cải thiện. ";
-      } else {
-                response += "Hy vọng các triệu chứng của bạn sẽ sớm cải thiện. ";
-              }
-            }
-            
-            if (progressData.energyLevel) {
-              if (progressData.energyLevel === 'high') {
-                response += "Thật tuyệt khi bạn cảm thấy đầy năng lượng! ";
-              } else if (progressData.energyLevel === 'low') {
-                response += "Hãy đảm bảo bạn nghỉ ngơi đầy đủ và cân nhắc điều chỉnh chế độ ăn để tăng năng lượng. ";
-              }
-            }
-            
-            if (progressData.mood) {
-              if (progressData.mood === 'good') {
-                response += "Thật tuyệt khi bạn đang có tâm trạng tốt! ";
-              } else if (progressData.mood === 'bad') {
-                response += "Hãy nhớ rằng tâm trạng cũng là một phần quan trọng của sức khỏe. Hãy dành thời gian cho các hoạt động bạn yêu thích. ";
-              }
-            }
-            
-            response += "Bạn có muốn xem tiến trình sức khỏe của mình theo thời gian không?";
-            
-            return res.json({
-              success: true,
-              message: response
-            });
-      } catch (error) {
-            console.log('Lỗi khi cập nhật tiến trình sức khỏe:', error);
-          }
-        }
-        break;
-
-      case 'meal_plan_request':
-        // Kiểm tra yêu cầu tạo kế hoạch ăn uống
-        let healthProfile = null;
         
-        // Sử dụng thông tin sức khỏe từ tin nhắn hiện tại nếu có
-        const currentHealthInfo = detectPersonalHealthInfo(message);
-        if (currentHealthInfo) {
-          healthProfile = currentHealthInfo;
-        } 
-        // Hoặc sử dụng thông tin sức khỏe từ hồ sơ người dùng nếu có
-        else if (userContext?.healthProfile) {
-          healthProfile = userContext.healthProfile;
-        }
-        
-        if (healthProfile) {
-          // Tạo kế hoạch ăn uống dựa trên thông tin sức khỏe
-          const mealPlan = createMealPlan(healthProfile);
-          
-          // Tạo phản hồi về kế hoạch ăn uống
-          const response = generateMealPlanResponse(healthProfile, mealPlan);
-          
-          return res.json({
-            success: true,
-            message: response
-          });
-        } else {
-          return res.json({
-            success: true,
-            message: "Để tạo kế hoạch ăn uống phù hợp, tôi cần biết thêm về tình trạng sức khỏe của bạn. Bạn có thể cho tôi biết về các vấn đề sức khỏe (như tiểu đường, huyết áp cao), mục tiêu (giảm cân, tăng cơ) hoặc chế độ ăn đặc biệt (ăn chay) không?"
-          });
-        }
-        break;
-        
-      case 'compare_products':
-        console.log("Xử lý so sánh sản phẩm");
-        const compareResponse = await handleCompareProducts(message, { userId });
-        console.log("Response từ handleCompareProducts:", JSON.stringify(compareResponse));
-        
-        // Kiểm tra loại phản hồi và định dạng phù hợp
-        if (compareResponse.products && compareResponse.products.length > 0) {
-          console.log(`Trả về ${compareResponse.products.length} sản phẩm để so sánh`);
-          return res.json({
-            success: true,
-            message: compareResponse.message,
-            products: compareResponse.products,
-            type: 'productSearch'
-          });
-        } else {
-          return res.json({
-              success: true,
-            message: compareResponse.message,
-            type: 'text'
-          });
-        }
-        break;
-        
-      case 'product_search':
-        console.log("Xử lý tìm kiếm sản phẩm");
-        const productResponse = await handleProductQuery(message, { userId });
-        console.log("Response từ handleProductQuery:", JSON.stringify(productResponse));
-        
-        // Kiểm tra loại phản hồi và định dạng phù hợp
-        if (productResponse.products && productResponse.products.length > 0) {
-          console.log(`Trả về ${productResponse.products.length} sản phẩm cho frontend`);
-          return res.json({
-              success: true,
-            message: productResponse.message,
-            products: productResponse.products,
-            type: 'productSearch'
-            });
-          } else {
-          return res.json({
-              success: true,
-            message: productResponse.message,
-            type: 'text'
-          });
-        }
-        break;
+        healthInfo = await handleHealthInquiry(message, { userId });
+        return res.json({
+          success: true,
+          message: healthInfo.text,
+          type: healthInfo.type,
+          products: healthInfo.products
+        });
       
-      case 'order_inquiry':
-        // Kiểm tra câu hỏi về đơn hàng
+      case 'health_progress':
         if (!userId) {
           return res.json({
             success: true,
-            message: "Để kiểm tra thông tin đơn hàng, bạn cần đăng nhập vào tài khoản của mình. Sau khi đăng nhập, bạn có thể xem tất cả đơn hàng trong mục 'Đơn hàng của tôi'."
+            message: "Để theo dõi tiến trình sức khỏe, bạn cần đăng nhập vào tài khoản của mình."
           });
         }
-
-        return res.json({
-              success: true,
-          message: "Bạn có thể xem thông tin đơn hàng của mình trong mục 'Đơn hàng của tôi' trên trang cá nhân. Nếu bạn muốn hủy đơn hàng, vui lòng chọn đơn hàng cần hủy và nhấn vào nút 'Hủy đơn hàng'. Lưu ý rằng bạn chỉ có thể hủy đơn hàng khi đơn hàng chưa được xử lý."
-        });
-        break;
         
-      default:
-        // Kiểm tra câu hỏi thường gặp
-        const faqResponse = await handleFAQQuestion(message);
-        if (faqResponse) {
+        // Giả lập dữ liệu tiến trình sức khỏe
+        progressData = {
+          weight: { current: 65, previous: 68, goal: 60 },
+          steps: { today: 8500, average: 7200, goal: 10000 },
+          water: { today: 1.5, goal: 2 },
+          sleep: { lastNight: 7, average: 6.5, goal: 8 }
+        };
+        
+        return res.json({
+          success: true,
+          message: `Tiến trình sức khỏe của bạn:
+- Cân nặng: ${progressData.weight.current}kg (giảm ${progressData.weight.previous - progressData.weight.current}kg, mục tiêu: ${progressData.weight.goal}kg)
+- Bước chân: ${progressData.steps.today} bước hôm nay (trung bình: ${progressData.steps.average}, mục tiêu: ${progressData.steps.goal})
+- Nước: Đã uống ${progressData.water.today}L (mục tiêu: ${progressData.water.goal}L)
+- Giấc ngủ: ${progressData.sleep.lastNight} giờ đêm qua (trung bình: ${progressData.sleep.average}, mục tiêu: ${progressData.sleep.goal} giờ)`,
+          progress: progressData
+        });
+      
+      case 'health_profile_update':
+        if (!userId) {
+          return res.json({
+              success: true,
+            message: "Để cập nhật thông tin sức khỏe, bạn cần đăng nhập vào tài khoản của mình."
+          });
+        }
+        
+        // Giả lập cập nhật thông tin sức khỏe
+        healthProfile = {
+          age: 35,
+          weight: 65,
+          height: 170,
+          gender: "Nam",
+          healthGoal: "Giảm cân",
+          dietaryRestrictions: ["Ít đường", "Hạn chế tinh bột"],
+          allergies: ["Hải sản"]
+        };
+        
+        // Lưu vào context
+        saveContext(userId, { healthProfile });
+        
+        return res.json({
+          success: true,
+          message: "Thông tin sức khỏe của bạn đã được cập nhật. Tôi sẽ đề xuất các sản phẩm phù hợp với nhu cầu của bạn."
+        });
+      
+      case 'health_info_request':
+        if (!userId) {
           return res.json({
             success: true,
-            message: faqResponse
+            message: "Để xem thông tin sức khỏe, bạn cần đăng nhập vào tài khoản của mình."
           });
         }
-
-        // Nếu không phát hiện ý định cụ thể, sử dụng xử lý mặc định
+        
+        currentHealthInfo = context.healthProfile || {
+          age: 35,
+          weight: 65,
+          height: 170,
+          gender: "Nam",
+          healthGoal: "Giảm cân",
+          dietaryRestrictions: ["Ít đường", "Hạn chế tinh bột"],
+          allergies: ["Hải sản"]
+        };
+        
         return res.json({
-      success: true,
-          message: "Xin lỗi, tôi không hiểu câu hỏi của bạn. Vui lòng thử lại với câu hỏi khác hoặc liên hệ với nhân viên hỗ trợ."
-    });
+          success: true,
+          message: `Thông tin sức khỏe của bạn:
+- Tuổi: ${currentHealthInfo.age}
+- Cân nặng: ${currentHealthInfo.weight}kg
+- Chiều cao: ${currentHealthInfo.height}cm
+- Giới tính: ${currentHealthInfo.gender}
+- Mục tiêu: ${currentHealthInfo.healthGoal}
+- Hạn chế ăn uống: ${currentHealthInfo.dietaryRestrictions.join(", ")}
+- Dị ứng: ${currentHealthInfo.allergies.join(", ")}`,
+          healthProfile: currentHealthInfo
+        });
+      
+      case 'meal_plan_request':
+        if (!userId) {
+          return res.json({
+          success: true,
+            message: "Để nhận kế hoạch bữa ăn, bạn cần đăng nhập vào tài khoản của mình."
+          });
+        }
+        
+        // Giả lập kế hoạch bữa ăn
+        return res.json({
+          success: true,
+          message: `Kế hoạch bữa ăn cho bạn:
+
+Sáng:
+- Yến mạch với sữa hạnh nhân và trái cây
+- Trà xanh không đường
+
+Giữa sáng:
+- Một nắm hạt hỗn hợp (hạnh nhân, óc chó, hạt bí)
+
+Trưa:
+- Cơm gạo lứt với cá hồi nướng
+- Salad rau xanh với dầu olive
+
+Giữa chiều:
+- Sữa chua Hy Lạp với mật ong
+
+Tối:
+- Súp rau củ
+- Thịt gà nướng với rau xanh
+- Trái cây tráng miệng`,
+          type: 'text'
+        });
+      
+      case 'meal_plan_diet':
+        // Kế hoạch ăn kiêng chi tiết
+        return res.json({
+          success: true,
+          message: `✅ *KẾ HOẠCH ĂN KIÊNG 7 NGÀY*
+
+*Nguyên tắc chung:*
+- Ăn 5-6 bữa nhỏ mỗi ngày
+- Uống ít nhất 2 lít nước
+- Hạn chế muối, đường và dầu mỡ
+- Ưu tiên thực phẩm giàu protein và chất xơ
+- Tránh đồ chiên rán, đồ ngọt và thức uống có cồn
+
+*THỰC ĐƠN CHI TIẾT:*
+
+*Ngày 1:*
+- Sáng: Yến mạch với sữa hạnh nhân + 1 quả táo
+- Giữa sáng: 1 hộp sữa chua không đường
+- Trưa: Salad gà nướng với rau xanh
+- Giữa chiều: 1 nắm hạt dinh dưỡng (hạnh nhân, óc chó)
+- Tối: Cá hấp với rau củ + 1/2 chén cơm gạo lứt
+
+*Ngày 2:*
+- Sáng: Sinh tố rau xanh với chuối và sữa chua
+- Giữa sáng: 2 lát bánh mì nguyên cám với bơ đậu phộng
+- Trưa: Thịt gà luộc với rau củ hấp
+- Giữa chiều: 1 quả cam hoặc bưởi
+- Tối: Đậu hũ xào rau cải + súp rau củ
+
+*Ngày 3:*
+- Sáng: Trứng luộc (2 quả) với bánh mì nguyên cám
+- Giữa sáng: 1 quả chuối
+- Trưa: Bún trộn rau thịt bò ít dầu
+- Giữa chiều: Sữa chua Hy Lạp với hạt chia
+- Tối: Cá nướng với salad rau
+
+*Ngày 4-7: (Tiếp tục với thực đơn tương tự, thay đổi món ăn)*
+
+*Lưu ý:*
+- Nên kết hợp với tập thể dục 30 phút mỗi ngày
+- Điều chỉnh lượng thức ăn phù hợp với nhu cầu cá nhân
+- Có thể thay đổi món ăn trong cùng nhóm thực phẩm
+
+Bạn có thể tìm mua các thực phẩm hỗ trợ ăn kiêng tại cửa hàng của chúng tôi như: yến mạch, hạt dinh dưỡng, sữa hạnh nhân, gạo lứt, và các loại rau củ hữu cơ.`,
+          type: 'text'
+        });
+      
+      case 'compare_products':
+        compareResponse = await handleProductComparison(req, res);
+        return compareResponse;
+      
+      case 'product_search':
+        console.log("Xử lý tìm kiếm sản phẩm");
+        productResponse = await handleProductQuery(message, { userId });
+        if (productResponse.products && productResponse.products.length > 0) {
+          return res.json({
+          success: true,
+            message: productResponse.message,
+            products: productResponse.products,
+            type: 'productSearch'
+          });
+        } else {
+          return res.json({
+          success: true,
+            message: productResponse.message,
+            type: 'text'
+          });
+        }
+      
+      case 'order_inquiry':
+        if (!userId) {
+          return res.json({
+              success: true,
+            message: "Để kiểm tra thông tin đơn hàng, bạn cần đăng nhập vào tài khoản của mình. Sau khi đăng nhập, bạn có thể xem tất cả đơn hàng trong mục 'Đơn hàng của tôi'."
+            });
+          }
+        return res.json({
+            success: true,
+          message: "Bạn có thể xem thông tin đơn hàng của mình trong mục 'Đơn hàng của tôi' trên trang cá nhân. Nếu bạn muốn hủy đơn hàng, vui lòng chọn đơn hàng cần hủy và nhấn vào nút 'Hủy đơn hàng'. Lưu ý rằng bạn chỉ có thể hủy đơn hàng khi đơn hàng chưa được xử lý."
+        });
+      
+      default:
+        faqResponse = await handleFAQQuestion(intent, message);
+        if (faqResponse) {
+          return res.json({
+              success: true,
+            message: faqResponse.message || faqResponse,
+            type: faqResponse.type || 'text'
+          });
+        }
+        return res.json({
+            success: true,
+          message: "Xin lỗi, tôi không hiểu câu hỏi của bạn. Bạn có thể hỏi về sản phẩm, sức khỏe, khuyến mãi, chứng nhận, hoặc liên hệ nhân viên hỗ trợ để được tư vấn chi tiết hơn!",
+          type: 'text'
+        });
     }
   } catch (error) {
     console.error("Lỗi khi xử lý tin nhắn:", error);
@@ -2497,11 +2464,63 @@ async function handleHealthInquiry(message, context) {
  */
 function classifyMainIntent(message) {
   console.log("Phân loại ý định chính:", message);
-  
-  // Chuyển đổi tin nhắn thành chữ thường để dễ so sánh
   const lowerMessage = message.toLowerCase();
 
-  // 1. Ưu tiên nhận diện các intent FAQ/chính sách/chất lượng
+  // Ưu tiên nhận diện thực phẩm cho mẹ bầu
+  const pregnantKeywords = [
+    'mẹ bầu', 'bà bầu', 'phụ nữ mang thai', 'thai phụ', 'đang mang thai', 
+    'có thai', 'thực phẩm cho bà bầu', 'đồ ăn cho bà bầu', 'dinh dưỡng thai kỳ',
+    'dinh dưỡng cho mẹ bầu', 'bầu bí', 'mang bầu', 'mang thai', 'thực phẩm thai kỳ'
+  ];
+  
+  for (const keyword of pregnantKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      console.log(`Phát hiện intent thực phẩm mẹ bầu với từ khóa: ${keyword}`);
+      return 'faq_pregnant_food';
+    }
+  }
+
+  // Ưu tiên nhận diện thực phẩm cho trẻ em
+  const kidsKeywords = [
+    'trẻ em', 'trẻ con', 'trẻ nhỏ', 'em bé', 'bé', 'con nít', 'nhi', 'thiếu nhi',
+    'thực phẩm cho trẻ', 'đồ ăn cho trẻ', 'trẻ ăn', 'bé ăn', 'cho trẻ', 'cho bé',
+    'trẻ sơ sinh', 'dinh dưỡng trẻ', 'dinh dưỡng cho bé', 'thức ăn trẻ em'
+  ];
+  
+  for (const keyword of kidsKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      console.log(`Phát hiện intent thực phẩm trẻ em với từ khóa: ${keyword}`);
+      return 'faq_kids_food';
+    }
+  }
+
+  // Ưu tiên nhận diện yêu cầu lập kế hoạch ăn kiêng
+  const mealPlanKeywords = [
+    'lập kế hoạch', 'tạo kế hoạch', 'lập thực đơn', 'tạo thực đơn', 'gợi ý thực đơn', 
+    'kế hoạch ăn', 'thực đơn ăn', 'menu ăn kiêng', 'chế độ ăn', 'kế hoạch ăn uống',
+    'thực đơn ăn kiêng', 'thực đơn giảm cân', 'kế hoạch giảm cân', 'lập lịch ăn'
+  ];
+  
+  for (const keyword of mealPlanKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      if (lowerMessage.includes('ăn kiêng') || lowerMessage.includes('giảm cân') || 
+          lowerMessage.includes('diet') || lowerMessage.includes('keto') || 
+          lowerMessage.includes('low carb')) {
+        return 'meal_plan_diet';
+      }
+    }
+  }
+
+  // Ưu tiên nhận diện các câu hỏi về ăn kiêng, chế độ đặc biệt
+  const dietKeywords = [
+    'ăn kiêng', 'dành cho người ăn kiêng', 'low carb', 'keto', 'ít đường', 'giảm cân', 'dành cho người giảm cân', 'dành cho người tiểu đường', 'dành cho người huyết áp', 'dành cho người cholesterol', 'dành cho người béo phì', 'dành cho người ăn chay', 'dành cho người thuần chay', 'dành cho người dị ứng', 'dành cho người không dung nạp', 'dành cho người tập gym', 'dành cho người tập thể hình', 'dành cho người cao tuổi', 'dành cho trẻ em', 'dành cho mẹ bầu', 'dành cho bà bầu', 'dành cho người bệnh', 'dành cho người sức khỏe yếu', 'dành cho người cần dinh dưỡng đặc biệt'
+  ];
+  for (const keyword of dietKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      return 'faq_diet';
+    }
+  }
+  // 1. FAQ/chính sách/chất lượng
   const faqIntents = [
     { intent: 'faq_product_quality', keywords: ['chất lượng', 'có tốt không', 'đảm bảo', 'hàng có tốt', 'sản phẩm tốt không', 'có đảm bảo', 'hàng chất lượng', 'sản phẩm chất lượng'] },
     { intent: 'faq_return_policy', keywords: ['đổi trả', 'hoàn tiền', 'trả lại', 'không vừa ý', 'lỗi', 'hư hỏng', 'chính sách đổi', 'bảo hành', 'không thích', 'chính sách trả', 'bảo hành', 'bảo đảm'] },
@@ -2513,6 +2532,15 @@ function classifyMainIntent(message) {
     { intent: 'faq_trending_products', keywords: ['sản phẩm mới', 'bán chạy nhất', 'phổ biến nhất', 'hot nhất', 'xu hướng', 'mới ra mắt'] },
     { intent: 'faq_shipping_fee', keywords: ['phí vận chuyển', 'phí ship', 'phí giao hàng', 'ship bao nhiêu tiền', 'tốn bao nhiêu tiền giao hàng'] },
     { intent: 'faq_membership', keywords: ['thành viên', 'khách hàng thân thiết', 'membership', 'hội viên', 'tích điểm', 'ưu đãi thành viên', 'vip', 'điểm thưởng', 'chương trình thành viên', 'quyền lợi', 'đăng ký thành viên'] },
+    { intent: 'faq_certification', keywords: ['chứng nhận', 'an toàn', 'organic', 'hữu cơ', 'iso', 'gmp', 'haccp', 'certified'] },
+    { intent: 'faq_origin', keywords: ['xuất xứ', 'nguồn gốc', 'sản xuất ở', 'nước nào', 'made in'] },
+    { intent: 'faq_stock', keywords: ['còn hàng', 'tồn kho', 'có sẵn', 'hết hàng', 'còn không', 'còn bán không'] },
+    { intent: 'faq_order', keywords: ['đặt hàng', 'mua online', 'mua qua mạng', 'order', 'cách đặt', 'cách mua'] },
+    { intent: 'faq_delivery', keywords: ['giao hàng', 'ship', 'vận chuyển', 'thời gian giao', 'bao lâu nhận', 'giao trong bao lâu'] },
+    { intent: 'faq_product_info', keywords: ['thông tin', 'giới thiệu', 'mô tả', 'chi tiết', 'review', 'đánh giá', 'thành phần', 'nguyên liệu', 'công dụng', 'tác dụng', 'dùng để', 'sử dụng', 'bảo quản', 'hạn sử dụng'] },
+    { intent: 'faq_price', keywords: ['giá', 'bao nhiêu tiền', 'giá bao nhiêu', 'giá cả', 'đắt', 'rẻ', 'giá sản phẩm'] },
+    { intent: 'faq_organic', keywords: ['hữu cơ', 'organic', 'sạch', 'an toàn', 'không hóa chất', 'không thuốc trừ sâu'] },
+    { intent: 'faq_diet', keywords: ['ăn chay', 'chay', 'thuần chay', 'vegan', 'vegetarian', 'keto', 'low carb', 'không đường', 'không gluten', 'dành cho người tiểu đường', 'dành cho người ăn kiêng'] },
   ];
   for (const faq of faqIntents) {
     for (const keyword of faq.keywords) {
@@ -2522,23 +2550,20 @@ function classifyMainIntent(message) {
       }
     }
   }
-
-  // 2. Nhận diện ý định liên quan đến sức khỏe và dinh dưỡng
+  // 2. Sức khỏe
   const healthKeywords = [
     'sức khỏe', 'dinh dưỡng', 'bệnh', 'tiểu đường', 'huyết áp', 'tim mạch',
-    'béo phì', 'giảm cân', 'tăng cân', 'tăng cơ', 'ăn chay', 'mang thai',
+    'béo phì', 'giảm cân', 'tăng cơ', 'ăn chay', 'mang thai',
     'người già', 'người cao tuổi', 'lớn tuổi', 'trẻ em', 'dị ứng', 'không dung nạp',
     'tốt cho', 'có lợi', 'phòng bệnh', 'chữa bệnh', 'mẹ bầu', 'bà bầu',
     'thực phẩm dành cho', 'thực phẩm cho', 'đồ ăn cho', 'món ăn cho'
   ];
   for (const keyword of healthKeywords) {
     if (lowerMessage.includes(keyword)) {
-      console.log(`Phát hiện ý định liên quan đến sức khỏe với từ khóa: ${keyword}`);
       return 'health_inquiry';
     }
   }
-
-  // 3. Nhận diện ý định so sánh sản phẩm
+  // 3. So sánh sản phẩm
   const compareProductsKeywords = [
     'so sánh', 'so với', 'đối chiếu', 'khác nhau', 'giống nhau', 'compare',
     'khác biệt', 'tốt hơn', 'rẻ hơn', 'đắt hơn', 'chất lượng hơn',
@@ -2546,25 +2571,47 @@ function classifyMainIntent(message) {
   ];
   for (const keyword of compareProductsKeywords) {
     if (lowerMessage.includes(keyword)) {
-      console.log(`Phát hiện ý định so sánh sản phẩm với từ khóa: ${keyword}`);
       return 'compare_products';
     }
   }
-
-  // 4. Nhận diện ý định tìm kiếm sản phẩm
+  // 4. Tìm kiếm sản phẩm
   const productSearchKeywords = [
-    'tìm', 'mua', 'sản phẩm', 'hàng', 'giá', 'bán', 'đặt', 'order', 'mua hàng',
+    'tìm', 'mua', 'sản phẩm', 'hàng', 'bán', 'đặt', 'order', 'mua hàng',
     'mua sắm', 'shopping', 'giỏ hàng', 'cart', 'checkout', 'thanh toán',
-    'sản phẩm', 'product', 'item', 'hàng hóa', 'hàng', 'mặt hàng',
-    'có bán', 'bao nhiêu tiền', 'giá bao nhiêu', 'giá cả', 'đồ', 'đồ dùng'
+    'product', 'item', 'hàng hóa', 'mặt hàng', 'có bán', 'đồ', 'đồ dùng'
   ];
   for (const keyword of productSearchKeywords) {
     if (lowerMessage.includes(keyword)) {
-      console.log(`Phát hiện ý định tìm kiếm sản phẩm với từ khóa: ${keyword}`);
       return 'product_search';
     }
   }
-
-  // 5. Mặc định là general_inquiry
+  // 5. Mặc định
   return 'general_inquiry';
+}
+
+/**
+ * Trích xuất entity từ câu hỏi của người dùng
+ * @param {string} message - Tin nhắn của người dùng
+ * @returns {object} - Các entity đã nhận diện
+ */
+function extractEntities(message) {
+  const lowerMessage = message.toLowerCase();
+  // Loại sản phẩm
+  const productTypes = ['rau', 'củ', 'quả', 'sữa', 'thịt', 'cá', 'hải sản', 'bánh', 'kẹo', 'gạo', 'ngũ cốc', 'nước', 'đồ uống', 'gia vị', 'dầu ăn', 'nước mắm', 'nước tương', 'mì', 'bún', 'phở', 'trứng', 'đậu', 'hạt', 'bơ', 'phô mai', 'sữa chua', 'trà', 'cà phê'];
+  const healthNeeds = ['tiểu đường', 'giảm cân', 'tăng cân', 'ăn chay', 'dinh dưỡng', 'huyết áp', 'tim mạch', 'béo phì', 'mang thai', 'người già', 'trẻ em', 'dị ứng', 'không dung nạp', 'tốt cho', 'có lợi', 'phòng bệnh', 'chữa bệnh', 'mẹ bầu', 'bà bầu'];
+  const productAttributes = ['hữu cơ', 'organic', 'ít đường', 'nhiều xơ', 'giàu protein', 'ít béo', 'không đường', 'không gluten', 'low sugar', 'high fiber', 'gluten free', 'diabetes friendly', 'keto', 'vegan', 'vegetarian', 'chay', 'thuần chay'];
+  const promoKeywords = ['khuyến mãi', 'giảm giá', 'ưu đãi', 'sale', 'voucher', 'coupon', 'mã giảm'];
+  const originKeywords = ['xuất xứ', 'nguồn gốc', 'sản xuất ở', 'nước nào', 'made in'];
+  const certificationKeywords = ['chứng nhận', 'an toàn', 'hữu cơ', 'organic', 'iso', 'gmp', 'haccp', 'certified'];
+
+  // Tìm entity
+  const entities = {
+    productTypes: productTypes.filter(type => lowerMessage.includes(type)),
+    healthNeeds: healthNeeds.filter(need => lowerMessage.includes(need)),
+    productAttributes: productAttributes.filter(attr => lowerMessage.includes(attr)),
+    promo: promoKeywords.some(k => lowerMessage.includes(k)),
+    origin: originKeywords.some(k => lowerMessage.includes(k)),
+    certification: certificationKeywords.some(k => lowerMessage.includes(k)),
+  };
+  return entities;
 }
