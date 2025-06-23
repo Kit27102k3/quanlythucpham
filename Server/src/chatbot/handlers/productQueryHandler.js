@@ -190,38 +190,70 @@ const searchProducts = async (message, context = {}) => {
 
 const fallbackSearch = async (message) => {
   try {
+    console.log("Xử lý câu hỏi:", message);
     const categories = extractCategories(message);
     const priceRange = extractPriceRange(message);
     const keywords = extractKeywords(message);
 
-    const filter = {};
+    console.log("Tìm thấy danh mục:", categories);
+    console.log("Từ khóa tìm kiếm:", keywords);
 
+    const filter = {};
+    const conditions = [];
+
+    // Tạo câu truy vấn dựa trên danh mục
     if (categories.length > 0) {
-      filter.productCategory = { $in: categories };
+      const categoryConditions = categories.map(category => ({
+        $or: [
+          { productCategory: category },
+          { category: category },
+          // Tìm kiếm trong tên sản phẩm với từng loại danh mục
+          { productName: { $regex: category, $options: "i" } }
+        ]
+      }));
+      
+      conditions.push({ $or: categoryConditions });
     }
 
+    // Tạo câu truy vấn dựa trên từ khóa
+    if (keywords.length > 0) {
+      const keywordConditions = keywords.map(keyword => ({
+        $or: [
+          { productName: { $regex: keyword, $options: "i" } },
+          { productDescription: { $regex: keyword, $options: "i" } }
+        ]
+      }));
+      
+      conditions.push({ $or: keywordConditions });
+    }
+
+    // Thêm điều kiện về giá (nếu có)
     if (priceRange) {
-      filter.productPrice = {};
+      const priceCondition = {};
       if (priceRange.min !== undefined) {
-        filter.productPrice.$gte = priceRange.min;
+        priceCondition.$gte = priceRange.min;
       }
       if (priceRange.max !== undefined) {
-        filter.productPrice.$lte = priceRange.max;
+        priceCondition.$lte = priceRange.max;
+      }
+      
+      if (Object.keys(priceCondition).length > 0) {
+        conditions.push({ productPrice: priceCondition });
       }
     }
 
-    if (keywords.length > 0) {
-      const keywordRegex = keywords.map((keyword) => new RegExp(keyword, "i"));
-      filter.$or = [
-        { productName: { $in: keywordRegex } },
-        { productDescription: { $in: keywordRegex } },
-      ];
+    // Tạo bộ lọc cuối cùng
+    if (conditions.length > 0) {
+      filter.$and = conditions;
     }
+
+    console.log("Query tìm kiếm:", JSON.stringify(filter));
 
     let products = [];
 
     if (Object.keys(filter).length > 0) {
-      products = await Product.find(filter).limit(5);
+      products = await Product.find(filter).limit(10);
+      console.log("Tìm thấy", products.length, "sản phẩm phù hợp");
     } else {
       return {
         type: "no_results",
@@ -274,21 +306,22 @@ const extractCategories = (message) => {
   const categoryMap = {
     "trái cây": "Trái cây",
     "hoa quả": "Trái cây",
-    quả: "Trái cây",
-    rau: "Rau củ quả",
-    củ: "Rau củ quả",
+    "quả": "Trái cây",
+    "rau": "Rau củ quả",
+    "củ": "Rau củ quả",
     "rau củ": "Rau củ quả",
-    thịt: "Thịt",
-    cá: "Hải sản",
+    "rau quả": "Rau củ quả",
+    "thịt": "Thịt",
+    "cá": "Hải sản",
     "hải sản": "Hải sản",
     "đồ uống": "Đồ uống",
-    nước: "Đồ uống",
-    bánh: "Bánh kẹo",
-    kẹo: "Bánh kẹo",
+    "nước": "Đồ uống",
+    "bánh": "Bánh kẹo",
+    "kẹo": "Bánh kẹo",
     "bánh kẹo": "Bánh kẹo",
     "gia vị": "Gia vị",
     "đồ khô": "Đồ khô",
-    sữa: "Sữa và các sản phẩm từ sữa",
+    "sữa": "Sữa và các sản phẩm từ sữa",
     "đồ hộp": "Đồ hộp",
     "đồ đông lạnh": "Đồ đông lạnh",
   };

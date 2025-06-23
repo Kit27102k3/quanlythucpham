@@ -31,6 +31,7 @@ const analyzeQuerySemantics = (query) => {
         'rau': 'Rau củ quả',
         'củ': 'Rau củ quả',
         'rau củ': 'Rau củ quả',
+        'rau quả': 'Rau củ quả',
         'thịt': 'Thịt',
         'cá': 'Hải sản',
         'hải sản': 'Hải sản',

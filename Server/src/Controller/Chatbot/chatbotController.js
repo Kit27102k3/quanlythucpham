@@ -9,17 +9,81 @@ import dotenv from "dotenv";
 import { spawn } from "child_process";
 import path from "path";
 import fs from "fs";
+import { fileURLToPath } from "url";
 // Import xử lý câu hỏi về sản phẩm
 import { handleProductQuery, detectHealthNeeds, findProductsForHealthNeed, generateHealthResponse, handleCompareProducts } from "./chatbotProductHandler.js";
 import { handleFAQQuestion } from "./chatbotFAQHandler.js";
-import UserContext from "../../Model/UserContext.js";
-import User from "../../Model/Register.js";
+import { saveContext, getUserContext, initOrGetUserContext, updateProductsInContext } from "./chatbotContextHandler.js";
 
 // Load environment variables
 dotenv.config();
 
-// Cache để lưu ngữ cảnh cuộc hội thoại cho từng người dùng
-const conversationContext = new Map();
+// Lấy đường dẫn thư mục hiện tại
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Import health recommendations data
+const healthResponsesPath = path.join(__dirname, "../../chatbot/config/health_responses.json");
+let healthRecommendations = {};
+
+try {
+  if (fs.existsSync(healthResponsesPath)) {
+    healthRecommendations = JSON.parse(fs.readFileSync(healthResponsesPath, 'utf8'));
+    console.log("Successfully loaded health_responses.json");
+  } else {
+    console.log("health_responses.json file not found at:", healthResponsesPath);
+    // Create default data with example questions
+    healthRecommendations = {
+      tieuDuong: {
+        title: "Thực phẩm cho người tiểu đường",
+        description: "Người tiểu đường cần chế độ ăn uống cân bằng, kiểm soát lượng carbohydrate và ưu tiên thực phẩm có chỉ số đường huyết thấp.",
+        recommended: [
+          "Rau xanh các loại",
+          "Các loại đậu",
+          "Ngũ cốc nguyên hạt",
+          "Trái cây ít đường (táo, dâu, việt quất)",
+          "Cá, thịt nạc",
+          "Các loại hạt không muối",
+          "Sữa và sản phẩm từ sữa ít béo"
+        ],
+        avoid: [
+          "Đồ ngọt, bánh kẹo",
+          "Nước ngọt, đồ uống có đường",
+          "Trái cây có nhiều đường (chuối chín, xoài, nho)",
+          "Gạo trắng, bánh mì trắng",
+          "Thực phẩm chế biến sẵn",
+          "Mỡ động vật"
+        ],
+        productKeywords: ["đường huyết thấp", "ít đường", "không đường", "cho người tiểu đường", "chỉ số GI thấp"],
+        productCategories: ["Thực phẩm chức năng", "Đồ uống không đường", "Thực phẩm dinh dưỡng"],
+        examples: [
+          {
+            "question": "Người tiểu đường nên ăn gì?",
+            "answer": "Người tiểu đường nên ăn nhiều rau xanh, đậu các loại, ngũ cốc nguyên hạt, trái cây ít đường như táo và dâu tây, cá và thịt nạc. Nên hạn chế đồ ngọt, bánh kẹo, nước ngọt và thực phẩm chế biến sẵn."
+          },
+          {
+            "question": "Trái cây nào tốt cho người tiểu đường?",
+            "answer": "Người tiểu đường nên chọn các loại trái cây có chỉ số đường huyết thấp như táo, dâu tây, việt quất, lê, quýt. Nên hạn chế các loại trái cây ngọt như chuối chín, xoài, nho, vì chúng có thể làm tăng đường huyết nhanh chóng."
+          }
+        ]
+      }
+    };
+  }
+} catch (error) {
+  console.error("Error loading health_responses.json:", error);
+  // Set default data for error case
+  healthRecommendations = {
+    tieuDuong: {
+      title: "Thực phẩm cho người tiểu đường",
+      examples: [
+        {
+          "question": "Người tiểu đường nên ăn gì?",
+          "answer": "Người tiểu đường nên ăn nhiều rau xanh, đậu các loại, ngũ cốc nguyên hạt, trái cây ít đường như táo và dâu tây, cá và thịt nạc. Nên hạn chế đồ ngọt, bánh kẹo, nước ngọt và thực phẩm chế biến sẵn."
+        }
+      ]
+    }
+  };
+}
 
 // Thời gian hết hạn cho ngữ cảnh (15 phút = 15 * 60 * 1000 ms)
 const CONTEXT_EXPIRY_TIME = 15 * 60 * 1000;
@@ -119,51 +183,6 @@ const extractIngredientsFromRecipe = (recipeResponse) => {
     .filter((ing) => ing.length > 1); // Loại bỏ các mục quá ngắn
   
   return ingredients;
-};
-
-/**
- * Lưu ngữ cảnh cuộc hội thoại
- * @param {string} userId - ID người dùng
- * @param {object} context - Dữ liệu ngữ cảnh
- */
-export const saveContext = (userId, context) => {
-  if (!userId) return;
-  
-  // Lấy ngữ cảnh hiện tại hoặc tạo mới nếu không có
-  const currentContext = conversationContext.get(userId) || {
-    createdAt: Date.now(),
-  };
-  
-  // Cập nhật ngữ cảnh
-  conversationContext.set(userId, {
-    ...currentContext,
-    ...context,
-    updatedAt: Date.now(),
-  });
-  
-  console.log(`Đã lưu ngữ cảnh cho user ${userId}:`, JSON.stringify(context));
-};
-
-/**
- * Lấy ngữ cảnh cuộc hội thoại
- * @param {string} userId - ID người dùng
- * @returns {object|null} - Dữ liệu ngữ cảnh hoặc null nếu không có/hết hạn
- */
-export const getContext = (userId) => {
-  if (!userId) return null;
-  
-  const context = conversationContext.get(userId);
-  if (!context) return null;
-  
-  // Kiểm tra xem ngữ cảnh có hết hạn chưa
-  const now = Date.now();
-  if (now - context.updatedAt > CONTEXT_EXPIRY_TIME) {
-    // Nếu hết hạn, xóa ngữ cảnh và trả về null
-    conversationContext.delete(userId);
-    return null;
-  }
-  
-  return context;
 };
 
 // Thêm hàm phân loại sản phẩm chay/mặn
@@ -411,7 +430,7 @@ export const handleMessage = async (req, res) => {
     console.log(`Nhận tin nhắn từ user ${userId}: "${message}"`);
     
     // Lấy ngữ cảnh của người dùng nếu có
-    const context = userId ? getContext(userId) : {};
+    const context = userId ? await initOrGetUserContext(userId) : {};
     console.log("Ngữ cảnh hiện tại:", context);
     
     // Phân loại intent
@@ -1582,7 +1601,7 @@ export const handleProductComparison = async (req, res) => {
     }
     // Nếu không có productIds nhưng có userId, tìm sản phẩm từ ngữ cảnh
     else if (userId) {
-      const context = getContext(userId);
+      const context = await initOrGetUserContext(userId);
 
       if (context && context.lastProducts && context.lastProducts.length >= 2) {
         console.log(
@@ -1967,70 +1986,31 @@ export const processMessage = async (req, res) => {
     // Kiểm tra xem có phải là yêu cầu so sánh sản phẩm không
     if (isComparisonRequest(message)) {
       console.log("Phát hiện yêu cầu so sánh sản phẩm");
+      
+      // Debug log để kiểm tra userId
+      console.log("====> Truyền userId để so sánh:", userId);
 
-      // Kiểm tra xem có đủ sản phẩm để so sánh không
-      const context = getContext(userId);
-
-      if (
-        !context ||
-        !context.lastProducts ||
-        context.lastProducts.length < 2
-      ) {
-        console.log("Không có đủ sản phẩm để so sánh trong ngữ cảnh");
-
-        // Nếu có một sản phẩm trong ngữ cảnh, thử tìm thêm sản phẩm tương tự
-        if (context && context.lastProduct) {
-          try {
-            console.log(
-              `Tìm sản phẩm tương tự với ${context.lastProduct.productName} để so sánh`
-            );
-            const similarProducts = await Product.find({
-              productCategory: context.lastProduct.productCategory,
-              _id: { $ne: context.lastProduct._id },
-            }).limit(2);
-
-            if (similarProducts && similarProducts.length > 0) {
-              // Tạo danh sách sản phẩm để so sánh
-              const productsToCompare = [
-                context.lastProduct,
-                ...similarProducts,
-              ];
-
-              // Lưu danh sách vào ngữ cảnh
-              saveContext(userId, {
-                lastProducts: productsToCompare,
-                lastQuery: message,
-              });
-
-              console.log(
-                `Đã tìm thấy ${similarProducts.length} sản phẩm tương tự để so sánh`
-              );
-
-              // Chuyển sang xử lý so sánh
-              req.body.productIds = productsToCompare.map((p) => p._id);
-              return await handleProductComparison(req, res);
-            }
-          } catch (error) {
-            console.error("Lỗi khi tìm sản phẩm tương tự:", error);
-          }
-        }
-
+      // Chuẩn bị dữ liệu đúng định dạng để gọi handleCompareProducts
+      const messageData = { userId, message };
+      const contextData = { userId };
+      
+      try {
+        // Sử dụng hàm handleCompareProducts từ chatbotProductHandler.js  
+        const compareResult = await handleCompareProducts(messageData, contextData);
+        console.log("====> Kết quả so sánh:", compareResult.success);
+        return res.status(200).json(compareResult);
+      } catch (compareError) {
+        console.error("Lỗi khi so sánh sản phẩm:", compareError);
         return res.status(200).json({
-          success: true,
-          message:
-            "Bạn cần chọn ít nhất 2 sản phẩm để so sánh. Vui lòng tìm kiếm và xem một số sản phẩm trước khi yêu cầu so sánh.",
+          success: false,
+          message: "Đã xảy ra lỗi khi so sánh sản phẩm. Vui lòng thử lại sau.",
+          error: compareError.message
         });
       }
-
-      // Có đủ sản phẩm để so sánh, chuyển sang xử lý so sánh
-      console.log(
-        `Có ${context.lastProducts.length} sản phẩm trong ngữ cảnh để so sánh`
-      );
-      req.body.productIds = context.lastProducts.map((p) => p._id);
-      return await handleProductComparison(req, res);
     }
 
     // Xử lý các loại tin nhắn khác...
+    // ...
 
     // Trả về phản hồi mặc định nếu không xử lý được
     return res.status(200).json({
@@ -2056,91 +2036,25 @@ const isComparisonRequest = (message) => {
     `Kiểm tra tin nhắn có phải yêu cầu so sánh không: "${lowerMessage}"`
   );
 
-  // Các mẫu câu cụ thể về so sánh - kiểm tra trước tiên
-  const exactPhrases = [
-    "so sánh 2 sản phẩm này",
-    "so sánh hai sản phẩm này",
-    "so sánh 2 sản phẩm",
-    "so sánh hai sản phẩm",
-    "so sánh các sản phẩm này",
-    "so sánh giúp mình",
-    "so sánh giúp tôi",
-    "so sánh giùm",
-    "so sánh 2 cái này",
-    "so sánh hai cái này",
-    "so sánh giùm tôi",
-    "so sánh dùm",
-    "so sánh hộ",
-    "không thể so sánh",
-    "s nó không so sánh",
-    "có so sánh đâu",
-    "có so sánh",
-    "so sánh",
-  ];
-
-  // Kiểm tra các câu chính xác
-  for (const phrase of exactPhrases) {
-    if (lowerMessage.includes(phrase)) {
-      console.log(`Phát hiện yêu cầu so sánh từ cụm từ chính xác: "${phrase}"`);
-      return true;
-    }
-  }
-
-  // Các từ khóa liên quan đến so sánh
-  const comparisonKeywords = [
+  // Các mẫu câu cụ thể về so sánh
+  const comparisonPhrases = [
     "so sánh",
     "so với",
     "đối chiếu",
     "khác nhau",
-    "giống nhau",
-    "khác biệt",
-    "giống biệt",
-    "so",
-    "đối",
-    "compare",
-    "vs",
-    "versus",
-    "hơn",
-    "kém",
-    "tốt hơn",
-    "xấu hơn",
-    "rẻ hơn",
-    "đắt hơn",
-  ];
-
-  // Các từ khóa liên quan đến sản phẩm
-  const productKeywords = [
-    "sản phẩm",
-    "hàng",
-    "món",
-    "cái",
-    "thứ",
-    "loại",
-    "2 cái",
-    "hai cái",
-    "2 sản phẩm",
-    "hai sản phẩm",
-    "cả hai",
-    "này",
-    "kia",
-    "đồ",
-    "thực phẩm",
-  ];
-
-  // Các mẫu câu cụ thể về so sánh
-  const comparisonPhrases = [
+    "so sánh sản phẩm",
+    "phân tích",
+    "nên chọn cái nào",
+    "có thể so sánh",
     "so sánh giúp",
     "giúp so sánh",
-    "muốn so sánh",
-    "cần so sánh",
-    "nên chọn cái nào",
     "cái nào tốt hơn",
+    "cái nào tốt",
     "cái nào rẻ hơn",
-    "cái nào đắt hơn",
-    "cái nào chất lượng hơn",
+    "so sánh giá"
   ];
 
-  // Kiểm tra các mẫu câu cụ thể
+  // Kiểm tra các câu chính xác có chứa từ khóa so sánh
   for (const phrase of comparisonPhrases) {
     if (lowerMessage.includes(phrase)) {
       console.log(`Phát hiện yêu cầu so sánh từ cụm từ: "${phrase}"`);
@@ -2148,27 +2062,7 @@ const isComparisonRequest = (message) => {
     }
   }
 
-  // Kiểm tra xem tin nhắn có chứa từ khóa so sánh không
-  const hasComparisonKeyword = comparisonKeywords.some((keyword) =>
-    lowerMessage.includes(keyword)
-  );
-
-  // Kiểm tra xem tin nhắn có chứa từ khóa sản phẩm không
-  const hasProductKeyword = productKeywords.some((keyword) =>
-    lowerMessage.includes(keyword)
-  );
-
-  // Nếu tin nhắn có chứa cả từ khóa so sánh và từ khóa sản phẩm, hoặc chỉ có từ khóa so sánh và ngắn
-  const result =
-    hasComparisonKeyword && (hasProductKeyword || lowerMessage.length < 30);
-
-  if (result) {
-    console.log(
-      `Phát hiện yêu cầu so sánh từ từ khóa: comparison=${hasComparisonKeyword}, product=${hasProductKeyword}`
-    );
-  }
-
-  return result;
+  return false;
 };
 
 // Tạo nội dung so sánh sản phẩm đơn giản, dễ hiểu cho người dùng
@@ -2410,7 +2304,7 @@ const getProductImageData = (product) => {
 const detectPersonalHealthInfo = (message) => {
   // Hàm tạm để tránh lỗi
   console.log("Phát hiện thông tin sức khỏe từ tin nhắn:", message);
-  return null;
+  return detectHealthNeeds(message);
 };
 
 // Xử lý câu hỏi về sức khỏe
@@ -2425,12 +2319,17 @@ async function handleHealthInquiry(message, context) {
     const primaryNeed = healthNeeds[0].need;
     
     // Kiểm tra xem câu hỏi có khớp với câu hỏi mẫu không
-    const exampleAnswer = checkExampleQuestions(message, primaryNeed);
+    const exampleAnswer = await checkExampleQuestions(message, primaryNeed);
     if (exampleAnswer) {
-      return {
-        text: exampleAnswer,
-        type: 'text'
-      };
+      // Lưu ngữ cảnh nếu có userId và có sản phẩm
+      if (context && context.userId && exampleAnswer.products) {
+        saveContext(context.userId, {
+          lastHealthNeed: primaryNeed,
+          lastHealthProducts: exampleAnswer.products.map(p => p._id)
+        });
+      }
+      
+      return exampleAnswer;
     }
     
     // Tìm sản phẩm phù hợp với nhu cầu sức khỏe
@@ -2455,6 +2354,152 @@ async function handleHealthInquiry(message, context) {
     text: "Tôi không hiểu rõ vấn đề sức khỏe bạn đang hỏi. Bạn có thể mô tả chi tiết hơn không?",
     type: 'text'
   };
+}
+
+/**
+ * Kiểm tra xem câu hỏi có khớp với câu hỏi mẫu trong cơ sở dữ liệu không
+ * @param {string} message - Tin nhắn của người dùng
+ * @param {string} healthNeed - Loại nhu cầu sức khỏe đã phát hiện
+ * @returns {string|null} - Câu trả lời mẫu hoặc null nếu không tìm thấy
+ */
+function checkExampleQuestions(message, healthNeed) {
+  console.log(`Kiểm tra câu hỏi mẫu cho nhu cầu sức khỏe: ${healthNeed}`);
+  
+  if (!message || !healthNeed || !healthRecommendations) return null;
+  
+  const lowercaseMessage = message.toLowerCase().trim();
+  
+  // Xử lý đặc biệt cho tiểu đường
+  if (healthNeed === 'tieuDuong' || 
+      lowercaseMessage.includes("tiểu đường") || 
+      lowercaseMessage.includes("đường huyết") ||
+      lowercaseMessage.includes("bệnh tiểu đường")) {
+    
+    // Tìm sản phẩm phù hợp với nhu cầu sức khỏe tiểu đường
+    return findProductsForHealthNeed(healthNeed).then(products => {
+      const responseText = `Thực phẩm cho người bệnh tiểu đường:
+
+✅ *Nên ăn:*
+• Rau xanh các loại không hạn chế
+• Các loại đậu (đậu đen, đậu đỏ, đậu nành)
+• Ngũ cốc nguyên hạt (gạo lứt, yến mạch)
+• Trái cây ít đường (táo, dâu, việt quất)
+• Cá, thịt nạc
+• Các loại hạt không muối
+• Sữa và sản phẩm từ sữa ít béo
+
+❌ *Nên hạn chế:*
+• Đồ ngọt, bánh kẹo
+• Nước ngọt, đồ uống có đường
+• Trái cây có nhiều đường (chuối chín, xoài, nho)
+• Gạo trắng, bánh mì trắng
+• Thực phẩm chế biến sẵn
+• Mỡ động vật`;
+
+      // Chuẩn bị danh sách sản phẩm để hiển thị
+      const formattedProducts = products.map((product) => ({
+        _id: product._id,
+        productName: product.productName,
+        productPrice: product.productPrice,
+        productDiscount: product.productDiscount || 0,
+        productImage:
+          product.productImages && product.productImages.length > 0
+            ? product.productImages[0]
+            : null,
+        productImageURL:
+          product.productImageURLs && product.productImageURLs.length > 0
+            ? product.productImageURLs[0]
+            : null,
+        imageBase64: product.productImageBase64 || null,
+      }));
+
+      return {
+        text: responseText,
+        type: "healthProducts",
+        products: formattedProducts
+      };
+    });
+  }
+  
+  // Kiểm tra xem có tồn tại dữ liệu cho nhu cầu sức khỏe này không
+  if (healthRecommendations[healthNeed] && healthRecommendations[healthNeed].examples) {
+    const examples = healthRecommendations[healthNeed].examples;
+    
+    // Tìm câu hỏi mẫu có nội dung gần với câu hỏi của người dùng
+    for (const example of examples) {
+      const exampleQuestion = example.question.toLowerCase().trim();
+      
+      if (lowercaseMessage.includes(exampleQuestion) || 
+          exampleQuestion.includes(lowercaseMessage)) {
+        console.log(`Tìm thấy câu hỏi mẫu: "${example.question}"`);
+        return Promise.resolve({
+          text: example.answer,
+          type: 'text'
+        });
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Tính toán độ tương đồng giữa hai chuỗi
+ * @param {string} s1 - Chuỗi thứ nhất
+ * @param {string} s2 - Chuỗi thứ hai
+ * @returns {number} - Độ tương đồng (0-1)
+ */
+function similarity(s1, s2) {
+  let longer = s1;
+  let shorter = s2;
+  
+  if (s1.length < s2.length) {
+    longer = s2;
+    shorter = s1;
+  }
+  
+  const longerLength = longer.length;
+  if (longerLength === 0) {
+    return 1.0;
+  }
+  
+  // Sử dụng khoảng cách Levenshtein
+  const editDistance = levenshteinDistance(s1, s2);
+  return (longerLength - editDistance) / parseFloat(longerLength);
+}
+
+/**
+ * Tính khoảng cách Levenshtein giữa hai chuỗi
+ * @param {string} s1 - Chuỗi thứ nhất
+ * @param {string} s2 - Chuỗi thứ hai
+ * @returns {number} - Khoảng cách Levenshtein
+ */
+function levenshteinDistance(s1, s2) {
+  const a = s1.toLowerCase();
+  const b = s2.toLowerCase();
+  
+  // Khởi tạo ma trận
+  const costs = Array(b.length + 1);
+  for (let i = 0; i <= b.length; i++) {
+    costs[i] = i;
+  }
+  
+  let i = 0;
+  for (const x of a) {
+    let j = 0;
+    let prevCost = i;
+    costs[0] = i + 1;
+    
+    for (const y of b) {
+      const curCost = prevCost + (x !== y ? 1 : 0);
+      prevCost = costs[++j];
+      costs[j] = Math.min(costs[j] + 1, costs[j - 1] + 1, curCost);
+    }
+    
+    i++;
+  }
+  
+  return costs[b.length];
 }
 
 /**
