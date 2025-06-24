@@ -54,22 +54,14 @@ export default function Payment() {
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(null);
 
-  // Replace the shipping fee calculation with distance-based calculation
   const shippingFee = useMemo(() => {
-    // Base shipping fee
-    const baseFee = 20000;
-    
-    // Get distance from assigned branch if available
+    const baseFee = 0;
     const distance = assignedBranch?.distance || 0;
-    
-    // Calculate fee based on distance
-    // 0-5km: base fee
-    // >5km: base fee + 5000 per km
     let distanceFee = 0;
     if (distance > 5) {
       distanceFee = Math.round((distance - 5) * 5000);
     }
-    
+
     return baseFee + distanceFee;
   }, [assignedBranch]);
 
@@ -102,7 +94,6 @@ export default function Payment() {
           const userResponse = await authApi.getProfile();
           setUsers(userResponse.data);
 
-          // Lấy danh sách voucher đã lưu của người dùng
           const token = localStorage.getItem("accessToken");
           if (token) {
             fetchUserSavedVouchers(token);
@@ -745,11 +736,14 @@ export default function Payment() {
           address: deliveryAddress,
           phone: receiverPhone,
           method: "standard",
-          coordinates: selectedAddress?.latitude && selectedAddress?.longitude ? {
-            lat: selectedAddress.latitude,
-            lng: selectedAddress.longitude
-          } : null
-        }
+          coordinates:
+            selectedAddress?.latitude && selectedAddress?.longitude
+              ? {
+                  lat: selectedAddress.latitude,
+                  lng: selectedAddress.longitude,
+                }
+              : null,
+        },
       };
 
       // Thêm thông tin giảm giá nếu có
@@ -1288,15 +1282,19 @@ export default function Payment() {
     const distance = assignedBranch?.distance || 0;
     const baseFee = 20000;
     let distanceText = "";
-    
+
     if (distance > 5) {
       const extraDistance = distance - 5;
       const extraFee = Math.round(extraDistance * 5000);
-      distanceText = `(Phí cơ bản: ${formatCurrency(baseFee)}đ + Phí khoảng cách: ${formatCurrency(extraFee)}đ cho ${extraDistance.toFixed(1)}km vượt quá 5km)`;
+      distanceText = `(Phí cơ bản: ${formatCurrency(
+        baseFee
+      )}đ + Phí khoảng cách: ${formatCurrency(
+        extraFee
+      )}đ cho ${extraDistance.toFixed(1)}km vượt quá 5km)`;
     } else {
       distanceText = `(Phí cơ bản trong phạm vi 5km)`;
     }
-    
+
     return distanceText;
   };
 
@@ -1389,7 +1387,10 @@ export default function Payment() {
                   <div className="flex-grow">
                     <span>Giao hàng tiêu chuẩn</span>
                     <div className="text-xs text-gray-500 mt-1">
-                      Khoảng cách: {assignedBranch?.distance ? `${assignedBranch.distance.toFixed(1)} km` : "Đang tính..."}
+                      Khoảng cách:{" "}
+                      {assignedBranch?.distance
+                        ? `${assignedBranch.distance.toFixed(1)} km`
+                        : "Đang tính..."}
                     </div>
                   </div>
                   <span className="font-semibold text-[#51bb1a]">
@@ -1537,9 +1538,7 @@ export default function Payment() {
                       className="mr-3 text-[#51bb1a] focus:ring-[#51bb1a]"
                     />
                     <div className="flex items-center">
-                      <span className="mr-2">
-                        Thanh toán qua MbBank
-                      </span>
+                      <span className="mr-2">Thanh toán qua MbBank</span>
                       <img
                         src="https://imgs.search.brave.com/c32x_Ya9gIz9oeR2LflnKsJQrHPvswMor65hM7AmCf8/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9ydXli/YW5ncGh1b25naG9h/bmcuY29tL3dwLWNv/bnRlbnQvdXBsb2Fk/cy8yMDI0LzEwL0xP/R09NQkJBTkstMTMy/OHg4MDAuanBn"
                         alt="SePay"

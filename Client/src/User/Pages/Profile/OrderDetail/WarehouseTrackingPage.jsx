@@ -4,7 +4,7 @@ import { Box, Container, Paper, Typography, Button } from '@mui/material';
 import { ArrowLeft, Clock } from 'lucide-react';
 import TimelineTracking from './TimelineTracking';
 import WarehouseTrackingMap from './WarehouseTrackingMap';
-import { generateWarehouseRoute, generateMockOrder, getNearestBranch } from './MapUtils';
+import { generateWarehouseRoute, getNearestBranch } from './MapUtils';
 
 /**
  * Trang theo dõi đơn hàng qua các kho trung chuyển
@@ -27,20 +27,20 @@ const WarehouseTrackingPage = () => {
       try {
         // Trong thực tế, bạn sẽ gọi API để lấy thông tin đơn hàng
         // Ở đây chúng ta sử dụng hàm tạo đơn hàng mẫu
-        const mockOrder = generateMockOrder(orderId);
-        setOrder(mockOrder);
+        // const mockOrder = generateMockOrder(orderId);
+        // setOrder(mockOrder);
         
         // Lấy vị trí khách hàng từ đơn hàng
-        const customerLoc = mockOrder.customerLocation;
-        setCustomerLocation(customerLoc);
+        // const customerLoc = mockOrder.customerLocation;
+        // setCustomerLocation(customerLoc);
         
         // Xác định chi nhánh gần nhất với khách hàng
-        const nearestBranch = getNearestBranch(customerLoc.lat, customerLoc.lng);
-        setShopLocation(nearestBranch);
+        // const nearestBranch = getNearestBranch(customerLoc.lat, customerLoc.lng);
+        // setShopLocation(nearestBranch);
         
         // Tạo lộ trình qua các kho trung chuyển
-        const warehouseRoute = generateWarehouseRoute(nearestBranch, customerLoc);
-        setWarehouses(warehouseRoute);
+        // const warehouseRoute = generateWarehouseRoute(nearestBranch, customerLoc);
+        // setWarehouses(warehouseRoute);
       } catch (error) {
         console.error('Lỗi khi lấy thông tin đơn hàng:', error);
       } finally {

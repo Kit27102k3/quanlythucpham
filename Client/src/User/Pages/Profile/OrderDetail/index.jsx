@@ -4,22 +4,67 @@ import { Box, Paper, Typography, Grid, Divider, Button, Chip, Skeleton } from '@
 import { ShoppingBag, Truck, MapPin, Clock, ArrowRight } from 'lucide-react';
 import OrderItems from './OrderItems';
 import PaymentInfo from './PaymentInfo';
-import { generateMockOrder, formatDate } from './MapUtils';
+import { formatDate } from './MapUtils';
+import OrderMap from './OrderMap';
+
+const MAPBOX_TOKEN = 'pk.eyJ1Ijoia2l0MjcxMCIsImEiOiJjbWF4bWh5YWQwc2N0MmtxM2p1M2Z5azZkIn0.navJSR4rbpRHVV3TEXelQg';
+
+async function geocodeAddress(address) {
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${MAPBOX_TOKEN}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (data.features && data.features.length > 0) {
+    const [lng, lat] = data.features[0].center;
+    return { lat, lng };
+  }
+  return null;
+}
 
 const OrderDetail = () => {
   const navigate = useNavigate();
   const { orderId } = useParams();
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState(null);
+  const [customerLocation, setCustomerLocation] = useState(null);
   
   useEffect(() => {
     const fetchOrderDetail = async () => {
       setLoading(true);
       try {
-        // Tạo đơn hàng mẫu để demo
-        const mockOrder = generateMockOrder(orderId);
-        setOrder(mockOrder);
+        const response = await fetch(`/api/orders/${orderId}`);
+        const data = await response.json();
+        setOrder(data);
+        let address = data.shippingAddress || (data.shippingInfo && data.shippingInfo.address) || (data.shipping && data.shipping.address) || (data.userId && data.userId.address) || '';
+        let lat = null;
+        let lng = null;
+        if (data.shippingInfo && data.shippingInfo.lat && data.shippingInfo.lng) {
+          lat = parseFloat(data.shippingInfo.lat);
+          lng = parseFloat(data.shippingInfo.lng);
+        }
+        if (lat && lng) {
+          setCustomerLocation({ lat, lng, address });
+          console.log('Customer location (from DB):', { lat, lng, address });
+          const shopLocation = { lat: 9.6037, lng: 105.9811, name: 'Chi nhánh Sóc Trăng', address: 'Sóc Trăng' };
+          console.log('Shop location:', shopLocation);
+        } else if (address) {
+          geocodeAddress(address).then((result) => {
+            if (result && result.lat && result.lng) {
+              setCustomerLocation({ lat: result.lat, lng: result.lng, address });
+              console.log('Customer location (geocoded):', { lat: result.lat, lng: result.lng, address });
+              const shopLocation = { lat: 9.6037, lng: 105.9811, name: 'Chi nhánh Sóc Trăng', address: 'Sóc Trăng' };
+              console.log('Shop location:', shopLocation);
+            } else {
+              setCustomerLocation({ address });
+              console.warn('Không geocode được địa chỉ:', address);
+            }
+          });
+        } else {
+          setCustomerLocation(null);
+          console.warn('Không có địa chỉ nhận hàng!');
+        }
       } catch (error) {
+        setOrder(null);
+        setCustomerLocation(null);
         console.error('Lỗi khi lấy thông tin đơn hàng:', error);
       } finally {
         setLoading(false);
@@ -102,6 +147,12 @@ const OrderDetail = () => {
         </Typography>
       </Box>
     );
+  }
+
+  if (customerLocation) {
+    const shopLocation = { lat: 9.6037, lng: 105.9811, name: 'Chi nhánh Sóc Trăng', address: 'Sóc Trăng' };
+    console.log('Shop location:', shopLocation);
+    console.log('Customer location:', customerLocation);
   }
 
   return (
@@ -211,6 +262,10 @@ const OrderDetail = () => {
       <OrderItems order={order} />
       
       <PaymentInfo order={order} />
+      
+      {customerLocation && (
+        <OrderMap shopLocation={{ lat: 9.6037, lng: 105.9811, name: 'Chi nhánh Sóc Trăng', address: 'Sóc Trăng' }} customerLocation={customerLocation} />
+      )}
     </Box>
   );
 };

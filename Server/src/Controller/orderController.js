@@ -856,39 +856,32 @@ export const cancelOrder = async (req, res) => {
   }
 }; 
 
-// Lấy thông tin tracking từ Giao Hàng Nhanh API
+// Lấy thông tin tracking từ database, không gọi GHN nữa
 export const getOrderTracking = async (req, res) => {
   try {
     const { orderCode } = req.params;
-    
     if (!orderCode) {
       return res.status(400).json({
         success: false,
         message: "Thiếu mã vận đơn"
       });
     }
-    
     // Tìm đơn hàng trong database dựa trên orderCode
     const order = await Order.findOne({ orderCode });
-    
     if (!order) {
       return res.status(404).json({
         success: false,
         message: "Không tìm thấy đơn hàng với mã vận đơn này"
       });
     }
-    
-    // Nếu đơn hàng đã có thông tin tracking, ưu tiên sử dụng
+    // Nếu đơn hàng đã có thông tin tracking, trả về
     if (order.tracking && order.tracking.tracking_logs && order.tracking.tracking_logs.length > 0) {
-      console.log("Sử dụng thông tin tracking từ database");
-      
       // Tạo estimated_delivery_time nếu chưa có
       if (!order.tracking.estimated_delivery_time) {
         const estimatedDelivery = new Date();
         estimatedDelivery.setDate(estimatedDelivery.getDate() + 3);
         order.tracking.estimated_delivery_time = estimatedDelivery.toISOString();
       }
-      
       return res.status(200).json({
         success: true,
         data: {
@@ -899,136 +892,16 @@ export const getOrderTracking = async (req, res) => {
           tracking_logs: order.tracking.tracking_logs,
           current_location: "Cửa hàng DNC FOOD",
           delivery_note: order.notes || "Hàng dễ vỡ, xin nhẹ tay"
-        },
-        isMocked: false
-      });
-    }
-    
-    // Tiếp tục với code gọi API GHN nếu cần
-    const SHOP_ID = process.env.SHOP_ID;
-    const SHOP_TOKEN_API = process.env.SHOP_TOKEN_API;
-    const USE_MOCK_ON_ERROR = process.env.USE_MOCK_ON_ERROR === 'true';
-    
-    if (!SHOP_ID || !SHOP_TOKEN_API) {
-      console.log("Thiếu thông tin cấu hình GHN trong biến môi trường");
-      if (USE_MOCK_ON_ERROR) {
-        // Tạo dữ liệu giả lập dựa trên thông tin đơn hàng thực tế
-        const mockData = generateMockTrackingDataFromOrder(order);
-        return res.status(200).json({
-          success: true,
-          data: mockData,
-          isMocked: true,
-          message: "Đang sử dụng dữ liệu giả lập do thiếu cấu hình GHN API"
-        });
-      }
-      
-      return res.status(500).json({
-        success: false,
-        message: "Thiếu thông tin cấu hình GHN"
-      });
-    }
-    
-    try {
-      console.log(`Đang gọi API GHN với mã vận đơn: ${orderCode}`);
-      console.log(`Thông tin Shop: ID=${SHOP_ID}, TOKEN=${SHOP_TOKEN_API.substring(0, 10)}...`);
-      
-      // Gọi API GHN để lấy thông tin tracking
-      const response = await axios.post(
-        "https://online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/detail", 
-        { order_code: orderCode },
-        {
-          headers: {
-            'Token': SHOP_TOKEN_API,
-            'ShopId': SHOP_ID,
-            'Content-Type': 'application/json'
-          }
         }
-      );
-      
-      console.log("Kết quả từ API GHN:", JSON.stringify(response.data, null, 2));
-      
-      // Nếu API trả về lỗi, xử lý và trả về response phù hợp
-      if (response.data.code !== 200) {
-        console.log("Lỗi từ GHN API:", response.data);
-        
-        if (USE_MOCK_ON_ERROR) {
-          // Tạo dữ liệu giả lập dựa trên thông tin đơn hàng thực tế
-          const mockData = generateMockTrackingDataFromOrder(order);
-          return res.status(200).json({
-            success: true,
-            data: mockData,
-            isMocked: true,
-            message: "Đang sử dụng dữ liệu giả lập do API GHN trả về lỗi"
-          });
-        }
-        
-        return res.status(response.data.code).json({
-          success: false,
-          message: response.data.message || "Lỗi từ API GHN",
-          code: response.data.code
-        });
-      }
-      
-      // Nếu thành công, trả về dữ liệu
-      return res.status(200).json({
-        success: true,
-        data: response.data.data,
-        isMocked: false
-      });
-    } catch (apiError) {
-      console.error("Lỗi gọi API GHN:", apiError.message);
-      
-      if (USE_MOCK_ON_ERROR) {
-        // Tạo dữ liệu giả lập dựa trên thông tin đơn hàng thực tế
-        const mockData = generateMockTrackingDataFromOrder(order);
-        return res.status(200).json({
-          success: true,
-          data: mockData,
-          isMocked: true,
-          message: "Đang sử dụng dữ liệu giả lập do không thể kết nối API GHN"
-        });
-      }
-      
-      return res.status(500).json({
-        success: false,
-        message: "Không thể kết nối đến API GHN",
-        error: apiError.message
       });
     }
+    // Nếu không có tracking
+    return res.status(200).json({
+      success: false,
+      message: "Chưa có thông tin vận chuyển cho đơn hàng này"
+    });
   } catch (error) {
-    console.error("Lỗi khi lấy thông tin vận chuyển:", error.response && error.response.data ? error.response.data : error.message);
-    
-    const USE_MOCK_ON_ERROR = process.env.USE_MOCK_ON_ERROR === 'true';
-    
-    if (USE_MOCK_ON_ERROR) {
-      try {
-        // Tìm đơn hàng trong database dựa trên orderCode
-        const order = await Order.findOne({ orderCode: req.params.orderCode });
-        
-        if (order) {
-          // Tạo dữ liệu giả lập dựa trên thông tin đơn hàng thực tế
-          const mockData = generateMockTrackingDataFromOrder(order);
-          return res.status(200).json({
-            success: true,
-            data: mockData,
-            isMocked: true,
-            message: "Đang sử dụng dữ liệu giả lập do lỗi hệ thống"
-          });
-        }
-      } catch (dbError) {
-        console.error("Lỗi khi tìm đơn hàng:", dbError);
-      }
-      
-      // Nếu không tìm thấy đơn hàng hoặc có lỗi, sử dụng dữ liệu giả lập mặc định
-      const mockData = generateMockTrackingData(req.params.orderCode);
-      return res.status(200).json({
-        success: true,
-        data: mockData,
-        isMocked: true,
-        message: "Đang sử dụng dữ liệu giả lập do lỗi hệ thống"
-      });
-    }
-    
+    console.error("Lỗi khi lấy thông tin vận chuyển:", error);
     return res.status(500).json({
       success: false,
       message: "Lỗi hệ thống khi lấy thông tin vận chuyển",
@@ -1057,212 +930,6 @@ function getStatusText(status) {
     case 'delivery_failed': return "Giao hàng thất bại";
     default: return status;
   }
-}
-
-// Hàm tạo dữ liệu giả lập từ đơn hàng thực tế
-function generateMockTrackingDataFromOrder(order) {
-  const now = new Date();
-  let trackingLogs = [];
-  
-  // Sử dụng tracking_logs nếu đã có
-  if (order.tracking && order.tracking.tracking_logs && order.tracking.tracking_logs.length > 0) {
-    trackingLogs = order.tracking.tracking_logs;
-  } 
-  // Nếu không có tracking_logs, tạo dữ liệu giả lập dựa vào trạng thái hiện tại
-  else {
-    // Tạo các mốc thời gian giả lập
-    const timeDay2 = new Date(now);
-    timeDay2.setHours(now.getHours() - 24); // 1 ngày trước
-    
-    const timeToday1 = new Date(now);
-    timeToday1.setHours(now.getHours() - 10); // 10 giờ trước
-    
-    const timeToday2 = new Date(now);
-    timeToday2.setHours(now.getHours() - 5); // 5 giờ trước
-    
-    const timeLatest = new Date(now);
-    timeLatest.setMinutes(now.getMinutes() - 30); // 30 phút trước
-    
-    // Tạo logs dựa trên trạng thái đơn hàng
-    switch (order.status) {
-      case 'completed':
-        trackingLogs = [
-          {
-            status: "completed",
-            status_name: "Hoàn thành",
-            timestamp: now.toISOString(),
-            location: "Địa chỉ giao hàng"
-          },
-          {
-            status: "delivered",
-            status_name: "Đã giao hàng",
-            timestamp: timeLatest.toISOString(),
-            location: "Địa chỉ giao hàng"
-          },
-          {
-            status: "delivering",
-            status_name: "Đang giao hàng",
-            timestamp: timeToday2.toISOString(),
-            location: "Trung tâm phân loại"
-          },
-          {
-            status: "shipping",
-            status_name: "Đang vận chuyển",
-            timestamp: timeToday1.toISOString(),
-            location: "Cửa hàng DNC FOOD"
-          },
-          {
-            status: "packaging",
-            status_name: "Hoàn tất đóng gói",
-            timestamp: timeDay2.toISOString(),
-            location: "Cửa hàng DNC FOOD"
-          }
-        ];
-        break;
-        
-      case 'delivering':
-        trackingLogs = [
-          {
-            status: "delivering",
-            status_name: "Đang giao hàng",
-            timestamp: timeLatest.toISOString(),
-            location: "Trung tâm phân loại"
-          },
-          {
-            status: "shipping",
-            status_name: "Đang vận chuyển",
-            timestamp: timeToday1.toISOString(),
-            location: "Cửa hàng DNC FOOD"
-          },
-          {
-            status: "packaging",
-            status_name: "Hoàn tất đóng gói",
-            timestamp: timeDay2.toISOString(),
-            location: "Cửa hàng DNC FOOD"
-          }
-        ];
-        break;
-        
-      case 'shipping':
-        trackingLogs = [
-          {
-            status: "shipping",
-            status_name: "Đang vận chuyển",
-            timestamp: timeLatest.toISOString(),
-            location: "Cửa hàng DNC FOOD"
-          },
-          {
-            status: "packaging",
-            status_name: "Hoàn tất đóng gói",
-            timestamp: timeToday1.toISOString(),
-            location: "Cửa hàng DNC FOOD"
-          }
-        ];
-        break;
-        
-      case 'packaging':
-        trackingLogs = [
-          {
-            status: "packaging",
-            status_name: "Hoàn tất đóng gói",
-            timestamp: timeLatest.toISOString(),
-            location: "Cửa hàng DNC FOOD"
-          }
-        ];
-        break;
-        
-      default:
-        // Với các trạng thái khác, tạo một bản ghi phù hợp
-        trackingLogs = [
-          {
-            status: order.status,
-            status_name: getStatusText(order.status),
-            timestamp: now.toISOString(),
-            location: "Cửa hàng DNC FOOD"
-          }
-        ];
-    }
-  }
-  
-  // Tạo ngày dự kiến giao hàng (3 ngày từ hiện tại)
-  const estimatedDelivery = new Date(now);
-  estimatedDelivery.setDate(now.getDate() + 3);
-  
-  // Lấy trạng thái và tên trạng thái từ bản ghi mới nhất
-  const status = trackingLogs.length > 0 ? trackingLogs[0].status : order.status;
-  const status_name = trackingLogs.length > 0 ? trackingLogs[0].status_name : getStatusText(order.status);
-  
-  // Trả về cấu trúc dữ liệu tracking
-  return {
-    order_code: order.orderCode,
-    status: status,
-    status_name: status_name,
-    estimated_delivery_time: estimatedDelivery.toISOString(),
-    tracking_logs: trackingLogs,
-    current_location: "Cửa hàng DNC FOOD",
-    delivery_note: order.notes || "Hàng dễ vỡ, xin nhẹ tay"
-  };
-}
-
-// Giữ lại hàm cũ để tương thích ngược
-function generateMockTrackingData(orderCode) {
-  const now = new Date();
-  
-  // Tạo các mốc thời gian giả lập
-  const timeDay2 = new Date(now);
-  timeDay2.setHours(now.getHours() - 24); // 1 ngày trước
-  
-  const timeToday1 = new Date(now);
-  timeToday1.setHours(now.getHours() - 10); // 10 giờ trước
-  
-  const timeToday2 = new Date(now);
-  timeToday2.setHours(now.getHours() - 5); // 5 giờ trước
-  
-  const timeLatest = new Date(now);
-  timeLatest.setMinutes(now.getMinutes() - 30); // 30 phút trước
-  
-  // Tạo ngày dự kiến giao hàng (3 ngày từ hiện tại)
-  const estimatedDelivery = new Date(now);
-  estimatedDelivery.setDate(now.getDate() + 3); // Dự kiến giao sau 3 ngày
-  
-  // Tạo danh sách các log vận chuyển giả lập (từ mới đến cũ)
-  const trackingLogs = [
-    {
-      status: "packaging",
-      status_name: "Hoàn tất đóng gói",
-      timestamp: timeDay2.toISOString(),
-      location: "Cửa hàng DNC FOOD"
-    },
-    {
-      status: "shipping",
-      status_name: "Đã giao cho vận chuyển",
-      timestamp: timeToday1.toISOString(),
-      location: "Cửa hàng DNC FOOD"
-    },
-    {
-      status: "collected",
-      status_name: "Đã lấy hàng",
-      timestamp: timeToday2.toISOString(),
-      location: "Cửa hàng DNC FOOD"
-    },
-    {
-      status: "delivering",
-      status_name: "Đang giao hàng",
-      timestamp: timeLatest.toISOString(),
-      location: "Trung tâm phân loại"
-    }
-  ];
-
-  // Trả về cấu trúc dữ liệu tracking giả lập
-  return {
-    order_code: orderCode,
-    status: "delivering",
-    status_name: "Đang giao hàng",
-    estimated_delivery_time: estimatedDelivery.toISOString(),
-    tracking_logs: trackingLogs,
-    current_location: "Trung tâm phân phối",
-    delivery_note: "Hàng dễ vỡ, xin nhẹ tay"
-  };
 }
 
 // Cập nhật trạng thái thanh toán của đơn hàng

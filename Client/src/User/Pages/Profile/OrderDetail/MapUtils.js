@@ -3,67 +3,48 @@
 // Mapbox access token
 export const MAPBOX_ACCESS_TOKEN = "pk.eyJ1Ijoia2l0MjcxMCIsImEiOiJjbWF4bWh5YWQwc2N0MmtxM2p1M2Z5azZkIn0.navJSR4rbpRHVV3TEXelQg";
 
-// Định nghĩa các chi nhánh cửa hàng
-const shopBranches = [
+// Danh sách các chi nhánh cửa hàng
+export const SHOP_BRANCHES = [
   {
     id: 1,
     name: "Chi nhánh Cần Thơ",
-    lat: 10.0339,
-    lng: 105.7855,
-    address: "30 Nguyễn Văn Linh, Ninh Kiều, Cần Thơ",
+    lat: 10.0076303,
+    lng: 105.7203383,
+    address: "168 Nguyễn Văn Cừ Nối Dài, An Bình, Ninh Kiều, Cần Thơ, Việt Nam",
     isMain: true
   },
   {
     id: 2,
-    name: "Chi nhánh Hồ Chí Minh",
-    lat: 10.7769,
-    lng: 106.6983,
-    address: "268 Lý Thường Kiệt, Quận 10, Hồ Chí Minh",
+    name: "Chi nhánh Sóc Trăng",
+    lat: 9.7024274,
+    lng: 105.7646406,
+    address: "PQ2G+XMC, Long Hưng, Mỹ Tú, Sóc Trăng, Việt Nam",
     isMain: false
   },
   {
     id: 3,
-    name: "Chi nhánh Hà Nội",
-    lat: 21.0285,
-    lng: 105.8542,
-    address: "55 Giải Phóng, Hai Bà Trưng, Hà Nội",
+    name: "Chi nhánh An Giang",
+    lat: 10.3839,
+    lng: 105.4389,
+    address: "45 Lê Lợi, Mỹ Bình, TP. Long Xuyên, Tỉnh An Giang",
     isMain: false
   },
   {
     id: 4,
-    name: "Chi nhánh Đà Nẵng",
-    lat: 16.0544,
-    lng: 108.2022,
-    address: "102 Nguyễn Văn Linh, Hải Châu, Đà Nẵng",
-    isMain: false
-  },
-  {
-    id: 5,
-    name: "Chi nhánh Huế",
-    lat: 16.4637,
-    lng: 107.5909,
-    address: "28 Lý Thường Kiệt, Phú Nhuận, Huế",
-    isMain: false
-  },
-  {
-    id: 6,
-    name: "Chi nhánh Sóc Trăng",
-    lat: 9.6037,
-    lng: 105.9811,
-    address: "126 Trần Hưng Đạo, Phường 3, Sóc Trăng",
+    name: "Chi nhánh Vĩnh Long",
+    lat: 10.2489,
+    lng: 105.9722,
+    address: "88 Phạm Thái Bường, Phường 4, TP. Vĩnh Long, Tỉnh Vĩnh Long",
     isMain: false
   }
 ];
-
-// Export shop branches for use in other components
-export const SHOP_BRANCHES = shopBranches;
 
 /**
  * Lấy vị trí cửa hàng mặc định (chi nhánh chính)
  * @returns {Object} Vị trí chi nhánh chính
  */
 export const getDefaultShopLocation = () => {
-  return shopBranches.find(branch => branch.isMain) || shopBranches[0];
+  return SHOP_BRANCHES.find(branch => branch.isMain) || SHOP_BRANCHES[0];
 };
 
 /**
@@ -78,7 +59,7 @@ export const getNearestBranch = (lat, lng) => {
   let nearestBranch = null;
   let minDistance = Infinity;
   
-  shopBranches.forEach(branch => {
+  SHOP_BRANCHES.forEach(branch => {
     const distance = calculateDistance(lat, lng, branch.lat, branch.lng);
     if (distance < minDistance) {
       minDistance = distance;
@@ -189,7 +170,7 @@ const getRandomAddress = (lat, lng) => {
   
   // Chọn thành phố dựa trên vị trí
   let city = cities[0];
-  for (const branch of shopBranches) {
+  for (const branch of SHOP_BRANCHES) {
     if (Math.abs(lat - branch.lat) < 0.1 && Math.abs(lng - branch.lng) < 0.1) {
       city = branch.name.replace("Chi nhánh ", "");
       break;
@@ -201,106 +182,6 @@ const getRandomAddress = (lat, lng) => {
   const street = streets[Math.floor(Math.random() * streets.length)];
   
   return `${streetNumber} ${street}, ${district}, ${city}`;
-};
-
-/**
- * Tạo đơn hàng mẫu cho demo
- * @param {string} orderId - Mã đơn hàng
- * @returns {Object} Đơn hàng mẫu
- */
-export const generateMockOrder = (orderId) => {
-  // Danh sách sản phẩm mẫu
-  const products = [
-    { id: 1, name: "Thịt heo", price: 120000, image: "https://cdn.tgdd.vn/2020/08/content/thitheo-800x450.jpg" },
-    { id: 2, name: "Thịt bò", price: 280000, image: "https://cdn.tgdd.vn/2020/09/content/thitbo-800x450.jpg" },
-    { id: 3, name: "Gà nguyên con", price: 150000, image: "https://cdn.tgdd.vn/2020/08/content/ga-800x450.jpg" },
-    { id: 4, name: "Cá thu", price: 190000, image: "https://cdn.tgdd.vn/2020/08/content/cathu-800x450.jpg" },
-    { id: 5, name: "Tôm sú", price: 320000, image: "https://cdn.tgdd.vn/2020/08/content/tomsu-800x450.jpg" },
-    { id: 6, name: "Rau muống", price: 15000, image: "https://cdn.tgdd.vn/2020/08/content/raumuong-800x450.jpg" },
-    { id: 7, name: "Cải thảo", price: 18000, image: "https://cdn.tgdd.vn/2020/08/content/caithao-800x450.jpg" },
-    { id: 8, name: "Cà rốt", price: 22000, image: "https://cdn.tgdd.vn/2020/08/content/carot-800x450.jpg" },
-    { id: 9, name: "Táo", price: 65000, image: "https://cdn.tgdd.vn/2020/08/content/tao-800x450.jpg" },
-    { id: 10, name: "Cam", price: 70000, image: "https://cdn.tgdd.vn/2020/08/content/cam-800x450.jpg" }
-  ];
-  
-  // Chọn ngẫu nhiên 2-5 sản phẩm
-  const numItems = Math.floor(Math.random() * 4) + 2;
-  const orderItems = [];
-  const selectedProductIds = new Set();
-  
-  while (orderItems.length < numItems) {
-    const randomIndex = Math.floor(Math.random() * products.length);
-    const product = products[randomIndex];
-    
-    if (!selectedProductIds.has(product.id)) {
-      selectedProductIds.add(product.id);
-      const quantity = Math.floor(Math.random() * 3) + 1;
-      orderItems.push({
-        ...product,
-        quantity,
-        total: product.price * quantity
-      });
-    }
-  }
-  
-  // Tính tổng tiền
-  const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
-  const shippingFee = 30000;
-  const discount = Math.random() > 0.7 ? Math.floor(subtotal * 0.1) : 0;
-  const total = subtotal + shippingFee - discount;
-  
-  // Tạo địa chỉ khách hàng ngẫu nhiên
-  const customerCities = [
-    { name: "Cần Thơ", lat: 10.0339, lng: 105.7855 },
-    { name: "Hồ Chí Minh", lat: 10.7769, lng: 106.6983 },
-    { name: "Hà Nội", lat: 21.0285, lng: 105.8542 },
-    { name: "Đà Nẵng", lat: 16.0544, lng: 108.2022 },
-    { name: "Huế", lat: 16.4637, lng: 107.5909 },
-    { name: "Sóc Trăng", lat: 9.6037, lng: 105.9811 }
-  ];
-  
-  const randomCity = customerCities[Math.floor(Math.random() * customerCities.length)];
-  // Thêm nhiễu nhỏ cho tọa độ để không trùng với vị trí chi nhánh
-  const latNoise = (Math.random() - 0.5) * 0.05;
-  const lngNoise = (Math.random() - 0.5) * 0.05;
-  
-  const customerLocation = {
-    lat: randomCity.lat + latNoise,
-    lng: randomCity.lng + lngNoise,
-    address: getRandomAddress(randomCity.lat + latNoise, randomCity.lng + lngNoise)
-  };
-  
-  // Tạo thông tin đơn hàng
-  const now = new Date();
-  const orderDate = new Date(now.getTime() - Math.floor(Math.random() * 86400000)); // Trong vòng 24h qua
-  const estimatedDelivery = new Date(now.getTime() + (2 + Math.floor(Math.random() * 3)) * 86400000); // 2-4 ngày sau
-  
-  // Trạng thái đơn hàng
-  const statuses = ["pending", "confirmed", "shipping", "delivered", "completed"];
-  const randomStatusIndex = Math.floor(Math.random() * 3) + 1; // Chọn confirmed, shipping hoặc delivered
-  const status = statuses[randomStatusIndex];
-  
-  return {
-    _id: orderId || `ORD${Math.floor(Math.random() * 10000)}`,
-    orderItems,
-    subtotal,
-    shippingFee,
-    discount,
-    total,
-    paymentMethod: Math.random() > 0.5 ? "COD" : "Banking",
-    shippingAddress: customerLocation.address,
-    customerLocation,
-    orderDate: orderDate.toISOString(),
-    estimatedDelivery: estimatedDelivery.toISOString(),
-    status,
-    isPaid: status !== "pending" && Math.random() > 0.3,
-    user: {
-      _id: `USR${Math.floor(Math.random() * 10000)}`,
-      name: "Khách hàng",
-      email: "customer@example.com",
-      phone: `09${Math.floor(Math.random() * 100000000)}`
-    }
-  };
 };
 
 /**
@@ -360,24 +241,154 @@ export const geocodeAddress = async (address) => {
     return null;
   }
   
-  // Trong thực tế, bạn sẽ gọi API Mapbox để geocode địa chỉ
-  // Ở đây chúng ta giả lập kết quả dựa trên từ khóa trong địa chỉ
-  
-  // Kiểm tra các từ khóa trong địa chỉ
-  if (address.includes('Cần Thơ')) {
-    return { lat: 10.0339, lng: 105.7855 };
-  } else if (address.includes('Hồ Chí Minh')) {
-    return { lat: 10.7769, lng: 106.6983 };
-  } else if (address.includes('Hà Nội')) {
-    return { lat: 21.0285, lng: 105.8542 };
-  } else if (address.includes('Đà Nẵng')) {
-    return { lat: 16.0544, lng: 108.2022 };
-  } else if (address.includes('Huế')) {
-    return { lat: 16.4637, lng: 107.5909 };
-  } else if (address.includes('Sóc Trăng')) {
-    return { lat: 9.6037, lng: 105.9811 };
+  // Ưu tiên kiểm tra các từ khóa quan trọng để cung cấp tọa độ chính xác
+  if (address.toLowerCase().includes('nguyễn văn cừ')) {
+    // Đường Nguyễn Văn Cừ, Cần Thơ - Tọa độ chính xác từ Google Maps
+    console.log('Sử dụng tọa độ chính xác cho địa chỉ Nguyễn Văn Cừ');
+    return { lat: 10.030165, lng: 105.7480393 };
   }
   
-  // Mặc định trả về tọa độ Cần Thơ
-  return { lat: 10.0339, lng: 105.7855 };
+  // Lấy Mapbox token từ biến toàn cục hoặc từ import.meta.env hoặc sử dụng token mặc định
+  const MAPBOX_ACCESS_TOKEN = 
+    window.MAPBOX_ACCESS_TOKEN || 
+    (typeof import.meta !== 'undefined' ? import.meta.env.VITE_MAPBOX_ACCESS_TOKEN : null) || 
+    "pk.eyJ1Ijoia2l0MjcxMCIsImEiOiJjbWF4bWh5YWQwc2N0MmtxM2p1M2Z5azZkIn0.navJSR4rbpRHVV3TEXelQg";
+  
+  // Kiểm tra cache trước
+  try {
+    const geocodingCache = JSON.parse(localStorage.getItem('geocoding_cache') || '{}');
+    const addressKey = address
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, '_');
+    
+    // Nếu có trong cache và chưa quá 30 ngày
+    if (geocodingCache[addressKey]) {
+      const cached = geocodingCache[addressKey];
+      const cachedDate = new Date(cached.timestamp || Date.now());
+      const daysDiff = (Date.now() - cachedDate) / (1000 * 60 * 60 * 24);
+      
+      if (daysDiff < 30) {
+        console.log('Sử dụng tọa độ từ cache cho địa chỉ:', address);
+        // Trả về tọa độ từ cache mà không thay đổi
+        return { lat: cached.lat, lng: cached.lng };
+      }
+    }
+  } catch (err) {
+    console.warn('Lỗi khi đọc cache:', err);
+  }
+  
+  // Nếu không có trong cache, gọi API Mapbox
+  try {
+    console.log('Gọi API Mapbox để geocode địa chỉ:', address);
+    
+    // Thêm "Việt Nam" vào cuối địa chỉ nếu chưa có để cải thiện kết quả
+    let searchAddress = address;
+    if (!searchAddress.toLowerCase().includes('việt nam')) {
+      searchAddress += ', Việt Nam';
+    }
+    
+    // Mã hóa địa chỉ để sử dụng trong URL
+    const encodedAddress = encodeURIComponent(searchAddress);
+    
+    // Gọi Mapbox Geocoding API
+    const response = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${MAPBOX_ACCESS_TOKEN}&limit=1&country=vn`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Lỗi khi geocode: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Kiểm tra kết quả
+    if (data.features && data.features.length > 0) {
+      // Mapbox trả về [longitude, latitude]
+      const [lng, lat] = data.features[0].center;
+      
+      // Lưu vào cache
+      try {
+        const geocodingCache = JSON.parse(localStorage.getItem('geocoding_cache') || '{}');
+        const addressKey = address
+          .trim()
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^\w\s]/g, '')
+          .replace(/\s+/g, '_');
+        
+        geocodingCache[addressKey] = {
+          lat,
+          lng,
+          timestamp: Date.now(),
+          source: 'mapbox'
+        };
+        
+        // Giới hạn kích thước cache
+        const cacheKeys = Object.keys(geocodingCache);
+        if (cacheKeys.length > 100) {
+          // Xóa các mục cũ nhất
+          const sortedKeys = cacheKeys.sort((a, b) => 
+            (geocodingCache[a].timestamp || 0) - (geocodingCache[b].timestamp || 0)
+          );
+          
+          // Xóa 20 mục cũ nhất
+          sortedKeys.slice(0, 20).forEach(key => delete geocodingCache[key]);
+        }
+        
+        localStorage.setItem('geocoding_cache', JSON.stringify(geocodingCache));
+      } catch (err) {
+        console.warn('Lỗi khi lưu cache:', err);
+      }
+      
+      console.log('Kết quả geocode từ Mapbox:', { lat, lng });
+      
+      // Trả về kết quả từ Mapbox mà không thay đổi
+      return { lat, lng };
+    }
+  } catch (error) {
+    console.error('Lỗi khi geocode địa chỉ:', error);
+  }
+  
+  // Nếu không thể geocode hoặc có lỗi, dùng giải pháp dự phòng
+  console.log('Không thể geocode địa chỉ, sử dụng geocode server mặc định');
+  
+  // Trường hợp khẩn cấp, sử dụng giải pháp geocode tìm kiếm theo từ khóa
+  if (address.toLowerCase().includes('nguyễn văn cừ')) {
+    // Đường Nguyễn Văn Cừ, Cần Thơ - tọa độ từ Google Maps
+    return { lat: 10.030165, lng: 105.7480393 };
+  } else if (address.toLowerCase().includes('an bình')) {
+    // Phường An Bình, Ninh Kiều, Cần Thơ
+    return { lat: 10.0421694, lng: 105.748337 };
+  } else if (address.toLowerCase().includes('ninh kiều')) { 
+    // Quận Ninh Kiều, Cần Thơ
+    return { lat: 10.0289313, lng: 105.7754218 };
+  } else if (address.toLowerCase().includes('bình thủy') || address.toLowerCase().includes('binh thuy')) {
+    // Quận Bình Thủy, Cần Thơ
+    return { lat: 10.0610, lng: 105.7380 };
+  } else if (address.toLowerCase().includes('cần thơ')) {
+    // Tọa độ khu vực Cần Thơ khác chi nhánh
+    return { lat: 10.0335343, lng: 105.7859024 }; 
+  } else if (address.toLowerCase().includes('hồ chí minh') || address.toLowerCase().includes('sài gòn')) {
+    return { lat: 10.7769, lng: 106.6983 };
+  } else if (address.toLowerCase().includes('hà nội')) {
+    return { lat: 21.0285, lng: 105.8542 };
+  } else if (address.toLowerCase().includes('đà nẵng')) {
+    return { lat: 16.0544, lng: 108.2022 };
+  } else if (address.toLowerCase().includes('huế')) {
+    return { lat: 16.4637, lng: 107.5909 };
+  } else if (address.toLowerCase().includes('sóc trăng')) {
+    return { lat: 9.6037, lng: 105.9811 };
+  } else if (address.toLowerCase().includes('an giang')) {
+    return { lat: 10.3839, lng: 105.4389 };
+  } else if (address.toLowerCase().includes('vĩnh long')) {
+    return { lat: 10.2489, lng: 105.9722 };
+  }
+  
+  // Mặc định trả về tọa độ trung tâm Cần Thơ, khác với chi nhánh
+  return { lat: 10.0289313, lng: 105.7754218 };
 }; 
