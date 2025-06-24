@@ -61,6 +61,7 @@ export const createContact = async (req, res) => {
         const notificationPayload = {
           title: 'Liên hệ mới',
           body: `${name} đã gửi một liên hệ mới qua website.`,
+          icon: '/android-chrome-192x192.png',
           data: {
             url: '/admin/contacts',
             type: 'new_contact'
