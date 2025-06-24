@@ -21,12 +21,13 @@ self.addEventListener('push', (event) => {
   let data;
   try {
     data = event.data.json();
+    console.log('[SW] Push data:', data);
   } catch (error) {
-    console.error('[Service Worker] Error parsing push data:', error);
+    console.error('[SW] Error parsing push data:', error);
     data = {
       title: 'Thông báo',
       body: 'Không thể đọc nội dung thông báo',
-      icon: '/Logo.png'
+      icon: '/android-chrome-192x192.png'
     };
   }
 
