@@ -191,10 +191,33 @@ export const sendOrderStatusNotification = async (
   statusText
 ) => {
   try {
+    const statusMap = {
+      pending: "đang chờ xử lý",
+      confirmed: "đã được xác nhận",
+      processing: "đang được xử lý",
+      preparing: "đang chuẩn bị hàng",
+      packaging: "đang đóng gói",
+      shipping: "đang vận chuyển",
+      shipped: "đã giao cho đơn vị vận chuyển",
+      delivering: "đang giao hàng",
+      delivered: "đã giao hàng thành công",
+      completed: "đã hoàn thành",
+      cancelled: "đã bị hủy",
+      awaiting_payment: "đang chờ thanh toán",
+      refunded: "đã hoàn tiền",
+      failed: "giao hàng thất bại",
+      delivery_failed: "giao hàng thất bại",
+      sorting_facility: "đã đến trung tâm phân loại",
+      // Thêm các trạng thái khác nếu cần
+    };
+
+    // Dịch trạng thái sang tiếng Việt, nếu không có thì giữ nguyên
+    const translatedStatus = statusMap[statusText.toLowerCase()] || statusText;
+
     const title = `Cập nhật đơn hàng #${
       order.orderNumber || order._id.toString().slice(0, 8)
     }`;
-    let body = `Đơn hàng của bạn ${statusText}`;
+    let body = `Đơn hàng của bạn ${translatedStatus}`;
 
     if (order.totalAmount) {
       body += ` - Giá trị: ${new Intl.NumberFormat("vi-VN", {
@@ -216,7 +239,7 @@ export const sendOrderStatusNotification = async (
             name: item.productName,
             quantity: item.quantity,
           }))) || [],
-        icon: "/order-icon.png",
+        icon: "/android-chrome-192x192.png", // Đảm bảo logo chuẩn
       },
     });
   } catch (error) {
