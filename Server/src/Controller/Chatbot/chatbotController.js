@@ -936,21 +936,52 @@ Bạn có thể tìm mua các thực phẩm hỗ trợ ăn kiêng tại cửa h�
             "Bạn có thể xem thông tin đơn hàng của mình trong mục 'Đơn hàng của tôi' trên trang cá nhân. Nếu bạn muốn hủy đơn hàng, vui lòng chọn đơn hàng cần hủy và nhấn vào nút 'Hủy đơn hàng'. Lưu ý rằng bạn chỉ có thể hủy đơn hàng khi đơn hàng chưa được xử lý.",
         });
       
-      default:
-        faqResponse = await handleFAQQuestion(intent, message);
-        if (faqResponse) {
+      default: {
+        // Fallback: gọi GPT nếu không match intent nào cứng
+        const gptResponse = await handleHealthAdviceWithGPT(message);
+
+        // Thử trích xuất các từ khóa sản phẩm từ câu hỏi
+        const entities = extractEntities(message);
+        let products = [];
+
+        // 1. Ưu tiên tìm theo productTypes
+        if (entities && entities.productTypes && entities.productTypes.length > 0) {
+          for (const type of entities.productTypes) {
+            const found = await searchProductsMongoDB(type);
+            if (found && found.length > 0) {
+              products = products.concat(found.slice(0, 3));
+            }
+          }
+        }
+
+        // 2. Nếu không có productTypes, thử tìm theo healthNeeds
+        if (products.length === 0 && entities && entities.healthNeeds && entities.healthNeeds.length > 0) {
+          for (const need of entities.healthNeeds) {
+            const found = await searchProductsMongoDB(need);
+            if (found && found.length > 0) {
+              products = products.concat(found.slice(0, 3));
+            }
+          }
+        }
+
+        // 3. Nếu có sản phẩm gợi ý, trả về kèm theo
+        if (products.length > 0) {
           return res.json({
-              success: true,
-            message: faqResponse.message || faqResponse,
-            type: faqResponse.type || "text",
+            success: true,
+            message: gptResponse,
+            products: products,
+            type: "gpt_with_products"
           });
         }
+
+        // 4. Nếu không có sản phẩm, trả về text của GPT + thông báo không có sản phẩm
         return res.json({
-            success: true,
-          message:
-            "Xin lỗi, tôi không hiểu câu hỏi của bạn. Bạn có thể hỏi về sản phẩm, sức khỏe, khuyến mãi, chứng nhận, hoặc liên hệ nhân viên hỗ trợ để được tư vấn chi tiết hơn!",
-          type: "text",
+          success: true,
+          message: gptResponse + "\n\nHiện tại cửa hàng không có sản phẩm nào phù hợp.",
+          products: [],
+          type: "gpt_with_products"
         });
+      }
     }
   } catch (error) {
     console.error("Lỗi khi xử lý tin nhắn:", error);

@@ -221,7 +221,7 @@ const MultiProductSearchResult = React.memo(({ searchResults, handleProductClick
             <div key={`search-result-${idx}`} className="border-t pt-2 first:border-t-0 first:pt-0">
               <div className="font-medium text-sm mb-2 flex items-center">
                 <ShoppingBag className="w-4 h-4 mr-1" /> 
-                Kết quả tìm kiếm cho: "{result.query}"
+                Kết quả tìm kiếm cho: &quot;{result.query}&quot;
               </div>
               <div className="text-sm italic">Không tìm thấy sản phẩm phù hợp</div>
             </div>
@@ -232,7 +232,7 @@ const MultiProductSearchResult = React.memo(({ searchResults, handleProductClick
           <div key={`search-result-${idx}`} className="border-t pt-2 first:border-t-0 first:pt-0">
             <div className="font-medium text-sm mb-2 flex items-center">
               <ShoppingBag className="w-4 h-4 mr-1" /> 
-              Kết quả tìm kiếm cho: "{result.query}"
+              Kết quả tìm kiếm cho: &quot;{result.query}&quot;
             </div>
             <div className="grid grid-cols-2 gap-2">
               {result.products.map((product, prodIdx) => (
@@ -390,7 +390,7 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
     }
   }, [navigate, setIsOpen]);
 
-  // Send message to API endpoint - Sửa phần gọi API thêm debounce
+  // Handle custom message request - Sửa phần gọi API thêm debounce
   const handleCustomMessageRequest = useCallback(async (message) => {
     if (!message.trim()) return;
     
@@ -432,6 +432,17 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
         
         // Lấy dữ liệu từ response
         const responseData = response.data;
+        
+        // Xử lý data nếu có - chuyển đổi từ data sang products nếu cần
+        if (responseData.data && Array.isArray(responseData.data) && responseData.data.length > 0 && !responseData.products) {
+          console.log("Converting data array to products format");
+          responseData.products = responseData.data.map(p => ({
+            name: p.productName || p.name,
+            price: p.productPrice || p.price,
+            image: (p.productImages && p.productImages.length > 0) ? p.productImages[0] : p.image || DEFAULT_IMAGE,
+            _id: p._id
+          }));
+        }
         
         // Handle product search results
         if (responseData.type === 'productSearch' && responseData.products && Array.isArray(responseData.products)) {
@@ -483,26 +494,26 @@ const ChatBot = ({ isOpen, setIsOpen }) => {
           return;
         }
         
-        // Kiểm tra trường hợp response chứa data đặc biệt
-        if (responseData.data && Array.isArray(responseData.data)) {
-          // Data là mảng các sản phẩm
-          console.log("Data is an array of products:", responseData.data);
+        // Nếu response có trường products hoặc data (dù không có type đặc biệt)
+        if ((responseData.products && Array.isArray(responseData.products) && responseData.products.length > 0) || 
+            (responseData.data && Array.isArray(responseData.data) && responseData.data.length > 0)) {
+          
+          const products = responseData.products || responseData.data;
+          console.log("Found products in response:", products);
           
           setTypingMessage({
-            type: responseData.type || 'productSearch',
-            text: responseData.text || responseData.message || 'Đây là kết quả tìm kiếm:',
-            products: responseData.data,
+            type: 'productSearch',
+            text: responseData.answer || responseData.message || responseData.text || "Đây là các sản phẩm phù hợp:",
+            products: products,
             sender: "bot"
           });
-          
-          // Cập nhật intent mới nhất
-          setLastIntent(responseData.type || 'productSearch');
+          setLastIntent('productSearch');
           return;
         }
         
         // Trường hợp còn lại - tin nhắn thông thường
         setTypingMessage({
-          text: responseData.message || responseData.text || "Xin lỗi, tôi không hiểu ý bạn.",
+          text: responseData.answer || responseData.message || responseData.text || "Xin lỗi, tôi không hiểu ý bạn.",
           sender: "bot"
         });
       } else {
