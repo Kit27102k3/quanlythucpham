@@ -20,6 +20,8 @@ const Brands = () => {
   const [branches, setBranches] = useState([]);
   const [userBranchId, setUserBranchId] = useState("");
   const [branchNames, setBranchNames] = useState({}); // Store branch names by ID
+  const [selectedBranchFilter, setSelectedBranchFilter] = useState(null); // For filtering brands by branch
+  const [isLoading, setIsLoading] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -176,6 +178,8 @@ const Brands = () => {
 
   const fetchBrands = async () => {
     try {
+      setIsLoading(true);
+      console.log("Fetching brands with filter:", selectedBranchFilter);
       const data = await brandsApi.getAllBrands();
 
       if (Array.isArray(data)) {
@@ -196,8 +200,27 @@ const Brands = () => {
             data.length
           );
           setBrands(filteredData);
-        } else {
-          // For admin, show all brands
+        } 
+        // For admin with branch filter
+        else if (userRole === "admin" && selectedBranchFilter) {
+          console.log(
+            "Filtering brands for admin with branch filter:",
+            selectedBranchFilter
+          );
+          const filteredData = data.filter((brand) => {
+            const brandBranchId = brand.branchId?._id || brand.branchId;
+            return brandBranchId === selectedBranchFilter;
+          });
+          console.log(
+            "Filtered brands count:",
+            filteredData.length,
+            "of",
+            data.length
+          );
+          setBrands(filteredData);
+        }
+        else {
+          // For admin showing all brands
           console.log("Showing all brands for admin:", data.length);
           setBrands(data);
         }
@@ -208,6 +231,9 @@ const Brands = () => {
     } catch (error) {
       console.error("Failed to fetch brands:", error);
       setBrands([]);
+      toast.error("Không thể tải danh sách thương hiệu");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -472,6 +498,23 @@ const Brands = () => {
   const getCurrentPageBrands = () =>
     filteredBrands.slice(first, first + rowsPerPage);
 
+  // Handle branch filter change for admin
+  const handleBranchFilterChange = (e) => {
+    console.log("Branch filter changed to:", e.value);
+    
+    // Clear the filter if "Tất cả chi nhánh" is selected
+    if (e.value === "") {
+      setSelectedBranchFilter(null);
+    } else {
+      setSelectedBranchFilter(e.value);
+    }
+    
+    // Immediately fetch brands after changing the filter
+    setTimeout(() => {
+      fetchBrands();
+    }, 0);
+  };
+
   const renderBrandForm = () => (
     <div className="p-6 bg-white">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -621,7 +664,9 @@ const Brands = () => {
         <h2 className="text-2xl font-bold mb-4 md:mb-0 text-indigo-800">
           Quản lý thương hiệu{" "}
           {userRole === "admin"
-            ? "(Tất cả chi nhánh)"
+            ? selectedBranchFilter && branchNames[selectedBranchFilter]
+              ? `(${branchNames[selectedBranchFilter]})`
+              : "(Tất cả chi nhánh)"
             : userBranchId && branchNames[userBranchId]
             ? `(${branchNames[userBranchId]})`
             : ""}
@@ -638,6 +683,33 @@ const Brands = () => {
               />
             </IconField>
           </div>
+          
+          {/* Branch filter for admin */}
+          {userRole === "admin" && (
+            <div className="w-full sm:w-64 mb-3 sm:mb-0">
+              <Dropdown
+                value={selectedBranchFilter === null ? "" : selectedBranchFilter}
+                options={[
+                  { label: "Tất cả chi nhánh", value: "" },
+                  ...(Array.isArray(branches) ? branches.map(branch => ({
+                    label: branch.name,
+                    value: branch._id
+                  })) : [])
+                ]}
+                onChange={handleBranchFilterChange}
+                placeholder="Tất cả chi nhánh"
+                className="w-full border border-gray-300 rounded-md"
+                pt={{
+                  root: { className: "w-full" },
+                  item: { className: "py-2 px-4" },
+                  trigger: { className: "p-2 flex justify-between items-center" },
+                  panel: { className: "border border-gray-200 rounded-md shadow-md" }
+                }}
+                disabled={isLoading}
+              />
+            </div>
+          )}
+          
           <Button
             label="+ Thêm thương hiệu"
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded w-full sm:w-auto py-2 px-4 shadow-md transition-all duration-200"
@@ -650,117 +722,127 @@ const Brands = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-        <table className="min-w-full table-auto">
-          <thead className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-            <tr>
-              <th className="py-4 px-6 text-center">Mã</th>
-              <th className="py-4 px-6 text-left">Tên thương hiệu</th>
-              <th className="py-4 px-6 text-center">Logo</th>
-              <th className="py-4 px-6 text-center">Quốc gia</th>
-              {userRole === "admin" && (
-                <th className="py-4 px-6 text-center">Chi nhánh</th>
-              )}
-              <th className="py-4 px-6 text-center">Trạng thái</th>
-              <th className="py-4 px-6 text-center">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {getCurrentPageBrands().length > 0 ? (
-              getCurrentPageBrands().map((brand, index) => (
-                <tr
-                  key={brand._id}
-                  className={`border-b hover:bg-indigo-50 transition-colors duration-150 ${
-                    index % 2 === 0 ? "bg-gray-50" : "bg-white"
-                  }`}
-                >
-                  <td className="py-4 px-6 text-center font-medium text-gray-800">
-                    {brand.code}
-                  </td>
-                  <td className="py-4 px-6">
-                    <div>
-                      <div className="font-medium text-indigo-800">
-                        {brand.name}
-                      </div>
-                      {brand.website && (
-                        <div className="text-xs text-blue-600">
-                          <a
-                            href={brand.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:underline"
-                          >
-                            {brand.website}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 text-center">
-                    {brand.logo ? (
-                      <img
-                        src={brand.logo}
-                        alt={brand.name}
-                        className="w-14 h-14 object-contain mx-auto border rounded-md p-1 shadow-sm"
-                      />
-                    ) : (
-                      <span className="text-gray-400 italic">Không có</span>
-                    )}
-                  </td>
-                  <td className="py-4 px-6 text-center text-gray-700">
-                    {brand.country || "Không có"}
-                  </td>
-                  {userRole === "admin" && (
-                    <td className="py-4 px-6 text-center">
-                      {getBranchNameById(brand.branchId)}
+        {/* Loading indicator */}
+        {isLoading ? (
+          <div className="p-8 text-center">
+            <div className="flex flex-col items-center justify-center">
+              <i className="pi pi-spin pi-spinner text-4xl text-blue-500 mb-4"></i>
+              <p className="text-gray-600">Đang tải dữ liệu thương hiệu...</p>
+            </div>
+          </div>
+        ) : (
+          <table className="min-w-full table-auto">
+            <thead className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+              <tr>
+                <th className="py-4 px-6 text-center">Mã</th>
+                <th className="py-4 px-6 text-left">Tên thương hiệu</th>
+                <th className="py-4 px-6 text-center">Logo</th>
+                <th className="py-4 px-6 text-center">Quốc gia</th>
+                {userRole === "admin" && (
+                  <th className="py-4 px-6 text-center">Chi nhánh</th>
+                )}
+                <th className="py-4 px-6 text-center">Trạng thái</th>
+                <th className="py-4 px-6 text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {getCurrentPageBrands().length > 0 ? (
+                getCurrentPageBrands().map((brand, index) => (
+                  <tr
+                    key={brand._id}
+                    className={`border-b hover:bg-indigo-50 transition-colors duration-150 ${
+                      index % 2 === 0 ? "bg-gray-50" : "bg-white"
+                    }`}
+                  >
+                    <td className="py-4 px-6 text-center font-medium text-gray-800">
+                      {brand.code}
                     </td>
-                  )}
-                  <td className="py-4 px-6 text-center">
-                    <span
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium ${
-                        brand.status === "active"
-                          ? "bg-green-100 text-green-700 border border-green-200"
-                          : "bg-red-100 text-red-700 border border-red-200"
-                      }`}
-                    >
-                      {brand.status === "active"
-                        ? "Hoạt động"
-                        : "Không hoạt động"}
-                    </span>
-                  </td>
-                  <td className="py-4 px-6 text-center">
-                    <div className="flex justify-center gap-2">
-                      <Button
-                        icon="pi pi-pencil"
-                        className="p-button-sm p-button-info  p-2 text-red-500"
-                        tooltip="Sửa thông tin"
-                        tooltipOptions={{ position: "top" }}
-                        onClick={() => handleEditBrand(brand)}
-                      />
+                    <td className="py-4 px-6">
+                      <div>
+                        <div className="font-medium text-indigo-800">
+                          {brand.name}
+                        </div>
+                        {brand.website && (
+                          <div className="text-xs text-blue-600">
+                            <a
+                              href={brand.website}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {brand.website}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6 text-center">
+                      {brand.logo ? (
+                        <img
+                          src={brand.logo}
+                          alt={brand.name}
+                          className="w-14 h-14 object-contain mx-auto border rounded-md p-1 shadow-sm"
+                        />
+                      ) : (
+                        <span className="text-gray-400 italic">Không có</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6 text-center text-gray-700">
+                      {brand.country || "Không có"}
+                    </td>
+                    {userRole === "admin" && (
+                      <td className="py-4 px-6 text-center">
+                        {getBranchNameById(brand.branchId)}
+                      </td>
+                    )}
+                    <td className="py-4 px-6 text-center">
+                      <span
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                          brand.status === "active"
+                            ? "bg-green-100 text-green-700 border border-green-200"
+                            : "bg-red-100 text-red-700 border border-red-200"
+                        }`}
+                      >
+                        {brand.status === "active"
+                          ? "Hoạt động"
+                          : "Không hoạt động"}
+                      </span>
+                    </td>
+                    <td className="py-4 px-6 text-center">
+                      <div className="flex justify-center gap-2">
+                        <Button
+                          icon="pi pi-pencil"
+                          className="p-button-sm p-button-info  p-2 text-red-500"
+                          tooltip="Sửa thông tin"
+                          tooltipOptions={{ position: "top" }}
+                          onClick={() => handleEditBrand(brand)}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={userRole === "admin" ? "7" : "6"}
+                    className="py-8 text-center text-gray-500"
+                  >
+                    <div className="flex flex-col items-center justify-center">
+                      <i className="pi pi-search text-4xl mb-3 text-gray-300"></i>
+                      <p>
+                        Không có dữ liệu thương hiệu
+                        {userRole === "manager" ? " cho chi nhánh này" : ""}
+                      </p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Hãy thêm thương hiệu mới để bắt đầu
+                      </p>
                     </div>
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td
-                  colSpan={userRole === "admin" ? "7" : "6"}
-                  className="py-8 text-center text-gray-500"
-                >
-                  <div className="flex flex-col items-center justify-center">
-                    <i className="pi pi-search text-4xl mb-3 text-gray-300"></i>
-                    <p>
-                      Không có dữ liệu thương hiệu
-                      {userRole === "manager" ? " cho chi nhánh này" : ""}
-                    </p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Hãy thêm thương hiệu mới để bắt đầu
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {filteredBrands.length > 0 && (

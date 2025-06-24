@@ -39,7 +39,7 @@ const menuItems = [
   { name: "Sản Phẩm", path: "/san-pham" },
   { name: "Khuyến Mãi", path: "/khuyen-mai" },
   { name: "Voucher", path: "/voucher" },
-  { name: "Vào Bếp", path: "/vao-bep" },
+  // { name: "Vào Bếp", path: "/vao-bep" },
   { name: "Liên Hệ", path: "/lien-he" },
   { name: "Cửa Hàng", path: "/cua-hang" },
 ];
@@ -482,10 +482,7 @@ const Header = () => {
               }
             >
               {item.name}
-              {item.name === "Sản Phẩm" && <CaretDownIcon />}
-              {item.name === "Sản Phẩm" && (
-                <ProductDetail isVisible={showProduct} />
-              )}
+
             </li>
           ))}
         </ul>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { InputText } from "primereact/inputtext";
 import { Dialog } from "primereact/dialog";
-import { FaFacebook, FaLock, FaUser, FaGoogle } from "react-icons/fa";
+import { FaFacebook, FaLock, FaUser, FaGoogle, FaEye, FaEyeSlash } from "react-icons/fa";
 import ForgotPassword from "./ForgotPassword";
 import {authApi} from "../../../api/authApi";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import AuthService from "../../../utils/AuthService";
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [visible, setVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showDirectGoogleLogin, setShowDirectGoogleLogin] = useState(false);
@@ -44,6 +45,10 @@ const Login = () => {
       }
     }
   }, [navigate]);
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -542,14 +547,21 @@ const Login = () => {
             <div className="relative mb-2">
               <FaLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <InputText
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Mật khẩu"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#51bb1a]"
+                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#51bb1a]"
                 required
                 disabled={isLoading}
               />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-700"
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
             </div>
 
             <div className="flex justify-between items-center mb-4">
@@ -594,7 +606,7 @@ const Login = () => {
       </div>
 
       <Dialog
-        header="QUÊN MẬT KHẨU"
+        header=""
         visible={visible}
         style={{ width: "500px" }}
         onHide={() => setVisible(false)}

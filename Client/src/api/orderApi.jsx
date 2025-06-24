@@ -424,8 +424,35 @@ const orderApi = {
         // Nếu chỉ là string (từ các component khác), dùng cấu trúc cũ
         updateData = {
           status: newStatus,
+          // Chỉ set isPaid = true khi status là completed
+          // Đối với các trạng thái khác, không thay đổi trạng thái isPaid
           isPaid: newStatus === "completed" ? true : undefined,
         };
+      }
+
+      // Nếu status là "delivered", kiểm tra xem đơn hàng hiện tại có isPaid = true không
+      if (updateData.status === "delivered" || updateData.status === "completed") {
+        try {
+          // Lấy thông tin đơn hàng hiện tại
+          const orderResponse = await axios.get(`${API_URL}/${orderId}`);
+          const currentOrder = orderResponse.data;
+          
+          // Nếu đơn hàng hiện tại đã thanh toán, giữ nguyên trạng thái isPaid = true
+          if (currentOrder && (currentOrder.isPaid === true || currentOrder.isPaid === "true" || 
+              currentOrder.isPaid === 1 || currentOrder.isPaid === "1")) {
+            updateData.isPaid = true;
+            console.log(`Đơn hàng ${orderId} đã được thanh toán trước đó, giữ nguyên trạng thái isPaid = true`);
+            
+            // Nếu đang cập nhật thành "delivered" và đơn hàng đã thanh toán, tự động chuyển thành "completed"
+            if (updateData.status === "delivered") {
+              console.log(`Đơn hàng ${orderId} đã thanh toán, tự động chuyển thành trạng thái "completed"`);
+              updateData.status = "completed";
+            }
+          }
+        } catch (err) {
+          console.error("Lỗi khi kiểm tra trạng thái thanh toán của đơn hàng:", err);
+          // Tiếp tục với dữ liệu hiện tại nếu có lỗi
+        }
       }
 
       console.log("Dữ liệu gửi lên server:", updateData);
@@ -463,6 +490,35 @@ const orderApi = {
       let successCount = 0;
       for (const id of orderIds) {
         try {
+          // Nếu status là "delivered", kiểm tra xem đơn hàng hiện tại có isPaid = true không
+          if (status === "delivered" || status === "completed") {
+            try {
+              // Lấy thông tin đơn hàng hiện tại
+              const orderResponse = await axios.get(`${API_URL}/${id}`);
+              const currentOrder = orderResponse.data;
+              
+              // Nếu đơn hàng hiện tại đã thanh toán, giữ nguyên trạng thái isPaid = true
+              if (currentOrder && (currentOrder.isPaid === true || currentOrder.isPaid === "true" || 
+                  currentOrder.isPaid === 1 || currentOrder.isPaid === "1")) {
+                updateData.isPaid = true;
+                console.log(`Đơn hàng ${id} đã được thanh toán trước đó, giữ nguyên trạng thái isPaid = true`);
+                
+                // Nếu đang cập nhật thành "delivered" và đơn hàng đã thanh toán, tự động chuyển thành "completed"
+                if (status === "delivered") {
+                  console.log(`Đơn hàng ${id} đã thanh toán, tự động chuyển thành trạng thái "completed"`);
+                  updateData.status = "completed";
+                }
+              } else {
+                // Reset lại isPaid nếu đơn hàng trước đó không được thanh toán
+                updateData.isPaid = status === "completed" ? true : undefined;
+                updateData.status = status; // Đảm bảo status được reset về giá trị ban đầu
+              }
+            } catch (err) {
+              console.error(`Lỗi khi kiểm tra trạng thái thanh toán của đơn hàng ${id}:`, err);
+              // Tiếp tục với dữ liệu hiện tại nếu có lỗi
+            }
+          }
+          
           await axios.patch(`${API_URL}/${id}`, updateData, { headers });
           successCount++;
         } catch (err) {

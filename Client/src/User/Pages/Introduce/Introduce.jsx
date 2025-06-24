@@ -319,19 +319,19 @@ const Introduce = () => {
           <div className="p-4 md:p-5 lg:p-6 bg-white rounded-xl shadow hover:shadow-lg transition-all duration-300 border border-gray-100 transform hover:scale-[1.02]">
             <i className="fas fa-phone text-[#4CAF50] text-2xl md:text-3xl mb-4 md:mb-5"></i>
             <h3 className="text-base md:text-lg font-semibold mb-2">Điện thoại</h3>
-            <p className="text-sm md:text-base text-gray-600">0123 456 789</p>
+            <p className="text-sm md:text-base text-gray-600">0326 743 391</p>
           </div>
           
           <div className="p-4 md:p-5 lg:p-6 bg-white rounded-xl shadow hover:shadow-lg transition-all duration-300 border border-gray-100 transform hover:scale-[1.02]">
             <i className="fas fa-envelope text-[#4CAF50] text-2xl md:text-3xl mb-4 md:mb-5"></i>
             <h3 className="text-base md:text-lg font-semibold mb-2">Email</h3>
-            <p className="text-sm md:text-base text-gray-600">contact@Dncfood.com</p>
+            <p className="text-sm md:text-base text-gray-600">kit1001200@gmail.com</p>
           </div>
           
           <div className="p-6 md:p-8 bg-white rounded-xl shadow hover:shadow-lg transition-all duration-300 border border-gray-100 transform hover:scale-[1.02] sm:col-span-2 md:col-span-1">
             <i className="fas fa-map-marker-alt text-[#4CAF50] text-2xl md:text-3xl mb-4 md:mb-5"></i>
             <h3 className="text-base md:text-lg font-semibold mb-2">Địa chỉ</h3>
-            <p className="text-sm md:text-base text-gray-600">123 Đường ABC, Quận XYZ, TP.HCM</p>
+            <p className="text-sm md:text-base text-gray-600">Trường đại học Nam Cần Thơ, Nguyễn Văn Cừ, An Bình, Ninh Kiều, Cần Thơ</p>
           </div>
         </div>
       </div>

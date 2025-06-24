@@ -51,7 +51,17 @@ const Reports = () => {
   });
   const [orderData, setOrderData] = useState([]);
   const [promotionData, setPromotionData] = useState([]);
-  const [systemActivityData, setSystemActivityData] = useState([]);
+  const [systemActivityData, setSystemActivityData] = useState({
+    successLogins: 0,
+    failedLogins: 0,
+    dataUpdates: 0,
+    errors: 0,
+    totalUsers: 0,
+    totalProducts: 0,
+    totalOrders: 0,
+    activityOverTime: [],
+    activityLog: []
+  });
   const [deliveryData, setDeliveryData] = useState([]);
   const [feedbackData, setFeedbackData] = useState([]);
   
@@ -70,6 +80,7 @@ const Reports = () => {
   const fetchData = async (fetchFunction, setter) => {
     try {
       const data = await fetchFunction();
+      console.log('Fetched data:', data);
       if (data) {
         setter(data);
       } else {
@@ -146,10 +157,27 @@ const Reports = () => {
           // System activity data
           fetchData(
             () => {
+              console.log('Fetching system activity data...');
               return reportsApi.getSystemActivityData(timeRange);
             },
             (data) => {
-              setSystemActivityData(data);
+              console.log('System activity data received:', data);
+              if (data) {
+                setSystemActivityData(data);
+              } else {
+                // Initialize with empty structure if no data
+                setSystemActivityData({
+                  successLogins: 0,
+                  failedLogins: 0,
+                  dataUpdates: 0,
+                  errors: 0,
+                  totalUsers: 0,
+                  totalProducts: 0,
+                  totalOrders: 0,
+                  activityOverTime: [],
+                  activityLog: []
+                });
+              }
             }
           ),
           

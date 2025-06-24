@@ -13,19 +13,36 @@ const { Title, Text } = Typography;
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28FD0'];
 const RATING_COLORS = ['#FF4D4F', '#FFA940', '#FADB14', '#73D13D', '#40A9FF'];
 
-const FeedbackReport = () => {
+const FeedbackReport = ({ 
+  feedbackData: propsFeedbackData,
+  exportToPDF,
+  exportToExcel,
+  sendReportEmail,
+  exportLoading,
+  setExportLoading 
+}) => {
   const [feedbackData, setFeedbackData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // If feedbackData is provided as props, use it
+    if (propsFeedbackData) {
+      console.log("Using feedback data from props:", propsFeedbackData);
+      setFeedbackData(propsFeedbackData);
+      return;
+    }
+
+    // Otherwise fetch it
     const fetchData = async () => {
       setLoading(true);
       try {
         const data = await reportsApi.getFeedbackData();
+        console.log("Fetched feedback data:", data);
         setFeedbackData(data);
         setError(null);
       } catch (err) {
+        console.error("Error fetching feedback data:", err);
         setError('Không thể tải dữ liệu phản hồi. Vui lòng thử lại sau.');
       } finally {
         setLoading(false);
@@ -33,7 +50,7 @@ const FeedbackReport = () => {
     };
 
     fetchData();
-  }, []);
+  }, [propsFeedbackData]);
 
   if (error) {
     return (
@@ -60,22 +77,71 @@ const FeedbackReport = () => {
     return <Empty description="Không có dữ liệu phản hồi" />;
   }
 
-  const sampleData = {
+  // Create a sample data structure if the actual data is missing properties
+  const processedData = {
     totalReviews: feedbackData.totalReviews || 0,
     averageRating: feedbackData.averageRating ? parseFloat(feedbackData.averageRating.toFixed(1)) : 0,
     ratingDistribution: feedbackData.ratingDistribution || [
-      { rating: 5, count: 0 },
-      { rating: 4, count: 0 },
-      { rating: 3, count: 0 },
-      { rating: 2, count: 0 },
-      { rating: 1, count: 0 }
+      { rating: 5, count: feedbackData.rating5Count || 0 },
+      { rating: 4, count: feedbackData.rating4Count || 0 },
+      { rating: 3, count: feedbackData.rating3Count || 0 },
+      { rating: 2, count: feedbackData.rating2Count || 0 },
+      { rating: 1, count: feedbackData.rating1Count || 0 }
     ],
     recentReviews: feedbackData.recentReviews || [],
     topReviewedProducts: feedbackData.topReviewedProducts || [],
     reviewsOverTime: feedbackData.reviewsOverTime || []
   };
 
-  const { totalReviews, averageRating, ratingDistribution, recentReviews, topReviewedProducts, reviewsOverTime } = sampleData;
+  // If we have recentFeedback field instead of recentReviews, map it
+  if (!processedData.recentReviews.length && feedbackData.recentFeedback && Array.isArray(feedbackData.recentFeedback)) {
+    console.log("Processing recentFeedback data:", feedbackData.recentFeedback);
+    processedData.recentReviews = feedbackData.recentFeedback.map(feedback => ({
+      id: feedback.id || feedback._id,
+      user: feedback.customer || feedback.userName || feedback.user?.name || 'Khách hàng',
+      product: feedback.product || feedback.productName || 'Sản phẩm',
+      rating: feedback.rating,
+      comment: feedback.comment || feedback.content || '',
+      date: feedback.createdAt || feedback.date || new Date(),
+      isPublished: feedback.isPublished !== undefined ? feedback.isPublished : true,
+      userImage: feedback.userImage || feedback.avatar,
+      productImage: feedback.productImage || feedback.image
+    }));
+    
+    // Sort by date (newest first)
+    processedData.recentReviews.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }
+
+  // If we have ratings but no distribution, create it
+  if (!feedbackData.ratingDistribution && feedbackData.ratings && Array.isArray(feedbackData.ratings)) {
+    const distribution = [
+      { rating: 5, count: 0 },
+      { rating: 4, count: 0 },
+      { rating: 3, count: 0 },
+      { rating: 2, count: 0 },
+      { rating: 1, count: 0 }
+    ];
+    
+    feedbackData.ratings.forEach(rating => {
+      const ratingValue = Math.round(rating.rating);
+      if (ratingValue >= 1 && ratingValue <= 5) {
+        distribution[5 - ratingValue].count++;
+      }
+    });
+    
+    processedData.ratingDistribution = distribution;
+    processedData.recentReviews = feedbackData.ratings.slice(0, 10).map(rating => ({
+      id: rating._id || rating.id || `review-${Math.random()}`,
+      user: rating.userName || rating.user?.name || 'Khách hàng',
+      product: rating.productName || rating.product?.name || 'Sản phẩm',
+      rating: rating.rating,
+      comment: rating.comment || rating.content || '',
+      date: rating.createdAt || rating.date || new Date(),
+      isPublished: rating.isPublished !== undefined ? rating.isPublished : true
+    }));
+  }
+
+  const { totalReviews, averageRating, ratingDistribution, recentReviews, topReviewedProducts, reviewsOverTime } = processedData;
 
   const chartData = ratingDistribution.map(item => ({
     name: `${item.rating} sao`,
@@ -159,7 +225,43 @@ const FeedbackReport = () => {
   };
 
   return (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space direction="vertical" size="large" style={{ width: '100%', padding: '20px' }}>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-bold text-gray-800">Báo cáo phản hồi khách hàng</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => exportToPDF('feedback', setExportLoading)}
+            disabled={exportLoading || !feedbackData}
+            className="px-3 py-1.5 bg-red-500 text-white rounded-md text-sm font-medium flex items-center disabled:opacity-50"
+          >
+            {exportLoading ? (
+              <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-white rounded-full"></span>
+            ) : null}
+            Xuất PDF
+          </button>
+          <button
+            onClick={() => exportToExcel(recentReviews || [], 'feedback', setExportLoading)}
+            disabled={exportLoading || !feedbackData}
+            className="px-3 py-1.5 bg-green-500 text-white rounded-md text-sm font-medium flex items-center disabled:opacity-50"
+          >
+            {exportLoading ? (
+              <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-white rounded-full"></span>
+            ) : null}
+            Xuất Excel
+          </button>
+          <button
+            onClick={() => sendReportEmail('feedback', setExportLoading)}
+            disabled={exportLoading || !feedbackData}
+            className="px-3 py-1.5 bg-blue-500 text-white rounded-md text-sm font-medium flex items-center disabled:opacity-50"
+          >
+            {exportLoading ? (
+              <span className="animate-spin h-4 w-4 mr-2 border-t-2 border-white rounded-full"></span>
+            ) : null}
+            Gửi Email
+          </button>
+        </div>
+      </div>
+
       <Row gutter={16}>
         <Col xs={24} sm={8}>
           <Card>
@@ -344,7 +446,9 @@ const FeedbackReport = () => {
         {recentReviews && recentReviews.length > 0 ? (
           <Table
             columns={recentReviewColumns}
-            dataSource={recentReviews.map(item => ({ ...item, key: item.id }))}
+            dataSource={recentReviews
+              .sort((a, b) => new Date(b.date) - new Date(a.date)) // Sort by date (newest first)
+              .map(item => ({ ...item, key: item.id || item._id || `review-${Math.random()}` }))}
             pagination={{ pageSize: 5 }}
             scroll={{ x: 'max-content' }}
           />
@@ -357,12 +461,12 @@ const FeedbackReport = () => {
 };
 
 FeedbackReport.propTypes = {
-  loading: PropTypes.bool,
-  setLoading: PropTypes.func.isRequired
-};
-
-FeedbackReport.defaultProps = {
-  loading: false
+  feedbackData: PropTypes.object,
+  exportToPDF: PropTypes.func.isRequired,
+  exportToExcel: PropTypes.func.isRequired,
+  sendReportEmail: PropTypes.func.isRequired,
+  exportLoading: PropTypes.bool,
+  setExportLoading: PropTypes.func.isRequired
 };
 
 export default FeedbackReport; 

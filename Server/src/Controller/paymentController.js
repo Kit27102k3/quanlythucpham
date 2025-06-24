@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import moment from "moment";
 import { SEPAY } from "../config/paymentConfig.js";
 import SavedVoucher from "../Model/SavedVoucher.js";
+import Product from "../Model/Products.js";
 
 dotenv.config();
 const SEPAY_API_URL = process.env.SEPAY_API_URL;
@@ -234,6 +235,33 @@ export const createPayment = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Thiếu thông tin cần thiết: amount, products, paymentMethod, userId"
+      });
+    }
+
+    // Kiểm tra hạn sử dụng của tất cả sản phẩm
+    const currentDate = new Date();
+    const productIds = products.map(product => product.productId);
+    const productDetails = await Product.find({ _id: { $in: productIds } });
+    
+    // Tìm sản phẩm đã hết hạn
+    const expiredProducts = productDetails.filter(product => {
+      if (product.expiryDate) {
+        const expiryDate = new Date(product.expiryDate);
+        return expiryDate < currentDate;
+      }
+      return false;
+    });
+    
+    // Nếu có sản phẩm hết hạn, từ chối tạo thanh toán
+    if (expiredProducts.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Không thể thanh toán vì có sản phẩm đã hết hạn sử dụng",
+        expiredProducts: expiredProducts.map(p => ({
+          id: p._id,
+          name: p.productName,
+          expiryDate: p.expiryDate
+        }))
       });
     }
 

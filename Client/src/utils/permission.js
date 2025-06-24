@@ -23,7 +23,6 @@ export const canAccess = (role, pageKey) => {
         "tips",
         "reports",
         "settings",
-        "delivery"
       ],
       manager: [
         "dashboard",
@@ -41,7 +40,6 @@ export const canAccess = (role, pageKey) => {
         "coupons",
         "tips",
         "reports",
-        "delivery"
       ],
       employee: [
 

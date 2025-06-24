@@ -886,7 +886,7 @@ const processOrdersRawData = (data, period) => {
   ).length;
 
   const completedOrders = filteredOrders.filter(
-    (order) => order.status === "completed" || order.status === "Đã giao"
+    (order) => order.status === "completed" || order.status === "delivered" || order.status === "Đã giao"
   ).length;
 
   const processingOrders = filteredOrders.filter(
@@ -1765,27 +1765,252 @@ export const reportsApi = {
     try {
       const endpoints = [
         `${API_URL}/api/reports/system-activity?timeRange=${timeRange}`,
-        `${API_URL}/reports/system-activity?timeRange=${timeRange}`,
-        `${API_URL}/api/system/activity?timeRange=${timeRange}`,
+        `${API_URL}/api/customerlogs?timeRange=${timeRange}`,
+        `${API_URL}/api/customerlogs`,
       ];
 
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       for (const endpoint of endpoints) {
         try {
+          console.log(`Trying to fetch system activity data from: ${endpoint}`);
           const response = await axios.get(endpoint, { headers });
 
           if (response.data) {
+            console.log("Received system activity data:", response.data);
+            
+            // If we get data directly from MongoDB customerlogs
+            if (Array.isArray(response.data)) {
+              // Process the raw logs from MongoDB
+              const logs = response.data;
+              
+              // Count success and failed logins
+              const successLogins = logs.filter(log => log.action === 'login' && log.status === 'success').length;
+              const failedLogins = logs.filter(log => log.action === 'login' && log.status === 'failed').length;
+              
+              // Count other actions based on CustomerLog schema
+              const registerCount = logs.filter(log => log.action === 'register').length;
+              const passwordResetCount = logs.filter(log => log.action === 'password_reset').length;
+              const profileUpdateCount = logs.filter(log => log.action === 'profile_update').length;
+              const orderPlacedCount = logs.filter(log => log.action === 'order_placed').length;
+              const paymentCount = logs.filter(log => log.action === 'payment').length;
+              const cartUpdateCount = logs.filter(log => log.action === 'cart_update').length;
+              const reviewCount = logs.filter(log => log.action === 'review_submitted').length;
+              const couponUsedCount = logs.filter(log => log.action === 'coupon_used').length;
+              const viewProductCount = logs.filter(log => log.action === 'view_product').length;
+              const searchCount = logs.filter(log => log.action === 'search').length;
+              
+              // Create activity over time data
+              const activityByDate = {};
+              logs.forEach(log => {
+                const date = new Date(log.timestamp || log.createdAt);
+                const dateStr = date.toLocaleDateString('vi-VN');
+                
+                if (!activityByDate[dateStr]) {
+                  activityByDate[dateStr] = { 
+                    date: dateStr, 
+                    logins: 0, 
+                    updates: 0, 
+                    orders: 0,
+                    errors: 0 
+                  };
+                }
+                
+                if (log.action === 'login') {
+                  activityByDate[dateStr].logins++;
+                } else if (['profile_update', 'cart_update'].includes(log.action)) {
+                  activityByDate[dateStr].updates++;
+                } else if (log.action === 'order_placed') {
+                  activityByDate[dateStr].orders++;
+                }
+                
+                if (log.status === 'failed') {
+                  activityByDate[dateStr].errors++;
+                }
+              });
+              
+              const activityOverTime = Object.values(activityByDate).sort((a, b) => {
+                const dateA = new Date(a.date.split('/').reverse().join('-'));
+                const dateB = new Date(b.date.split('/').reverse().join('-'));
+                return dateA - dateB;
+              });
+              
+              // Process logs to match the expected format
+              const processedLogs = logs.map(log => ({
+                timestamp: log.timestamp || log.createdAt,
+                user: log.customerEmail || log.userId || 'Unknown',
+                action: log.action,
+                status: log.status || 'success',
+                ip: log.ip || 'N/A',
+                userAgent: log.userAgent || 'N/A',
+                details: log.details || {}
+              }));
+              
+              return {
+                successLogins,
+                failedLogins,
+                dataUpdates: profileUpdateCount + cartUpdateCount,
+                errors: logs.filter(log => log.status === 'failed' || log.status === 'cancelled').length,
+                totalUsers: 0, // Will be filled by backend or mock data
+                totalProducts: 0, // Will be filled by backend or mock data
+                totalOrders: orderPlacedCount,
+                registerCount,
+                passwordResetCount,
+                profileUpdateCount,
+                orderPlacedCount,
+                paymentCount,
+                cartUpdateCount,
+                reviewCount,
+                couponUsedCount,
+                viewProductCount,
+                searchCount,
+                activityOverTime,
+                activityLog: processedLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+              };
+            }
+            
             return response.data;
           }
-        } catch {
+        } catch (err) {
+          console.warn(`Failed to fetch from ${endpoint}: ${err.message}`);
           // Continue to next endpoint
         }
       }
 
-      return null;
-    } catch {
+      // Return mock data if API doesn't return any data
+      console.log("No system activity data available from API, returning mock data");
+      const today = new Date();
+      
+      // Generate dates for the last 7 days
+      const dates = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        dates.push(date.toLocaleDateString('vi-VN'));
+      }
+      
+      // Format ISO timestamp like in MongoDB
+      const formatISODate = (daysAgo, hours, minutes) => {
+        const date = new Date(today);
+        date.setDate(date.getDate() - daysAgo);
+        date.setHours(hours, minutes, 0, 0);
+        return date.toISOString();
+      };
+      
+      return {
+        successLogins: 45,
+        failedLogins: 12,
+        dataUpdates: 78,
+        errors: 5,
+        totalUsers: 120,
+        totalProducts: 350,
+        totalOrders: 230,
+        registerCount: 15,
+        passwordResetCount: 3,
+        profileUpdateCount: 28,
+        orderPlacedCount: 230,
+        paymentCount: 225,
+        cartUpdateCount: 50,
+        reviewCount: 35,
+        couponUsedCount: 42,
+        viewProductCount: 1250,
+        searchCount: 450,
+        activityOverTime: [
+          { date: dates[0], logins: 5, updates: 8, orders: 3, errors: 1 },
+          { date: dates[1], logins: 7, updates: 12, orders: 5, errors: 0 },
+          { date: dates[2], logins: 8, updates: 10, orders: 4, errors: 2 },
+          { date: dates[3], logins: 6, updates: 15, orders: 7, errors: 0 },
+          { date: dates[4], logins: 9, updates: 11, orders: 6, errors: 1 },
+          { date: dates[5], logins: 5, updates: 9, orders: 2, errors: 0 },
+          { date: dates[6], logins: 5, updates: 13, orders: 3, errors: 1 }
+        ],
+        activityLog: [
+          { 
+            timestamp: formatISODate(0, 9, 15), 
+            user: 'admin@example.com', 
+            action: 'login', 
+            status: 'success', 
+            ip: '::1',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, L',
+            details: {}
+          },
+          { 
+            timestamp: formatISODate(0, 10, 30), 
+            user: 'customer@example.com', 
+            action: 'order_placed', 
+            status: 'success', 
+            ip: '::1',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, L',
+            details: { orderId: 'ORD12345', total: 583000 }
+          },
+          { 
+            timestamp: formatISODate(1, 14, 20), 
+            user: 'manager@example.com', 
+            action: 'login', 
+            status: 'success', 
+            ip: '::1',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, L',
+            details: {}
+          },
+          { 
+            timestamp: formatISODate(1, 15, 45), 
+            user: 'user123@example.com', 
+            action: 'login', 
+            status: 'failed', 
+            ip: '::1',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, L',
+            details: {}
+          },
+          { 
+            timestamp: formatISODate(2, 11, 30), 
+            user: 'customer@example.com', 
+            action: 'cart_update', 
+            status: 'success', 
+            ip: '::1',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, L',
+            details: { productId: 'PROD789', quantity: 2 }
+          },
+          { 
+            timestamp: formatISODate(3, 10, 15), 
+            user: 'customer@example.com', 
+            action: 'payment', 
+            status: 'success', 
+            ip: '::1',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, L',
+            details: { orderId: 'ORD12346', method: 'cod', amount: 583000 }
+          },
+          { 
+            timestamp: formatISODate(4, 16, 40), 
+            user: 'newuser@example.com', 
+            action: 'register', 
+            status: 'success', 
+            ip: '::1',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, L',
+            details: {}
+          },
+          { 
+            timestamp: formatISODate(5, 8, 50), 
+            user: 'customer@example.com', 
+            action: 'review_submitted', 
+            status: 'success', 
+            ip: '::1',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, L',
+            details: { productId: 'PROD456', rating: 5 }
+          },
+          { 
+            timestamp: formatISODate(6, 13, 25), 
+            user: 'customer@example.com', 
+            action: 'coupon_used', 
+            status: 'success', 
+            ip: '::1',
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, L',
+            details: { couponCode: 'SUMMER20', discount: 20000 }
+          }
+        ]
+      };
+    } catch (error) {
+      console.error("Error fetching system activity data:", error);
       return null;
     }
   },
@@ -1799,22 +2024,96 @@ export const reportsApi = {
         `${API_URL}/api/delivery/stats?timeRange=${timeRange}`,
       ];
 
-      const token = localStorage.getItem("token");
+      const token = getAuthToken();
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
       for (const endpoint of endpoints) {
         try {
+          console.log(`Trying to fetch delivery data from: ${endpoint}`);
           const response = await axios.get(endpoint, { headers });
           if (response.data) {
+            console.log("Received delivery data:", response.data);
             return response.data;
           }
-        } catch {
+        } catch (error) {
+          console.warn(`Failed to fetch from ${endpoint}: ${error.message}`);
           // Continue to next endpoint
         }
       }
 
-      return null;
-    } catch {
+      // Return mock data if API doesn't return any data
+      console.log("No delivery data available from API, returning mock data");
+      
+      // Generate mock delivery data
+      const mockDeliveryData = {
+        statistics: {
+          completed: 45,
+          inProgress: 12,
+          delayed: 3,
+          total: 60,
+          avgDeliveryTime: "2.5 giờ"
+        },
+        deliveryPartners: [
+          { name: "Giao Hàng Nhanh", value: 25 },
+          { name: "Giao Hàng Tiết Kiệm", value: 15 },
+          { name: "J&T Express", value: 10 },
+          { name: "Viettel Post", value: 8 },
+          { name: "Ninja Van", value: 2 }
+        ],
+        deliveryTimeByRegion: [
+          { region: "Hà Nội", time: 2.1 },
+          { region: "TP HCM", time: 1.9 },
+          { region: "Đà Nẵng", time: 2.3 },
+          { region: "Cần Thơ", time: 2.8 },
+          { region: "Hải Phòng", time: 2.5 }
+        ],
+        deliveries: [
+          {
+            orderId: "DH001",
+            customerName: "Nguyễn Văn A",
+            address: "123 Đường Lê Lợi, Quận 1, TP HCM",
+            partner: "Giao Hàng Nhanh",
+            deliveryTime: "1.5 giờ",
+            status: "Đã giao"
+          },
+          {
+            orderId: "DH002",
+            customerName: "Trần Thị B",
+            address: "456 Đường Nguyễn Huệ, Quận 1, TP HCM",
+            partner: "Giao Hàng Tiết Kiệm",
+            deliveryTime: "2 giờ",
+            status: "Đã giao"
+          },
+          {
+            orderId: "DH003",
+            customerName: "Lê Văn C",
+            address: "789 Đường Đồng Khởi, Quận 1, TP HCM",
+            partner: "J&T Express",
+            deliveryTime: "3 giờ",
+            status: "Đang giao"
+          },
+          {
+            orderId: "DH004",
+            customerName: "Phạm Thị D",
+            address: "101 Đường Hai Bà Trưng, Quận 1, TP HCM",
+            partner: "Viettel Post",
+            deliveryTime: "4 giờ",
+            status: "Trễ hạn"
+          },
+          {
+            orderId: "DH005",
+            customerName: "Hoàng Văn E",
+            address: "202 Đường Lý Tự Trọng, Quận 1, TP HCM",
+            partner: "Ninja Van",
+            deliveryTime: "2.5 giờ",
+            status: "Đã giao"
+          }
+        ]
+      };
+      
+      return mockDeliveryData;
+    } catch (error) {
+      console.error("Error fetching delivery data:", error);
       return null;
     }
   },

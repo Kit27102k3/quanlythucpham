@@ -212,14 +212,14 @@ const DeliveryReport = ({
                       <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            delivery.status === "Hoàn thành"
+                            delivery.status === "Hoàn thành" || delivery.status === "Đã giao" || delivery.status === "delivered"
                               ? "bg-green-100 text-green-800"
                               : delivery.status === "Đang giao"
                               ? "bg-yellow-100 text-yellow-800"
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {delivery.status}
+                          {delivery.status === "Hoàn thành" || delivery.status === "delivered" ? "Đã giao" : delivery.status}
                         </span>
                       </td>
                     </tr>

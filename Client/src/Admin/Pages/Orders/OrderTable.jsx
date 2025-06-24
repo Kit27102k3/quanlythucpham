@@ -173,10 +173,47 @@ const OrderTable = ({
     );
   };
 
+  // Template cho cột chi nhánh
+  const branchTemplate = (rowData) => {
+    let branchName = "N/A";
+    let branchId = "";
+    
+    // Xử lý các trường hợp khác nhau của dữ liệu chi nhánh
+    if (rowData.branchId) {
+      if (typeof rowData.branchId === 'object') {
+        branchName = rowData.branchId.name || "Chi nhánh không xác định";
+        branchId = rowData.branchId._id;
+      } else if (typeof rowData.branchId === 'string') {
+        branchId = rowData.branchId;
+        branchName = `ID: ${rowData.branchId.substring(0, 8)}...`;
+      }
+    } else if (rowData.branch) {
+      // Một số đơn hàng có thể lưu thông tin chi nhánh trong trường branch
+      if (typeof rowData.branch === 'object') {
+        branchName = rowData.branch.name || "Chi nhánh không xác định";
+        branchId = rowData.branch._id;
+      } else if (typeof rowData.branch === 'string') {
+        branchId = rowData.branch;
+        branchName = `ID: ${rowData.branch.substring(0, 8)}...`;
+      }
+    }
+    
+    return (
+      <div className="p-2">
+        <span className="text-sm font-medium text-gray-700 block">
+          {branchName}
+        </span>
+        {branchId && (
+          <span className="text-xs text-gray-500 block truncate" title={branchId}>
+            {branchId.substring(0, 8)}...
+          </span>
+        )}
+      </div>
+    );
+  };
+
   // Template cho cột trạng thái thanh toán
   const paymentStatusTemplate = (rowData) => {
-    console.log("Rendering payment status for order:", rowData._id, "isPaid:", rowData.isPaid);
-    
     // Đọc danh sách đơn hàng đã thanh toán từ localStorage
     let manuallyMarkedAsPaid = [];
     try {
@@ -196,10 +233,7 @@ const OrderTable = ({
     // Ghi đè trạng thái nếu đơn hàng nằm trong danh sách đã đánh dấu thủ công
     if (manuallyMarkedAsPaid.includes(rowData._id)) {
       isPaid = true;
-      console.log(`Đơn hàng ${rowData._id} được đánh dấu thủ công là đã thanh toán`);
     }
-    
-    console.log("Đã xác định isPaid:", isPaid, "cho đơn hàng:", rowData._id);
     
     return (
       <div className="p-2">
@@ -335,6 +369,15 @@ const OrderTable = ({
           style={{ width: "140px" }}
           headerClassName="bg-gray-100 p-4"
         />
+        {userRole === "admin" && (
+          <Column
+            field="branchId"
+            header="Chi nhánh"
+            body={branchTemplate}
+            style={{ width: "140px" }}
+            headerClassName="bg-gray-100 p-4"
+          />
+        )}
         <Column
           field="paymentMethod"
           header="Phương thức"

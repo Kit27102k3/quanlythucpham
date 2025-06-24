@@ -12,6 +12,17 @@ export const getCart = async (req, res) => {
         .json({  message: "Giỏ hàng không tồn tại" });
     }
 
+    // Kiểm tra sản phẩm đã hết hạn
+    const currentDate = new Date();
+    
+    // Đánh dấu sản phẩm đã hết hạn
+    cart.items.forEach(item => {
+      if (item.productId && item.productId.expiryDate) {
+        const expiryDate = new Date(item.productId.expiryDate);
+        item.productId.isExpired = expiryDate < currentDate;
+      }
+    });
+    
     cart.items.sort((a, b) => b.createdAt - a.createdAt);
 
     res.status(200).json({ success: true, cart });

@@ -111,10 +111,14 @@ const Delivery = () => {
       return;
     }
 
+    setLoading(true);
     try {
-      setLoading(true);
+      // Lấy danh sách đơn hàng từ API
       const response = await orderApi.getOrdersByBranch(branchId);
+
+      // Kiểm tra dữ liệu trả về
       if (response && response.data) {
+        // Nếu response.data có thuộc tính orders, sử dụng nó
         if (Array.isArray(response.data.orders)) {
           console.log(
             "Tìm thấy mảng orders với",
@@ -122,23 +126,10 @@ const Delivery = () => {
             "đơn hàng"
           );
 
-          // Lọc đơn hàng theo vai trò shipper - chỉ hiển thị đơn hàng có trạng thái "sorting_facility"
-          if (currentRole === "shipper") {
-            const filteredOrders = response.data.orders.filter(
-              (order) => order.status === "sorting_facility"
-            );
-            setOrders(filteredOrders);
-            setFilteredOrders(filteredOrders);
-            setTotalRecords(filteredOrders.length);
-            console.log(
-              "Vai trò shipper: Lọc đơn hàng trạng thái 'sorting_facility':",
-              filteredOrders.length
-            );
-          } else {
-            setOrders(response.data.orders);
-            setFilteredOrders(response.data.orders);
-            setTotalRecords(response.data.orders.length);
-          }
+          // Không lọc theo vai trò shipper nữa, hiển thị tất cả đơn hàng
+          setOrders(response.data.orders);
+          setFilteredOrders(response.data.orders);
+          setTotalRecords(response.data.orders.length);
         }
         // Nếu response.data là mảng, sử dụng nó
         else if (Array.isArray(response.data)) {
@@ -148,19 +139,10 @@ const Delivery = () => {
             "đơn hàng"
           );
 
-          // Lọc đơn hàng theo vai trò shipper - chỉ hiển thị đơn hàng có trạng thái "sorting_facility"
-          if (currentRole === "shipper") {
-            const filteredOrders = response.data.filter(
-              (order) => order.status === "sorting_facility"
-            );
-            setOrders(filteredOrders);
-            setFilteredOrders(filteredOrders);
-            setTotalRecords(filteredOrders.length);
-          } else {
-            setOrders(response.data);
-            setFilteredOrders(response.data);
-            setTotalRecords(response.data.length);
-          }
+          // Không lọc theo vai trò shipper nữa, hiển thị tất cả đơn hàng
+          setOrders(response.data);
+          setFilteredOrders(response.data);
+          setTotalRecords(response.data.length);
         }
         // Nếu response.data không phải mảng và không có thuộc tính orders
         else {
@@ -203,14 +185,26 @@ const Delivery = () => {
     console.log("Đang lọc đơn hàng từ:", orders.length, "đơn hàng");
     let filtered = [...orders];
 
-    // Nếu là shipper, chỉ hiển thị đơn hàng có trạng thái "sorting_facility"
-    if (currentRole === "shipper") {
-      filtered = filtered.filter(
-        (order) => order.status === "sorting_facility"
-      );
-    }
-    // Nếu không phải shipper, lọc theo trạng thái người dùng chọn
-    else if (statusFilter !== "all") {
+    // Lọc đơn hàng theo ngày updatedAt - chỉ hiển thị đơn hàng có ngày updatedAt trùng với ngày hiện tại
+    const today = new Date();
+    const todayString = today.toISOString().split('T')[0]; // Lấy chuỗi YYYY-MM-DD
+    
+    filtered = filtered.filter((order) => {
+      if (!order.updatedAt) return false;
+      
+      // Lấy phần ngày tháng năm từ chuỗi ISO
+      const updatedDateString = new Date(order.updatedAt).toISOString().split('T')[0];
+      
+      console.log("Đơn hàng:", order._id, "- updatedAt:", updatedDateString, "- today:", todayString, "- status:", order.status);
+      
+      // So sánh chuỗi ngày tháng
+      return updatedDateString === todayString;
+    });
+
+    console.log("Sau khi lọc theo ngày updatedAt:", filtered.length, "đơn hàng");
+
+    // Lọc theo trạng thái người dùng chọn (không phân biệt vai trò)
+    if (statusFilter !== "all") {
       filtered = filtered.filter((order) => order.status === statusFilter);
     }
 
@@ -389,6 +383,12 @@ const Delivery = () => {
           <p className="text-gray-600">
             Quản lý và cập nhật trạng thái đơn hàng đang giao
           </p>
+          <div className="mt-2 bg-blue-50 border border-blue-200 rounded-md p-2">
+            <p className="text-sm text-blue-700">
+              <i className="pi pi-info-circle mr-2"></i>
+              Chỉ hiển thị đơn hàng được cập nhật trong ngày hôm nay ({new Date().toLocaleDateString('vi-VN')}), bao gồm tất cả trạng thái đơn hàng
+            </p>
+          </div>
         </div>
 
         {/* Bộ lọc */}

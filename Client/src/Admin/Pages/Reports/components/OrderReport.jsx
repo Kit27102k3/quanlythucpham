@@ -142,6 +142,18 @@ const OrderReport = ({
     }).format(value);
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit", 
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(date);
+  };
+
   const handleRefresh = () => {
     fetchOrderData();
   };
@@ -355,7 +367,7 @@ const OrderReport = ({
           {/* Bảng top đơn hàng giá trị cao */}
           <div>
             <h3 className="text-lg font-medium text-gray-800 mb-4">Đơn hàng giá trị cao nhất</h3>
-            {topOrders.length > 0 ? (
+            {topOrders && topOrders.length > 0 ? (
               <div className="overflow-x-auto bg-gray-50 p-4 rounded-lg">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-100">
@@ -381,28 +393,28 @@ const OrderReport = ({
                     {topOrders.map((order, index) => (
                       <tr key={index} className={index < 3 ? "bg-yellow-50" : ""}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {order.id}
+                          {order.id || order._id || `#${index+1}`}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {order.customer}
+                          {order.customer || order.customerName || "Khách hàng"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-700">
-                          {formatPrice(order.total)}
+                          {formatPrice(order.total || order.totalAmount || 0)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                               order.status === 'Đang xử lý' ? 'bg-yellow-100 text-yellow-800' : 
                               order.status === 'Đang giao' ? 'bg-blue-100 text-blue-800' : 
-                              order.status === 'Đã giao' ? 'bg-green-100 text-green-800' : 
+                              (order.status === 'Đã giao' || order.status === 'Đã hoàn thành' || order.status === 'completed' || order.status === 'delivered') ? 'bg-green-100 text-green-800' : 
                               'bg-red-100 text-red-800'
                             }`}
                           >
-                            {order.status}
+                            {order.status === 'completed' || order.status === 'delivered' ? 'Đã giao' : order.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {order.date}
+                          {order.date || formatDate(order.createdAt || order.orderDate || new Date())}
                         </td>
                       </tr>
                     ))}

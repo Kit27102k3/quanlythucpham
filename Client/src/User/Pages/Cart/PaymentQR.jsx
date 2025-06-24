@@ -260,7 +260,7 @@ const PaymentQR = () => {
                     className="w-40 h-40 object-contain"
                   />
                 </div>
-                <div className="mt-2 text-center">
+                <div className="mt-2 text-center flex space-x-2">
                   <button
                     onClick={forceCheckStatus}
                     disabled={checking || expired}
@@ -272,6 +272,16 @@ const PaymentQR = () => {
                   >
                     {checking ? "Đang kiểm tra..." : "Kiểm tra thanh toán"}
                   </button>
+                  <a
+                    href={qrCode}
+                    download={`QR-thanh-toan-${orderId}.png`}
+                    className="py-1.5 px-3 rounded-md bg-blue-500 hover:bg-blue-600 text-white transition-colors text-xs font-medium flex items-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Tải QR
+                  </a>
                 </div>
               </div>
 

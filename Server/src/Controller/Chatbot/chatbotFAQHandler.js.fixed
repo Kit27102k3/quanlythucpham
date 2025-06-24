@@ -1,7 +1,0 @@
-﻿/**
- * Hệ thống xử lý câu hỏi thường gặp (FAQ)
- * File này chứa các hàm để trả lời các câu hỏi chung về cửa hàng, chính sách, và dịch vụ
- */
-
-// Định nghĩa từ khóa cho mỗi intent để tăng độ chính xác khi nhận diện câu hỏi
-export const intentKeywords = {

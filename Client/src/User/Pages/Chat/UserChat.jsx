@@ -770,13 +770,7 @@ const UserChat = ({ inProfile = false }) => {
               className="h-full"
             >
               <div className="flex flex-col gap-4 px-2">
-                {/* Hiển thị thẻ sản phẩm trước các tin nhắn */}
-                {chatProduct && (
-                  <div className="w-full mt-2 mb-4">
-                    {renderProductCard()}
-                  </div>
-                )}
-                
+                {/* Hiển thị tin nhắn */}
                 {messages.map((message, index) => (
                   <div
                     key={message.id || index}
@@ -838,6 +832,13 @@ const UserChat = ({ inProfile = false }) => {
                     )}
                   </div>
                 ))}
+                
+                {/* Hiển thị thẻ sản phẩm sau các tin nhắn */}
+                {chatProduct && (
+                  <div className="w-full mt-2 mb-4">
+                    {renderProductCard()}
+                  </div>
+                )}
                 
                 <div ref={messagesEndRef} />
               </div>
@@ -946,13 +947,7 @@ const UserChat = ({ inProfile = false }) => {
                 className="h-full"
               >
                 <div className="flex flex-col gap-4 px-2">
-                  {/* Hiển thị thẻ sản phẩm trước các tin nhắn */}
-                  {chatProduct && (
-                    <div className="w-full mt-2 mb-4">
-                      {renderProductCard()}
-                    </div>
-                  )}
-                  
+                  {/* Hiển thị tin nhắn */}
                   {messages.map((message, index) => (
                     <div
                       key={message.id || index}
@@ -1014,6 +1009,13 @@ const UserChat = ({ inProfile = false }) => {
                       )}
                     </div>
                   ))}
+                  
+                  {/* Hiển thị thẻ sản phẩm sau các tin nhắn */}
+                  {chatProduct && (
+                    <div className="w-full mt-2 mb-4">
+                      {renderProductCard()}
+                    </div>
+                  )}
                   
                   <div ref={messagesEndRef} />
                 </div>

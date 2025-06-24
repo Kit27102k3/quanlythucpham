@@ -22,6 +22,10 @@ const Products = () => {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [userRole, setUserRole] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [expiryNotification, setExpiryNotification] = useState({
+    show: false,
+    products: []
+  });
 
   // Pagination states
   const [first, setFirst] = useState(0);
@@ -76,8 +80,15 @@ const Products = () => {
     }
   }, [selectedBranch, userRole]);
 
+  // Check for expiring products
   useEffect(() => {
-    // Filter products based on search term
+    if (products.length > 0) {
+      checkExpiringProducts(products);
+    }
+  }, [products]);
+
+  // Filter products based on search term
+  useEffect(() => {
     const filtered = products.filter((product) =>
       searchTerm
         ? product?.productName?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -88,6 +99,49 @@ const Products = () => {
     setFirst(0);
   }, [products, searchTerm]);
 
+  // Function to check for products nearing expiry date
+  const checkExpiringProducts = (productsList) => {
+    const today = new Date();
+    const expiringProducts = [];
+    
+    productsList.forEach(product => {
+      if (product.expiryDate && product.productStatus !== "Hết hàng") {
+        const expiryDate = new Date(product.expiryDate);
+        const diffTime = expiryDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        // Different thresholds for meat products vs other products
+        const isMeatProduct = product.productCategory?.toLowerCase().includes("thịt") || 
+                             product.productName?.toLowerCase().includes("thịt");
+        
+        if ((isMeatProduct && diffDays <= 1) || (!isMeatProduct && diffDays <= 3)) {
+          expiringProducts.push({
+            ...product,
+            daysUntilExpiry: diffDays,
+            isMeat: isMeatProduct
+          });
+        }
+      }
+    });
+    
+    if (expiringProducts.length > 0) {
+      setExpiryNotification({
+        show: true,
+        products: expiringProducts
+      });
+    }
+  };
+
+  const handleCloseExpiryNotification = () => {
+    setExpiryNotification({ show: false, products: [] });
+  };
+
+  const handleDiscountExpiringProducts = (product) => {
+    setEditingProduct(product);
+    setEditVisible(true);
+  };
+
+  // Original functions
   const fetchAllProducts = async () => {
     try {
       setIsLoading(true);
@@ -115,8 +169,11 @@ const Products = () => {
       
       if (selectedBranch) {
         try {
+          // Đảm bảo selectedBranch là string
+          const branchIdString = String(selectedBranch);
+          
           // Thử gọi API getProductsByBranch
-          data = await productsApi.getProductsByBranch(selectedBranch);
+          data = await productsApi.getProductsByBranch(branchIdString);
         } catch (error) {
           console.error(`Không thể lấy sản phẩm theo chi nhánh: ${error.message}`);
           
@@ -151,7 +208,23 @@ const Products = () => {
   };
 
   const handleBranchChange = (e) => {
-    setSelectedBranch(e.value);
+    // Check if e.value is a valid ID string, or use null for "All branches"
+    const branchId = e.value === "" ? null : e.value;
+    
+    // Make sure we're not passing an object to selectedBranch
+    if (typeof e === 'object' && e !== null && typeof e.value === 'object') {
+      console.error("Invalid branch selection:", e);
+      setSelectedBranch(null);
+      fetchAllProducts();
+      return;
+    }
+    
+    setSelectedBranch(branchId);
+    
+    // If branch is null/empty (All branches), fetch all products
+    if (!branchId) {
+      fetchAllProducts();
+    }
   };
 
   const handleAddProduct = async (newProduct) => {
@@ -209,6 +282,66 @@ const Products = () => {
       <h1 className="text-xl md:text-2xl font-bold mb-2 md:mb-4">
         Quản Lý Sản Phẩm
       </h1>
+      
+      {/* Expiry notification */}
+      {expiryNotification.show && expiryNotification.products.length > 0 && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="font-bold text-yellow-700">
+              <i className="pi pi-exclamation-triangle mr-2 text-yellow-500"></i>
+              Cảnh báo: {expiryNotification.products.length} sản phẩm sắp hết hạn
+            </h3>
+            <Button 
+              icon="pi pi-times" 
+              className="p-button-text p-button-sm p-button-rounded" 
+              onClick={handleCloseExpiryNotification} 
+            />
+          </div>
+          <div className="max-h-48 overflow-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-yellow-100">
+                  <th className="p-2 text-left text-xs font-medium text-yellow-700">Sản phẩm</th>
+                  <th className="p-2 text-left text-xs font-medium text-yellow-700">Ngày hết hạn</th>
+                  <th className="p-2 text-left text-xs font-medium text-yellow-700">Còn (ngày)</th>
+                  <th className="p-2 text-left text-xs font-medium text-yellow-700">Tồn kho</th>
+                  <th className="p-2 text-xs font-medium text-yellow-700">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expiryNotification.products.map((product) => (
+                  <tr key={`expiry-${product._id}`} className="border-t border-yellow-200">
+                    <td className="p-2 text-xs">
+                      {product.productName}
+                      {product.isMeat && <span className="ml-1 text-red-500 text-[10px]">(Thịt)</span>}
+                    </td>
+                    <td className="p-2 text-xs">
+                      {new Date(product.expiryDate).toLocaleDateString('vi-VN')}
+                    </td>
+                    <td className="p-2 text-xs font-medium">
+                      <span className={product.daysUntilExpiry <= 0 ? 'text-red-600' : 'text-orange-500'}>
+                        {product.daysUntilExpiry}
+                      </span>
+                    </td>
+                    <td className="p-2 text-xs">{product.productStock}</td>
+                    <td className="p-2 text-xs text-center">
+                      <Button
+                        label="Giảm giá"
+                        className="p-button-sm p-button-warning text-[10px]"
+                        onClick={() => handleDiscountExpiringProducts(product)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-2 text-xs text-yellow-600">
+            <p>* Sản phẩm thịt/cá: cảnh báo trước 1 ngày, sản phẩm khác: cảnh báo trước 3 ngày</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row gap-2 mb-3 md:mb-5">
         <div className="w-full md:w-1/3 lg:w-2/5">
           <IconField iconPosition="left" className="w-full">
@@ -227,11 +360,11 @@ const Products = () => {
             <Dropdown
               value={selectedBranch}
               options={[
-                { label: "Tất cả chi nhánh"},
-                ...(Array.isArray(branches) ? branches : []).map(branch => ({
+                { label: "Tất cả chi nhánh", value: "" },
+                ...(Array.isArray(branches) ? branches.map(branch => ({
                   label: branch.name,
                   value: branch._id
-                }))
+                })) : [])
               ]}
               onChange={handleBranchChange}
               placeholder="Tất cả chi nhánh"

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
   PieChart,
@@ -16,17 +16,89 @@ import {
   Bar
 } from "recharts";
 import { reportsApi } from '../../../../api/reportsApi';
+import { authApi } from '../../../../api/authApi';
 import { toast } from 'react-toastify';
-
-// Chú thích về cách xử lý dữ liệu địa chỉ:
-// 1. Địa chỉ được trích xuất tỉnh/thành phố từ chuỗi đầy đủ
-// 2. Ví dụ: "122, ấp Mỹ Khánh A, Xã Long Hưng, Huyện Mỹ Tú, Tỉnh Sóc Trăng" -> "Sóc Trăng"
-// 3. Hoặc từ trường province nếu có sẵn trong dữ liệu
 
 const UserReport = ({ userData, exportToPDF, exportToExcel, sendReportEmail, exportLoading, setExportLoading }) => {
   const [loading, setLoading] = useState(false);
   const [localUserData, setLocalUserData] = useState(userData || {});
   const [timePeriod, setTimePeriod] = useState('month');
+  const [enhancedUsers, setEnhancedUsers] = useState([]);
+  
+  // Extract province specifically from address string
+  const extractProvinceFromAddress = (address) => {
+    if (!address || address === "Không xác định") return null;
+    
+    try {
+      // Better address parsing logic
+      const addressParts = address.split(',').map(part => part.trim());
+      
+      // Define common province keywords and prefixes
+      const provinceKeywords = ['tỉnh', 'tp.', 'thành phố', 't.p', 'tp'];
+      
+      // Try to find parts containing province indicators
+      for (let i = addressParts.length - 1; i >= 0; i--) {
+        const part = addressParts[i].toLowerCase();
+        
+        // Check if part contains any of the province keywords
+        if (provinceKeywords.some(keyword => part.includes(keyword))) {
+          // Extract the actual province name by removing the prefix
+          return addressParts[i]
+            .replace(/^(Tỉnh|TP\.|Thành phố|T\.P|TP)\s+/i, '')
+            .trim();
+        }
+      }
+      
+      // If no specific province indicator found, return the last part as a fallback
+      if (addressParts.length > 0) {
+        const lastPart = addressParts[addressParts.length - 1];
+        // If last part is too short or looks like a generic address part, try second-to-last
+        if (lastPart.length < 3 || /^(Việt Nam|VN)$/i.test(lastPart)) {
+          return addressParts.length > 1 ? addressParts[addressParts.length - 2] : lastPart;
+        }
+        return lastPart;
+      }
+    } catch (err) {
+      console.error("Lỗi khi trích xuất tỉnh:", err);
+    }
+    
+    return null;
+  };
+
+  // Update the province extraction with more robust logic
+  const extractProvince = (user) => {
+    // First try to use the province field directly
+    if (user.province && user.province !== "Không xác định") return user.province;
+    
+    // If no province field but address exists, try to extract from address
+    if (user.address && user.address !== "Không xác định") {
+      const extractedProvince = extractProvinceFromAddress(user.address);
+      if (extractedProvince) return extractedProvince;
+    }
+    
+    return "Không xác định";
+  };
+
+  // Generate better avatar URL based on user's name with consistent colors
+  const generateAvatarUrl = (user) => {
+    const name = user.name || user.fullName || user.userName || "User";
+    
+    // Create a simple hash from the name to get a consistent color
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    // Convert hash to RGB hex color
+    let color = Math.abs(hash).toString(16).substring(0, 6);
+    // Pad with zeros if needed
+    while (color.length < 6) {
+      color = '0' + color;
+    }
+
+    // Generate avatar URL with consistent background color
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${color}&color=fff&size=128`;
+  };
   
   // Tải dữ liệu người dùng khi component được mount hoặc userData thay đổi
   useEffect(() => {
@@ -42,9 +114,17 @@ const UserReport = ({ userData, exportToPDF, exportToExcel, sendReportEmail, exp
     fetchUserData();
   }, [timePeriod]);
 
+  // Enhanced function to fetch detailed user data
+  useEffect(() => {
+    if (localUserData?.users && localUserData.users.length > 0) {
+      enhanceUserData(localUserData.users);
+    }
+  }, [localUserData?.users]);
+
   // Hàm lấy dữ liệu từ API
   const fetchUserData = async () => {
     setLoading(true);
+    if (setExportLoading) setExportLoading(true);
     try {
       const data = await reportsApi.getUserDetailData(timePeriod);
       if (data) {
@@ -58,6 +138,46 @@ const UserReport = ({ userData, exportToPDF, exportToExcel, sendReportEmail, exp
       toast.error("Lỗi khi lấy dữ liệu người dùng: " + (error.message || "Lỗi không xác định"));
     } finally {
       setLoading(false);
+      if (setExportLoading) setExportLoading(false);
+    }
+  };
+  
+  // Function to enhance user data with additional details from authApi
+  const enhanceUserData = async (users) => {
+    try {
+      const enhancedUsersData = await Promise.all(
+        users.map(async (user) => {
+          try {
+            // Only fetch additional details if province is not available
+            if (user.id && (!user.province || user.province === "Không xác định")) {
+              try {
+                const response = await authApi.getUserById(user.id);
+                if (response && response.data) {
+                  // Merge the additional data with the existing user data
+                  return {
+                    ...user,
+                    province: response.data.province || extractProvinceFromAddress(response.data.address) || user.province,
+                    address: response.data.address || user.address,
+                    avatar: response.data.avatar || response.data.userImage || user.avatar,
+                  };
+                }
+              } catch {
+                // Log error without using the variable
+                console.log("Không thể lấy thông tin chi tiết cho người dùng:", user.id);
+                return user;
+              }
+            }
+            return user;
+          } catch (err) {
+            console.error("Lỗi khi xử lý người dùng:", err);
+            return user;
+          }
+        })
+      );
+      
+      setEnhancedUsers(enhancedUsersData);
+    } catch (err) {
+      console.error("Lỗi khi nâng cao dữ liệu người dùng:", err);
     }
   };
   
@@ -71,19 +191,55 @@ const UserReport = ({ userData, exportToPDF, exportToExcel, sendReportEmail, exp
     color: COLORS[index % COLORS.length]
   }));
 
-  // Handle data for provinces distribution
+  // Use the enhanced users array if available, otherwise use the original users
+  const displayUsers = enhancedUsers.length > 0 ? enhancedUsers : localUserData?.users || [];
+  
+  // Improve province data handling
   const provinceData = useMemo(() => {
-    const provinces = localUserData?.usersByProvince || [];
+    // Start with existing province data from API if available
+    let provinces = localUserData?.usersByProvince || [];
+    
+    // Always generate province data from users for better distribution visualization
+    if (displayUsers?.length > 0) {
+      // Create a map to count users by province
+      const provinceCount = {};
+      
+      // Count users for each province
+      displayUsers.forEach(user => {
+        const province = extractProvince(user);
+        if (province && province !== "Không xác định") {
+          provinceCount[province] = (provinceCount[province] || 0) + 1;
+        } else if (province === "Không xác định" && !provinceCount["Không xác định"]) {
+          // Only count "Không xác định" once to avoid overrepresentation
+          provinceCount["Không xác định"] = 1;
+        }
+      });
+      
+      // Convert to array format - only if we have province data to show
+      const generatedProvinces = Object.keys(provinceCount).map(province => ({
+        province,
+        count: provinceCount[province]
+      }));
+      
+      // Use generated data if it has more entries than the API data or API data is empty
+      if (generatedProvinces.length > provinces.length || provinces.length === 0) {
+        provinces = generatedProvinces;
+        console.log("Đã tạo dữ liệu tỉnh thành từ người dùng:", provinces);
+      }
+    }
     
     // Sort by count in descending order and take top 15
-    return provinces
+    const result = provinces
       .sort((a, b) => b.count - a.count)
       .slice(0, 15)
       .map((province, index) => ({
         ...province,
         color: COLORS[index % COLORS.length]
       }));
-  }, [localUserData, COLORS]);
+      
+    console.log("Dữ liệu tỉnh thành cuối cùng:", result);
+    return result;
+  }, [localUserData, COLORS, displayUsers]);
 
   // Add data for age distribution
   const ageData = useMemo(() => {
@@ -356,7 +512,7 @@ const UserReport = ({ userData, exportToPDF, exportToExcel, sendReportEmail, exp
       </div>
 
       {/* Chi tiết người dùng */}
-      {localUserData?.users && localUserData.users.length > 0 && (
+      {displayUsers && displayUsers.length > 0 && (
         <div className="border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <h3 className="text-lg font-semibold p-4 bg-gray-50 border-b border-gray-200">Chi tiết người dùng</h3>
           <div className="overflow-x-auto max-h-[500px] overflow-y-auto scrollbar-custom">
@@ -372,50 +528,57 @@ const UserReport = ({ userData, exportToPDF, exportToExcel, sendReportEmail, exp
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {localUserData.users.map((user, index) => (
-                  <tr key={index}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <img 
-                            className="h-10 w-10 rounded-full object-cover" 
-                            src={user.avatar || "/images/placeholder-avatar.png"} 
-                            alt={user.name || "Người dùng"}
-                            onError={(e) => { 
-                              e.target.onerror = null; 
-                              e.target.src = "/images/placeholder-avatar.png"; 
-                            }}
-                          />
+                {displayUsers.map((user, index) => {
+                  // Extract user's full name or default to username or "Không xác định"
+                  const userName = user.name || user.fullName || user.userName || "Không xác định";
+                  
+                  // Create default avatar URL using UI Avatars service with the user's name
+                  const avatarUrl = user.avatar || user.userImage || generateAvatarUrl(user);
+                  
+                  // Extract province information
+                  const province = extractProvince(user);
+                  
+                  return (
+                    <tr key={user.id || user._id || index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <img 
+                              className="h-10 w-10 rounded-full object-cover border border-gray-200" 
+                              src={avatarUrl} 
+                              alt={userName}
+                              onError={(e) => { 
+                                e.target.onerror = null; 
+                                e.target.src = generateAvatarUrl(user); 
+                              }}
+                            />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{userName}</div>
+                            <div className="text-sm text-gray-500">{user.username || user.userName || ""}</div>
+                          </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{user.name || "Không xác định"}</div>
-                          <div className="text-sm text-gray-500">{user.username || ""}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email || "Không có"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.province || (user.address ? (
-                        <span title={user.address}>
-                          {user.address.split(',').pop().trim().replace('Tỉnh', '').replace('TP', '').trim() || "Không có"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email || "Không có"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{province}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.phone || "Không có"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {user.createdAt || user.registeredAt ? 
+                          new Date(user.createdAt || user.registeredAt).toLocaleDateString('vi-VN') : 
+                          "Không xác định"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          user.active || user.isActive || user.id === localUserData.activeUsers
+                            ? "bg-green-100 text-green-800" 
+                            : "bg-red-100 text-red-800"
+                        }`}>
+                          {user.active || user.isActive || user.id === localUserData.activeUsers ? "Hoạt động" : "Không hoạt động"}
                         </span>
-                      ) : "Không có")}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.phone || "Không có"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : "Không xác định"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        user.active 
-                          ? "bg-green-100 text-green-800" 
-                          : "bg-red-100 text-red-800"
-                      }`}>
-                        {user.active ? "Hoạt động" : "Không hoạt động"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -425,7 +588,7 @@ const UserReport = ({ userData, exportToPDF, exportToExcel, sendReportEmail, exp
   );
 };
 
-// Thêm PropTypes validation
+// User report props validation and export
 UserReport.propTypes = {
   userData: PropTypes.shape({
     totalUsers: PropTypes.number,

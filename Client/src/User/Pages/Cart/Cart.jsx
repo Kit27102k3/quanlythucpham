@@ -39,6 +39,7 @@ const Cart = () => {
     const [selectedItems, setSelectedItems] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [expiredProducts, setExpiredProducts] = useState([]);
     const userId = localStorage.getItem("userId");
     const navigate = useNavigate();
 
@@ -77,9 +78,29 @@ const Cart = () => {
           res.cart.items = validItems;
         }
         
+        // Kiểm tra sản phẩm hết hạn
+        const expired = [];
+        const validNonExpiredItems = [];
+        
+        validItems.forEach(item => {
+          if (item.productId && item.productId.expiryDate) {
+            const expiryDate = new Date(item.productId.expiryDate);
+            const now = new Date();
+            
+            if (expiryDate < now) {
+              expired.push(item.productId._id);
+            } else {
+              validNonExpiredItems.push(item.productId._id);
+            }
+          } else {
+            validNonExpiredItems.push(item.productId._id);
+          }
+        });
+        
+        setExpiredProducts(expired);
         setCart(res.cart);
-        // Chỉ chọn những sản phẩm hợp lệ
-        setSelectedItems(validItems.map(item => item.productId._id));
+        // Chỉ chọn những sản phẩm hợp lệ và không hết hạn
+        setSelectedItems(validNonExpiredItems);
         setIsLoading(false);
       } catch (error) {
         console.error("Lỗi khi tải giỏ hàng!", error);
@@ -162,6 +183,9 @@ const Cart = () => {
           ),
         }));
 
+        // Cập nhật danh sách sản phẩm hết hạn
+        setExpiredProducts(prev => prev.filter(id => id !== productId));
+
         await cartApi.removeFromCart(userId, productId);
         toast.success("Đã xóa sản phẩm khỏi giỏ hàng!");
 
@@ -176,6 +200,12 @@ const Cart = () => {
     };
 
     const handleSelectItem = (productId) => {
+      // Không cho phép chọn sản phẩm hết hạn
+      if (expiredProducts.includes(productId)) {
+        toast.error("Không thể chọn sản phẩm đã hết hạn sử dụng");
+        return;
+      }
+
       setSelectedItems((prev) => {
         if (prev.includes(productId)) {
           return prev.filter((id) => id !== productId);
@@ -188,16 +218,30 @@ const Cart = () => {
     const handleSelectAll = () => {
       if (!cart || !cart.items) return;
 
-      if (selectedItems.length === cart.items.length) {
+      // Lọc ra các sản phẩm không hết hạn
+      const validProductIds = cart.items
+        .filter(item => isValidProduct(item) && !isExpiredProduct(item.productId))
+        .map(item => item.productId._id);
+
+      if (selectedItems.length === validProductIds.length) {
         setSelectedItems([]);
       } else {
-        setSelectedItems(cart.items.map((item) => item.productId._id));
+        setSelectedItems(validProductIds);
       }
     };
 
     // Thêm hàm hỗ trợ kiểm tra sản phẩm hợp lệ để tránh lỗi khi tính toán
     const isValidProduct = (item) => {
       return item && item.productId && item.productId._id;
+    };
+
+    // Thêm hàm kiểm tra sản phẩm hết hạn
+    const isExpiredProduct = (product) => {
+      if (!product || !product.expiryDate) return false;
+      
+      const expiryDate = new Date(product.expiryDate);
+      const now = new Date();
+      return expiryDate < now;
     };
 
     const calculateTotal = () => {
@@ -261,18 +305,18 @@ const Cart = () => {
     };
 
     // Custom Checkbox Component
-    const CustomCheckbox = ({ checked, onChange, size = "normal" }) => {
+    const CustomCheckbox = ({ checked, onChange, size = "normal", disabled = false }) => {
       const sizeClasses = size === "large" ? "w-6 h-6" : "w-5 h-5";
 
       return (
         <div
-          className={`${sizeClasses} border rounded flex items-center justify-center cursor-pointer transition-all duration-200`}
+          className={`${sizeClasses} border rounded flex items-center justify-center cursor-pointer transition-all duration-200 ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           style={{
             backgroundColor: checked ? "#51bb1a" : "white",
             borderColor: checked ? "#51bb1a" : "#ccc",
             transform: checked ? "scale(1.05)" : "scale(1)",
           }}
-          onClick={onChange}
+          onClick={disabled ? null : onChange}
         >
           {checked && <CheckIcon color="white" />}
         </div>
@@ -324,7 +368,7 @@ const Cart = () => {
                 <div className="hidden md:flex items-center border-b border-gray-200 pb-4 mb-4 text-sm font-medium text-gray-600">
                   <div className="w-12 text-center">
                     <CustomCheckbox
-                      checked={selectedItems.length === cart.items.length}
+                      checked={selectedItems.length === cart.items.filter(item => isValidProduct(item) && !isExpiredProduct(item.productId)).length}
                       onChange={handleSelectAll}
                       size="large"
                     />
@@ -338,21 +382,24 @@ const Cart = () => {
                   <div className="w-12 text-center"></div>
                 </div>
 
-                {/* Product Items */}
+                {/* Product Items with Scrollbar */}
+                <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                 {cart.items.filter(item => item.productId && item.productId._id).map((item) => {
                   const itemPrice = item.price || (item.productId ? item.productId.productPrice : 0);
                   const totalItemPrice = itemPrice * item.quantity;
+                  const isExpired = isExpiredProduct(item.productId);
 
                   return (
                     <div
                       key={item.productId._id}
-                      className="grid grid-cols-[auto_1fr] md:grid-cols-[auto_auto_1fr_auto_auto_auto] items-center gap-4 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200"
+                      className={`grid grid-cols-[auto_1fr] md:grid-cols-[auto_auto_1fr_auto_auto_auto] items-center gap-4 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200 ${isExpired ? 'bg-red-50' : ''}`}
                     >
                       {/* Checkbox */}
                       <div className="flex justify-center md:w-12">
                         <CustomCheckbox
                           checked={selectedItems.includes(item.productId._id)}
                           onChange={() => handleSelectItem(item.productId._id)}
+                          disabled={isExpired}
                         />
                       </div>
 
@@ -397,6 +444,14 @@ const Cart = () => {
                             {item.conversionRate && item.conversionRate > 1 && 
                               ` (1 ${item.unit} = ${item.conversionRate} ${item.productId?.unit || 'đơn vị'})`
                             }
+                          </div>
+                        )}
+
+                        {/* Hiển thị cảnh báo sản phẩm hết hạn */}
+                        {isExpired && (
+                          <div className="text-xs text-red-600 font-medium mt-1 flex items-center">
+                            <ExclamationTriangleIcon className="w-3 h-3 mr-1" />
+                            Sản phẩm đã hết hạn sử dụng
                           </div>
                         )}
                         
@@ -479,6 +534,7 @@ const Cart = () => {
                     </div>
                   );
                 })}
+                </div>
 
                 {/* Recommended products section could go here */}
               </div>
@@ -504,6 +560,15 @@ const Cart = () => {
                   </span>
                 </div>
 
+                {expiredProducts.length > 0 && (
+                  <div className="mt-4 flex items-center text-red-600 bg-red-50 p-3 rounded-md text-sm">
+                    <ExclamationTriangleIcon className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span>
+                      Có {expiredProducts.length} sản phẩm đã hết hạn sử dụng, không thể thanh toán
+                    </span>
+                  </div>
+                )}
+
                 {selectedItems.length === 0 && (
                   <div className="mt-4 flex items-center text-amber-600 bg-amber-50 p-3 rounded-md text-sm">
                     <ExclamationTriangleIcon className="w-4 h-4 mr-2 flex-shrink-0" />
@@ -515,9 +580,9 @@ const Cart = () => {
 
                 <button
                   onClick={handleCheckout}
-                  disabled={selectedItems.length === 0 || isSubmitting}
+                  disabled={selectedItems.length === 0 || isSubmitting || expiredProducts.length > 0}
                   className={`w-full py-3 rounded-md mt-4 text-white font-medium transition-colors ${
-                    selectedItems.length === 0 || isSubmitting
+                    selectedItems.length === 0 || isSubmitting || expiredProducts.length > 0
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-[#51bb1a] hover:bg-[#48a718]"
                   }`}

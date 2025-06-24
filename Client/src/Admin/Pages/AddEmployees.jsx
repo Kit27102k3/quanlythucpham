@@ -26,9 +26,10 @@ const Employees = () => {
     phone: "",
     email: "",
     role: null,
-    password: "",
+    password: "111111",
     isActive: true,
     branchId: null,
+    activityStatus: "working",
   };
   const [employeeForm, setEmployeeForm] = useState(initialFormState);
   const roles = [
@@ -166,6 +167,7 @@ const Employees = () => {
         email: employee.email || "",
         branchId: employee.branchId || null,
         password: "",
+        activityStatus: employee.activityStatus || "working",
       });
       setIsEditMode(true);
     } else {
@@ -183,13 +185,14 @@ const Employees = () => {
     const essentialData = {
       userName: data.userName.trim(),
       username: data.userName.trim(),
-      password: data.password,
+      password: data.password || "111111",
       fullName: data.fullName.trim(),
       email: data.email.trim().toLowerCase(),
       phone: data.phone.trim(),
       role: data.role,
       branchId: data.branchId || null,
       isActive: true,
+      activityStatus: data.activityStatus || "working",
     };
     const response = await adminApi.createAdmin(essentialData);
     return response;
@@ -484,6 +487,7 @@ const Employees = () => {
                   "Email",
                   "Vai Trò",
                   "Chi Nhánh",
+                  "Trạng thái",
                   "Thao Tác",
                 ].map((header) => (
                   <th
@@ -539,6 +543,21 @@ const Employees = () => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {employee.branchName || "N/A"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {employee.activityStatus === "working" ? (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                          Còn làm việc
+                        </span>
+                      ) : employee.activityStatus === "resigned" ? (
+                        <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                          Nghỉ việc
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                          Còn làm việc
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex gap-2">
@@ -774,6 +793,28 @@ const Employees = () => {
                   className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
                   placeholder="Chọn chi nhánh"
                   disabled={currentRole === "manager"}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-emerald-800 mb-2 flex items-center">
+                  <i className="pi pi-user-plus mr-2 text-emerald-600" />
+                  Trạng thái hoạt động
+                </label>
+                <Dropdown
+                  id="activityStatus"
+                  value={employeeForm.activityStatus || "working"}
+                  options={[
+                    { label: "Còn làm việc", value: "working" },
+                    { label: "Nghỉ việc", value: "resigned" }
+                  ]}
+                  onChange={(e) =>
+                    setEmployeeForm({ ...employeeForm, activityStatus: e.value })
+                  }
+                  optionLabel="label"
+                  optionValue="value"
+                  className="w-full border p-2 rounded-lg border-emerald-300 focus:border-emerald-500 focus:ring focus:ring-emerald-200"
+                  placeholder="Chọn trạng thái"
                 />
               </div>
             </div>

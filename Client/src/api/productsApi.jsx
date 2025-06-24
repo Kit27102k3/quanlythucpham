@@ -20,6 +20,12 @@ export const productsApi = {
 
   getProductsByBranch: async (branchId) => {
     try {
+      // Kiểm tra và xác thực branchId
+      if (!branchId || typeof branchId === 'object') {
+        console.error("Invalid branchId:", branchId);
+        return [];
+      }
+
       const token = localStorage.getItem("accessToken");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
 

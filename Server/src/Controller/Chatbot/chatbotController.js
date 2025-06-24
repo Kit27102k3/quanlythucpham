@@ -11,9 +11,21 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 // Import xử lý câu hỏi về sản phẩm
-import { handleProductQuery, detectHealthNeeds, findProductsForHealthNeed, generateHealthResponse, handleCompareProducts } from "./chatbotProductHandler.js";
+import {
+  handleProductQuery,
+  detectHealthNeeds,
+  findProductsForHealthNeed,
+  generateHealthResponse,
+  handleCompareProducts,
+  searchProductsMongoDB,
+} from "./chatbotProductHandler.js";
 import { handleFAQQuestion } from "./chatbotFAQHandler.js";
-import { saveContext, getUserContext, initOrGetUserContext, updateProductsInContext } from "./chatbotContextHandler.js";
+import {
+  saveContext,
+  getUserContext,
+  initOrGetUserContext,
+  updateProductsInContext,
+} from "./chatbotContextHandler.js";
 
 // Load environment variables
 dotenv.config();
@@ -23,20 +35,29 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Import health recommendations data
-const healthResponsesPath = path.join(__dirname, "../../chatbot/config/health_responses.json");
+const healthResponsesPath = path.join(
+  __dirname,
+  "../../chatbot/config/health_responses.json"
+);
 let healthRecommendations = {};
 
 try {
   if (fs.existsSync(healthResponsesPath)) {
-    healthRecommendations = JSON.parse(fs.readFileSync(healthResponsesPath, 'utf8'));
+    healthRecommendations = JSON.parse(
+      fs.readFileSync(healthResponsesPath, "utf8")
+    );
     console.log("Successfully loaded health_responses.json");
   } else {
-    console.log("health_responses.json file not found at:", healthResponsesPath);
+    console.log(
+      "health_responses.json file not found at:",
+      healthResponsesPath
+    );
     // Create default data with example questions
     healthRecommendations = {
       tieuDuong: {
         title: "Thực phẩm cho người tiểu đường",
-        description: "Người tiểu đường cần chế độ ăn uống cân bằng, kiểm soát lượng carbohydrate và ưu tiên thực phẩm có chỉ số đường huyết thấp.",
+        description:
+          "Người tiểu đường cần chế độ ăn uống cân bằng, kiểm soát lượng carbohydrate và ưu tiên thực phẩm có chỉ số đường huyết thấp.",
         recommended: [
           "Rau xanh các loại",
           "Các loại đậu",
@@ -44,7 +65,7 @@ try {
           "Trái cây ít đường (táo, dâu, việt quất)",
           "Cá, thịt nạc",
           "Các loại hạt không muối",
-          "Sữa và sản phẩm từ sữa ít béo"
+          "Sữa và sản phẩm từ sữa ít béo",
         ],
         avoid: [
           "Đồ ngọt, bánh kẹo",
@@ -52,21 +73,33 @@ try {
           "Trái cây có nhiều đường (chuối chín, xoài, nho)",
           "Gạo trắng, bánh mì trắng",
           "Thực phẩm chế biến sẵn",
-          "Mỡ động vật"
+          "Mỡ động vật",
         ],
-        productKeywords: ["đường huyết thấp", "ít đường", "không đường", "cho người tiểu đường", "chỉ số GI thấp"],
-        productCategories: ["Thực phẩm chức năng", "Đồ uống không đường", "Thực phẩm dinh dưỡng"],
+        productKeywords: [
+          "đường huyết thấp",
+          "ít đường",
+          "không đường",
+          "cho người tiểu đường",
+          "chỉ số GI thấp",
+        ],
+        productCategories: [
+          "Thực phẩm chức năng",
+          "Đồ uống không đường",
+          "Thực phẩm dinh dưỡng",
+        ],
         examples: [
           {
-            "question": "Người tiểu đường nên ăn gì?",
-            "answer": "Người tiểu đường nên ăn nhiều rau xanh, đậu các loại, ngũ cốc nguyên hạt, trái cây ít đường như táo và dâu tây, cá và thịt nạc. Nên hạn chế đồ ngọt, bánh kẹo, nước ngọt và thực phẩm chế biến sẵn."
+            question: "Người tiểu đường nên ăn gì?",
+            answer:
+              "Người tiểu đường nên ăn nhiều rau xanh, đậu các loại, ngũ cốc nguyên hạt, trái cây ít đường như táo và dâu tây, cá và thịt nạc. Nên hạn chế đồ ngọt, bánh kẹo, nước ngọt và thực phẩm chế biến sẵn.",
           },
           {
-            "question": "Trái cây nào tốt cho người tiểu đường?",
-            "answer": "Người tiểu đường nên chọn các loại trái cây có chỉ số đường huyết thấp như táo, dâu tây, việt quất, lê, quýt. Nên hạn chế các loại trái cây ngọt như chuối chín, xoài, nho, vì chúng có thể làm tăng đường huyết nhanh chóng."
-          }
-        ]
-      }
+            question: "Trái cây nào tốt cho người tiểu đường?",
+            answer:
+              "Người tiểu đường nên chọn các loại trái cây có chỉ số đường huyết thấp như táo, dâu tây, việt quất, lê, quýt. Nên hạn chế các loại trái cây ngọt như chuối chín, xoài, nho, vì chúng có thể làm tăng đường huyết nhanh chóng.",
+          },
+        ],
+      },
     };
   }
 } catch (error) {
@@ -77,11 +110,12 @@ try {
       title: "Thực phẩm cho người tiểu đường",
       examples: [
         {
-          "question": "Người tiểu đường nên ăn gì?",
-          "answer": "Người tiểu đường nên ăn nhiều rau xanh, đậu các loại, ngũ cốc nguyên hạt, trái cây ít đường như táo và dâu tây, cá và thịt nạc. Nên hạn chế đồ ngọt, bánh kẹo, nước ngọt và thực phẩm chế biến sẵn."
-        }
-      ]
-    }
+          question: "Người tiểu đường nên ăn gì?",
+          answer:
+            "Người tiểu đường nên ăn nhiều rau xanh, đậu các loại, ngũ cốc nguyên hạt, trái cây ít đường như táo và dâu tây, cá và thịt nạc. Nên hạn chế đồ ngọt, bánh kẹo, nước ngọt và thực phẩm chế biến sẵn.",
+        },
+      ],
+    },
   };
 }
 
@@ -196,21 +230,64 @@ const classifyVeganStatus = (product) => {
   
   // Các từ khóa mặn
   const nonVegKeywords = [
-    "thịt", "bò", "gà", "heo", "lợn", "cá", "tôm", "mực", "hải sản", "trứng", 
-    "xúc xích", "giò", "chả", "sữa", "bơ", "phô mai", "cheese", "cua", "ghẹ", 
-    "sò", "ốc", "thủy hải sản", "cừu", "dê", "sườn", "ba chỉ", "nạc", "vai", "đùi"
+    "thịt",
+    "bò",
+    "gà",
+    "heo",
+    "lợn",
+    "cá",
+    "tôm",
+    "mực",
+    "hải sản",
+    "trứng",
+    "xúc xích",
+    "giò",
+    "chả",
+    "sữa",
+    "bơ",
+    "phô mai",
+    "cheese",
+    "cua",
+    "ghẹ",
+    "sò",
+    "ốc",
+    "thủy hải sản",
+    "cừu",
+    "dê",
+    "sườn",
+    "ba chỉ",
+    "nạc",
+    "vai",
+    "đùi",
   ];
   
   // Các từ khóa chay
   const vegKeywords = [
-    "chay", "rau", "củ", "quả", "nấm", "đậu", "hạt", "ngũ cốc", 
-    "gạo", "bún", "miến", "đồ chay", "thuần chay", "vegan", "vegetarian"
+    "chay",
+    "rau",
+    "củ",
+    "quả",
+    "nấm",
+    "đậu",
+    "hạt",
+    "ngũ cốc",
+    "gạo",
+    "bún",
+    "miến",
+    "đồ chay",
+    "thuần chay",
+    "vegan",
+    "vegetarian",
   ];
   
   // Kiểm tra từ khóa mặn
   for (const keyword of nonVegKeywords) {
-    if (name.includes(keyword) || category.includes(keyword) || 
-        description.includes(keyword) || details.includes(keyword)) {
+    if (
+      name.includes(keyword) ||
+      category.includes(keyword) ||
+      description.includes(keyword) ||
+      details.includes(keyword)
+    ) {
       return "Mặn";
     }
   }
@@ -230,13 +307,33 @@ const classifyVeganStatus = (product) => {
 const findVeganProducts = async (limit = 8) => {
   try {
     // Tìm sản phẩm có tên hoặc danh mục chứa từ khóa chay
-    const veganKeywords = ["chay", "rau", "củ", "quả", "nấm", "đậu", "hạt", "trái cây"];
+    const veganKeywords = [
+      "chay",
+      "rau",
+      "củ",
+      "quả",
+      "nấm",
+      "đậu",
+      "hạt",
+      "trái cây",
+    ];
     
     // Danh sách các danh mục thực phẩm
     const foodCategories = [
-      "Thực phẩm", "Rau củ", "Trái cây", "Gia vị", 
-      "Đồ khô", "Đồ uống", "Bánh kẹo", "Thực phẩm đông lạnh", 
-      "Thực phẩm chế biến", "Ngũ cốc", "Gạo", "Bột", "Đậu", "Hạt"
+      "Thực phẩm",
+      "Rau củ",
+      "Trái cây",
+      "Gia vị",
+      "Đồ khô",
+      "Đồ uống",
+      "Bánh kẹo",
+      "Thực phẩm đông lạnh",
+      "Thực phẩm chế biến",
+      "Ngũ cốc",
+      "Gạo",
+      "Bột",
+      "Đậu",
+      "Hạt",
     ];
     
     // Lọc sản phẩm theo danh mục thực phẩm và từ khóa chay
@@ -244,46 +341,79 @@ const findVeganProducts = async (limit = 8) => {
       $or: [
         // Tìm theo danh mục thực phẩm
         { productCategory: { $in: foodCategories } },
-        { productCategory: { $regex: "thực phẩm|đồ ăn|thức ăn|rau|củ|quả|trái cây", $options: "i" } },
+        {
+          productCategory: {
+            $regex: "thực phẩm|đồ ăn|thức ăn|rau|củ|quả|trái cây",
+            $options: "i",
+          },
+        },
         // Tìm theo từ khóa chay
         { productName: { $regex: veganKeywords.join("|"), $options: "i" } },
         // Tìm theo từ khóa "chay" trong mô tả
-        { productDescription: { $regex: "chay|thuần chay|ăn chay|vegan|vegetarian", $options: "i" } }
+        {
+          productDescription: {
+            $regex: "chay|thuần chay|ăn chay|vegan|vegetarian",
+            $options: "i",
+          },
+        },
       ],
       // Loại bỏ các sản phẩm hết hàng
-      productStatus: { $ne: "Hết hàng" }
+      productStatus: { $ne: "Hết hàng" },
     }).limit(limit * 2); // Lấy nhiều hơn để có thể lọc
     
     // Lọc lại để đảm bảo không có từ khóa mặn
-    const nonVegKeywords = ["thịt", "bò", "gà", "heo", "lợn", "cá", "tôm", "mực", "hải sản", "trứng"];
-    
-    const veganProducts = products.filter(product => {
+    const nonVegKeywords = [
+      "thịt",
+      "bò",
+      "gà",
+      "heo",
+      "lợn",
+      "cá",
+      "tôm",
+      "mực",
+      "hải sản",
+      "trứng",
+    ];
+
+    const veganProducts = products.filter((product) => {
       const name = (product.productName || "").toLowerCase();
       // Đảm bảo productDescription là chuỗi trước khi gọi toLowerCase()
-      const description = typeof product.productDescription === 'string' 
+      const description =
+        typeof product.productDescription === "string"
         ? product.productDescription.toLowerCase() 
         : "";
       const category = (product.productCategory || "").toLowerCase();
       
       // Nếu sản phẩm có từ "chay" trong tên, mô tả hoặc danh mục, ưu tiên giữ lại
-      if (name.includes("chay") || description.includes("chay") || category.includes("chay")) {
+      if (
+        name.includes("chay") ||
+        description.includes("chay") ||
+        category.includes("chay")
+      ) {
         return true;
       }
       
       // Nếu là rau củ quả, trái cây, đồ uống không chứa từ khóa mặn, giữ lại
-      if (category.includes("rau") || category.includes("củ") || 
-          category.includes("quả") || category.includes("trái cây") ||
-          name.includes("rau") || name.includes("củ") || 
-          name.includes("quả") || name.includes("trái cây") ||
-          category.includes("đồ uống") || name.includes("nước")) {
-        return !nonVegKeywords.some(keyword => 
-          name.includes(keyword) || description.includes(keyword)
+      if (
+        category.includes("rau") ||
+        category.includes("củ") ||
+        category.includes("quả") ||
+        category.includes("trái cây") ||
+        name.includes("rau") ||
+        name.includes("củ") ||
+        name.includes("quả") ||
+        name.includes("trái cây") ||
+        category.includes("đồ uống") ||
+        name.includes("nước")
+      ) {
+        return !nonVegKeywords.some(
+          (keyword) => name.includes(keyword) || description.includes(keyword)
         );
       }
       
       // Cho các sản phẩm khác, kiểm tra không chứa từ khóa mặn
-      return !nonVegKeywords.some(keyword => 
-        name.includes(keyword) || description.includes(keyword)
+      return !nonVegKeywords.some(
+        (keyword) => name.includes(keyword) || description.includes(keyword)
       );
     });
     
@@ -299,12 +429,16 @@ const findVeganProducts = async (limit = 8) => {
 const handleDietQuestion = async (message, productId) => {
   try {
     // Kiểm tra xem có phải câu hỏi về chế độ ăn chay không
-    const isVeganQuestion = /chay|ăn chay|người ăn chay|thuần chay|vegetarian|vegan/i.test(message);
+    const isVeganQuestion =
+      /chay|ăn chay|người ăn chay|thuần chay|vegetarian|vegan/i.test(message);
     
     if (!isVeganQuestion) return null;
     
     // Kiểm tra xem có phải câu hỏi tìm kiếm thực phẩm chay không
-    const isSearchingVeganFood = /tìm|có|cho|thực phẩm|đồ ăn|món ăn|sản phẩm|thức ăn|người ăn chay|dành cho/i.test(message);
+    const isSearchingVeganFood =
+      /tìm|có|cho|thực phẩm|đồ ăn|món ăn|sản phẩm|thức ăn|người ăn chay|dành cho/i.test(
+        message
+      );
     
     // Nếu là câu hỏi tìm kiếm thực phẩm chay
     if (isSearchingVeganFood) {
@@ -319,7 +453,7 @@ const handleDietQuestion = async (message, productId) => {
       
       // Phân loại sản phẩm theo danh mục
       const categorizedProducts = {};
-      veganProducts.forEach(product => {
+      veganProducts.forEach((product) => {
         const category = product.productCategory || "Khác";
         if (!categorizedProducts[category]) {
           categorizedProducts[category] = [];
@@ -331,12 +465,15 @@ const handleDietQuestion = async (message, productId) => {
       for (const [category, products] of Object.entries(categorizedProducts)) {
         response += `**${category}:**\n`;
         products.forEach((product, index) => {
-          response += `${index + 1}. ${product.productName} - ${formatCurrency(product.productPrice)}đ\n`;
+          response += `${index + 1}. ${product.productName} - ${formatCurrency(
+            product.productPrice
+          )}đ\n`;
         });
         response += "\n";
       }
       
-      response += "💡 *Bạn có thể nhấn vào tên sản phẩm để xem thông tin chi tiết.*";
+      response +=
+        "💡 *Bạn có thể nhấn vào tên sản phẩm để xem thông tin chi tiết.*";
       
       return response;
     }
@@ -357,9 +494,12 @@ const handleDietQuestion = async (message, productId) => {
         let response = `❌ Sản phẩm "${product.productName}" không phù hợp với người ăn chay vì có nguồn gốc từ động vật.`;
         
         if (veganProducts.length > 0) {
-          response += "\n\n🌱 **Bạn có thể tham khảo một số sản phẩm chay sau:**\n";
+          response +=
+            "\n\n🌱 **Bạn có thể tham khảo một số sản phẩm chay sau:**\n";
           veganProducts.forEach((p, index) => {
-            response += `${index + 1}. ${p.productName} - ${formatCurrency(p.productPrice)}đ\n`;
+            response += `${index + 1}. ${p.productName} - ${formatCurrency(
+              p.productPrice
+            )}đ\n`;
           });
         }
         
@@ -379,7 +519,7 @@ const handleDietQuestion = async (message, productId) => {
       
       // Phân loại sản phẩm theo danh mục
       const categorizedProducts = {};
-      veganProducts.forEach(product => {
+      veganProducts.forEach((product) => {
         const category = product.productCategory || "Khác";
         if (!categorizedProducts[category]) {
           categorizedProducts[category] = [];
@@ -387,18 +527,22 @@ const handleDietQuestion = async (message, productId) => {
         categorizedProducts[category].push(product);
       });
       
-      let response = "🌱 **Cửa hàng có nhiều sản phẩm phù hợp cho người ăn chay:**\n\n";
+      let response =
+        "🌱 **Cửa hàng có nhiều sản phẩm phù hợp cho người ăn chay:**\n\n";
       
       // Hiển thị sản phẩm theo từng danh mục
       for (const [category, products] of Object.entries(categorizedProducts)) {
         response += `**${category}:**\n`;
         products.forEach((product, index) => {
-          response += `${index + 1}. ${product.productName} - ${formatCurrency(product.productPrice)}đ\n`;
+          response += `${index + 1}. ${product.productName} - ${formatCurrency(
+            product.productPrice
+          )}đ\n`;
         });
         response += "\n";
       }
       
-      response += "💡 *Bạn có thể tìm thêm sản phẩm chay bằng cách gõ: \"Tìm thực phẩm chay\"*";
+      response +=
+        '💡 *Bạn có thể tìm thêm sản phẩm chay bằng cách gõ: "Tìm thực phẩm chay"*';
       
       return response;
     }
@@ -423,7 +567,7 @@ export const handleMessage = async (req, res) => {
     if (!message) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng cung cấp tin nhắn"
+        message: "Vui lòng cung cấp tin nhắn",
       });
     }
 
@@ -436,8 +580,34 @@ export const handleMessage = async (req, res) => {
     // Phân loại intent
     const intent = classifyMainIntent(message);
     console.log("Phân loại ý định chính:", intent);
-    
-    // Trích xuất entities
+
+    // Nếu là intent kiểm tra sản phẩm, lấy productName từ checkProductAvailabilityQuestion
+    if (intent === "product_check") {
+      const productName = checkProductAvailabilityQuestion(message);
+      if (productName) {
+        // Gọi hàm tìm kiếm sản phẩm với productName
+        const products = await searchProductsMongoDB(productName);
+        // Nếu có userId và có sản phẩm, lưu vào context
+        if (userId && products && products.length > 0) {
+          await saveContext(userId, {
+            lastProducts: products,
+            lastProduct: products[0],
+            lastQuery: message,
+            timestamp: new Date().toISOString()
+          });
+        }
+        return res.json({
+          success: true,
+          message: products && products.length > 0
+            ? `Các sản phẩm liên quan đến \"${productName}\":`
+            : `Hiện tại cửa hàng không có sản phẩm \"${productName}\".`,
+          data: products,
+          intent: "product_check"
+        });
+      }
+    }
+
+    // Trích xuất entities (chỉ dùng cho intent khác product_check)
     const entities = extractEntities(message);
     console.log("Entities:", entities);
     
@@ -450,23 +620,68 @@ export const handleMessage = async (req, res) => {
     let compareResponse;
     let productResponse;
     let faqResponse;
+    let faqIntent;
     
     // Xử lý theo intent
     switch (intent) {
-      case 'greeting':
+      case "greeting":
         return res.json({
           success: true,
-          message: "Xin chào! Tôi là trợ lý ảo của DNCFOOD. Tôi có thể giúp bạn tìm kiếm sản phẩm, trả lời câu hỏi về sức khỏe và dinh dưỡng, hoặc cung cấp thông tin về cửa hàng. Bạn cần hỗ trợ gì?"
+          message:
+            "Xin chào! Tôi là trợ lý ảo của DNCFOOD. Tôi có thể giúp bạn tìm kiếm sản phẩm, trả lời câu hỏi về sức khỏe và dinh dưỡng, hoặc cung cấp thông tin về cửa hàng. Bạn cần hỗ trợ gì?",
         });
-      
-      case 'health_inquiry':
+
+      case "faq_how_to_buy":
+        return res.json({
+          success: true,
+          message: handleFAQQuestion("faq_how_to_buy"),
+        });
+
+      case "faq_how_to_order":
+        return res.json({
+          success: true,
+          message: handleFAQQuestion("faq_how_to_order"),
+        });
+
+      case "faq_register_account":
+        return res.json({
+          success: true,
+          message: handleFAQQuestion("faq_register_account"),
+        });
+
+      case "faq_promotions":
+        return res.json({
+          success: true,
+          message: handleFAQQuestion("faq_promotions"),
+        });
+
+      case "faq_store_location":
+        return res.json({
+          success: true,
+          message: handleFAQQuestion("faq_store_location"),
+        });
+
+      case "faq_product_quality":
+        return res.json({
+          success: true,
+          message: handleFAQQuestion("faq_product_quality"),
+        });
+
+      case "faq_diet":
+        return res.json({
+          success: true,
+          message: handleFAQQuestion("faq_diet"),
+        });
+
+      case "health_inquiry":
         healthNeeds = detectPersonalHealthInfo(message);
         
         // Nếu không phát hiện nhu cầu sức khỏe cụ thể, hỏi thêm thông tin
         if (!healthNeeds || healthNeeds.length === 0) {
           return res.json({
             success: true,
-            message: "Bạn quan tâm đến vấn đề sức khỏe nào? Ví dụ: tiểu đường, huyết áp, giảm cân, tăng cường miễn dịch, v.v. Tôi có thể gợi ý các thực phẩm phù hợp."
+            message:
+              "Bạn quan tâm đến vấn đề sức khỏe nào? Ví dụ: tiểu đường, huyết áp, giảm cân, tăng cường miễn dịch, v.v. Tôi có thể gợi ý các thực phẩm phù hợp.",
           });
         }
         
@@ -475,14 +690,44 @@ export const handleMessage = async (req, res) => {
           success: true,
           message: healthInfo.text,
           type: healthInfo.type,
-          products: healthInfo.products
+          products: healthInfo.products,
         });
-      
-      case 'health_progress':
+
+      case "health_advice": {
+        // Xử lý câu hỏi tư vấn linh hoạt về sức khỏe và dinh dưỡng bằng GPT
+        const adviceResponse = await handleHealthAdviceWithGPT(message);
+        return res.json({
+          success: true,
+          message: adviceResponse,
+          type: "text",
+        });
+      }
+
+      // Thêm xử lý cho general_inquiry
+      case "general_inquiry":
+        // Kiểm tra xem có phải câu hỏi FAQ không
+        faqIntent = detectFAQIntent(message);
+        if (faqIntent) {
+          faqResponse = handleFAQQuestion(faqIntent, message);
+          return res.json({
+            success: true,
+            message: faqResponse,
+          });
+        }
+        
+        // Nếu không phải FAQ, trả về câu trả lời mặc định
+        return res.json({
+          success: true,
+          message:
+            "Tôi có thể giúp gì cho bạn? Bạn có thể hỏi về sản phẩm, dịch vụ, hoặc thông tin về cửa hàng.",
+        });
+
+      case "health_progress":
         if (!userId) {
           return res.json({
             success: true,
-            message: "Để theo dõi tiến trình sức khỏe, bạn cần đăng nhập vào tài khoản của mình."
+            message:
+              "Để theo dõi tiến trình sức khỏe, bạn cần đăng nhập vào tài khoản của mình.",
           });
         }
         
@@ -491,24 +736,33 @@ export const handleMessage = async (req, res) => {
           weight: { current: 65, previous: 68, goal: 60 },
           steps: { today: 8500, average: 7200, goal: 10000 },
           water: { today: 1.5, goal: 2 },
-          sleep: { lastNight: 7, average: 6.5, goal: 8 }
+          sleep: { lastNight: 7, average: 6.5, goal: 8 },
         };
         
         return res.json({
           success: true,
           message: `Tiến trình sức khỏe của bạn:
-- Cân nặng: ${progressData.weight.current}kg (giảm ${progressData.weight.previous - progressData.weight.current}kg, mục tiêu: ${progressData.weight.goal}kg)
-- Bước chân: ${progressData.steps.today} bước hôm nay (trung bình: ${progressData.steps.average}, mục tiêu: ${progressData.steps.goal})
-- Nước: Đã uống ${progressData.water.today}L (mục tiêu: ${progressData.water.goal}L)
-- Giấc ngủ: ${progressData.sleep.lastNight} giờ đêm qua (trung bình: ${progressData.sleep.average}, mục tiêu: ${progressData.sleep.goal} giờ)`,
-          progress: progressData
+- Cân nặng: ${progressData.weight.current}kg (giảm ${
+            progressData.weight.previous - progressData.weight.current
+          }kg, mục tiêu: ${progressData.weight.goal}kg)
+- Bước chân: ${progressData.steps.today} bước hôm nay (trung bình: ${
+            progressData.steps.average
+          }, mục tiêu: ${progressData.steps.goal})
+- Nước: Đã uống ${progressData.water.today}L (mục tiêu: ${
+            progressData.water.goal
+          }L)
+- Giấc ngủ: ${progressData.sleep.lastNight} giờ đêm qua (trung bình: ${
+            progressData.sleep.average
+          }, mục tiêu: ${progressData.sleep.goal} giờ)`,
+          progress: progressData,
         });
-      
-      case 'health_profile_update':
+
+      case "health_profile_update":
         if (!userId) {
           return res.json({
               success: true,
-            message: "Để cập nhật thông tin sức khỏe, bạn cần đăng nhập vào tài khoản của mình."
+            message:
+              "Để cập nhật thông tin sức khỏe, bạn cần đăng nhập vào tài khoản của mình.",
           });
         }
         
@@ -520,7 +774,7 @@ export const handleMessage = async (req, res) => {
           gender: "Nam",
           healthGoal: "Giảm cân",
           dietaryRestrictions: ["Ít đường", "Hạn chế tinh bột"],
-          allergies: ["Hải sản"]
+          allergies: ["Hải sản"],
         };
         
         // Lưu vào context
@@ -528,14 +782,16 @@ export const handleMessage = async (req, res) => {
         
         return res.json({
           success: true,
-          message: "Thông tin sức khỏe của bạn đã được cập nhật. Tôi sẽ đề xuất các sản phẩm phù hợp với nhu cầu của bạn."
+          message:
+            "Thông tin sức khỏe của bạn đã được cập nhật. Tôi sẽ đề xuất các sản phẩm phù hợp với nhu cầu của bạn.",
         });
       
-      case 'health_info_request':
+      case "health_info_request":
         if (!userId) {
           return res.json({
             success: true,
-            message: "Để xem thông tin sức khỏe, bạn cần đăng nhập vào tài khoản của mình."
+            message:
+              "Để xem thông tin sức khỏe, bạn cần đăng nhập vào tài khoản của mình.",
           });
         }
         
@@ -546,7 +802,7 @@ export const handleMessage = async (req, res) => {
           gender: "Nam",
           healthGoal: "Giảm cân",
           dietaryRestrictions: ["Ít đường", "Hạn chế tinh bột"],
-          allergies: ["Hải sản"]
+          allergies: ["Hải sản"],
         };
         
         return res.json({
@@ -559,14 +815,15 @@ export const handleMessage = async (req, res) => {
 - Mục tiêu: ${currentHealthInfo.healthGoal}
 - Hạn chế ăn uống: ${currentHealthInfo.dietaryRestrictions.join(", ")}
 - Dị ứng: ${currentHealthInfo.allergies.join(", ")}`,
-          healthProfile: currentHealthInfo
+          healthProfile: currentHealthInfo,
         });
       
-      case 'meal_plan_request':
+      case "meal_plan_request":
         if (!userId) {
           return res.json({
           success: true,
-            message: "Để nhận kế hoạch bữa ăn, bạn cần đăng nhập vào tài khoản của mình."
+            message:
+              "Để nhận kế hoạch bữa ăn, bạn cần đăng nhập vào tài khoản của mình.",
           });
         }
         
@@ -593,10 +850,10 @@ Tối:
 - Súp rau củ
 - Thịt gà nướng với rau xanh
 - Trái cây tráng miệng`,
-          type: 'text'
+          type: "text",
         });
       
-      case 'meal_plan_diet':
+      case "meal_plan_diet":
         // Kế hoạch ăn kiêng chi tiết
         return res.json({
           success: true,
@@ -640,14 +897,14 @@ Tối:
 - Có thể thay đổi món ăn trong cùng nhóm thực phẩm
 
 Bạn có thể tìm mua các thực phẩm hỗ trợ ăn kiêng tại cửa hàng của chúng tôi như: yến mạch, hạt dinh dưỡng, sữa hạnh nhân, gạo lứt, và các loại rau củ hữu cơ.`,
-          type: 'text'
+          type: "text",
         });
       
-      case 'compare_products':
+      case "compare_products":
         compareResponse = await handleProductComparison(req, res);
         return compareResponse;
       
-      case 'product_search':
+      case "product_search":
         console.log("Xử lý tìm kiếm sản phẩm");
         productResponse = await handleProductQuery(message, { userId });
         if (productResponse.products && productResponse.products.length > 0) {
@@ -655,26 +912,28 @@ Bạn có thể tìm mua các thực phẩm hỗ trợ ăn kiêng tại cửa h�
           success: true,
             message: productResponse.message,
             products: productResponse.products,
-            type: 'productSearch'
+            type: "productSearch",
           });
         } else {
           return res.json({
           success: true,
             message: productResponse.message,
-            type: 'text'
+            type: "text",
           });
         }
       
-      case 'order_inquiry':
+      case "order_inquiry":
         if (!userId) {
           return res.json({
               success: true,
-            message: "Để kiểm tra thông tin đơn hàng, bạn cần đăng nhập vào tài khoản của mình. Sau khi đăng nhập, bạn có thể xem tất cả đơn hàng trong mục 'Đơn hàng của tôi'."
+            message:
+              "Để kiểm tra thông tin đơn hàng, bạn cần đăng nhập vào tài khoản của mình. Sau khi đăng nhập, bạn có thể xem tất cả đơn hàng trong mục 'Đơn hàng của tôi'.",
             });
           }
         return res.json({
             success: true,
-          message: "Bạn có thể xem thông tin đơn hàng của mình trong mục 'Đơn hàng của tôi' trên trang cá nhân. Nếu bạn muốn hủy đơn hàng, vui lòng chọn đơn hàng cần hủy và nhấn vào nút 'Hủy đơn hàng'. Lưu ý rằng bạn chỉ có thể hủy đơn hàng khi đơn hàng chưa được xử lý."
+          message:
+            "Bạn có thể xem thông tin đơn hàng của mình trong mục 'Đơn hàng của tôi' trên trang cá nhân. Nếu bạn muốn hủy đơn hàng, vui lòng chọn đơn hàng cần hủy và nhấn vào nút 'Hủy đơn hàng'. Lưu ý rằng bạn chỉ có thể hủy đơn hàng khi đơn hàng chưa được xử lý.",
         });
       
       default:
@@ -683,20 +942,21 @@ Bạn có thể tìm mua các thực phẩm hỗ trợ ăn kiêng tại cửa h�
           return res.json({
               success: true,
             message: faqResponse.message || faqResponse,
-            type: faqResponse.type || 'text'
+            type: faqResponse.type || "text",
           });
         }
         return res.json({
             success: true,
-          message: "Xin lỗi, tôi không hiểu câu hỏi của bạn. Bạn có thể hỏi về sản phẩm, sức khỏe, khuyến mãi, chứng nhận, hoặc liên hệ nhân viên hỗ trợ để được tư vấn chi tiết hơn!",
-          type: 'text'
+          message:
+            "Xin lỗi, tôi không hiểu câu hỏi của bạn. Bạn có thể hỏi về sản phẩm, sức khỏe, khuyến mãi, chứng nhận, hoặc liên hệ nhân viên hỗ trợ để được tư vấn chi tiết hơn!",
+          type: "text",
         });
     }
   } catch (error) {
     console.error("Lỗi khi xử lý tin nhắn:", error);
     return res.status(500).json({
       success: false,
-      message: "Đã xảy ra lỗi khi xử lý tin nhắn. Vui lòng thử lại sau."
+      message: "Đã xảy ra lỗi khi xử lý tin nhắn. Vui lòng thử lại sau.",
     });
   }
 };
@@ -745,130 +1005,183 @@ const detectIntent = (message) => {
  * @returns {string|null} - Intent FAQ hoặc null nếu không phát hiện
  */
 const detectFAQIntent = (message) => {
+  if (!message) return null;
+
+  const lowerMessage = message.toLowerCase().trim();
+
+  // Xử lý chào hỏi
+  if (
+    lowerMessage === "xin chào" ||
+    lowerMessage === "chào" ||
+    lowerMessage === "hello" ||
+    lowerMessage === "hi" ||
+    lowerMessage === "hey" ||
+    lowerMessage.startsWith("chào") ||
+    lowerMessage.startsWith("xin chào")
+  ) {
+    return "greeting";
+  }
+
   // Mua hàng
   if (
-    message.includes("làm sao để mua") ||
-    message.includes("mua hàng như thế nào") ||
-    message.includes("cách mua") ||
-    message.includes("mua hàng") ||
-    message.includes("mua như thế nào") ||
-    message.includes("cách thức mua")
+    lowerMessage.includes("làm sao để mua") ||
+    lowerMessage.includes("mua hàng như thế nào") ||
+    lowerMessage.includes("cách mua") ||
+    lowerMessage.includes("mua như thế nào") ||
+    lowerMessage.includes("mua như nào") ||
+    lowerMessage.includes("cách thức mua") ||
+    lowerMessage.includes("hướng dẫn mua hàng") ||
+    lowerMessage.includes("làm thế nào để mua") ||
+    lowerMessage.includes("tôi muốn mua hàng") ||
+    lowerMessage.includes("muốn mua hàng") ||
+    lowerMessage === "mua hàng như nào" ||
+    lowerMessage === "mua hàng như thế nào" ||
+    lowerMessage === "mua hàng thì làm như nào" ||
+    lowerMessage === "mua hàng thì làm như thế nào" ||
+    lowerMessage === "mua hàng"
   ) {
     return "faq_how_to_buy";
   }
   
   // Đặt hàng
   if (
-    message.includes("đặt hàng") ||
-    message.includes("cách đặt") ||
-    message.includes("đặt mua") ||
-    message.includes("đặt như thế nào")
+    lowerMessage.includes("đặt hàng") ||
+    lowerMessage.includes("cách đặt") ||
+    lowerMessage.includes("đặt mua") ||
+    lowerMessage.includes("đặt như thế nào") ||
+    lowerMessage.includes("đặt như nào") ||
+    lowerMessage.includes("làm sao để đặt") ||
+    lowerMessage.includes("làm thế nào để đặt") ||
+    lowerMessage.includes("hướng dẫn đặt hàng")
   ) {
     return "faq_how_to_order";
   }
   
   // Thanh toán
   if (
-    message.includes("thanh toán") ||
-    message.includes("phương thức thanh toán") ||
-    message.includes("cách thanh toán") ||
-    message.includes("hình thức thanh toán") ||
-    message.includes("trả tiền") ||
-    message.includes("bao nhiêu hình thức thanh toán")
+    lowerMessage.includes("thanh toán") ||
+    lowerMessage.includes("phương thức thanh toán") ||
+    lowerMessage.includes("cách thanh toán") ||
+    lowerMessage.includes("hình thức thanh toán") ||
+    lowerMessage.includes("trả tiền") ||
+    lowerMessage.includes("bao nhiêu hình thức thanh toán")
   ) {
     return "faq_payment_methods";
   }
   
   // Địa chỉ cửa hàng
   if (
-    message.includes("địa chỉ") ||
-    message.includes("cửa hàng ở đâu") ||
-    message.includes("shop ở đâu") ||
-    message.includes("vị trí") ||
-    message.includes("địa điểm")
+    lowerMessage.includes("địa chỉ") ||
+    lowerMessage.includes("cửa hàng ở đâu") ||
+    lowerMessage.includes("shop ở đâu") ||
+    lowerMessage.includes("vị trí") ||
+    lowerMessage.includes("địa điểm") ||
+    lowerMessage.includes("chi nhánh") ||
+    lowerMessage.includes("cửa hàng đặt ở đâu") ||
+    lowerMessage.includes("địa chỉ cửa hàng")
   ) {
     return "faq_store_location";
   }
   
   // Chất lượng sản phẩm
   if (
-    message.includes("chất lượng") ||
-    message.includes("sản phẩm có tốt") ||
-    message.includes("có đảm bảo") ||
-    message.includes("hàng có tốt") ||
-    message.includes("sản phẩm tốt không")
+    lowerMessage.includes("chất lượng") ||
+    lowerMessage.includes("sản phẩm có tốt") ||
+    lowerMessage.includes("có đảm bảo") ||
+    lowerMessage.includes("hàng có tốt") ||
+    lowerMessage.includes("sản phẩm tốt không")
   ) {
     return "faq_product_quality";
   }
   
   // Thời gian giao hàng
   if (
-    message.includes("giao hàng") ||
-    message.includes("ship") ||
-    message.includes("vận chuyển") ||
-    message.includes("thời gian giao") ||
-    message.includes("giao trong bao lâu") ||
-    message.includes("mất bao lâu để nhận")
+    lowerMessage.includes("giao hàng") ||
+    lowerMessage.includes("ship") ||
+    lowerMessage.includes("vận chuyển") ||
+    lowerMessage.includes("thời gian giao") ||
+    lowerMessage.includes("giao trong bao lâu") ||
+    lowerMessage.includes("mất bao lâu để nhận")
   ) {
     return "faq_shipping_time";
   }
   
   // Chính sách đổi trả
   if (
-    message.includes("đổi trả") ||
-    message.includes("hoàn tiền") ||
-    message.includes("trả lại") ||
-    message.includes("đổi hàng") ||
-    message.includes("bị lỗi") ||
-    message.includes("không hài lòng")
+    lowerMessage.includes("đổi trả") ||
+    lowerMessage.includes("hoàn tiền") ||
+    lowerMessage.includes("trả lại") ||
+    lowerMessage.includes("đổi hàng") ||
+    lowerMessage.includes("bị lỗi") ||
+    lowerMessage.includes("không hài lòng")
   ) {
     return "faq_return_policy";
   }
   
   // Khuyến mãi hiện có
   if (
-    message.includes("khuyến mãi") ||
-    message.includes("giảm giá") ||
-    message.includes("ưu đãi") ||
-    message.includes("có mã giảm") ||
-    message.includes("đang giảm giá")
+    lowerMessage.includes("khuyến mãi") ||
+    lowerMessage.includes("giảm giá") ||
+    lowerMessage.includes("ưu đãi") ||
+    lowerMessage.includes("có mã giảm") ||
+    lowerMessage.includes("đang giảm giá") ||
+    lowerMessage.includes("khuyến mại") ||
+    lowerMessage.includes("sale") ||
+    lowerMessage.includes("voucher") ||
+    lowerMessage.includes("coupon") ||
+    lowerMessage.includes("quà tặng") ||
+    lowerMessage.includes("chương trình khuyến mãi")
   ) {
     return "faq_promotions";
   }
   
   // Sản phẩm mới/bán chạy
   if (
-    message.includes("sản phẩm mới") ||
-    message.includes("mới ra mắt") ||
-    message.includes("bán chạy nhất") ||
-    message.includes("phổ biến nhất") ||
-    message.includes("hot nhất") ||
-    message.includes("xu hướng")
+    lowerMessage.includes("sản phẩm mới") ||
+    lowerMessage.includes("mới ra mắt") ||
+    lowerMessage.includes("bán chạy nhất") ||
+    lowerMessage.includes("phổ biến nhất") ||
+    lowerMessage.includes("hot nhất") ||
+    lowerMessage.includes("xu hướng")
   ) {
     return "faq_trending_products";
   }
   
   // Phí vận chuyển
   if (
-    message.includes("phí vận chuyển") ||
-    message.includes("phí ship") ||
-    message.includes("phí giao hàng") ||
-    message.includes("ship bao nhiêu tiền") ||
-    message.includes("tốn bao nhiêu tiền giao hàng")
+    lowerMessage.includes("phí vận chuyển") ||
+    lowerMessage.includes("phí ship") ||
+    lowerMessage.includes("phí giao hàng") ||
+    lowerMessage.includes("ship bao nhiêu tiền") ||
+    lowerMessage.includes("tốn bao nhiêu tiền giao hàng")
   ) {
     return "faq_shipping_fee";
   }
   
   // Hỗ trợ khách hàng
   if (
-    message.includes("hỗ trợ") ||
-    message.includes("liên hệ") ||
-    message.includes("tư vấn") ||
-    message.includes("hotline") ||
-    message.includes("số điện thoại") ||
-    message.includes("email")
+    lowerMessage.includes("hỗ trợ") ||
+    lowerMessage.includes("liên hệ") ||
+    lowerMessage.includes("tư vấn") ||
+    lowerMessage.includes("hotline") ||
+    lowerMessage.includes("số điện thoại") ||
+    lowerMessage.includes("email")
   ) {
     return "faq_customer_support";
+  }
+
+  // Đăng ký tài khoản
+  const registerKeywords = [
+    "đăng ký", "tạo tài khoản", "tạo account", "tạo tk", 
+    "sign up", "register", "đăng ký tài khoản", "đăng ký tk", 
+    "đăng ký thành viên", "làm thế nào để đăng ký", "cách đăng ký", 
+    "muốn đăng ký", "hướng dẫn đăng ký"
+  ];
+  
+  for (const keyword of registerKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      return "faq_register_account";
+    }
   }
   
   return null;
@@ -961,29 +1274,33 @@ const checkProductAvailabilityQuestion = (message) => {
   
   // Mẫu câu hỏi "Có sản phẩm X không"
   const productAvailabilityPatterns = [
-    /có (bán |cung cấp |sản phẩm |hàng |)?([a-zA-Z0-9À-ỹ\s]+?) (không|ko|k|hong|hông)(\?)?$/i,
-    /shop (có |bán |cung cấp |)([a-zA-Z0-9À-ỹ\s]+?) (không|ko|k|hong|hông)(\?)?$/i,
-    /cửa hàng (có |bán |cung cấp |)([a-zA-Z0-9À-ỹ\s]+?) (không|ko|k|hong|hông)(\?)?$/i,
+    /(?:có|shop có|cửa hàng có|bán)\s+(.+?)\s+(?:không|ko|k|hong|hông)(\?)?$/i,
+    /(.+?)\s+có\s+không(\?)?$/i,
+    /shop\s+còn\s+(.+?)\s+không(\?)?$/i,
+    /cửa hàng\s+còn\s+(.+?)\s+không(\?)?$/i,
+    /có\s+(.+?)\s+chứ(\?)?$/i,
+    /có\s+(.+?)\s+à(\?)?$/i,
+    /có\s+(.+?)\s+vậy\s+không(\?)?$/i,
+    /có\s+(.+?)\s+không\s+shop(\?)?$/i,
+    /có\s+(.+?)\s+không\s+ạ(\?)?$/i,
+    /có\s+(.+?)\s+không\s+vậy(\?)?$/i,
+    /có\s+(.+?)\s+không\s+nhỉ(\?)?$/i,
   ];
   
   for (const pattern of productAvailabilityPatterns) {
     const match = lowerMessage.match(pattern);
-    if (match) {
-      const productName = match[2].trim();
-      // Loại bỏ các từ không cần thiết
+    if (match && match[1]) {
+      let productName = match[1].trim();
+      // Chỉ loại bỏ stopword nếu nó là prefix thực sự thừa
       const stopWords = ["sản phẩm", "hàng", "cái", "món", "đồ"];
-      let cleanProductName = productName;
-      
       for (const word of stopWords) {
-        if (cleanProductName.startsWith(word + " ")) {
-          cleanProductName = cleanProductName.substring(word.length).trim();
+        if (productName.startsWith(word + " ")) {
+          productName = productName.substring(word.length).trim();
         }
       }
-      
-      return cleanProductName;
+      return productName;
     }
   }
-  
   return null;
 };
 
@@ -1654,13 +1971,19 @@ export const handleProductComparison = async (req, res) => {
         comparisonMessage = generateSimpleComparison(products);
         
         // Chuẩn bị thông tin sản phẩm đầy đủ để hiển thị
-        const productData = products.map(p => ({
+        const productData = products.map((p) => ({
           id: p._id,
           name: p.productName,
           price: p.productPrice,
-          image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : null,
-          imageUrl: p.productImageURLs && p.productImageURLs.length > 0 ? p.productImageURLs[0] : null,
-          imageBase64: p.productImageBase64 || null
+          image:
+            p.productImages && p.productImages.length > 0
+              ? p.productImages[0]
+              : null,
+          imageUrl:
+            p.productImageURLs && p.productImageURLs.length > 0
+              ? p.productImageURLs[0]
+              : null,
+          imageBase64: p.productImageBase64 || null,
         }));
         
         comparison = {
@@ -1782,13 +2105,17 @@ const compareProducts = (products) => {
   });
 
   // Chuẩn bị thông tin sản phẩm đầy đủ để hiển thị
-  const productData = productsToCompare.map(p => ({
+  const productData = productsToCompare.map((p) => ({
     id: p._id,
     name: p.productName,
     price: p.productPrice,
-    image: p.productImages && p.productImages.length > 0 ? p.productImages[0] : null,
-    imageUrl: p.productImageURLs && p.productImageURLs.length > 0 ? p.productImageURLs[0] : null,
-    imageBase64: p.productImageBase64 || null
+    image:
+      p.productImages && p.productImages.length > 0 ? p.productImages[0] : null,
+    imageUrl:
+      p.productImageURLs && p.productImageURLs.length > 0
+        ? p.productImageURLs[0]
+        : null,
+    imageBase64: p.productImageBase64 || null,
   }));
 
   return {
@@ -1996,7 +2323,10 @@ export const processMessage = async (req, res) => {
       
       try {
         // Sử dụng hàm handleCompareProducts từ chatbotProductHandler.js  
-        const compareResult = await handleCompareProducts(messageData, contextData);
+        const compareResult = await handleCompareProducts(
+          messageData,
+          contextData
+        );
         console.log("====> Kết quả so sánh:", compareResult.success);
         return res.status(200).json(compareResult);
       } catch (compareError) {
@@ -2004,7 +2334,7 @@ export const processMessage = async (req, res) => {
         return res.status(200).json({
           success: false,
           message: "Đã xảy ra lỗi khi so sánh sản phẩm. Vui lòng thử lại sau.",
-          error: compareError.message
+          error: compareError.message,
         });
       }
     }
@@ -2051,7 +2381,7 @@ const isComparisonRequest = (message) => {
     "cái nào tốt hơn",
     "cái nào tốt",
     "cái nào rẻ hơn",
-    "so sánh giá"
+    "so sánh giá",
   ];
 
   // Kiểm tra các câu chính xác có chứa từ khóa so sánh
@@ -2248,20 +2578,28 @@ const getProductImageData = (product) => {
   
   // Thử lấy hình ảnh từ tất cả các nguồn có thể
   // 1. Trường hợp productImages là mảng
-  if (product.productImages && Array.isArray(product.productImages) && product.productImages.length > 0) {
+  if (
+    product.productImages &&
+    Array.isArray(product.productImages) &&
+    product.productImages.length > 0
+  ) {
     // Lưu URL đầy đủ vào các trường
     imageData.image = product.productImages[0];
     imageData.imageUrl = product.productImages[0];
   }
   
   // 2. Trường hợp productImages là string
-  if (product.productImages && typeof product.productImages === 'string') {
+  if (product.productImages && typeof product.productImages === "string") {
     imageData.image = product.productImages;
     imageData.imageUrl = product.productImages;
   }
   
   // 3. Kiểm tra các trường hình ảnh khác
-  if (product.productImageURLs && Array.isArray(product.productImageURLs) && product.productImageURLs.length > 0) {
+  if (
+    product.productImageURLs &&
+    Array.isArray(product.productImageURLs) &&
+    product.productImageURLs.length > 0
+  ) {
     imageData.imageUrl = product.productImageURLs[0];
   }
   
@@ -2290,12 +2628,17 @@ const getProductImageData = (product) => {
   }
   
   // 5. Log để debug
-  console.log(`Thông tin hình ảnh cho sản phẩm ${product.productName || product._id}:`, {
+  console.log(
+    `Thông tin hình ảnh cho sản phẩm ${product.productName || product._id}:`,
+    {
     hasProductImages: !!product.productImages,
-    productImagesLength: Array.isArray(product.productImages) ? product.productImages.length : 'not array',
+      productImagesLength: Array.isArray(product.productImages)
+        ? product.productImages.length
+        : "not array",
     extractedImageUrl: imageData.imageUrl,
-    extractedImage: imageData.image
-  });
+      extractedImage: imageData.image,
+    }
+  );
   
   return imageData;
 };
@@ -2325,7 +2668,7 @@ async function handleHealthInquiry(message, context) {
       if (context && context.userId && exampleAnswer.products) {
         saveContext(context.userId, {
           lastHealthNeed: primaryNeed,
-          lastHealthProducts: exampleAnswer.products.map(p => p._id)
+          lastHealthProducts: exampleAnswer.products.map((p) => p._id),
         });
       }
       
@@ -2342,7 +2685,7 @@ async function handleHealthInquiry(message, context) {
     if (context && context.userId) {
       saveContext(context.userId, {
         lastHealthNeed: primaryNeed,
-        lastHealthProducts: products.map(p => p._id)
+        lastHealthProducts: products.map((p) => p._id),
       });
     }
     
@@ -2352,7 +2695,7 @@ async function handleHealthInquiry(message, context) {
   // Nếu không phát hiện được nhu cầu sức khỏe cụ thể
   return {
     text: "Tôi không hiểu rõ vấn đề sức khỏe bạn đang hỏi. Bạn có thể mô tả chi tiết hơn không?",
-    type: 'text'
+    type: "text",
   };
 }
 
@@ -2370,13 +2713,14 @@ function checkExampleQuestions(message, healthNeed) {
   const lowercaseMessage = message.toLowerCase().trim();
   
   // Xử lý đặc biệt cho tiểu đường
-  if (healthNeed === 'tieuDuong' || 
+  if (
+    healthNeed === "tieuDuong" ||
       lowercaseMessage.includes("tiểu đường") || 
       lowercaseMessage.includes("đường huyết") ||
-      lowercaseMessage.includes("bệnh tiểu đường")) {
-    
+    lowercaseMessage.includes("bệnh tiểu đường")
+  ) {
     // Tìm sản phẩm phù hợp với nhu cầu sức khỏe tiểu đường
-    return findProductsForHealthNeed(healthNeed).then(products => {
+    return findProductsForHealthNeed(healthNeed).then((products) => {
       const responseText = `Thực phẩm cho người bệnh tiểu đường:
 
 ✅ *Nên ăn:*
@@ -2416,25 +2760,30 @@ function checkExampleQuestions(message, healthNeed) {
       return {
         text: responseText,
         type: "healthProducts",
-        products: formattedProducts
+        products: formattedProducts,
       };
     });
   }
   
   // Kiểm tra xem có tồn tại dữ liệu cho nhu cầu sức khỏe này không
-  if (healthRecommendations[healthNeed] && healthRecommendations[healthNeed].examples) {
+  if (
+    healthRecommendations[healthNeed] &&
+    healthRecommendations[healthNeed].examples
+  ) {
     const examples = healthRecommendations[healthNeed].examples;
     
     // Tìm câu hỏi mẫu có nội dung gần với câu hỏi của người dùng
     for (const example of examples) {
       const exampleQuestion = example.question.toLowerCase().trim();
       
-      if (lowercaseMessage.includes(exampleQuestion) || 
-          exampleQuestion.includes(lowercaseMessage)) {
+      if (
+        lowercaseMessage.includes(exampleQuestion) ||
+        exampleQuestion.includes(lowercaseMessage)
+      ) {
         console.log(`Tìm thấy câu hỏi mẫu: "${example.question}"`);
         return Promise.resolve({
           text: example.answer,
-          type: 'text'
+          type: "text",
         });
       }
     }
@@ -2511,127 +2860,99 @@ function classifyMainIntent(message) {
   console.log("Phân loại ý định chính:", message);
   const lowerMessage = message.toLowerCase();
 
+  // ƯU TIÊN: Nhận diện kiểm tra sản phẩm "có ... không"
+  const productName = checkProductAvailabilityQuestion(message);
+  if (productName) {
+    console.log("Phát hiện intent kiểm tra sản phẩm:", productName);
+    return "product_check";
+  }
+
+  // ƯU TIÊN: Nhận diện so sánh sản phẩm
+  const compareKeywords = [
+    "so sánh", "so với", "đối chiếu", "khác nhau", "phân tích", "nên chọn cái nào", "cái nào tốt hơn", "cái nào rẻ hơn", "so sánh giá"
+  ];
+  for (const kw of compareKeywords) {
+    if (lowerMessage.includes(kw)) {
+      console.log("Phát hiện intent so sánh sản phẩm");
+      return "compare_products";
+    }
+  }
+
+  // Ưu tiên nhận diện đăng ký tài khoản
+  const registerKeywords = [
+    "đăng ký", "tạo tài khoản", "tạo account", "tạo tk", 
+    "sign up", "register", "đăng ký tài khoản", "đăng ký tk", 
+    "đăng ký thành viên", "làm thế nào để đăng ký", "cách đăng ký", 
+    "muốn đăng ký", "hướng dẫn đăng ký"
+  ];
+  
+  for (const keyword of registerKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      console.log(`Phát hiện intent đăng ký tài khoản với từ khóa: ${keyword}`);
+      return "faq_register_account";
+    }
+  }
+
+  // Ưu tiên nhận diện câu hỏi về sức khỏe cần GPT trả lời
+  const healthAdviceKeywords = [
+    "tư vấn", "lời khuyên", "gợi ý", "lợi ích", "tác dụng",
+    "thực đơn", "chế độ ăn", "dinh dưỡng", "khẩu phần", 
+    "tốt cho", "có lợi cho", "giúp", "chữa", "trị", "phòng ngừa",
+    "bệnh", "ho", "cảm", "sốt", "đau", "nhức", "viêm", "dị ứng",
+    "thực phẩm nào", "nên ăn gì", "không nên ăn gì", "kiêng"
+  ];
+
+  // Kiểm tra nếu có từ khóa liên quan đến tư vấn sức khỏe
+  for (const keyword of healthAdviceKeywords) {
+    if (lowerMessage.includes(keyword)) {
+      // Kiểm tra thêm các mẫu câu hỏi cụ thể về sức khỏe
+      if (
+        lowerMessage.includes("bị") || 
+        lowerMessage.includes("đang") ||
+        lowerMessage.includes("nên ăn") ||
+        lowerMessage.includes("tốt cho") ||
+        lowerMessage.includes("giúp") ||
+        lowerMessage.includes("chữa") ||
+        lowerMessage.includes("trị") ||
+        lowerMessage.includes("phòng") ||
+        lowerMessage.includes("thực phẩm nào") ||
+        lowerMessage.includes("món ăn nào") ||
+        lowerMessage.includes("thực đơn") ||
+        lowerMessage.includes("chế độ ăn")
+      ) {
+        console.log(`Phát hiện câu hỏi tư vấn sức khỏe cần GPT trả lời với từ khóa: ${keyword}`);
+        return "health_advice";
+      }
+    }
+  }
+
   // Ưu tiên nhận diện thực phẩm cho mẹ bầu
   const pregnantKeywords = [
-    'mẹ bầu', 'bà bầu', 'phụ nữ mang thai', 'thai phụ', 'đang mang thai', 
-    'có thai', 'thực phẩm cho bà bầu', 'đồ ăn cho bà bầu', 'dinh dưỡng thai kỳ',
-    'dinh dưỡng cho mẹ bầu', 'bầu bí', 'mang bầu', 'mang thai', 'thực phẩm thai kỳ'
+    "mẹ bầu",
+    "bà bầu",
+    "phụ nữ mang thai",
+    "thai phụ",
+    "đang mang thai",
+    "có thai",
+    "thực phẩm cho bà bầu",
+    "đồ ăn cho bà bầu",
+    "dinh dưỡng thai kỳ",
+    "dinh dưỡng cho mẹ bầu",
+    "bầu bí",
+    "mang bầu",
+    "mang thai",
+    "thực phẩm thai kỳ",
   ];
   
   for (const keyword of pregnantKeywords) {
     if (lowerMessage.includes(keyword)) {
       console.log(`Phát hiện intent thực phẩm mẹ bầu với từ khóa: ${keyword}`);
-      return 'faq_pregnant_food';
+      return "faq_pregnant_food";
     }
   }
 
-  // Ưu tiên nhận diện thực phẩm cho trẻ em
-  const kidsKeywords = [
-    'trẻ em', 'trẻ con', 'trẻ nhỏ', 'em bé', 'bé', 'con nít', 'nhi', 'thiếu nhi',
-    'thực phẩm cho trẻ', 'đồ ăn cho trẻ', 'trẻ ăn', 'bé ăn', 'cho trẻ', 'cho bé',
-    'trẻ sơ sinh', 'dinh dưỡng trẻ', 'dinh dưỡng cho bé', 'thức ăn trẻ em'
-  ];
-  
-  for (const keyword of kidsKeywords) {
-    if (lowerMessage.includes(keyword)) {
-      console.log(`Phát hiện intent thực phẩm trẻ em với từ khóa: ${keyword}`);
-      return 'faq_kids_food';
-    }
-  }
-
-  // Ưu tiên nhận diện yêu cầu lập kế hoạch ăn kiêng
-  const mealPlanKeywords = [
-    'lập kế hoạch', 'tạo kế hoạch', 'lập thực đơn', 'tạo thực đơn', 'gợi ý thực đơn', 
-    'kế hoạch ăn', 'thực đơn ăn', 'menu ăn kiêng', 'chế độ ăn', 'kế hoạch ăn uống',
-    'thực đơn ăn kiêng', 'thực đơn giảm cân', 'kế hoạch giảm cân', 'lập lịch ăn'
-  ];
-  
-  for (const keyword of mealPlanKeywords) {
-    if (lowerMessage.includes(keyword)) {
-      if (lowerMessage.includes('ăn kiêng') || lowerMessage.includes('giảm cân') || 
-          lowerMessage.includes('diet') || lowerMessage.includes('keto') || 
-          lowerMessage.includes('low carb')) {
-        return 'meal_plan_diet';
-      }
-    }
-  }
-
-  // Ưu tiên nhận diện các câu hỏi về ăn kiêng, chế độ đặc biệt
-  const dietKeywords = [
-    'ăn kiêng', 'dành cho người ăn kiêng', 'low carb', 'keto', 'ít đường', 'giảm cân', 'dành cho người giảm cân', 'dành cho người tiểu đường', 'dành cho người huyết áp', 'dành cho người cholesterol', 'dành cho người béo phì', 'dành cho người ăn chay', 'dành cho người thuần chay', 'dành cho người dị ứng', 'dành cho người không dung nạp', 'dành cho người tập gym', 'dành cho người tập thể hình', 'dành cho người cao tuổi', 'dành cho trẻ em', 'dành cho mẹ bầu', 'dành cho bà bầu', 'dành cho người bệnh', 'dành cho người sức khỏe yếu', 'dành cho người cần dinh dưỡng đặc biệt'
-  ];
-  for (const keyword of dietKeywords) {
-    if (lowerMessage.includes(keyword)) {
-      return 'faq_diet';
-    }
-  }
-  // 1. FAQ/chính sách/chất lượng
-  const faqIntents = [
-    { intent: 'faq_product_quality', keywords: ['chất lượng', 'có tốt không', 'đảm bảo', 'hàng có tốt', 'sản phẩm tốt không', 'có đảm bảo', 'hàng chất lượng', 'sản phẩm chất lượng'] },
-    { intent: 'faq_return_policy', keywords: ['đổi trả', 'hoàn tiền', 'trả lại', 'không vừa ý', 'lỗi', 'hư hỏng', 'chính sách đổi', 'bảo hành', 'không thích', 'chính sách trả', 'bảo hành', 'bảo đảm'] },
-    { intent: 'faq_customer_support', keywords: ['hỗ trợ', 'liên hệ', 'tư vấn', 'giúp đỡ', 'hotline', 'số điện thoại', 'chăm sóc', 'tổng đài', 'zalo', 'facebook', 'email', 'nhân viên'] },
-    { intent: 'faq_store_location', keywords: ['địa chỉ', 'cửa hàng ở đâu', 'shop ở đâu', 'vị trí', 'địa điểm'] },
-    { intent: 'faq_payment_methods', keywords: ['thanh toán', 'phương thức thanh toán', 'cách thanh toán', 'hình thức thanh toán', 'trả tiền', 'bao nhiêu hình thức thanh toán'] },
-    { intent: 'faq_shipping_time', keywords: ['giao hàng', 'ship', 'vận chuyển', 'thời gian giao', 'giao trong bao lâu', 'mất bao lâu để nhận'] },
-    { intent: 'faq_promotions', keywords: ['khuyến mãi', 'giảm giá', 'ưu đãi', 'có mã giảm', 'đang giảm giá', 'voucher', 'coupon', 'sale'] },
-    { intent: 'faq_trending_products', keywords: ['sản phẩm mới', 'bán chạy nhất', 'phổ biến nhất', 'hot nhất', 'xu hướng', 'mới ra mắt'] },
-    { intent: 'faq_shipping_fee', keywords: ['phí vận chuyển', 'phí ship', 'phí giao hàng', 'ship bao nhiêu tiền', 'tốn bao nhiêu tiền giao hàng'] },
-    { intent: 'faq_membership', keywords: ['thành viên', 'khách hàng thân thiết', 'membership', 'hội viên', 'tích điểm', 'ưu đãi thành viên', 'vip', 'điểm thưởng', 'chương trình thành viên', 'quyền lợi', 'đăng ký thành viên'] },
-    { intent: 'faq_certification', keywords: ['chứng nhận', 'an toàn', 'organic', 'hữu cơ', 'iso', 'gmp', 'haccp', 'certified'] },
-    { intent: 'faq_origin', keywords: ['xuất xứ', 'nguồn gốc', 'sản xuất ở', 'nước nào', 'made in'] },
-    { intent: 'faq_stock', keywords: ['còn hàng', 'tồn kho', 'có sẵn', 'hết hàng', 'còn không', 'còn bán không'] },
-    { intent: 'faq_order', keywords: ['đặt hàng', 'mua online', 'mua qua mạng', 'order', 'cách đặt', 'cách mua'] },
-    { intent: 'faq_delivery', keywords: ['giao hàng', 'ship', 'vận chuyển', 'thời gian giao', 'bao lâu nhận', 'giao trong bao lâu'] },
-    { intent: 'faq_product_info', keywords: ['thông tin', 'giới thiệu', 'mô tả', 'chi tiết', 'review', 'đánh giá', 'thành phần', 'nguyên liệu', 'công dụng', 'tác dụng', 'dùng để', 'sử dụng', 'bảo quản', 'hạn sử dụng'] },
-    { intent: 'faq_price', keywords: ['giá', 'bao nhiêu tiền', 'giá bao nhiêu', 'giá cả', 'đắt', 'rẻ', 'giá sản phẩm'] },
-    { intent: 'faq_organic', keywords: ['hữu cơ', 'organic', 'sạch', 'an toàn', 'không hóa chất', 'không thuốc trừ sâu'] },
-    { intent: 'faq_diet', keywords: ['ăn chay', 'chay', 'thuần chay', 'vegan', 'vegetarian', 'keto', 'low carb', 'không đường', 'không gluten', 'dành cho người tiểu đường', 'dành cho người ăn kiêng'] },
-  ];
-  for (const faq of faqIntents) {
-    for (const keyword of faq.keywords) {
-      if (lowerMessage.includes(keyword)) {
-        console.log(`Phát hiện intent FAQ: ${faq.intent} với từ khóa: ${keyword}`);
-        return faq.intent;
-      }
-    }
-  }
-  // 2. Sức khỏe
-  const healthKeywords = [
-    'sức khỏe', 'dinh dưỡng', 'bệnh', 'tiểu đường', 'huyết áp', 'tim mạch',
-    'béo phì', 'giảm cân', 'tăng cơ', 'ăn chay', 'mang thai',
-    'người già', 'người cao tuổi', 'lớn tuổi', 'trẻ em', 'dị ứng', 'không dung nạp',
-    'tốt cho', 'có lợi', 'phòng bệnh', 'chữa bệnh', 'mẹ bầu', 'bà bầu',
-    'thực phẩm dành cho', 'thực phẩm cho', 'đồ ăn cho', 'món ăn cho'
-  ];
-  for (const keyword of healthKeywords) {
-    if (lowerMessage.includes(keyword)) {
-      return 'health_inquiry';
-    }
-  }
-  // 3. So sánh sản phẩm
-  const compareProductsKeywords = [
-    'so sánh', 'so với', 'đối chiếu', 'khác nhau', 'giống nhau', 'compare',
-    'khác biệt', 'tốt hơn', 'rẻ hơn', 'đắt hơn', 'chất lượng hơn',
-    'nên mua', 'nên chọn', 'lựa chọn', 'cái nào tốt hơn'
-  ];
-  for (const keyword of compareProductsKeywords) {
-    if (lowerMessage.includes(keyword)) {
-      return 'compare_products';
-    }
-  }
-  // 4. Tìm kiếm sản phẩm
-  const productSearchKeywords = [
-    'tìm', 'mua', 'sản phẩm', 'hàng', 'bán', 'đặt', 'order', 'mua hàng',
-    'mua sắm', 'shopping', 'giỏ hàng', 'cart', 'checkout', 'thanh toán',
-    'product', 'item', 'hàng hóa', 'mặt hàng', 'có bán', 'đồ', 'đồ dùng'
-  ];
-  for (const keyword of productSearchKeywords) {
-    if (lowerMessage.includes(keyword)) {
-      return 'product_search';
-    }
-  }
-  // 5. Mặc định
-  return 'general_inquiry';
+  // Tiếp tục với các phần còn lại của hàm classifyMainIntent
+  // ... existing code ...
 }
 
 /**
@@ -2642,21 +2963,385 @@ function classifyMainIntent(message) {
 function extractEntities(message) {
   const lowerMessage = message.toLowerCase();
   // Loại sản phẩm
-  const productTypes = ['rau', 'củ', 'quả', 'sữa', 'thịt', 'cá', 'hải sản', 'bánh', 'kẹo', 'gạo', 'ngũ cốc', 'nước', 'đồ uống', 'gia vị', 'dầu ăn', 'nước mắm', 'nước tương', 'mì', 'bún', 'phở', 'trứng', 'đậu', 'hạt', 'bơ', 'phô mai', 'sữa chua', 'trà', 'cà phê'];
-  const healthNeeds = ['tiểu đường', 'giảm cân', 'tăng cân', 'ăn chay', 'dinh dưỡng', 'huyết áp', 'tim mạch', 'béo phì', 'mang thai', 'người già', 'trẻ em', 'dị ứng', 'không dung nạp', 'tốt cho', 'có lợi', 'phòng bệnh', 'chữa bệnh', 'mẹ bầu', 'bà bầu'];
-  const productAttributes = ['hữu cơ', 'organic', 'ít đường', 'nhiều xơ', 'giàu protein', 'ít béo', 'không đường', 'không gluten', 'low sugar', 'high fiber', 'gluten free', 'diabetes friendly', 'keto', 'vegan', 'vegetarian', 'chay', 'thuần chay'];
-  const promoKeywords = ['khuyến mãi', 'giảm giá', 'ưu đãi', 'sale', 'voucher', 'coupon', 'mã giảm'];
-  const originKeywords = ['xuất xứ', 'nguồn gốc', 'sản xuất ở', 'nước nào', 'made in'];
-  const certificationKeywords = ['chứng nhận', 'an toàn', 'hữu cơ', 'organic', 'iso', 'gmp', 'haccp', 'certified'];
+  const productTypes = [
+    "rau",
+    "củ",
+    "quả",
+    "sữa",
+    "thịt",
+    "cá",
+    "hải sản",
+    "bánh",
+    "kẹo",
+    "gạo",
+    "ngũ cốc",
+    "nước",
+    "đồ uống",
+    "gia vị",
+    "dầu ăn",
+    "nước mắm",
+    "nước tương",
+    "mì",
+    "bún",
+    "phở",
+    "trứng",
+    "đậu",
+    "hạt",
+    "bơ",
+    "phô mai",
+    "sữa chua",
+    "trà",
+    "cà phê",
+  ];
+  const healthNeeds = [
+    "tiểu đường",
+    "giảm cân",
+    "tăng cân",
+    "ăn chay",
+    "dinh dưỡng",
+    "huyết áp",
+    "tim mạch",
+    "béo phì",
+    "mang thai",
+    "người già",
+    "trẻ em",
+    "dị ứng",
+    "không dung nạp",
+    "tốt cho",
+    "có lợi",
+    "phòng bệnh",
+    "chữa bệnh",
+    "mẹ bầu",
+    "bà bầu",
+  ];
+  const productAttributes = [
+    "hữu cơ",
+    "organic",
+    "ít đường",
+    "nhiều xơ",
+    "giàu protein",
+    "ít béo",
+    "không đường",
+    "không gluten",
+    "low sugar",
+    "high fiber",
+    "gluten free",
+    "diabetes friendly",
+    "keto",
+    "vegan",
+    "vegetarian",
+    "chay",
+    "thuần chay",
+  ];
+  const promoKeywords = [
+    "khuyến mãi",
+    "giảm giá",
+    "ưu đãi",
+    "sale",
+    "voucher",
+    "coupon",
+    "mã giảm",
+  ];
+  const originKeywords = [
+    "xuất xứ",
+    "nguồn gốc",
+    "sản xuất ở",
+    "nước nào",
+    "made in",
+  ];
+  const certificationKeywords = [
+    "chứng nhận",
+    "an toàn",
+    "hữu cơ",
+    "organic",
+    "iso",
+    "gmp",
+    "haccp",
+    "certified",
+  ];
 
   // Tìm entity
   const entities = {
-    productTypes: productTypes.filter(type => lowerMessage.includes(type)),
-    healthNeeds: healthNeeds.filter(need => lowerMessage.includes(need)),
-    productAttributes: productAttributes.filter(attr => lowerMessage.includes(attr)),
-    promo: promoKeywords.some(k => lowerMessage.includes(k)),
-    origin: originKeywords.some(k => lowerMessage.includes(k)),
-    certification: certificationKeywords.some(k => lowerMessage.includes(k)),
+    productTypes: productTypes.filter((type) => lowerMessage.includes(type)),
+    healthNeeds: healthNeeds.filter((need) => lowerMessage.includes(need)),
+    productAttributes: productAttributes.filter((attr) =>
+      lowerMessage.includes(attr)
+    ),
+    promo: promoKeywords.some((k) => lowerMessage.includes(k)),
+    origin: originKeywords.some((k) => lowerMessage.includes(k)),
+    certification: certificationKeywords.some((k) => lowerMessage.includes(k)),
   };
   return entities;
 }
+
+/**
+ * Sinh câu trả lời tư vấn cho các câu hỏi linh hoạt về sức khỏe, dinh dưỡng
+ * @param {string} message - Tin nhắn của người dùng
+ * @returns {string} - Câu trả lời tư vấn
+ */
+const generateAdviceResponse = (message) => {
+  const lowerMessage = message.toLowerCase();
+  
+  // Câu hỏi về trái cây ít đường
+  if (
+    (lowerMessage.includes("trái cây") || lowerMessage.includes("hoa quả")) &&
+    (lowerMessage.includes("ít đường") || 
+     lowerMessage.includes("tiểu đường") || 
+     lowerMessage.includes("đường huyết") ||
+     lowerMessage.includes("đường thấp"))
+  ) {
+    return `Các loại trái cây ít đường phù hợp với người tiểu đường hoặc đang ăn kiêng:
+
+1. **Dâu tây**: Chỉ số đường huyết thấp, giàu chất xơ và vitamin C
+2. **Việt quất**: Chứa ít đường tự nhiên, giàu chất chống oxy hóa
+3. **Táo xanh**: Có hàm lượng đường thấp hơn so với táo đỏ
+4. **Chanh/Bưởi**: Hàm lượng đường rất thấp, giàu vitamin C
+5. **Dưa hấu**: Mặc dù ngọt nhưng có chỉ số đường huyết trung bình
+6. **Dưa lưới**: Hàm lượng đường vừa phải, giàu kali và vitamin A
+
+Lưu ý: Nên ăn trái cây nguyên quả thay vì uống nước ép để giảm tốc độ hấp thu đường và tận dụng chất xơ.`;
+  }
+  
+  // Câu hỏi về sữa thực vật vs sữa động vật
+  else if (
+    lowerMessage.includes("sữa thực vật") || 
+    (lowerMessage.includes("sữa") && 
+     (lowerMessage.includes("động vật") || 
+      lowerMessage.includes("thực vật") || 
+      lowerMessage.includes("hạt") || 
+      lowerMessage.includes("đậu") || 
+      lowerMessage.includes("hạnh nhân") || 
+      lowerMessage.includes("so sánh")))
+  ) {
+    return `So sánh sữa thực vật và sữa động vật:
+
+**Sữa động vật (sữa bò):**
+✅ Ưu điểm:
+- Giàu protein hoàn chỉnh và canxi tự nhiên
+- Cung cấp vitamin B12, D, A tự nhiên
+- Hương vị quen thuộc
+
+❌ Nhược điểm:
+- Không phù hợp với người không dung nạp lactose
+- Có thể gây dị ứng
+- Chứa nhiều chất béo bão hòa
+
+**Sữa thực vật:**
+✅ Ưu điểm:
+- Không chứa lactose, phù hợp với người không dung nạp lactose
+- Ít chất béo bão hòa
+- Nhiều loại để lựa chọn theo khẩu vị và nhu cầu
+- Thân thiện với môi trường hơn
+
+❌ Nhược điểm:
+- Hàm lượng protein thường thấp hơn (trừ sữa đậu nành)
+- Cần bổ sung canxi và vitamin
+- Một số loại có thêm đường và phụ gia
+
+**Gợi ý lựa chọn:**
+- Nếu bạn tập thể hình: Sữa bò hoặc sữa đậu nành
+- Nếu bạn ăn kiêng: Sữa hạnh nhân không đường
+- Nếu bạn không dung nạp lactose: Sữa đậu nành, hạnh nhân hoặc yến mạch
+- Nếu bạn quan tâm đến môi trường: Sữa yến mạch hoặc sữa đậu`;
+  }
+  
+  // Câu hỏi về thực đơn lành mạnh
+  else if (
+    (lowerMessage.includes("thực đơn") || lowerMessage.includes("chế độ ăn")) &&
+    (lowerMessage.includes("lành mạnh") || 
+     lowerMessage.includes("healthy") || 
+     lowerMessage.includes("khỏe mạnh") ||
+     lowerMessage.includes("cân đối"))
+  ) {
+    return `Thực đơn lành mạnh trong ngày với các sản phẩm từ siêu thị:
+
+**Bữa sáng:**
+- Yến mạch nấu với sữa hạnh nhân và trái cây tươi (dâu tây, việt quất)
+- Hoặc: Bánh mì nguyên cám với trứng luộc và bơ trái bơ
+
+**Bữa trưa:**
+- Salad rau xanh với cá hồi nướng, dầu olive và chanh tươi
+- Hoặc: Cơm gạo lứt với thịt gà nướng và rau củ hấp
+
+**Bữa tối:**
+- Súp rau củ với đậu lăng và bánh mì nguyên cám
+- Hoặc: Bún trộn rau thơm với thịt bò xào ít dầu
+
+**Bữa phụ:**
+- Trái cây tươi theo mùa
+- Sữa chua không đường với hạt chia
+- Hỗn hợp các loại hạt không muối (hạnh nhân, óc chó, hạt bí)
+
+**Lưu ý:**
+- Uống đủ nước (2-3 lít/ngày)
+- Hạn chế thực phẩm chế biến sẵn, nhiều đường và muối
+- Ưu tiên thực phẩm tươi, nguyên chất
+- Đa dạng nguồn dinh dưỡng từ rau củ quả, protein nạc, ngũ cốc nguyên hạt và chất béo lành mạnh`;
+  }
+  
+  // Câu hỏi về tăng sức đề kháng cho trẻ em
+  else if (
+    (lowerMessage.includes("trẻ") || 
+     lowerMessage.includes("trẻ em") || 
+     lowerMessage.includes("bé") || 
+     lowerMessage.includes("con nít")) &&
+    (lowerMessage.includes("đề kháng") || 
+     lowerMessage.includes("miễn dịch") || 
+     lowerMessage.includes("sức khỏe") ||
+     lowerMessage.includes("ít ốm") ||
+     lowerMessage.includes("không bị ốm"))
+  ) {
+    return `Các thực phẩm giúp tăng sức đề kháng cho trẻ em:
+
+1. **Trái cây giàu vitamin C**: Cam, quýt, kiwi, dâu tây - giúp tăng cường hệ miễn dịch và chống oxy hóa
+
+2. **Rau xanh đậm màu**: Rau chân vịt, cải xoăn, bông cải xanh - cung cấp vitamin A, C và folate
+
+3. **Các loại hạt và đậu**: Hạt bí ngô, hạnh nhân, đậu lăng - giàu kẽm và protein thực vật
+
+4. **Sữa chua**: Chứa probiotics tốt cho hệ tiêu hóa và miễn dịch
+
+5. **Trứng**: Nguồn protein chất lượng cao và vitamin D
+
+6. **Cá béo**: Cá hồi, cá thu - giàu omega-3 giúp giảm viêm và tăng cường miễn dịch
+
+7. **Thịt nạc**: Cung cấp kẽm và sắt - khoáng chất quan trọng cho hệ miễn dịch
+
+8. **Mật ong**: Có thể dùng cho trẻ trên 1 tuổi, có tính kháng khuẩn tự nhiên
+
+**Lưu ý:**
+- Cho trẻ ăn đa dạng thực phẩm
+- Hạn chế đồ ngọt, thực phẩm chế biến sẵn
+- Đảm bảo trẻ ngủ đủ giấc và vận động thường xuyên
+- Bổ sung nước đầy đủ`;
+  }
+  
+  // Câu hỏi về thực phẩm hữu cơ
+  else if (
+    lowerMessage.includes("hữu cơ") &&
+    (lowerMessage.includes("tại sao") || 
+     lowerMessage.includes("vì sao") || 
+     lowerMessage.includes("lợi ích") ||
+     lowerMessage.includes("so với") ||
+     lowerMessage.includes("khác biệt"))
+  ) {
+    return `Lợi ích của thực phẩm hữu cơ so với thực phẩm thông thường:
+
+**1. An toàn hơn cho sức khỏe**
+- Không sử dụng thuốc trừ sâu, phân bón hóa học độc hại
+- Không chứa hormone tăng trưởng và kháng sinh (đối với thịt, trứng, sữa)
+- Không sử dụng thực phẩm biến đổi gen (GMO)
+
+**2. Giá trị dinh dưỡng cao hơn**
+- Nghiên cứu cho thấy thực phẩm hữu cơ có hàm lượng chất chống oxy hóa cao hơn
+- Thực phẩm hữu cơ có hàm lượng omega-3 cao hơn trong thịt và sữa
+- Hương vị tự nhiên, đậm đà hơn
+
+**3. Thân thiện với môi trường**
+- Bảo vệ nguồn nước khỏi ô nhiễm hóa chất
+- Bảo tồn đa dạng sinh học và sức khỏe đất
+- Giảm phát thải carbon
+
+**4. Đảm bảo phúc lợi động vật**
+- Vật nuôi được chăn thả tự nhiên, ăn thức ăn hữu cơ
+- Không sử dụng hormone tăng trưởng và kháng sinh
+
+**Một số sản phẩm hữu cơ nên ưu tiên:**
+- Rau xanh (đặc biệt là rau ăn lá)
+- Trái cây mỏng vỏ (dâu tây, táo, nho)
+- Sữa và các sản phẩm từ sữa
+- Thịt, trứng từ vật nuôi hữu cơ
+- Ngũ cốc nguyên hạt
+
+**Lưu ý:** Thực phẩm hữu cơ thường có giá cao hơn, nhưng lợi ích lâu dài cho sức khỏe và môi trường là đáng kể.`;
+  }
+  
+  // Câu hỏi chung về sức khỏe và dinh dưỡng
+  else {
+    return `Lời khuyên về dinh dưỡng và sức khỏe:
+
+**Nguyên tắc dinh dưỡng cân bằng:**
+
+1. **Đa dạng thực phẩm**
+   - Ăn đủ 4 nhóm: tinh bột, protein, chất béo, rau củ quả
+   - Thay đổi thực phẩm thường xuyên để đảm bảo đủ dưỡng chất
+
+2. **Ưu tiên thực phẩm nguyên chất**
+   - Chọn thực phẩm tươi, ít qua chế biến
+   - Hạn chế thực phẩm đóng gói, chế biến sẵn
+
+3. **Cân đối khẩu phần**
+   - 1/2 đĩa ăn là rau củ quả
+   - 1/4 đĩa ăn là protein (thịt, cá, đậu)
+   - 1/4 đĩa ăn là tinh bột phức hợp (gạo lứt, khoai)
+
+4. **Uống đủ nước**
+   - 2-3 lít nước mỗi ngày
+   - Hạn chế đồ uống có đường và cồn
+
+5. **Thực phẩm tốt cho sức khỏe**
+   - Rau xanh và trái cây đa dạng màu sắc
+   - Cá béo (cá hồi, cá thu) giàu omega-3
+   - Các loại hạt và đậu
+   - Ngũ cốc nguyên hạt
+   - Dầu olive, quả bơ
+
+Nếu bạn có nhu cầu dinh dưỡng cụ thể, vui lòng cho tôi biết chi tiết hơn để tôi có thể tư vấn phù hợp.`;
+  }
+};
+
+/**
+ * Xử lý câu hỏi tư vấn sức khỏe bằng GPT
+ * @param {string} message - Câu hỏi của người dùng
+ * @returns {Promise<string>} - Câu trả lời từ GPT
+ */
+const handleHealthAdviceWithGPT = async (message) => {
+  try {
+    console.log(`Xử lý câu hỏi sức khỏe với GPT: "${message}"`);
+    
+    // Tạo prompt cho GPT
+    const prompt = `Bạn là chuyên gia dinh dưỡng và tư vấn sức khỏe của DNC FOOD. 
+Hãy trả lời câu hỏi về sức khỏe, dinh dưỡng, thực phẩm tốt cho các vấn đề sức khỏe một cách chuyên nghiệp, ngắn gọn và dễ hiểu.
+Câu trả lời nên có định dạng rõ ràng, dễ đọc, và đưa ra lời khuyên thực tế, khoa học.
+
+Câu hỏi của khách hàng: "${message}"
+
+Trả lời:`;
+
+    // Gọi API OpenAI
+    const response = await axios.post(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        model: "gpt-4o-mini", // Hoặc model phù hợp khác
+        messages: [
+          { role: "system", content: "Bạn là chuyên gia dinh dưỡng và tư vấn sức khỏe." },
+          { role: "user", content: prompt }
+        ],
+        max_tokens: 800,
+        temperature: 0.7
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+        }
+      }
+    );
+
+    // Trích xuất câu trả lời
+    const answer = response.data.choices[0].message.content.trim();
+    console.log("Câu trả lời từ GPT:", answer);
+    
+    // Lưu vào file tạm để debug nếu cần
+    fs.writeFileSync(
+      path.join(__dirname, "../../chatbot/temp_message.json"),
+      JSON.stringify({ query: message, response: answer })
+    );
+    
+    return answer;
+  } catch (error) {
+    console.error("Lỗi khi gọi GPT API:", error);
+    // Trả về câu trả lời mặc định nếu có lỗi
+    return "Xin lỗi, hiện tại tôi không thể trả lời câu hỏi này. Vui lòng thử lại sau hoặc liên hệ với nhân viên hỗ trợ để được tư vấn chi tiết.";
+  }
+};

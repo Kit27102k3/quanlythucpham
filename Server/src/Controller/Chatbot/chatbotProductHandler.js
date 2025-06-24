@@ -1293,7 +1293,7 @@ export const handleProductQuery = async (message, context) => {
  * @param {string} searchText - Từ khóa tìm kiếm
  * @returns {Promise<Array>} - Danh sách sản phẩm
  */
-const searchProductsMongoDB = async (searchText) => {
+export const searchProductsMongoDB = async (searchText) => {
   try {
     console.log("Đang tìm kiếm sản phẩm với query:", searchText);
 

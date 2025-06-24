@@ -12,6 +12,7 @@ import { toast, Toaster } from "sonner"; // Thêm toast từ Sonner
 import { Scrollbars } from "react-custom-scrollbars-2";
 import { Dialog } from "primereact/dialog";
 import { FaInfoCircle } from "react-icons/fa";
+import { authApi } from "../../api/authApi"; // Import authApi for fetching user details
 
 const Messages = () => {
   const [selectedContact, setSelectedContact] = useState(null);
@@ -325,13 +326,36 @@ const Messages = () => {
     return `${day}/${month}/${year} ${hours}:${minutes}`;
   };
 
-  const viewUserInfo = async () => {
+  const viewUserInfo = async (userId) => {
     try {
+      if (!userId) {
+        toast.error("ID người dùng không hợp lệ");
+        return;
+      }
+      
       setUserInfoVisible(true);
       toast.info("Đang tải thông tin người dùng...");
-      setTimeout(() => {
-        toast.success("Đã tải thông tin người dùng");
-      }, 1000);
+      
+      // Fetch detailed user information from API
+      try {
+        const userResponse = await authApi.getUserById(userId);
+        if (userResponse && userResponse.data) {
+          // Update selectedContact with additional user details
+          setSelectedContact(prev => ({
+            ...prev,
+            ...userResponse.data,
+            email: userResponse.data.email || prev.email,
+            phone: userResponse.data.phone || prev.phone,
+            address: userResponse.data.address || prev.address,
+            // Add any additional user fields here
+          }));
+          toast.success("Đã tải thông tin người dùng");
+        }
+      } catch (error) {
+        console.error("Lỗi khi lấy thông tin chi tiết người dùng:", error);
+        // Continue with existing contact info if API call fails
+        toast.success("Hiển thị thông tin người dùng có sẵn");
+      }
     } catch (error) {
       console.error("Lỗi khi lấy thông tin người dùng:", error);
       toast.error("Không thể lấy thông tin người dùng");

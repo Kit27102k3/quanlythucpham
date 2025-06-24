@@ -70,6 +70,8 @@ const OrderAdmin = () => {
     cancelled: 0,
     delivery_failed: 0,
     awaiting_payment: 0,
+    delivered: 0,
+    deliveredAndPaid: 0,
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -112,8 +114,6 @@ const OrderAdmin = () => {
     const loadData = async () => {
       if (userRole === "manager") {
         try {
-          console.log("Manager user object:", user);
-          
           let branchId = null;
           let branchName = null;
           
@@ -148,7 +148,6 @@ const OrderAdmin = () => {
           
           if (!branchId) {
             branchId = localStorage.getItem("branchId");
-            console.log("Using branchId from localStorage:", branchId);
           }
           
           if (!branchId) {
@@ -163,7 +162,6 @@ const OrderAdmin = () => {
                 } else if (typeof localStorageUser.branchId === 'string') {
                   branchId = localStorageUser.branchId;
                 }
-                console.log("Found branchId in localStorage user object:", branchId);
               } else if (localStorageUser.branch) {
                 if (typeof localStorageUser.branch === 'object' && localStorageUser.branch._id) {
                   branchId = localStorageUser.branch._id;
@@ -173,7 +171,6 @@ const OrderAdmin = () => {
                 } else if (typeof localStorageUser.branch === 'string') {
                   branchId = localStorageUser.branch;
                 }
-                console.log("Found branch in localStorage user object:", branchId);
               }
             } catch (e) {
               console.error("Error parsing user from localStorage:", e);
@@ -182,7 +179,6 @@ const OrderAdmin = () => {
           
           if (!branchId) {
             branchId = localStorage.getItem("userId");
-            console.log("Using userId as fallback branch ID:", branchId);
           }
             
           if (!branchId) {
@@ -212,16 +208,12 @@ const OrderAdmin = () => {
               ...prev,
               branchFilter: branchId,
             }));
-            console.log("Using cached branch name while loading from API:", branchName);
           }
           
-          console.log("Loading branch data for manager. Branch ID:", branchId);
           try {
             const response = await branchesApi.getBranchById(branchId);
             
             if (response && response.data) {
-              console.log("Branch data loaded:", response.data.name);
-              
               setUserBranch(response.data);
 
               setBranches([response.data]);
@@ -304,17 +296,27 @@ const OrderAdmin = () => {
       else if (userRole === "admin") {
         try {
           const response = await branchesApi.getAllBranches();
-          if (response && response.data && Array.isArray(response.data)) {
-          setBranches([
-            { _id: "", name: "Tất cả chi nhánh" },
-            ...response.data,
-          ]);
+          if (response && response.data) {
+            if (Array.isArray(response.data)) {
+              setBranches([
+                { _id: "", name: "Tất cả chi nhánh" },
+                ...response.data,
+              ]);
+            } else {
+              console.error("Invalid branch data format:", response.data);
+              toast.current.show({
+                severity: "warning",
+                summary: "Cảnh báo",
+                detail: "Định dạng dữ liệu chi nhánh không hợp lệ.",
+                life: 3000,
+              });
+            }
           } else {
-            console.error("Invalid branch data format:", response);
+            console.error("No branch data returned:", response);
             toast.current.show({
               severity: "warning",
               summary: "Cảnh báo",
-              detail: "Định dạng dữ liệu chi nhánh không hợp lệ.",
+              detail: "Không nhận được dữ liệu chi nhánh từ máy chủ.",
               life: 3000,
             });
           }
@@ -343,15 +345,12 @@ const OrderAdmin = () => {
         
         // Thêm timestamp để tránh cache
         const timestamp = new Date().getTime();
-        console.log(`Loading orders with timestamp: ${timestamp}, forceReload: ${forceReload}`);
 
         if (userRole === "manager") {
           let branchId = filters.branchFilter;
-          console.log("Initial branchId from filters:", branchId);
           
           if (!branchId && userBranch && userBranch._id) {
             branchId = userBranch._id;
-            console.log("Using branch ID from userBranch:", branchId);
           }
           
           if (!branchId && user?.branchId) {
@@ -360,17 +359,14 @@ const OrderAdmin = () => {
             } else if (typeof user.branchId === 'string') {
               branchId = user.branchId;
             }
-            console.log("Using branch ID from user object:", branchId);
           }
           
           if (!branchId) {
             branchId = localStorage.getItem("branchId");
-            console.log("Using branch ID from localStorage:", branchId);
           }
           
           if (!branchId) {
             branchId = localStorage.getItem("userId");
-            console.log("Using userId as fallback branch ID:", branchId);
           }
                          
           if (!branchId) {
@@ -382,8 +378,6 @@ const OrderAdmin = () => {
             setOrders([]);
             return;
           }
-          
-          console.log("Manager loading orders for branch:", branchId);
           
           try {
             // Thêm tham số timestamp vào API call
@@ -411,8 +405,6 @@ const OrderAdmin = () => {
                   }
                 : { timestamp, forceReload }
             );
-            
-            console.log("Orders loaded successfully for branch:", branchId);
           } catch (error) {
             console.error("Error loading orders for branch:", branchId, error);
             toast.error("Không thể tải đơn hàng cho chi nhánh của bạn", {
@@ -423,8 +415,6 @@ const OrderAdmin = () => {
             return;
           }
         } else if (userRole === "admin" && filters.branchFilter) {
-          console.log("Admin loading orders for branch:", filters.branchFilter);
-
           response = await orderApi.getOrdersByBranch(
             filters.branchFilter,
             pageNumber,
@@ -450,65 +440,69 @@ const OrderAdmin = () => {
               : { timestamp, forceReload }
           );
         } else {
-          console.log("Admin loading all orders");
-          
           response = await orderApi.getAllOrders(
-            pageNumber,
+            page,
             pageSize,
             filters.searchTerm,
             filters.statusFilter,
             filters.paymentMethodFilter,
-            filters.paymentStatusFilter === "paid"
-              ? true
-              : filters.paymentStatusFilter === "unpaid"
-              ? false
-              : undefined,
-            filters.dateFilter
-              ? new Date(filters.dateFilter).toISOString()
-              : undefined,
-            undefined,
-            timestamp
+            filters.paymentStatusFilter !== "all" ? filters.paymentStatusFilter === "paid" : undefined,
+            filters.dateFilter,
+            filters.branchFilter,
+            Date.now()
           );
         }
 
-        // Kiểm tra dữ liệu nhận về từ API
-        console.log("Orders data received:", response.data.orders);
-
-        // Đảm bảo trường isPaid được chuẩn hóa đúng kiểu dữ liệu boolean
-        const normalizedOrders = response.data.orders?.map(order => {
-          // Kiểm tra nhiều kiểu dữ liệu có thể có cho isPaid
-          const isPaid = order.isPaid === true || 
-                       order.isPaid === "true" || 
-                       order.isPaid === 1 || 
-                       order.isPaid === "1";
-          
-          console.log(`Đơn hàng ${order._id} có isPaid ban đầu:`, order.isPaid, "sau chuẩn hóa:", isPaid);
-          
-          return {
-            ...order,
-            isPaid: isPaid
-          };
-        }) || [];
-
-        console.log("Normalized orders:", normalizedOrders);
-
-        // Set dữ liệu orders
-        setOrders(normalizedOrders);
-        setTotalPages(Math.ceil(response.data.totalCount / itemsPerPage));
-
+        // Lấy mảng orders
+        const ordersArr = response.data.orders || [];
+        
+        // Đếm số lượng từng trạng thái
+        const statusCounts = {};
+        ordersArr.forEach(order => {
+          statusCounts[order.status] = (statusCounts[order.status] || 0) + 1;
+        });
+        
+        // Đếm đơn hàng đã giao (delivered)
+        const deliveredCount = ordersArr.filter(order => order.status === "delivered").length;
+        
+        // Đếm đơn hàng đã giao và đã thanh toán
+        const deliveredAndPaidCount = ordersArr.filter(order => 
+          order.status === "delivered" && 
+          (order.isPaid === true || order.isPaid === "true" || order.isPaid === 1 || order.isPaid === "1" || 
+           String(order.isPaid).toLowerCase() === "true")
+        ).length;
+        
+        // Đếm đơn hàng có trạng thái completed
+        const completedCount = ordersArr.filter(order => order.status === "completed").length;
+        
+        // Cập nhật state
+        setOrders(ordersArr);
+        setTotalPages(response.data.totalPages || 1);
+        
+        // Cập nhật orderStats
+        const updatedStats = {
+          total: ordersArr.length,
+          pending: statusCounts["pending"] || 0,
+          confirmed: statusCounts["confirmed"] || 0,
+          preparing: statusCounts["preparing"] || 0,
+          packaging: statusCounts["packaging"] || 0,
+          shipping: statusCounts["shipping"] || 0,
+          delivering: statusCounts["delivering"] || 0,
+          completed: completedCount,
+          cancelled: statusCounts["cancelled"] || 0,
+          delivery_failed: statusCounts["delivery_failed"] || 0,
+          awaiting_payment: statusCounts["awaiting_payment"] || 0,
+          sorting_facility: statusCounts["sorting_facility"] || 0,
+          delivered: deliveredCount,
+          deliveredAndPaid: deliveredAndPaidCount
+        };
+        
+        // Đảm bảo các giá trị delivered và deliveredAndPaid được set đúng
         setOrderStats({
-          total: response.data.stats?.total || 0,
-          pending: response.data.stats?.pending || 0,
-          confirmed: response.data.stats?.confirmed || 0,
-          preparing: response.data.stats?.preparing || 0,
-          packaging: response.data.stats?.packaging || 0,
-          shipping: response.data.stats?.shipping || 0,
-          delivering: response.data.stats?.delivering || 0,
-          completed: response.data.stats?.completed || 0,
-          cancelled: response.data.stats?.cancelled || 0,
-          delivery_failed: response.data.stats?.delivery_failed || 0,
-          awaiting_payment: response.data.stats?.awaiting_payment || 0,
-          sorting_facility: response.data.stats?.sorting_facility || 0
+          ...updatedStats,
+          delivered: deliveredCount,
+          deliveredAndPaid: deliveredAndPaidCount,
+          completed: completedCount
         });
       } catch (error) {
         console.error("Error loading orders:", error);
@@ -528,7 +522,6 @@ const OrderAdmin = () => {
   }, [loadOrders, currentPage]);
 
   useEffect(() => {
-    console.log("Branch filter changed:", filters.branchFilter);
     if (filters.branchFilter) {
       loadOrders(0);
     }
@@ -832,6 +825,49 @@ const OrderAdmin = () => {
     setStatusDialogVisible(true);
   };
 
+  // Thêm useEffect để log giá trị orderStats mỗi khi nó thay đổi
+  useEffect(() => {
+    console.log("orderStats đã thay đổi:", orderStats);
+    console.log("deliveredAndPaid trong orderStats:", orderStats.deliveredAndPaid);
+  }, [orderStats]);
+
+  // Thêm useEffect để cập nhật orderStats khi orders thay đổi
+  useEffect(() => {
+    if (orders.length > 0) {
+      // Đếm đơn hàng đã giao (delivered)
+      const deliveredCount = orders.filter(order => order.status === "delivered").length;
+      
+      // Đếm đơn hàng đã giao và đã thanh toán
+      const deliveredAndPaidCount = orders.filter(order => 
+        order.status === "delivered" && 
+        (order.isPaid === true || order.isPaid === "true" || order.isPaid === 1 || order.isPaid === "1" || 
+         String(order.isPaid).toLowerCase() === "true")
+      ).length;
+      
+      // Đếm đơn hàng có trạng thái completed
+      const completedCount = orders.filter(order => order.status === "completed").length;
+      
+      console.log("useEffect - cập nhật orderStats từ orders:", {
+        ordersLength: orders.length,
+        deliveredCount,
+        deliveredAndPaidCount,
+        completedCount
+      });
+      
+      // Cập nhật state với các giá trị mới tính toán
+      setOrderStats(prev => {
+        const updated = {
+          ...prev,
+          delivered: deliveredCount,
+          deliveredAndPaid: deliveredAndPaidCount,
+          completed: completedCount
+        };
+        console.log("orderStats sau khi cập nhật trong useEffect:", updated);
+        return updated;
+      });
+    }
+  }, [orders]);
+
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <Toaster position="top-right" richColors />
@@ -844,31 +880,58 @@ const OrderAdmin = () => {
           Quản lý và theo dõi tất cả đơn hàng trong hệ thống
         </p>
 
-        <OrderStats stats={orderStats} />
+        {/* Tính toán trực tiếp các giá trị trước khi render */}
+        {(() => {
+          // Đếm đơn hàng đã giao (delivered)
+          const deliveredCount = orders.filter(order => order.status === "delivered").length;
+          
+          // Đếm đơn hàng đã giao và đã thanh toán
+          const deliveredAndPaidCount = orders.filter(order => 
+            order.status === "delivered" && 
+            (order.isPaid === true || order.isPaid === "true" || order.isPaid === 1 || order.isPaid === "1" || 
+             String(order.isPaid).toLowerCase() === "true")
+          ).length;
+          
+          // Đếm đơn hàng có trạng thái completed
+          const completedCount = orders.filter(order => order.status === "completed").length;
+          
+          // Log chi tiết các đơn hàng delivered và isPaid
+          console.log("Đơn hàng delivered và isPaid:", orders.filter(order => 
+            order.status === "delivered").map(order => ({
+              id: order._id,
+              status: order.status,
+              isPaid: order.isPaid,
+              isPaidType: typeof order.isPaid,
+              isPaidValue: String(order.isPaid),
+              isTrue: order.isPaid === true || order.isPaid === "true" || order.isPaid === 1 || 
+                      order.isPaid === "1" || String(order.isPaid).toLowerCase() === "true"
+            }))
+          );
+          
+          // Cập nhật orderStats với giá trị mới nhất
+          const updatedStats = {
+            ...orderStats,
+            delivered: deliveredCount,
+            deliveredAndPaid: deliveredAndPaidCount,
+            completed: completedCount
+          };
+          
+          console.log("OrderStats trước khi render:", updatedStats);
+          
+          // Return OrderStats component với stats đã cập nhật
+          return <OrderStats stats={updatedStats} />;
+        })()}
       </div>
 
       <OrderFilters
         filters={filters}
-        setFilters={setFilters}
-        statusOptions={statusFilterOptions}
-        paymentMethodOptions={[
-          { label: "Tất cả phương thức", value: "" },
-          { label: "Tiền mặt (COD)", value: "COD" },
-          { label: "Chuyển khoản", value: "BANK_TRANSFER" },
-          { label: "VNPay", value: "VNPAY" },
-        ]}
-        paymentStatusOptions={[
-          { label: "Tất cả trạng thái", value: "all" },
-          { label: "Đã thanh toán", value: "paid" },
-          { label: "Chưa thanh toán", value: "unpaid" },
-        ]}
-        clearFilters={clearFilters}
-        userRole={userRole}
-        userBranch={userBranch}
         branches={branches}
-        handleBranchChange={handleBranchChange}
-        nearbyOrdersRadius={nearbyOrdersRadius}
-        setNearbyOrdersRadius={setNearbyOrdersRadius}
+        onFilterChange={(newFilters) => setFilters(newFilters)}
+        onClearFilters={clearFilters}
+        ORDER_STATUSES={ORDER_STATUSES}
+        onToggleNearbyOrders={(enabled) => {
+          setFilters(prev => ({ ...prev, nearbyFilter: enabled }));
+        }}
       />
 
       <OrderTable
