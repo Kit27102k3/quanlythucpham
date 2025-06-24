@@ -50,6 +50,7 @@ CORS(
     origins=[
         "https://quanlythucpham.vercel.app",
         "https://quanlythucpham-kit27102k3s-projects.vercel.app",
+        "https://quanlythucpham-kit27102k3s-projects.vercel.app",
     ],
 )
 
@@ -62,15 +63,131 @@ last_responses = {}
 # Lưu trữ ngữ cảnh người dùng
 user_contexts = {}
 
+# --- BẢNG TRẢ LỜI FAQ CỨNG ---
+faq_answers = {
+    "faq_how_to_buy": "Bạn có thể mua sản phẩm của chúng tôi qua các cách sau:\n\n1. Mua trực tiếp trên website: Đăng nhập → Chọn sản phẩm → Thêm vào giỏ hàng → Thanh toán\n2. Mua qua ứng dụng di động: Tải ứng dụng DNC FOOD từ App Store hoặc Google Play\n3. Mua trực tiếp tại cửa hàng: Ghé thăm cửa hàng gần nhất của chúng tôi\n\nNếu bạn cần hỗ trợ thêm, vui lòng liên hệ hotline: 0326 743 391 hoặc vào trang thông tin cá nhân vào mục tin nhắn để được nhắn tin trực tiếp với tư vấn viên.",
+    "faq_how_to_order": "Để đặt hàng trên website hoặc ứng dụng DNC FOOD, bạn làm theo các bước sau:\n\n1. Tìm kiếm và chọn sản phẩm bạn muốn mua\n2. Thêm sản phẩm vào giỏ hàng\n3. Kiểm tra giỏ hàng và nhấn 'Thanh toán'\n4. Điền thông tin giao hàng (địa chỉ, số điện thoại)\n5. Chọn phương thức thanh toán (COD, thẻ tín dụng, chuyển khoản)\n6. Xác nhận đơn hàng\n\nBạn sẽ nhận được email xác nhận đơn hàng và có thể theo dõi trạng thái đơn hàng trong mục 'Đơn hàng của tôi'.",
+    "faq_payment_methods": "Cửa hàng chúng tôi có 2 phương thức thanh toán chính: \n1. Tiền mặt khi nhận hàng (COD). \n2. Chuyển khoản ngân hàng.",
+    "faq_register_account": "Để đăng ký tài khoản trên DNC FOOD, bạn làm theo các bước sau:\n\n1. Truy cập trang web DNC FOOD hoặc mở ứng dụng\n2. Nhấn vào nút 'Đăng ký' ở góc phải trên cùng\n3. Điền thông tin cá nhân: Họ tên, Email, Số điện thoại, Mật khẩu\n4. Xác nhận email hoặc số điện thoại (nếu yêu cầu)\n5. Hoàn tất đăng ký\n\nSau khi đăng ký thành công, bạn có thể đăng nhập và sử dụng đầy đủ tính năng của website như: theo dõi đơn hàng, lưu địa chỉ giao hàng, nhận thông báo khuyến mãi...",
+    "faq_promotions": "Hiện tại cửa hàng DNC FOOD đang có các chương trình khuyến mãi sau:\n\n1. Giảm 10% cho đơn hàng đầu tiên khi đăng ký tài khoản mới\n2. Miễn phí vận chuyển cho đơn hàng từ 300.000đ\n3. Mua 2 tặng 1 cho các sản phẩm rau củ quả hữu cơ vào thứ 3 và thứ 6 hàng tuần\n4. Giảm 15% cho khách hàng thành viên VIP\n5. Tặng voucher 50.000đ cho đơn hàng từ 500.000đ\n\nBạn có thể xem chi tiết các chương trình khuyến mãi tại mục 'Voucher' trên website hoặc ứng dụng DNC FOOD.",
+    "faq_store_location": "Cửa hàng DNC FOOD có các chi nhánh tại:\n\n1. Chi nhánh Cần Thơ: Trường Đại học Nam Cần Thơ, Nguyễn Văn Cừ nối dài, Cần Thơ City\n2. Chi nhánh Sóc Trăng: 122, ấp Mỹ Khánh A, xã Long Hưng, huyện Mỹ Tú, tỉnh Sóc Trăng\n\nGiờ mở cửa: 7:00 - 21:00 từ Thứ 2 - Chủ nhật.\n\nBạn có thể liên hệ qua số điện thoại: 0326 743 391 hoặc email: kit10012003@gmail.com",
+    "faq_product_quality": "Tại DNC FOOD, chúng tôi cam kết cung cấp các sản phẩm có chất lượng cao nhất cho khách hàng:\n\n1. Tất cả sản phẩm đều được kiểm tra nghiêm ngặt về chất lượng trước khi đưa vào hệ thống bán hàng\n2. Chúng tôi có chứng nhận an toàn thực phẩm từ các cơ quan chức năng\n3. Sản phẩm tươi sống được nhập hàng ngày từ các nhà cung cấp uy tín\n4. Chúng tôi áp dụng quy trình bảo quản tiêu chuẩn để đảm bảo độ tươi ngon\n5. Cam kết hoàn tiền 100% nếu sản phẩm không đạt chất lượng như cam kết\n\nNếu bạn có bất kỳ thắc mắc nào về chất lượng sản phẩm, vui lòng liên hệ với chúng tôi qua hotline: 0326 743 391",
+    "faq_diet": "DNC FOOD cung cấp nhiều lựa chọn thực phẩm phù hợp với các chế độ ăn kiêng khác nhau:\n\n1. Chế độ ăn kiêng giảm cân:\n   - Rau xanh các loại, salad\n   - Thịt nạc, cá, hải sản\n   - Trái cây ít đường như táo, dâu, việt quất\n   - Ngũ cốc nguyên hạt\n   - Các loại hạt không muối\n\n2. Chế độ Keto (ít carb, nhiều chất béo):\n   - Thịt, cá, hải sản\n   - Trứng\n   - Bơ, dầu dừa\n   - Các loại hạt\n   - Rau xanh ít tinh bột\n\n3. Chế độ ăn cho người tiểu đường:\n   - Rau xanh không hạn chế\n   - Protein từ thịt nạc, cá, đậu\n   - Chất béo lành mạnh từ dầu oliu, bơ\n   - Trái cây ít đường\n   - Ngũ cốc nguyên hạt\n\n4. Chế độ ăn chay/thuần chay:\n   - Đậu, đỗ các loại\n   - Đậu phụ, tempeh\n   - Rau củ quả đa dạng\n   - Các loại hạt và hạt giống\n   - Ngũ cốc nguyên hạt\n\nBạn có thể tìm thấy các sản phẩm phù hợp với chế độ ăn kiêng của mình trong mục 'Thực phẩm dinh dưỡng' trên website hoặc ứng dụng DNC FOOD. Nếu cần tư vấn chi tiết về chế độ ăn kiêng phù hợp, vui lòng liên hệ với chúng tôi qua hotline: 0326 743 391",
+    "faq_shipping_time": "Thời gian giao hàng của DNC FOOD như sau:\n\n1. Nội thành Cần Thơ: 1-2 ngày làm việc\n2. Các tỉnh lân cận: 2-3 ngày làm việc\n3. Các tỉnh xa: 3-5 ngày làm việc\n\nLưu ý: Thời gian giao hàng có thể thay đổi tùy thuộc vào điều kiện thời tiết, giao thông và các yếu tố khác. Bạn có thể theo dõi đơn hàng của mình trong mục 'Đơn hàng của tôi' trên website hoặc ứng dụng.",
+    "faq_return_policy": "Chính sách đổi trả của DNC FOOD:\n\n1. Thời gian đổi trả: Trong vòng 7 ngày kể từ ngày nhận hàng\n2. Điều kiện: Sản phẩm còn nguyên bao bì, chưa qua sử dụng, có hóa đơn mua hàng\n3. Lý do đổi trả được chấp nhận: Sản phẩm bị lỗi, hư hỏng, không đúng mô tả, không đúng sản phẩm đã đặt\n\nĐể yêu cầu đổi trả, vui lòng liên hệ hotline: 0326 743 391 hoặc gửi email đến: kit10012003@gmail.com",
+    "faq_trending_products": "Các sản phẩm bán chạy nhất tại DNC FOOD hiện nay:\n\n1. Rau củ quả hữu cơ theo mùa\n2. Thịt heo sạch từ trang trại\n3. Gạo lứt hữu cơ\n4. Sữa tươi nguyên chất\n5. Các loại hạt dinh dưỡng\n\nBạn có thể xem thêm các sản phẩm bán chạy trong mục 'Sản phẩm nổi bật' trên trang chủ website hoặc ứng dụng DNC FOOD.",
+    "faq_shipping_fee": "Phí vận chuyển của DNC FOOD:\n\n1. Đơn hàng từ 300.000đ: Miễn phí vận chuyển trong phạm vi 10km\n2. Đơn hàng dưới 300.000đ: Phí vận chuyển từ 15.000đ - 30.000đ tùy khoảng cách\n3. Vùng xa (trên 10km): Phí vận chuyển từ 30.000đ - 50.000đ\n\nPhí vận chuyển chính xác sẽ được tính toán khi bạn nhập địa chỉ giao hàng trong quá trình thanh toán.",
+    "faq_customer_support": "Bạn có thể liên hệ với bộ phận hỗ trợ khách hàng của DNC FOOD qua các kênh sau:\n\n1. Hotline: 0326 743 391 (8:00 - 21:00 hàng ngày)\n2. Email: kit10012003@gmail.com\n3. Fanpage Facebook: DNC FOOD\n4. Zalo: DNC FOOD\n5. Trò chuyện trực tiếp trên website hoặc ứng dụng\n\nChúng tôi sẽ phản hồi trong vòng 24 giờ làm việc.",
+    # ... (các intent FAQ khác copy từ JS sang đây) ...
+}
+
+
+def detect_faq_intent(question):
+    faq_patterns = {
+        "faq_how_to_buy": [
+            "mua hàng",
+            "cách mua",
+            "làm sao để mua",
+            "hướng dẫn mua hàng",
+            "mua như thế nào",
+            "mua như nào",
+            "mua ở đâu",
+        ],
+        "faq_how_to_order": [
+            "đặt hàng",
+            "order",
+            "cách đặt",
+            "các bước đặt hàng",
+            "hướng dẫn đặt hàng",
+            "làm sao để đặt",
+            "đặt như thế nào",
+        ],
+        "faq_payment_methods": [
+            "thanh toán",
+            "phương thức thanh toán",
+            "cách thanh toán",
+            "hình thức thanh toán",
+            "trả tiền",
+        ],
+        "faq_register_account": [
+            "đăng ký",
+            "tạo tài khoản",
+            "đăng ký tài khoản",
+            "đăng ký thành viên",
+        ],
+        "faq_promotions": [
+            "khuyến mãi",
+            "giảm giá",
+            "ưu đãi",
+            "sale",
+            "voucher",
+            "coupon",
+            "mã giảm",
+        ],
+        "faq_store_location": [
+            "địa chỉ",
+            "cửa hàng ở đâu",
+            "shop ở đâu",
+            "vị trí",
+            "địa điểm",
+            "chi nhánh",
+        ],
+        "faq_product_quality": [
+            "chất lượng",
+            "sản phẩm có tốt",
+            "có đảm bảo",
+            "hàng có tốt",
+            "sản phẩm tốt không",
+        ],
+        "faq_shipping_time": [
+            "giao hàng",
+            "vận chuyển",
+            "ship",
+            "thời gian giao",
+            "phí ship",
+            "phí vận chuyển",
+        ],
+        "faq_return_policy": [
+            "bảo hành",
+            "đổi trả",
+            "hoàn tiền",
+            "trả lại",
+            "đổi hàng",
+            "bị lỗi",
+            "không hài lòng",
+        ],
+        "faq_customer_support": [
+            "liên hệ",
+            "hỗ trợ",
+            "tư vấn",
+            "hotline",
+            "số điện thoại",
+            "email",
+        ],
+        # ... (các intent FAQ khác copy từ intentKeywords JS sang đây) ...
+    }
+    q = question.lower()
+    for intent, patterns in faq_patterns.items():
+        for pat in patterns:
+            if pat in q:
+                return intent
+    return None
+
 
 @app.route("/api/chatbot/ask", methods=["POST"])
 def ask():
     data = request.get_json(force=True) or {}
     question = data.get("question", "")
     session_id = data.get("session_id", "default")
-    
+
     if not question:
         return jsonify({"answer": "Bạn chưa nhập câu hỏi."}), 400
+
+    # --- NHẬN DIỆN FAQ VÀ TRẢ LỜI CỨNG ---
+    faq_intent = detect_faq_intent(question)
+    if faq_intent and faq_intent in faq_answers:
+        return jsonify({"answer": faq_answers[faq_intent]})
+    # --- END FAQ ---
 
     # --- NHẬN DIỆN KIỂM TRA SẢN PHẨM (product existence check) ---
     product_check_patterns = [
@@ -113,7 +230,10 @@ def ask():
                     elif isinstance(prod_desc, str):
                         desc = prod_desc
                     product_list.append(f"- {name} ({price:,}đ): {desc}")
-                answer = f"Cửa hàng hiện có các sản phẩm liên quan đến '{product_name}':\n" + "\n".join(product_list)
+                answer = (
+                    f"Cửa hàng hiện có các sản phẩm liên quan đến '{product_name}':\n"
+                    + "\n".join(product_list)
+                )
             else:
                 answer = f"Hiện tại cửa hàng không có sản phẩm '{product_name}'."
             return jsonify({"answer": answer})
@@ -180,14 +300,22 @@ def ask():
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "Bạn là chuyên gia dinh dưỡng và sức khỏe, trả lời ngắn gọn, dễ hiểu, thân thiện."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "Bạn là chuyên gia dinh dưỡng và sức khỏe, trả lời ngắn gọn, dễ hiểu, thân thiện.",
+                    },
+                    {"role": "user", "content": prompt},
                 ],
                 max_tokens=350,
-                temperature=0.7
+                temperature=0.7,
             )
             # Bọc an toàn khi lấy content
-            content = response.choices[0].message.content if response.choices[0].message and hasattr(response.choices[0].message, "content") else ""
+            content = (
+                response.choices[0].message.content
+                if response.choices[0].message
+                and hasattr(response.choices[0].message, "content")
+                else ""
+            )
             answer = content.strip() if isinstance(content, str) else ""
             last_responses[session_id] = answer
 
@@ -306,11 +434,15 @@ def ask():
                 product_text = ""
                 if group_category:
                     products = search_products(group_category)
-                    print(f"Tìm theo nhóm: {group_category}, số sản phẩm: {len(products) if products else 0}")
+                    print(
+                        f"Tìm theo nhóm: {group_category}, số sản phẩm: {len(products) if products else 0}"
+                    )
                     if not products or len(products) == 0:
                         # Fallback sang tìm kiếm từ khóa nếu không có sản phẩm theo nhóm
                         products = search_products(" ".join(keywords))
-                        print(f"Fallback sang từ khóa, số sản phẩm: {len(products) if products else 0}")
+                        print(
+                            f"Fallback sang từ khóa, số sản phẩm: {len(products) if products else 0}"
+                        )
                         if products and len(products) > 0:
                             product_text = f"Không có sản phẩm chuyên biệt cho nhóm '{group_category}'. Dưới đây là các sản phẩm liên quan khác:\n"
                         else:
@@ -323,7 +455,9 @@ def ask():
                                 product_text = "Hiện không có sản phẩm phù hợp trong cửa hàng. Xin lỗi quý khách."
                 else:
                     products = search_products(" ".join(keywords))
-                    print(f"Tìm theo từ khóa, số sản phẩm: {len(products) if products else 0}")
+                    print(
+                        f"Tìm theo từ khóa, số sản phẩm: {len(products) if products else 0}"
+                    )
                     if not products or len(products) == 0:
                         all_products = get_product_data()
                         if all_products:
@@ -355,9 +489,14 @@ def ask():
                 if product_text:
                     product_text = product_text + "\n" + "\n".join(product_list)
                 else:
-                    product_text = f"Hiện tại có {len(products)} sản phẩm phù hợp trong cửa hàng:\n" + "\n".join(product_list)
+                    product_text = (
+                        f"Hiện tại có {len(products)} sản phẩm phù hợp trong cửa hàng:\n"
+                        + "\n".join(product_list)
+                    )
             elif not product_text:
-                product_text = "Hiện không có sản phẩm phù hợp trong cửa hàng. Xin lỗi quý khách."
+                product_text = (
+                    "Hiện không có sản phẩm phù hợp trong cửa hàng. Xin lỗi quý khách."
+                )
 
             return jsonify({"answer": answer + "\n\n" + product_text})
         except Exception as e:
@@ -369,14 +508,14 @@ def ask():
         print(f"Phát hiện yêu cầu so sánh sản phẩm: '{question}'")
         product_ids = data.get("product_ids", [])
         print(f"Product IDs nhận được: {product_ids}")
-        
+
         if not product_ids or len(product_ids) < 2:
             print("Không đủ product_ids để so sánh")
             return (
                 jsonify({"answer": "Vui lòng chọn ít nhất 2 sản phẩm để so sánh."}),
                 400,
             )
-        
+
         comparison_result = compare_products(product_ids)
         print(f"Đã tạo kết quả so sánh dài {len(comparison_result)} ký tự")
         return jsonify({"answer": comparison_result, "type": "comparison"}), 200
@@ -387,41 +526,41 @@ def ask():
     ):
         # Lấy câu trả lời cuối cùng của phiên này
         last_response = last_responses.get(session_id, "")
-        
+
         if not last_response:
             return jsonify(
                 {
                     "answer": "Tôi chưa có thông tin về nguyên liệu nào. Vui lòng hỏi về một món ăn trước."
                 }
             )
-        
+
         # Trích xuất danh sách nguyên liệu từ câu trả lời cuối
         ingredients = extract_ingredients(last_response)
-        
+
         if not ingredients:
             return jsonify(
                 {
                     "answer": "Tôi không tìm thấy nguyên liệu nào trong thông tin trước đó."
                 }
             )
-        
+
         # Kiểm tra xem nguyên liệu nào có trong cửa hàng
         ingredient_results = check_ingredient_availability(ingredients)
-        
+
         # Tạo câu trả lời
         answer = "🛒 **Kết quả tìm kiếm nguyên liệu trong cửa hàng:**\n\n"
-        
+
         # Phân loại nguyên liệu có sẵn và không có sẵn
         available = []
         unavailable = []
         alternatives_info = {}
-        
+
         for ingredient, info in ingredient_results.items():
             if info["available"]:
                 product_info = f"- **{ingredient}**: ✅ Có sẵn\n"
-                product_name = str(info.get('product_name', ''))
+                product_name = str(info.get("product_name", ""))
                 product_info += f"  → {product_name.title()}: {format_price(info['price'])} / {info['unit']}\n"
-                
+
                 # Thêm thông tin tồn kho nếu có
                 if isinstance(info.get("stock"), int):
                     if info["stock"] > 0:
@@ -430,27 +569,27 @@ def ask():
                         )
                     else:
                         product_info += f"  → Hết hàng (đang nhập thêm)\n"
-                        
+
                 available.append(product_info)
             else:
                 unavailable.append(f"- **{ingredient}**: ❌ Không có sẵn\n")
-                
+
                 # Tìm sản phẩm thay thế
                 alternatives = suggest_alternative_products(ingredient)
                 if alternatives:
                     alternatives_info[ingredient] = alternatives
-        
+
         # Hiển thị nguyên liệu có sẵn trước
         if available:
             answer += "**Nguyên liệu có sẵn:**\n"
             answer += "".join(available)
             answer += "\n"
-        
+
         # Hiển thị nguyên liệu không có sẵn
         if unavailable:
             answer += "**Nguyên liệu không có sẵn:**\n"
             answer += "".join(unavailable)
-            
+
             # Hiển thị sản phẩm thay thế
             if alternatives_info:
                 answer += "\n**Sản phẩm thay thế gợi ý:**\n"
@@ -459,15 +598,15 @@ def ask():
                     for alt in alternatives:
                         answer += f"  → {alt['name']}: {format_price(alt['price'])} / {alt['unit']}\n"
                     answer += "\n"
-        
+
         # Thêm gợi ý
         if unavailable:
             answer += "\n💡 *Bạn có thể đặt hàng trước các nguyên liệu không có sẵn hoặc sử dụng sản phẩm thay thế.*"
         else:
             answer += "\n💡 *Tất cả nguyên liệu đều có sẵn trong cửa hàng. Chúc bạn nấu ăn ngon miệng!*"
-        
+
         return jsonify({"answer": answer})
-    
+
     try:
         # Gọi OpenAI API đúng cách với thư viện mới
         response = client.chat.completions.create(
@@ -482,13 +621,19 @@ def ask():
             max_tokens=300,
             temperature=0.7,
         )
-        answer = response.choices[0].message.content.strip()
+        content = (
+            response.choices[0].message.content
+            if response.choices[0].message
+            and hasattr(response.choices[0].message, "content")
+            else ""
+        )
+        answer = content.strip() if isinstance(content, str) else ""
         print(f"Câu hỏi: {question}")
         print(f"Câu trả lời: {answer}")
-        
+
         # Lưu câu trả lời cho phiên này
         last_responses[session_id] = answer
-        
+
         return jsonify({"answer": answer})
     except Exception as e:
         print(f"Lỗi OpenAI: {str(e)}")
@@ -498,7 +643,7 @@ def ask():
 def is_comparison_request(question):
     """Kiểm tra xem yêu cầu có phải là so sánh sản phẩm không"""
     question = question.lower()
-    
+
     # Danh sách các cụm từ chính xác cho yêu cầu so sánh
     exact_phrases = [
         "so sánh",
@@ -512,13 +657,13 @@ def is_comparison_request(question):
         "nên chọn cái nào",
         "cái nào tốt hơn",
     ]
-    
+
     # Kiểm tra các cụm từ chính xác
     for phrase in exact_phrases:
         if phrase in question:
             print(f"Phát hiện yêu cầu so sánh: '{phrase}' trong '{question}'")
             return True
-    
+
     # Kiểm tra các từ khóa so sánh
     comparison_keywords = [
         "so sánh",
@@ -530,12 +675,12 @@ def is_comparison_request(question):
         "kém hơn",
         "nên mua",
     ]
-    
+
     for keyword in comparison_keywords:
         if keyword in question:
             print(f"Phát hiện từ khóa so sánh: '{keyword}' trong '{question}'")
             return True
-            
+
     return False
 
 
@@ -543,7 +688,7 @@ def compare_products(product_ids):
     """So sánh các sản phẩm dựa trên ID"""
     # Lấy dữ liệu sản phẩm từ database
     all_products = get_product_data()
-    
+
     # Nếu không có dữ liệu từ database, thử đọc từ file JSON
     if not all_products:
         try:
@@ -555,7 +700,7 @@ def compare_products(product_ids):
                     all_products = json.load(f)
             except:
                 return "Không thể truy cập dữ liệu sản phẩm để so sánh."
-    
+
     # Lọc các sản phẩm cần so sánh
     products_to_compare = []
     for product_id in product_ids:
@@ -563,17 +708,17 @@ def compare_products(product_ids):
             if str(product.get("id", "")) == str(product_id):
                 products_to_compare.append(product)
                 break
-    
+
     # Kiểm tra xem có đủ sản phẩm để so sánh không
     if len(products_to_compare) < 2:
         return "Không đủ sản phẩm để so sánh. Vui lòng chọn ít nhất 2 sản phẩm."
-    
+
     # Nếu có đúng 2 sản phẩm, sử dụng hàm so sánh chi tiết
     if len(products_to_compare) == 2:
         return generate_detailed_comparison(
             products_to_compare[0], products_to_compare[1]
         )
-    
+
     # Nếu có nhiều hơn 2 sản phẩm, tạo bảng so sánh
     return generate_comparison_table(products_to_compare)
 
@@ -582,62 +727,62 @@ def generate_detailed_comparison(product1, product2):
     """Tạo so sánh chi tiết giữa 2 sản phẩm"""
     # Tiêu đề
     comparison = f"## So sánh chi tiết: {product1['name']} và {product2['name']}\n\n"
-    
+
     # So sánh giá
     price1 = product1.get("price", 0)
     price2 = product2.get("price", 0)
     unit1 = product1.get("unit", "")
     unit2 = product2.get("unit", "")
-    
+
     comparison += "### Giá bán:\n"
     comparison += f"- **{product1['name']}**: {format_price(price1)}/{unit1}\n"
     comparison += f"- **{product2['name']}**: {format_price(price2)}/{unit2}\n"
-    
+
     # Tính chênh lệch giá
     if price1 > 0 and price2 > 0:
         price_diff = abs(price1 - price2)
         price_diff_percent = (price_diff / min(price1, price2)) * 100
-        
+
         if price1 > price2:
             comparison += f"- **{product1['name']}** đắt hơn **{price_diff_percent:.1f}%** so với **{product2['name']}**\n"
         elif price2 > price1:
             comparison += f"- **{product2['name']}** đắt hơn **{price_diff_percent:.1f}%** so với **{product1['name']}**\n"
         else:
             comparison += "- Hai sản phẩm có giá ngang nhau\n"
-    
+
     comparison += "\n"
-    
+
     # So sánh xuất xứ
     origin1 = product1.get("origin", "Không có thông tin")
     origin2 = product2.get("origin", "Không có thông tin")
-    
+
     comparison += "### Xuất xứ:\n"
     comparison += f"- **{product1['name']}**: {origin1}\n"
     comparison += f"- **{product2['name']}**: {origin2}\n\n"
-    
+
     # So sánh thương hiệu
     brand1 = product1.get("brand", "Không có thông tin")
     brand2 = product2.get("brand", "Không có thông tin")
-    
+
     comparison += "### Thương hiệu:\n"
     comparison += f"- **{product1['name']}**: {brand1}\n"
     comparison += f"- **{product2['name']}**: {brand2}\n\n"
-    
+
     # So sánh đánh giá
     rating1 = product1.get("rating", 0)
     rating2 = product2.get("rating", 0)
-    
+
     comparison += "### Đánh giá của người dùng:\n"
     if rating1 > 0:
         comparison += f"- **{product1['name']}**: {rating1}/5 sao\n"
     else:
         comparison += f"- **{product1['name']}**: Chưa có đánh giá\n"
-        
+
     if rating2 > 0:
         comparison += f"- **{product2['name']}**: {rating2}/5 sao\n"
     else:
         comparison += f"- **{product2['name']}**: Chưa có đánh giá\n"
-    
+
     # So sánh chất lượng dựa trên đánh giá
     if rating1 > 0 and rating2 > 0:
         if rating1 > rating2:
@@ -646,20 +791,20 @@ def generate_detailed_comparison(product1, product2):
             comparison += f"- **{product2['name']}** được đánh giá cao hơn\n"
         else:
             comparison += "- Hai sản phẩm có đánh giá ngang nhau\n"
-    
+
     comparison += "\n"
-    
+
     # Thông tin chi tiết
     comparison += "### Mô tả sản phẩm:\n"
     description1 = product1.get("description", "Không có thông tin chi tiết")
     description2 = product2.get("description", "Không có thông tin chi tiết")
-    
+
     comparison += f"- **{product1['name']}**: {description1}\n"
     comparison += f"- **{product2['name']}**: {description2}\n\n"
-    
+
     # Điểm mạnh của từng sản phẩm
     comparison += "### Điểm mạnh:\n"
-    
+
     # Phân tích điểm mạnh của sản phẩm 1
     strengths1 = []
     if price1 < price2:
@@ -673,7 +818,7 @@ def generate_detailed_comparison(product1, product2):
         strengths1.append("Sản phẩm hữu cơ/organic")
     if "nhập khẩu" in product1.get("description", "").lower():
         strengths1.append("Sản phẩm nhập khẩu")
-    
+
     # Phân tích điểm mạnh của sản phẩm 2
     strengths2 = []
     if price2 < price1:
@@ -687,23 +832,23 @@ def generate_detailed_comparison(product1, product2):
         strengths2.append("Sản phẩm hữu cơ/organic")
     if "nhập khẩu" in product2.get("description", "").lower():
         strengths2.append("Sản phẩm nhập khẩu")
-    
+
     # Hiển thị điểm mạnh
     if strengths1:
         comparison += f"- **{product1['name']}**: {', '.join(strengths1)}\n"
     else:
         comparison += f"- **{product1['name']}**: Không có điểm nổi bật đặc biệt\n"
-        
+
     if strengths2:
         comparison += f"- **{product2['name']}**: {', '.join(strengths2)}\n"
     else:
         comparison += f"- **{product2['name']}**: Không có điểm nổi bật đặc biệt\n"
-    
+
     comparison += "\n"
-    
+
     # Kết luận
     comparison += "### Kết luận:\n"
-    
+
     # Phân tích dựa trên giá và chất lượng
     if price1 < price2 and rating1 >= rating2:
         comparison += f"- **{product1['name']}** có giá thấp hơn và chất lượng tốt, là lựa chọn hợp lý hơn về hiệu quả kinh tế.\n"
@@ -715,7 +860,7 @@ def generate_detailed_comparison(product1, product2):
         comparison += f"- **{product2['name']}** được đánh giá cao hơn, phù hợp nếu bạn ưu tiên chất lượng.\n"
     else:
         comparison += "- Hai sản phẩm có chất lượng tương đương, bạn có thể lựa chọn dựa trên sở thích cá nhân và ngân sách.\n"
-    
+
     return comparison
 
 
@@ -723,19 +868,19 @@ def generate_comparison_table(products):
     """Tạo bảng so sánh cho nhiều sản phẩm"""
     # Tiêu đề
     comparison = f"## So sánh {len(products)} sản phẩm\n\n"
-    
+
     # Tạo bảng so sánh
     comparison += "| Tiêu chí |"
     for product in products:
         comparison += f" {product['name']} |"
     comparison += "\n"
-    
+
     # Tạo đường ngăn cách tiêu đề
     comparison += "| --- |"
     for _ in products:
         comparison += " --- |"
     comparison += "\n"
-    
+
     # Thêm hàng giá
     comparison += "| Giá |"
     for product in products:
@@ -743,21 +888,21 @@ def generate_comparison_table(products):
         unit = product.get("unit", "")
         comparison += f" {format_price(price)}/{unit} |"
     comparison += "\n"
-    
+
     # Thêm hàng xuất xứ
     comparison += "| Xuất xứ |"
     for product in products:
         origin = product.get("origin", "Không có thông tin")
         comparison += f" {origin} |"
     comparison += "\n"
-    
+
     # Thêm hàng thương hiệu
     comparison += "| Thương hiệu |"
     for product in products:
         brand = product.get("brand", "Không có thông tin")
         comparison += f" {brand} |"
     comparison += "\n"
-    
+
     # Thêm hàng đánh giá
     comparison += "| Đánh giá |"
     for product in products:
@@ -767,42 +912,42 @@ def generate_comparison_table(products):
         else:
             comparison += " Chưa có đánh giá |"
     comparison += "\n"
-    
+
     # Thêm kết luận
     comparison += "\n### Phân tích nhanh:\n"
-    
+
     # Tìm sản phẩm có giá thấp nhất
     lowest_price_product = min(products, key=lambda x: x.get("price", float("inf")))
     comparison += f"- **{lowest_price_product['name']}** có giá thấp nhất.\n"
-    
+
     # Tìm sản phẩm có đánh giá cao nhất
     rated_products = [p for p in products if p.get("rating", 0) > 0]
     if rated_products:
         highest_rating_product = max(rated_products, key=lambda x: x.get("rating", 0))
         comparison += f"- **{highest_rating_product['name']}** có đánh giá cao nhất ({highest_rating_product.get('rating', 0)}/5 sao).\n"
-    
+
     # Gợi ý lựa chọn
     comparison += "\n### Gợi ý lựa chọn:\n"
     comparison += (
         "- Nếu bạn ưu tiên giá cả: chọn **" + lowest_price_product["name"] + "**\n"
     )
-    
+
     if rated_products:
         comparison += (
             "- Nếu bạn ưu tiên đánh giá: chọn **"
             + highest_rating_product["name"]
             + "**\n"
         )
-    
+
     comparison += "- Để biết thêm chi tiết về từng sản phẩm, vui lòng nhấn vào sản phẩm để xem thông tin đầy đủ.\n"
-    
+
     return comparison
 
 
 def extract_ingredients(text):
     """Trích xuất danh sách nguyên liệu từ văn bản"""
     ingredients = []
-    
+
     # Tìm danh sách đánh số
     numbered_list = re.findall(r"\d+\.\s+(.*?)(?=\d+\.|$)", text, re.DOTALL)
     if numbered_list:
@@ -811,7 +956,7 @@ def extract_ingredients(text):
             ingredient = re.split(r"[,\(:]", item.strip())[0].strip()
             if ingredient and len(ingredient) > 1:  # Tránh các kết quả quá ngắn
                 ingredients.append(ingredient)
-    
+
     # Tìm danh sách dấu gạch đầu dòng
     bullet_list = re.findall(r"[-•*]\s+(.*?)(?=[-•*]|$)", text, re.DOTALL)
     if bullet_list:
@@ -819,7 +964,7 @@ def extract_ingredients(text):
             ingredient = re.split(r"[,\(:]", item.strip())[0].strip()
             if ingredient and len(ingredient) > 1:
                 ingredients.append(ingredient)
-    
+
     # Tìm danh sách trong các phần được đánh dấu
     sections = [
         "nguyên liệu chính",
@@ -835,7 +980,7 @@ def extract_ingredients(text):
             section_matches = re.findall(
                 section_pattern, text.lower(), re.DOTALL | re.IGNORECASE
             )
-            
+
             if section_matches:
                 for section_text in section_matches:
                     # Tìm các dòng trong phần này
@@ -863,7 +1008,7 @@ def extract_ingredients(text):
                                 ingredient = re.split(r"[,\(:]", line)[0].strip()
                                 if ingredient and len(ingredient) > 1:
                                     ingredients.append(ingredient)
-    
+
     # Nếu không tìm thấy danh sách theo cách trên, thử phân tích từng dòng
     if not ingredients:
         lines = text.split("\n")
@@ -891,11 +1036,11 @@ def extract_ingredients(text):
                         ingredient = parts[0].strip()
                         if ingredient and len(ingredient) > 1:
                             ingredients.append(ingredient)
-    
+
     # Chuẩn hóa và nhóm các nguyên liệu tương tự
     normalized_ingredients = []
     seen = set()
-    
+
     # Ánh xạ các nguyên liệu tương tự
     similar_ingredients = {
         "thịt heo": [
@@ -915,14 +1060,14 @@ def extract_ingredients(text):
         "nước mắm": ["mắm"],
         "muối": ["muối ăn", "muối tinh", "muối hạt"],
     }
-    
+
     for ingredient in ingredients:
         normalized = ingredient.lower().strip()
-        
+
         # Kiểm tra xem nguyên liệu này đã được xử lý chưa
         if normalized in seen:
             continue
-            
+
         # Kiểm tra xem có phải là nguyên liệu tương tự không
         standardized_name = normalized
         for main_name, variants in similar_ingredients.items():
@@ -931,17 +1076,17 @@ def extract_ingredients(text):
             ):
                 standardized_name = main_name
                 break
-                
+
         # Thêm vào danh sách kết quả
         normalized_ingredients.append(standardized_name)
         seen.add(normalized)
-        
+
         # Đánh dấu tất cả các biến thể đã được xử lý
         for main_name, variants in similar_ingredients.items():
             if standardized_name == main_name:
                 for variant in variants:
                     seen.add(variant)
-    
+
     # Loại bỏ các từ không phải nguyên liệu
     non_ingredients = [
         "cách làm",
@@ -958,10 +1103,10 @@ def extract_ingredients(text):
         for ing in normalized_ingredients
         if not any(word in ing.lower() for word in non_ingredients)
     ]
-    
+
     # Sắp xếp theo bảng chữ cái
     filtered_ingredients.sort()
-    
+
     return filtered_ingredients
 
 
@@ -969,7 +1114,7 @@ def check_ingredient_availability(ingredients):
     """Kiểm tra xem nguyên liệu có sẵn trong cửa hàng không"""
     # Lấy dữ liệu sản phẩm từ database
     products = get_product_data()
-    
+
     # Nếu không có dữ liệu từ database, thử đọc từ file JSON
     if not products:
         try:
@@ -983,7 +1128,7 @@ def check_ingredient_availability(ingredients):
             except:
                 # Nếu không có file nào, trả về tất cả là không có sẵn
                 return {ingredient: {"available": False} for ingredient in ingredients}
-    
+
     # Phân loại sản phẩm theo danh mục
     categorized_products = {}
     for product in products:
@@ -992,17 +1137,17 @@ def check_ingredient_availability(ingredients):
             categorized_products[category] = []
         categorized_products[category].append(
             {
-            "name": product["name"].lower(),
-            "description": product.get("description", "").lower(),
-            "category": category,
-            "id": product.get("id", ""),
-            "price": product.get("price", 0),
-            "unit": product.get("unit", ""),
-            "stock": product.get("stock", 0),
+                "name": product["name"].lower(),
+                "description": product.get("description", "").lower(),
+                "category": category,
+                "id": product.get("id", ""),
+                "price": product.get("price", 0),
+                "unit": product.get("unit", ""),
+                "stock": product.get("stock", 0),
                 "original": product,
             }
         )
-    
+
     # Danh mục thực phẩm và phi thực phẩm
     food_categories = [
         "thực phẩm",
@@ -1034,7 +1179,7 @@ def check_ingredient_availability(ingredients):
         "điện tử",
         "điện gia dụng",
     ]
-    
+
     # Từ khóa loại trừ cho từng loại nguyên liệu
     exclusion_keywords = {
         "thịt": ["giả", "chay", "kem", "bánh", "kẹo", "mì gói"],
@@ -1048,17 +1193,17 @@ def check_ingredient_availability(ingredients):
         "hành": ["kem", "bánh", "kẹo", "nước giặt", "tẩy rửa"],
         "tỏi": ["kem", "bánh", "kẹo", "nước giặt", "tẩy rửa"],
     }
-    
+
     # Kiểm tra từng nguyên liệu
     result = {}
-    
+
     for ingredient in ingredients:
         # Chuẩn hóa tên nguyên liệu
         normalized = ingredient.lower().strip()
-        
+
         # Xác định các danh mục liên quan đến thực phẩm dựa trên nguyên liệu
         relevant_food_categories = []
-        
+
         # Xác định danh mục thực phẩm dựa trên nguyên liệu
         if any(
             word in normalized
@@ -1122,23 +1267,23 @@ def check_ingredient_availability(ingredients):
         else:
             # Mặc định xem là thực phẩm
             relevant_food_categories.extend(["thực phẩm"])
-        
+
         # Lấy từ khóa loại trừ cho nguyên liệu này
         current_exclusions = []
         for key, exclusions in exclusion_keywords.items():
             if key in normalized or normalized in key:
                 current_exclusions.extend(exclusions)
-        
+
         # Tìm sản phẩm phù hợp
         matches = []
-        
+
         # Ưu tiên tìm trong các danh mục thực phẩm liên quan
         for category_name, products_list in categorized_products.items():
             # Kiểm tra xem danh mục có phải là thực phẩm liên quan không
             is_relevant_category = any(
                 food_cat in category_name for food_cat in relevant_food_categories
             )
-            
+
             # Nếu là danh mục thực phẩm liên quan, tìm kiếm trong đó
             if is_relevant_category:
                 for product in products_list:
@@ -1148,7 +1293,7 @@ def check_ingredient_availability(ingredients):
                         for excl in current_exclusions
                     ):
                         continue
-                        
+
                     # Kiểm tra tên sản phẩm có chứa nguyên liệu không
                     if normalized in product["name"] or any(
                         word in product["name"]
@@ -1162,7 +1307,7 @@ def check_ingredient_availability(ingredients):
                     elif normalized in product["description"]:
                         product["match_score"] = 5
                         matches.append(product)
-        
+
         # Nếu không tìm thấy trong danh mục thực phẩm liên quan, tìm trong tất cả danh mục thực phẩm
         if not matches:
             for category_name, products_list in categorized_products.items():
@@ -1170,7 +1315,7 @@ def check_ingredient_availability(ingredients):
                 is_food_category = any(
                     food_cat in category_name for food_cat in food_categories
                 )
-                
+
                 # Nếu là danh mục thực phẩm, tìm kiếm trong đó
                 if is_food_category:
                     for product in products_list:
@@ -1180,7 +1325,7 @@ def check_ingredient_availability(ingredients):
                             for excl in current_exclusions
                         ):
                             continue
-                            
+
                         # Kiểm tra tên sản phẩm có chứa nguyên liệu không
                         if normalized in product["name"] or any(
                             word in product["name"]
@@ -1193,11 +1338,11 @@ def check_ingredient_availability(ingredients):
                         elif normalized in product["description"]:
                             product["match_score"] = 3
                             matches.append(product)
-        
+
         # Sắp xếp kết quả theo độ phù hợp
         matches.sort(
             key=lambda x: (
-            x.get("match_score", 0),  # Điểm phù hợp
+                x.get("match_score", 0),  # Điểm phù hợp
                 (
                     1 if normalized in x["name"] else 0
                 ),  # Ưu tiên tên sản phẩm chứa đúng nguyên liệu
@@ -1209,10 +1354,10 @@ def check_ingredient_availability(ingredients):
             ),
             reverse=True,
         )
-        
+
         # Lọc kết quả không liên quan dựa trên điểm phù hợp
         filtered_matches = [m for m in matches if m.get("match_score", 0) >= 3]
-        
+
         if filtered_matches:
             # Lấy sản phẩm phù hợp nhất
             best_match = filtered_matches[0]
@@ -1225,7 +1370,7 @@ def check_ingredient_availability(ingredients):
             }
         else:
             result[ingredient] = {"available": False}
-    
+
     return result
 
 
@@ -1246,10 +1391,10 @@ def format_price(price):
 def suggest_alternative_products(ingredient):
     """Gợi ý các sản phẩm thay thế khi không tìm thấy nguyên liệu"""
     from db_connector import get_product_data
-    
+
     # Lấy dữ liệu sản phẩm từ database
     products = get_product_data()
-    
+
     # Nếu không có dữ liệu từ database, thử đọc từ file JSON
     if not products:
         try:
@@ -1261,10 +1406,10 @@ def suggest_alternative_products(ingredient):
                     products = json.load(f)
             except:
                 return []
-    
+
     # Chuẩn hóa tên nguyên liệu
     normalized = ingredient.lower().strip()
-    
+
     # Danh mục thực phẩm và phi thực phẩm
     food_categories = [
         "thực phẩm",
@@ -1282,7 +1427,7 @@ def suggest_alternative_products(ingredient):
         "thực phẩm đông lạnh",
         "thực phẩm chế biến sẵn",
     ]
-    
+
     # Từ khóa loại trừ cho từng loại nguyên liệu
     exclusion_keywords = {
         "thịt": ["giả", "chay", "kem", "bánh", "kẹo", "mì gói"],
@@ -1296,7 +1441,7 @@ def suggest_alternative_products(ingredient):
         "hành": ["kem", "bánh", "kẹo", "nước giặt", "tẩy rửa"],
         "tỏi": ["kem", "bánh", "kẹo", "nước giặt", "tẩy rửa"],
     }
-    
+
     # Xác định loại nguyên liệu để tìm thay thế phù hợp
     ingredient_type = ""
     if any(
@@ -1343,13 +1488,13 @@ def suggest_alternative_products(ingredient):
         ingredient_type = "thịt"
     else:
         ingredient_type = "thực phẩm"
-    
+
     # Lấy từ khóa loại trừ cho nguyên liệu này
     current_exclusions = []
     for key, exclusions in exclusion_keywords.items():
         if key in normalized or normalized in key:
             current_exclusions.extend(exclusions)
-    
+
     # Phân loại sản phẩm theo danh mục
     categorized_products = {}
     for product in products:
@@ -1358,20 +1503,20 @@ def suggest_alternative_products(ingredient):
             categorized_products[category] = []
         categorized_products[category].append(
             {
-            "name": product["name"].lower(),
-            "description": product.get("description", "").lower(),
-            "category": category,
-            "id": product.get("id", ""),
-            "price": product.get("price", 0),
-            "unit": product.get("unit", ""),
-            "stock": product.get("stock", 0),
+                "name": product["name"].lower(),
+                "description": product.get("description", "").lower(),
+                "category": category,
+                "id": product.get("id", ""),
+                "price": product.get("price", 0),
+                "unit": product.get("unit", ""),
+                "stock": product.get("stock", 0),
                 "original": product,
             }
         )
-    
+
     # Tìm các sản phẩm thay thế
     alternatives = []
-    
+
     # Ánh xạ các loại thay thế theo loại nguyên liệu
     alternative_mapping = {
         "thịt": ["thịt", "hải sản", "đạm thực vật", "đồ chay"],
@@ -1386,10 +1531,10 @@ def suggest_alternative_products(ingredient):
         "trứng": ["trứng", "đạm", "thịt"],
         "thực phẩm": ["thực phẩm"],
     }
-    
+
     # Lấy các loại thay thế cho nguyên liệu hiện tại
     alternative_types = alternative_mapping.get(ingredient_type, ["thực phẩm"])
-    
+
     # Tìm sản phẩm thay thế từ các danh mục liên quan
     for alt_type in alternative_types:
         for category_name, products_list in categorized_products.items():
@@ -1402,7 +1547,7 @@ def suggest_alternative_products(ingredient):
                         for excl in current_exclusions
                     ):
                         continue
-                        
+
                     # Kiểm tra xem sản phẩm này không phải là nguyên liệu gốc
                     if normalized not in product["name"] and not any(
                         word in product["name"]
@@ -1415,26 +1560,26 @@ def suggest_alternative_products(ingredient):
                         ):
                             # Tính điểm phù hợp
                             relevance_score = 2 if alt_type == ingredient_type else 1
-                            
+
                             alternatives.append(
                                 {
-                                "name": product["original"]["name"],
-                                "price": product.get("price", 0),
-                                "unit": product.get("unit", ""),
-                                "category": category_name,
+                                    "name": product["original"]["name"],
+                                    "price": product.get("price", 0),
+                                    "unit": product.get("unit", ""),
+                                    "category": category_name,
                                     "relevance": relevance_score,
                                 }
                             )
-                            
+
                             # Giới hạn số lượng sản phẩm thay thế mỗi danh mục
                             if len(alternatives) >= 10:
                                 break
-    
+
     # Sắp xếp theo độ liên quan và giá cả
     alternatives.sort(
         key=lambda x: (x.get("relevance", 0), -x.get("price", 0)), reverse=True
     )
-    
+
     # Loại bỏ các sản phẩm trùng lặp
     unique_alternatives = []
     seen_names = set()
@@ -1442,7 +1587,7 @@ def suggest_alternative_products(ingredient):
         if alt["name"].lower() not in seen_names:
             seen_names.add(alt["name"].lower())
             unique_alternatives.append(alt)
-    
+
     # Giới hạn số lượng gợi ý
     return unique_alternatives[:3]
 
@@ -1453,7 +1598,7 @@ def process_message(message, userId):
     """
     try:
         log_debug("Xử lý tin nhắn từ người dùng", userId, message)
-        
+
         # Kiểm tra từ khóa liên quan đến trái cây ít đường
         fruit_keywords = ["trái cây", "hoa quả", "quả", "trái"]
         low_sugar_keywords = [
@@ -1464,12 +1609,12 @@ def process_message(message, userId):
             "giảm cân",
             "tiểu đường",
         ]
-        
+
         message_lower = message.lower()
         is_fruit_query = any(kw in message_lower for kw in fruit_keywords)
         is_low_sugar_query = any(kw in message_lower for kw in low_sugar_keywords)
         is_low_sugar_fruit_query = is_fruit_query and is_low_sugar_query
-        
+
         log_debug(
             "Phân tích tin nhắn:",
             "is_fruit_query=",
@@ -1479,7 +1624,7 @@ def process_message(message, userId):
             "is_low_sugar_fruit_query=",
             is_low_sugar_fruit_query,
         )
-        
+
         # Kiểm tra các mẫu câu cụ thể về trái cây ít đường
         low_sugar_fruit_patterns = [
             r"trái cây nào ít đường",
@@ -1490,27 +1635,27 @@ def process_message(message, userId):
             r"hoa quả phù hợp cho người ăn kiêng",
             r"trái cây tốt cho người giảm cân",
         ]
-        
+
         for pattern in low_sugar_fruit_patterns:
             if re.search(pattern, message_lower):
                 is_low_sugar_fruit_query = True
                 log_debug("Phát hiện mẫu câu về trái cây ít đường:", pattern)
                 break
-        
+
         # Xử lý câu hỏi về trái cây ít đường
         if is_low_sugar_fruit_query:
             log_debug("Chuyển hướng xử lý sang handle_low_sugar_fruit_query")
             return handle_low_sugar_fruit_query(message, userId)
-        
+
         # Phân tích ý định
         intent = analyze_intent(message)
         log_debug("Phân tích ý định:", intent)
-        
+
         # Xử lý theo ý định
         if intent == "greeting":
             log_debug("Xử lý lời chào")
             return "Xin chào! Tôi là trợ lý ảo của cửa hàng thực phẩm. Tôi có thể giúp bạn tìm kiếm sản phẩm, kiểm tra giá cả hoặc thông tin về khuyến mãi. Bạn cần giúp đỡ gì không?"
-        
+
         elif intent == "price_inquiry":
             log_debug("Xử lý hỏi giá")
             # Lấy thông tin sản phẩm từ context
@@ -1522,17 +1667,17 @@ def process_message(message, userId):
                 return f"Giá của {product_name} là {product_price}."
             else:
                 return "Bạn muốn biết giá của sản phẩm nào? Vui lòng cho tôi biết tên sản phẩm."
-        
+
         elif intent == "promotion_inquiry":
             log_debug("Xử lý hỏi khuyến mãi")
             return "Hiện tại cửa hàng đang có chương trình giảm giá 10% cho tất cả các sản phẩm rau củ quả tươi và 15% cho các sản phẩm hữu cơ. Khuyến mãi áp dụng đến hết tháng này."
-        
+
         else:  # product_search là mặc định
             log_debug("Xử lý tìm kiếm sản phẩm")
             # Tìm kiếm sản phẩm
             products = search_products(message)
             log_debug("Kết quả tìm kiếm:", len(products) if products else 0, "sản phẩm")
-            
+
             if products and len(products) > 0:
                 response = format_product_response(message, products, userId)
                 log_debug("Đã tạo câu trả lời từ format_product_response")
@@ -1540,7 +1685,7 @@ def process_message(message, userId):
             else:
                 log_debug("Không tìm thấy sản phẩm phù hợp")
                 return "Xin lỗi, tôi không tìm thấy sản phẩm nào phù hợp với yêu cầu của bạn. Bạn có thể mô tả chi tiết hơn hoặc thử tìm kiếm với từ khóa khác không?"
-    
+
     except Exception as e:
         log_debug("Lỗi khi xử lý tin nhắn:", str(e))
         return (
@@ -1551,7 +1696,7 @@ def process_message(message, userId):
 # Thêm hàm xử lý câu hỏi về trái cây ít đường
 def handle_low_sugar_fruit_query(message, context):
     print("Xử lý câu hỏi về trái cây ít đường")
-    
+
     # Tìm kiếm sản phẩm trái cây trong database
     try:
         # Thử sử dụng tìm kiếm ngữ nghĩa nếu có
@@ -1565,23 +1710,23 @@ def handle_low_sugar_fruit_query(message, context):
             print(
                 f"Tìm thấy {len(products) if products else 0} sản phẩm trái cây ít đường bằng tìm kiếm ngữ nghĩa"
             )
-        
+
         # Nếu không tìm thấy sản phẩm bằng tìm kiếm ngữ nghĩa, thử sử dụng tìm kiếm thông thường
         if not products or len(products) == 0:
             print(
                 "Không tìm thấy sản phẩm bằng tìm kiếm ngữ nghĩa, thử tìm kiếm thông thường"
             )
-            
+
             # Đảm bảo tìm kiếm trong danh mục Trái cây
             print("Đặt danh mục thành Trái cây cho truy vấn về trái cây ít đường")
-            
+
             # Sử dụng hàm search_products với từ khóa đặc biệt
             search_message = "trái cây ít đường ăn kiêng"
             products = search_products(search_message)
             print(
                 f"Tìm thấy {len(products) if products else 0} sản phẩm trái cây ít đường bằng tìm kiếm thông thường"
             )
-            
+
             # Nếu vẫn không tìm thấy, thử tìm kiếm trực tiếp trong danh mục Trái cây
             if not products or len(products) == 0:
                 print(
@@ -1590,7 +1735,7 @@ def handle_low_sugar_fruit_query(message, context):
                 products = search_products_by_category(
                     "Trái cây", ["ít đường", "ăn kiêng"], None
                 )
-                
+
                 # Nếu vẫn không tìm thấy, lấy tất cả trái cây
                 if not products or len(products) == 0:
                     print("Vẫn không tìm thấy, thử tìm tất cả trái cây")
@@ -1598,30 +1743,30 @@ def handle_low_sugar_fruit_query(message, context):
     except Exception as e:
         print(f"Lỗi khi tìm kiếm sản phẩm: {e}")
         products = []
-    
+
     # Tạo câu trả lời
     response = "Dựa trên yêu cầu của bạn về trái cây ít đường phù hợp cho người ăn kiêng, tôi xin giới thiệu:\n\n"
-    
+
     # Nếu tìm thấy sản phẩm trái cây trong database
     if products and len(products) > 0:
         # Giới hạn số lượng sản phẩm hiển thị
         max_products = min(5, len(products))
-        
+
         for i, product in enumerate(products[:max_products]):
             response += f"{i+1}. {product.get('productName', product.get('name', 'Sản phẩm'))} - {format_price(product.get('productPrice', product.get('price', 0)))} đồng\n"
             if "productDescription" in product and product["productDescription"]:
                 response += f"   • {product['productDescription'][0]}\n"
             response += "\n"
-        
+
         response += "Những loại trái cây này đều có hàm lượng đường thấp, phù hợp cho người ăn kiêng hoặc người cần kiểm soát lượng đường. Bạn có muốn biết thêm chi tiết về sản phẩm nào không?"
     else:
         # Nếu không tìm thấy sản phẩm, thông báo cho người dùng
         response = "Xin lỗi, hiện tại cửa hàng chúng tôi không tìm thấy sản phẩm trái cây phù hợp với yêu cầu của bạn. Vui lòng thử lại sau hoặc liên hệ với nhân viên cửa hàng để được tư vấn thêm."
-    
+
     # Lưu ngữ cảnh
     if products and len(products) > 0:
         save_product_context(context.get("userId", "anonymous"), products[0], products)
-    
+
     return response
 
 
@@ -1631,7 +1776,7 @@ def extract_product_category(message):
     Trích xuất danh mục sản phẩm từ tin nhắn
     """
     message_lower = message.lower()
-    
+
     # Kiểm tra từ khóa liên quan đến trái cây ít đường
     fruit_keywords = ["trái cây", "hoa quả", "quả", "trái"]
     low_sugar_keywords = [
@@ -1642,15 +1787,15 @@ def extract_product_category(message):
         "giảm cân",
         "tiểu đường",
     ]
-    
+
     is_fruit_query = any(kw in message_lower for kw in fruit_keywords)
     is_low_sugar_query = any(kw in message_lower for kw in low_sugar_keywords)
-    
+
     # Nếu là truy vấn về trái cây ít đường, luôn trả về danh mục Trái cây
     if is_fruit_query and is_low_sugar_query:
         log_debug("Phát hiện truy vấn trái cây ít đường, trả về danh mục Trái cây")
         return "Trái cây"
-    
+
     # Danh sách các danh mục và từ khóa tương ứng
     categories = {
         "Rau củ quả": [
@@ -1728,24 +1873,24 @@ def extract_product_category(message):
             "sinh tố",
         ],
     }
-    
+
     # Tìm danh mục phù hợp nhất
     max_matches = 0
     best_category = None
-    
+
     for category, keywords in categories.items():
         matches = sum(1 for keyword in keywords if keyword in message_lower)
         if matches > max_matches:
             max_matches = matches
             best_category = category
-    
+
     if best_category:
         log_debug(
             "Phát hiện danh mục", best_category, "với", max_matches, "từ khóa khớp"
         )
     else:
         log_debug("Không phát hiện danh mục cụ thể")
-    
+
     return best_category
 
 
@@ -1756,7 +1901,7 @@ def extract_price_range(message):
     """
     price_range = {}
     message_lower = message.lower()
-    
+
     # Mẫu giá tối thiểu
     min_price_patterns = [
         r"từ (\d+)[kK]",
@@ -1769,7 +1914,7 @@ def extract_price_range(message):
         r"lớn hơn (\d+)\s*\.\s*\d{3}",
         r"lớn hơn (\d+)\s*nghìn",
     ]
-    
+
     # Mẫu giá tối đa
     max_price_patterns = [
         r"dưới (\d+)[kK]",
@@ -1788,7 +1933,7 @@ def extract_price_range(message):
         r"đến (\d+)\s*\.\s*\d{3}",
         r"đến (\d+)\s*nghìn",
     ]
-    
+
     # Mẫu khoảng giá
     range_patterns = [
         r"từ (\d+)[kK] đến (\d+)[kK]",
@@ -1801,7 +1946,7 @@ def extract_price_range(message):
         r"giá (\d+)\s*\.\s*\d{3} đến (\d+)\s*\.\s*\d{3}",
         r"giá (\d+)\s*nghìn đến (\d+)\s*nghìn",
     ]
-    
+
     # Kiểm tra mẫu khoảng giá
     for pattern in range_patterns:
         matches = re.search(pattern, message_lower)
@@ -1815,7 +1960,7 @@ def extract_price_range(message):
                 return price_range
             except:
                 pass
-    
+
     # Kiểm tra mẫu giá tối thiểu
     for pattern in min_price_patterns:
         matches = re.search(pattern, message_lower)
@@ -1827,7 +1972,7 @@ def extract_price_range(message):
                 break
             except:
                 pass
-    
+
     # Kiểm tra mẫu giá tối đa
     for pattern in max_price_patterns:
         matches = re.search(pattern, message_lower)
@@ -1839,12 +1984,12 @@ def extract_price_range(message):
                 break
             except:
                 pass
-    
+
     # Kiểm tra nếu có khoảng giá
     if price_range["min"] is not None or price_range["max"] is not None:
         log_debug("Kết quả trích xuất khoảng giá:", price_range)
         return price_range
-    
+
     log_debug("Không phát hiện khoảng giá")
     return None
 
@@ -1855,7 +2000,7 @@ def extract_keywords(message):
     Trích xuất từ khóa tìm kiếm từ tin nhắn
     """
     message_lower = message.lower()
-    
+
     # Danh sách từ dừng (stopwords) tiếng Việt
     stopwords = [
         "của",
@@ -1968,32 +2113,32 @@ def extract_keywords(message):
         "thế",
         "vậy",
     ]
-    
+
     # Loại bỏ dấu câu
     message_clean = re.sub(r'[.,;:!?"()]', " ", message_lower)
-    
+
     # Tách từ
     words = message_clean.split()
-    
+
     # Lọc bỏ stopwords và từ quá ngắn
     keywords = [word for word in words if word not in stopwords and len(word) > 1]
-    
+
     # Thêm từ ghép
     bigrams = []
     for i in range(len(words) - 1):
         bigram = words[i] + " " + words[i + 1]
         if not any(word in stopwords for word in bigram.split()):
             bigrams.append(bigram)
-    
+
     # Kết hợp từ đơn và từ ghép
     all_keywords = keywords + bigrams
-    
+
     # Loại bỏ trùng lặp và sắp xếp theo độ dài (ưu tiên từ dài hơn)
     unique_keywords = sorted(set(all_keywords), key=len, reverse=True)
-    
+
     # Giới hạn số lượng từ khóa
     result = unique_keywords[:10]
-    
+
     log_debug("Trích xuất từ khóa:", result)
     return result
 
@@ -2001,176 +2146,54 @@ def extract_keywords(message):
 # Hàm tìm kiếm sản phẩm theo danh mục
 def search_products_by_category(category, keywords=None, price_range=None):
     """
-    Tìm kiếm sản phẩm theo danh mục và từ khóa
+    Tìm kiếm sản phẩm theo danh mục và từ khóa (chỉ dùng get_product_data từ db_connector)
     """
     try:
-        # Lấy collection sản phẩm
-        from db import getProductsCollection
-    except ImportError:
-        print("Không thể import module 'db'. Vui lòng kiểm tra lại đường dẫn hoặc cài đặt module.")
-        return []
+        from db_connector import get_product_data
 
-        products_collection = getProductsCollection()
-        
-        # Xây dựng bộ lọc
-        filter_query = {}
-        
-        # Đảm bảo danh mục là Trái cây khi tìm kiếm trái cây ít đường
-        is_low_sugar_fruit_search = False
-        if keywords and any(
-            kw in ["ít đường", "đường thấp", "ăn kiêng", "giảm cân"] for kw in keywords
-        ):
-            if category == "Trái cây" or any(
-                kw in ["trái cây", "hoa quả", "quả", "trái"] for kw in keywords
-            ):
-                category = "Trái cây"
-                is_low_sugar_fruit_search = True
-                log_debug(
-                    "Đã xác định là tìm kiếm trái cây ít đường, đặt danh mục thành Trái cây"
-                )
-        
+        all_products = get_product_data()
+        if not all_products:
+            return []
+
         # Lọc theo danh mục
+        filtered = all_products
         if category:
-            filter_query["productCategory"] = category
-            print(f"Tìm kiếm trong danh mục: {category}")
-        
-        # Kiểm tra xem có phải tìm kiếm trái cây ít đường không
-        if not is_low_sugar_fruit_search:
-            is_low_sugar_fruit_search = (
-                category == "Trái cây"
-                and keywords
-                and any(
-                    kw in ["ít đường", "đường thấp", "ăn kiêng", "giảm cân"]
-                    for kw in keywords
-                )
-            )
-        
+            filtered = [
+                p
+                for p in filtered
+                if p.get("productCategory", "").lower() == category.lower()
+            ]
+
         # Lọc theo từ khóa
         if keywords and len(keywords) > 0:
-            # Nếu là tìm kiếm trái cây ít đường, sử dụng bộ lọc đặc biệt
-            if is_low_sugar_fruit_search:
-                print("Áp dụng bộ lọc đặc biệt cho trái cây ít đường")
-                filter_query["$or"] = [
-                    {
-                        "productName": {
-                            "$regex": "ít đường|đường thấp|không đường|ăn kiêng|giảm cân",
-                            "$options": "i",
-                        }
-                    },
-                    {
-                        "productDescription": {
-                            "$regex": "ít đường|đường thấp|không đường|hàm lượng đường thấp|ăn kiêng|giảm cân|tiểu đường",
-                            "$options": "i",
-                        }
-                    },
-                ]
-            else:
-                # Tạo điều kiện tìm kiếm thông thường
-                keyword_conditions = []
-                for keyword in keywords:
-                    keyword_conditions.append(
-                        {"productName": {"$regex": keyword, "$options": "i"}}
-                    )
-                    keyword_conditions.append(
-                        {"productDescription": {"$regex": keyword, "$options": "i"}}
-                    )
-                
-                if len(keyword_conditions) > 0:
-                    filter_query["$or"] = keyword_conditions
-        
+
+            def match_keywords(p):
+                name = str(p.get("productName", "")).lower()
+                desc = (
+                    " ".join(p.get("productDescription", []))
+                    if isinstance(p.get("productDescription"), list)
+                    else str(p.get("productDescription", "")).lower()
+                )
+                return any(kw.lower() in name or kw.lower() in desc for kw in keywords)
+
+            filtered = [p for p in filtered if match_keywords(p)]
+
         # Lọc theo khoảng giá
         if price_range:
-            price_filter = {}
-            if "min" in price_range and price_range["min"] is not None:
-                price_filter["$gte"] = price_range["min"]
-            if "max" in price_range and price_range["max"] is not None:
-                price_filter["$lte"] = price_range["max"]
-            
-            if price_filter:
-                filter_query["productPrice"] = price_filter
-        
-        print(f"Filter tìm kiếm: {filter_query}")
-        
-        # Thực hiện truy vấn
-        products = list(products_collection.find(filter_query).limit(10))
-        
-        # Nếu không tìm thấy sản phẩm và là tìm kiếm trái cây ít đường, thử tìm tất cả trái cây và sắp xếp theo điểm phù hợp
-        if is_low_sugar_fruit_search and (not products or len(products) == 0):
-            print(
-                "Không tìm thấy trái cây ít đường, thử tìm tất cả trái cây và đánh giá độ phù hợp"
-            )
-            all_fruits = list(
-                products_collection.find({"productCategory": "Trái cây"}).limit(20)
-            )
-            
-            # Đánh giá độ phù hợp cho mỗi trái cây
-            scored_fruits = []
-            for fruit in all_fruits:
-                score = 0
-                fruit_name = fruit.get("productName", "").lower()
-                fruit_desc = (
-                    " ".join(fruit.get("productDescription", [])).lower()
-                    if fruit.get("productDescription")
-                    else ""
-                )
-                
-                # Tính điểm dựa trên tên và mô tả
-                low_sugar_patterns = [
-                    "ít đường",
-                    "đường thấp",
-                    "không đường",
-                    "hàm lượng đường thấp",
-                    "ăn kiêng",
-                    "giảm cân",
-                ]
-                for pattern in low_sugar_patterns:
-                    if pattern in fruit_name:
-                        score += 10
-                    elif pattern in fruit_desc:
-                        score += 5
-                
-                # Kiểm tra nếu có đề cập đến hàm lượng đường cụ thể
-                sugar_content_patterns = [
-                    r"(\d+[.,]?\d*)g đường",
-                    r"đường: (\d+[.,]?\d*)g",
-                    r"hàm lượng đường (\d+[.,]?\d*)g",
-                    r"(\d+[.,]?\d*)% đường",
-                ]
-                
-                for pattern in sugar_content_patterns:
-                    matches = re.findall(pattern, fruit_desc)
-                    if matches:
-                        try:
-                            sugar_content = float(matches[0].replace(",", "."))
-                            # Điểm cao hơn cho sản phẩm có hàm lượng đường thấp
-                            if sugar_content < 5:
-                                score += 15
-                            elif sugar_content < 10:
-                                score += 10
-                            elif sugar_content < 15:
-                                score += 5
-                        except:
-                            score += 2
-                
-                # Thêm vào danh sách với điểm
-                fruit["relevance_score"] = score
-                scored_fruits.append(fruit)
-            
-            # Lọc các trái cây có điểm > 0 và sắp xếp theo điểm giảm dần
-            relevant_fruits = [f for f in scored_fruits if f["relevance_score"] > 0]
-            relevant_fruits.sort(key=lambda x: x["relevance_score"], reverse=True)
-            
-            if relevant_fruits:
-                print(
-                    f"Tìm thấy {len(relevant_fruits)} sản phẩm bằng từ khóa với điểm phù hợp"
-                )
-                return relevant_fruits
-            else:
-                # Nếu không có trái cây nào phù hợp, trả về tất cả
-                print("Không tìm thấy trái cây phù hợp, trả về tất cả trái cây")
-                return all_fruits
-        
-        return products
+            min_price = price_range.get("min")
+            max_price = price_range.get("max")
+
+            def match_price(p):
+                price = p.get("productPrice", p.get("price", 0))
+                if min_price is not None and price < min_price:
+                    return False
+                if max_price is not None and price > max_price:
+                    return False
+                return True
+
+            filtered = [p for p in filtered if match_price(p)]
+
+        return filtered[:10]
     except Exception as e:
         print(f"Lỗi khi tìm kiếm sản phẩm theo danh mục: {e}")
         return []
@@ -2194,7 +2217,7 @@ def search_products(message):
     """
     try:
         log_debug("Bắt đầu tìm kiếm sản phẩm cho tin nhắn:", message)
-        
+
         # Kiểm tra từ khóa liên quan đến trái cây ít đường
         fruit_keywords = ["trái cây", "hoa quả", "quả", "trái"]
         low_sugar_keywords = [
@@ -2205,12 +2228,12 @@ def search_products(message):
             "giảm cân",
             "tiểu đường",
         ]
-        
+
         message_lower = message.lower()
         is_fruit_query = any(kw in message_lower for kw in fruit_keywords)
         is_low_sugar_query = any(kw in message_lower for kw in low_sugar_keywords)
         is_low_sugar_fruit_query = is_fruit_query and is_low_sugar_query
-        
+
         # Nếu là truy vấn về trái cây ít đường, đặt danh mục là Trái cây
         category = None
         if is_low_sugar_fruit_query:
@@ -2222,15 +2245,15 @@ def search_products(message):
             # Trích xuất danh mục từ tin nhắn
             category = extract_product_category(message)
             log_debug("Trích xuất danh mục:", category)
-        
+
         # Trích xuất khoảng giá
         price_range = extract_price_range(message)
         log_debug("Trích xuất khoảng giá:", price_range)
-        
+
         # Trích xuất từ khóa
         keywords = extract_keywords(message)
         log_debug("Trích xuất từ khóa:", keywords)
-        
+
         # Đảm bảo rằng nếu là truy vấn về trái cây ít đường, danh mục vẫn là Trái cây
         if is_low_sugar_fruit_query:
             category = "Trái cây"
@@ -2240,11 +2263,11 @@ def search_products(message):
                 if term not in keywords:
                     keywords.append(term)
             log_debug("Đã thêm từ khóa liên quan đến ít đường:", keywords)
-        
+
         # Tìm kiếm sản phẩm
         products = search_products_by_category(category, keywords, price_range)
         log_debug("Kết quả tìm kiếm:", len(products) if products else 0, "sản phẩm")
-        
+
         return products
     except Exception as e:
         log_debug("Lỗi khi tìm kiếm sản phẩm:", str(e))
@@ -2266,12 +2289,12 @@ def format_product_response(user_message, products, user_id):
         "giảm cân",
         "tiểu đường",
     ]
-    
+
     message_lower = user_message.lower()
     is_fruit_query = any(kw in message_lower for kw in fruit_keywords)
     is_low_sugar_query = any(kw in message_lower for kw in low_sugar_keywords)
     is_low_sugar_fruit_query = is_fruit_query and is_low_sugar_query
-    
+
     # Kiểm tra xem tất cả sản phẩm có thuộc danh mục Trái cây không
     all_fruits = (
         all(product.get("productCategory") == "Trái cây" for product in products)
@@ -2288,7 +2311,7 @@ def format_product_response(user_message, products, user_id):
         "all_fruits=",
         all_fruits,
     )
-    
+
     # Xây dựng câu trả lời
     if is_low_sugar_fruit_query or (is_low_sugar_query and all_fruits):
         log_debug("Định dạng câu trả lời cho trái cây ít đường")
@@ -2296,10 +2319,10 @@ def format_product_response(user_message, products, user_id):
     else:
         log_debug("Định dạng câu trả lời cho sản phẩm thông thường")
         response = "Dưới đây là một số sản phẩm phù hợp với yêu cầu của bạn:\n\n"
-    
+
     # Lưu context sản phẩm cho người dùng
     save_product_context(user_id, products)
-    
+
     # Hiển thị tối đa 5 sản phẩm
     for i, product in enumerate(products[:5]):
         product_name = product.get("productName", "Không có tên")
@@ -2310,7 +2333,7 @@ def format_product_response(user_message, products, user_id):
             if product_desc and len(product_desc) > 0
             else "Không có mô tả"
         )
-        
+
         # Thêm điểm phù hợp nếu là truy vấn trái cây ít đường
         relevance_info = ""
         if (
@@ -2322,9 +2345,9 @@ def format_product_response(user_message, products, user_id):
                 relevance_info = " (Phù hợp cho chế độ ăn ít đường)"
             elif product["relevance_score"] >= 5:
                 relevance_info = " (Khá phù hợp cho chế độ ăn ít đường)"
-        
+
         response += f"{i+1}. {product_name}{relevance_info}\n   Giá: {product_price}\n   {desc_text}\n\n"
-    
+
     response += "Bạn có muốn biết thêm thông tin về sản phẩm cụ thể nào không?"
     log_debug("Đã tạo câu trả lời với", min(5, len(products)), "sản phẩm")
     return response
@@ -2360,7 +2383,7 @@ def analyze_intent(message):
     Phân tích ý định của tin nhắn người dùng
     """
     message_lower = message.lower()
-    
+
     # Kiểm tra lời chào
     greeting_patterns = [
         "xin chào",
@@ -2375,7 +2398,7 @@ def analyze_intent(message):
     if any(pattern in message_lower for pattern in greeting_patterns):
         log_debug("Phát hiện ý định: greeting")
         return "greeting"
-    
+
     # Kiểm tra hỏi giá
     price_patterns = [
         "giá",
@@ -2389,7 +2412,7 @@ def analyze_intent(message):
     if any(pattern in message_lower for pattern in price_patterns):
         log_debug("Phát hiện ý định: price_inquiry")
         return "price_inquiry"
-    
+
     # Kiểm tra hỏi khuyến mãi
     promotion_patterns = [
         "khuyến mãi",
@@ -2403,7 +2426,7 @@ def analyze_intent(message):
     if any(pattern in message_lower for pattern in promotion_patterns):
         log_debug("Phát hiện ý định: promotion_inquiry")
         return "promotion_inquiry"
-    
+
     # Mặc định là tìm kiếm sản phẩm
     log_debug("Phát hiện ý định mặc định: product_search")
     return "product_search"
@@ -2418,9 +2441,9 @@ def api_process_message():
         data = request.get_json()
         message = data.get("message", "")
         userId = data.get("userId", "anonymous")
-        
+
         log_debug("Nhận tin nhắn từ user", userId, ":", message)
-        
+
         # Kiểm tra nếu tin nhắn trống
         if not message.strip():
             log_debug("Tin nhắn trống, trả về lời chào")
@@ -2429,14 +2452,14 @@ def api_process_message():
                     "response": "Xin chào! Tôi là trợ lý ảo của cửa hàng thực phẩm. Bạn cần giúp gì không?"
                 }
             )
-        
+
         # Xử lý tin nhắn bằng hàm process_message
         response = process_message(message, userId)
         log_debug(
             "Trả về câu trả lời:",
             response[:100] + "..." if len(response) > 100 else response,
         )
-        
+
         return jsonify({"response": response})
     except Exception as e:
         log_debug("Lỗi khi xử lý API request:", str(e))

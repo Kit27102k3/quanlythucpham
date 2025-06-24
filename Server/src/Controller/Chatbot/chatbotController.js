@@ -1184,7 +1184,29 @@ const detectFAQIntent = (message) => {
     }
   }
   
-  return null;
+  // ƯU TIÊN: Nhận diện các mẫu hỏi về cách mua hàng
+  const howToBuyKeywords = [
+    "làm sao để mua", "mua hàng như thế nào", "cách mua", "mua như thế nào", "mua như nào",
+    "cách thức mua", "hướng dẫn mua hàng", "làm thế nào để mua", "tôi muốn mua hàng", "muốn mua hàng",
+    "mua hàng như nào", "mua hàng như thế nào", "mua hàng thì làm như nào", "mua hàng thì làm như thế nào", "mua hàng"
+  ];
+  for (const kw of howToBuyKeywords) {
+    if (lowerMessage.includes(kw)) {
+      console.log(`Phát hiện intent mua hàng với từ khóa: ${kw}`);
+      return "faq_how_to_buy";
+    }
+  }
+
+  // Nếu không nhận diện được intent ưu tiên, thử detectFAQIntent
+  const faqIntent = detectFAQIntent(message);
+  if (faqIntent) {
+    console.log(`Fallback detectFAQIntent: ${faqIntent}`);
+    return faqIntent;
+  }
+
+  // Nếu không nhận diện được gì, trả về intent mặc định
+  console.log("Không nhận diện được intent, trả về general_inquiry");
+  return "general_inquiry";
 };
 
 /**
@@ -1287,6 +1309,12 @@ const checkProductAvailabilityQuestion = (message) => {
     /có\s+(.+?)\s+không\s+nhỉ(\?)?$/i,
   ];
   
+  const nonProductKeywords = [
+    "khuyến mãi", "chương trình", "giảm giá", "ưu đãi", "chất lượng", "dịch vụ",
+    "giao hàng", "vận chuyển", "bảo hành", "đổi trả", "thanh toán", "địa chỉ",
+    "liên hệ", "hỗ trợ", "tư vấn", "chính sách", "mã giảm", "voucher", "coupon"
+  ];
+  
   for (const pattern of productAvailabilityPatterns) {
     const match = lowerMessage.match(pattern);
     if (match && match[1]) {
@@ -1296,6 +1324,12 @@ const checkProductAvailabilityQuestion = (message) => {
       for (const word of stopWords) {
         if (productName.startsWith(word + " ")) {
           productName = productName.substring(word.length).trim();
+        }
+      }
+      // Nếu productName chứa từ khóa không phải sản phẩm, bỏ qua
+      for (const nonProduct of nonProductKeywords) {
+        if (productName.includes(nonProduct)) {
+          return null;
         }
       }
       return productName;
@@ -2875,6 +2909,26 @@ function classifyMainIntent(message) {
     if (lowerMessage.includes(kw)) {
       console.log("Phát hiện intent so sánh sản phẩm");
       return "compare_products";
+    }
+  }
+
+  // Nhận diện intent FAQ phổ biến
+  const faqPatterns = [
+    { keywords: ["chất lượng", "sản phẩm có tốt", "có đảm bảo", "hàng có tốt", "sản phẩm tốt không"], intent: "faq_product_quality" },
+    { keywords: ["khuyến mãi", "giảm giá", "ưu đãi", "sale", "voucher", "coupon", "mã giảm"], intent: "faq_promotions" },
+    { keywords: ["giao hàng", "vận chuyển", "ship", "thời gian giao", "phí ship", "phí vận chuyển"], intent: "faq_shipping_time" },
+    { keywords: ["bảo hành", "đổi trả", "hoàn tiền", "trả lại", "đổi hàng", "bị lỗi", "không hài lòng"], intent: "faq_return_policy" },
+    { keywords: ["thanh toán", "phương thức thanh toán", "cách thanh toán", "hình thức thanh toán", "trả tiền"], intent: "faq_payment_methods" },
+    { keywords: ["địa chỉ", "cửa hàng ở đâu", "shop ở đâu", "vị trí", "địa điểm", "chi nhánh"], intent: "faq_store_location" },
+    { keywords: ["liên hệ", "hỗ trợ", "tư vấn", "hotline", "số điện thoại", "email"], intent: "faq_customer_support" },
+    { keywords: ["chính sách"], intent: "faq_policy" }
+  ];
+  for (const pattern of faqPatterns) {
+    for (const kw of pattern.keywords) {
+      if (lowerMessage.includes(kw)) {
+        console.log(`Phát hiện intent FAQ: ${pattern.intent} với từ khóa: ${kw}`);
+        return pattern.intent;
+      }
     }
   }
 
