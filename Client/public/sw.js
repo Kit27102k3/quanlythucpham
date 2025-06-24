@@ -21,7 +21,6 @@ self.addEventListener('push', (event) => {
   let data;
   try {
     data = event.data.json();
-    // console.log('[Service Worker] Push data:', data);
   } catch (error) {
     console.error('[Service Worker] Error parsing push data:', error);
     data = {
@@ -31,14 +30,17 @@ self.addEventListener('push', (event) => {
     };
   }
 
-  const title = data.title || 'Thông báo mới';
+  // Ưu tiên lấy thông tin từ data.notification nếu có
+  const notification = data.notification || data;
+
+  const title = notification.title || 'Thông báo mới';
   const options = {
-    body: data.body || '',
-    icon: data.icon || '/android-chrome-192x192.png',
-    badge: data.badge || '/android-chrome-192x192.png',
-    vibrate: data.vibrate || data.notification?.vibrate || [100, 50, 100],
-    data: data.data || data.notification?.data || {},
-    actions: data.actions || data.notification?.actions || [
+    body: notification.body || '',
+    icon: notification.icon || '/android-chrome-192x192.png',
+    badge: notification.badge || '/android-chrome-192x192.png',
+    vibrate: notification.vibrate || [100, 50, 100],
+    data: notification.data || {},
+    actions: notification.actions || [
       {
         action: 'explore',
         title: 'Xem ngay'
