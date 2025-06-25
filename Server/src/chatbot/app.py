@@ -65,7 +65,10 @@ CORS(
         "https://quanlythucpham.vercel.app",
         "https://quanlythucpham-kit27102k3s-projects.vercel.app",
         "https://quanlythucpham-kit27102k3s-projects.vercel.app",
+        "http://localhost:3000",  # Thêm localhost
+        "*",  # Cho phép tất cả các domain
     ],
+    supports_credentials=True,  # Hỗ trợ credentials
 )
 
 # Cấu hình API key đúng cách
@@ -281,7 +284,10 @@ def ask():
                     price = p.get("productPrice", p.get("price", 0))
                     # Lấy hình ảnh đầu tiên
                     img = ""
-                    if isinstance(p.get("productImages"), list) and len(p["productImages"]) > 0:
+                    if (
+                        isinstance(p.get("productImages"), list)
+                        and len(p["productImages"]) > 0
+                    ):
                         img = p["productImages"][0]
                     else:
                         img = (
@@ -301,19 +307,19 @@ def ask():
                 answer = f"Hiện tại cửa hàng không có sản phẩm '{product_name}'."
             return jsonify({"answer": answer, "products": product_list})
     # --- END NHẬN DIỆN KIỂM TRA SẢN PHẨM ---
-    
+
     # --- NHẬN DIỆN TÌM KIẾM THEO GIÁ ---
     price_range = extract_price_range(question)
     if price_range:
         log_debug(f"Phát hiện tìm kiếm theo giá: {price_range}")
-        
+
         # Trích xuất từ khóa bổ sung
         keywords = extract_keywords(question)
         category = extract_product_category(question)
-        
+
         # Tìm sản phẩm theo khoảng giá
         products = search_products_by_category(category, keywords, price_range)
-        
+
         if products and len(products) > 0:
             product_list = []
             for p in products[:5]:
@@ -321,7 +327,10 @@ def ask():
                 price = p.get("productPrice", p.get("price", 0))
                 # Lấy hình ảnh đầu tiên
                 img = ""
-                if isinstance(p.get("productImages"), list) and len(p["productImages"]) > 0:
+                if (
+                    isinstance(p.get("productImages"), list)
+                    and len(p["productImages"]) > 0
+                ):
                     img = p["productImages"][0]
                 else:
                     img = (
@@ -333,7 +342,7 @@ def ask():
                         or ""
                     )
                 product_list.append({"name": name, "price": price, "image": img})
-            
+
             # Tạo câu trả lời dựa trên khoảng giá
             price_text = ""
             if "min" in price_range and "max" in price_range:
@@ -342,15 +351,15 @@ def ask():
                 price_text = f"trên {format_price(price_range['min'])}đ"
             elif "max" in price_range:
                 price_text = f"dưới {format_price(price_range['max'])}đ"
-                
+
             answer = f"Cửa hàng có các sản phẩm {price_text} như sau:"
-            
+
             return jsonify({"answer": answer, "products": product_list})
         else:
             # Nếu không tìm thấy, thử tìm kiếm tổng quát
             all_products = get_product_data()
             filtered_products = []
-            
+
             if all_products:
                 # Lọc theo khoảng giá
                 for p in all_products:
@@ -360,14 +369,17 @@ def ask():
                     if "max" in price_range and price > price_range["max"]:
                         continue
                     filtered_products.append(p)
-                
+
                 if filtered_products:
                     product_list = []
                     for p in filtered_products[:5]:
                         name = str(p.get("productName", p.get("name", "Sản phẩm")))
                         price = p.get("productPrice", p.get("price", 0))
                         img = ""
-                        if isinstance(p.get("productImages"), list) and len(p["productImages"]) > 0:
+                        if (
+                            isinstance(p.get("productImages"), list)
+                            and len(p["productImages"]) > 0
+                        ):
                             img = p["productImages"][0]
                         else:
                             img = (
@@ -378,8 +390,10 @@ def ask():
                                 or p.get("imageBase64")
                                 or ""
                             )
-                        product_list.append({"name": name, "price": price, "image": img})
-                    
+                        product_list.append(
+                            {"name": name, "price": price, "image": img}
+                        )
+
                     # Tạo câu trả lời dựa trên khoảng giá
                     price_text = ""
                     if "min" in price_range and "max" in price_range:
@@ -388,11 +402,11 @@ def ask():
                         price_text = f"trên {format_price(price_range['min'])}đ"
                     elif "max" in price_range:
                         price_text = f"dưới {format_price(price_range['max'])}đ"
-                        
+
                     answer = f"Cửa hàng có các sản phẩm {price_text} như sau:"
-                    
+
                     return jsonify({"answer": answer, "products": product_list})
-            
+
             # Nếu vẫn không tìm thấy
             price_text = ""
             if "min" in price_range and "max" in price_range:
@@ -401,7 +415,7 @@ def ask():
                 price_text = f"trên {format_price(price_range['min'])}đ"
             elif "max" in price_range:
                 price_text = f"dưới {format_price(price_range['max'])}đ"
-                
+
             answer = f"Hiện tại cửa hàng không có sản phẩm nào {price_text}. Bạn có thể xem các sản phẩm khác trong cửa hàng của chúng tôi."
             return jsonify({"answer": answer, "products": []})
     # --- END NHẬN DIỆN TÌM KIẾM THEO GIÁ ---
@@ -2165,7 +2179,7 @@ def extract_price_range(message):
         r"hàng dưới (\d+)[kK]",
         r"hàng từ (\d+)[kK] đến (\d+)[kK]",
     ]
-    
+
     # Kiểm tra các mẫu câu cụ thể về khoảng giá
     for pattern in price_specific_patterns:
         if "đến" in pattern:
@@ -2451,8 +2465,10 @@ def search_products_by_category(category, keywords=None, price_range=None):
             log_debug("Không có dữ liệu sản phẩm từ DB")
             return []
 
-        log_debug(f"Tìm kiếm sản phẩm với category={category}, keywords={keywords}, price_range={price_range}")
-        
+        log_debug(
+            f"Tìm kiếm sản phẩm với category={category}, keywords={keywords}, price_range={price_range}"
+        )
+
         # Lọc theo danh mục
         filtered = all_products
         if category:
@@ -2465,6 +2481,7 @@ def search_products_by_category(category, keywords=None, price_range=None):
 
         # Lọc theo từ khóa
         if keywords and len(keywords) > 0:
+
             def match_keywords(p):
                 name = str(p.get("productName", "")).lower()
                 desc = (
@@ -2493,7 +2510,7 @@ def search_products_by_category(category, keywords=None, price_range=None):
 
             filtered = [p for p in filtered if match_price(p)]
             log_debug(f"Sau khi lọc theo giá: {len(filtered)} sản phẩm")
-            
+
             # Sắp xếp theo giá
             if min_price is not None and max_price is None:
                 # Nếu chỉ có giá tối thiểu, sắp xếp tăng dần
@@ -2501,19 +2518,23 @@ def search_products_by_category(category, keywords=None, price_range=None):
                 log_debug("Sắp xếp theo giá tăng dần")
             elif max_price is not None and min_price is None:
                 # Nếu chỉ có giá tối đa, sắp xếp giảm dần
-                filtered.sort(key=lambda p: p.get("productPrice", p.get("price", 0)), reverse=True)
+                filtered.sort(
+                    key=lambda p: p.get("productPrice", p.get("price", 0)), reverse=True
+                )
                 log_debug("Sắp xếp theo giá giảm dần")
 
         # Nếu không tìm thấy sản phẩm nào phù hợp với tất cả điều kiện
         if not filtered:
-            log_debug("Không tìm thấy sản phẩm phù hợp với tất cả điều kiện, thử lọc lại chỉ theo giá")
-            
+            log_debug(
+                "Không tìm thấy sản phẩm phù hợp với tất cả điều kiện, thử lọc lại chỉ theo giá"
+            )
+
             # Thử lọc lại chỉ theo giá nếu có khoảng giá
             if price_range:
                 filtered = all_products
                 min_price = price_range.get("min")
                 max_price = price_range.get("max")
-                
+
                 def match_price(p):
                     price = p.get("productPrice", p.get("price", 0))
                     if min_price is not None and price < min_price:
@@ -2521,15 +2542,20 @@ def search_products_by_category(category, keywords=None, price_range=None):
                     if max_price is not None and price > max_price:
                         return False
                     return True
-                
+
                 filtered = [p for p in filtered if match_price(p)]
                 log_debug(f"Lọc chỉ theo giá: {len(filtered)} sản phẩm")
-                
+
                 # Sắp xếp theo giá
                 if min_price is not None and max_price is None:
-                    filtered.sort(key=lambda p: p.get("productPrice", p.get("price", 0)))
+                    filtered.sort(
+                        key=lambda p: p.get("productPrice", p.get("price", 0))
+                    )
                 elif max_price is not None and min_price is None:
-                    filtered.sort(key=lambda p: p.get("productPrice", p.get("price", 0)), reverse=True)
+                    filtered.sort(
+                        key=lambda p: p.get("productPrice", p.get("price", 0)),
+                        reverse=True,
+                    )
 
         return filtered[:10]
     except Exception as e:
@@ -2891,5 +2917,15 @@ def api_process_message():
         )
 
 
+@app.after_request
+def after_request(response):
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+    response.headers.add("Access-Control-Allow-Credentials", "true")
+    return response
+
+
 if __name__ == "__main__":
+    # Lắng nghe trên tất cả các địa chỉ IP và cổng 5000
     app.run(host="0.0.0.0", port=5000, debug=True)
