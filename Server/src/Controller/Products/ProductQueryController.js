@@ -149,30 +149,47 @@ export const getProductBySlug = async (req, res) => {
 
 export const searchProducts = async (req, res) => {
   try {
-    let { name, page = 1, limit = 10 } = req.query;
+    let { name, q, page = 1, limit = 10 } = req.query;
+    const keyword = name || q;
     page = parseInt(page) > 0 ? parseInt(page) : 1;
     limit = Math.min(parseInt(limit) > 0 ? parseInt(limit) : 10, 100);
 
-    if (!name || typeof name !== "string") {
+    if (!keyword || typeof keyword !== "string") {
       return res.status(400).json({ message: "Invalid search input" });
     }
-    let searchQuery = {
+
+    // 1. Ưu tiên tìm theo tên và danh mục
+    let primaryQuery = {
       $or: [
-        { productName: { $regex: name.trim(), $options: "i" } },
-        { productInfo: { $regex: name.trim(), $options: "i" } },
-        { productCategory: { $regex: name.trim(), $options: "i" } },
-        { productBrand: { $regex: name.trim(), $options: "i" } },
-        { productCode: { $regex: name.trim(), $options: "i" } },
-        { productDetails: { $regex: name.trim(), $options: "i" } },
-        { productOrigin: { $regex: name.trim(), $options: "i" } },
+        { productName: { $regex: keyword.trim(), $options: "i" } },
+        { productCategory: { $regex: keyword.trim(), $options: "i" } },
       ],
     };
-    const products = await Product.find(searchQuery)
+    let products = await Product.find(primaryQuery)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean();
-    const total = await Product.countDocuments(searchQuery);
+
+    // Nếu không có kết quả, mở rộng tìm theo các trường khác
+    if (products.length === 0) {
+      let secondaryQuery = {
+        $or: [
+          { productInfo: { $regex: keyword.trim(), $options: "i" } },
+          { productBrand: { $regex: keyword.trim(), $options: "i" } },
+          { productCode: { $regex: keyword.trim(), $options: "i" } },
+          { productDetails: { $regex: keyword.trim(), $options: "i" } },
+          { productOrigin: { $regex: keyword.trim(), $options: "i" } },
+          { productDescription: { $regex: keyword.trim(), $options: "i" } },
+          { productDescription: { $elemMatch: { $regex: keyword.trim(), $options: "i" } } },
+        ],
+      };
+      products = await Product.find(secondaryQuery)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean();
+    }
 
     // Chuyển đổi dữ liệu số thành chuỗi
     const productsToSend = products.map((product) => {
@@ -187,9 +204,9 @@ export const searchProducts = async (req, res) => {
 
     return res.status(200).json({
       products: productsToSend,
-      total,
+      total: productsToSend.length,
       page,
-      totalPages: Math.ceil(total / limit),
+      totalPages: 1,
     });
   } catch (error) {
     if (error.name === "CastError" && error.path === "_id") {

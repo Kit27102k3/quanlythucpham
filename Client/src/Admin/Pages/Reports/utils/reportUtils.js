@@ -30,12 +30,12 @@ export const exportToPDF = async (reportId, setExportLoading) => {
   if (setExportLoading) setExportLoading(true);
   
   try {
-    // Thử lấy phần tử báo cáo, nếu không có thì lấy toàn bộ nội dung trang
+    // Chỉ lấy đúng phần tử báo cáo doanh thu khi reportId là 'revenue'
     let element = document.getElementById(`${reportId}-report`);
     if (!element) {
-      console.log(`Phần tử có ID "${reportId}-report" không tìm thấy, sử dụng nội dung trang hiện tại`);
-      // Sử dụng phần tử chính của trang báo cáo
-      element = document.querySelector('.MuiCard-root') || document.body;
+      alert(`Không tìm thấy phần tử báo cáo với id: ${reportId}-report. Vui lòng kiểm tra lại giao diện báo cáo.`);
+      if (setExportLoading) setExportLoading(false);
+      return;
     }
     
     // Apply a temporary style to replace oklch colors with standard RGB

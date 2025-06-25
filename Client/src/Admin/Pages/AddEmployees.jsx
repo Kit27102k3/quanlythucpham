@@ -432,9 +432,9 @@ const Employees = () => {
     : employees;
 
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen p-4 ">
       <div
-        className="container mx-auto bg-white shadow-xl rounded-xl p-4 md:p-8"
+        className="container mx-auto bg-white shadow-xl rounded-xl p-4"
         style={{ overflowX: "auto" }}
       >
         {/* Header */}
@@ -475,8 +475,8 @@ const Employees = () => {
           </div>
         )}
         {/* Employee Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse bg-white shadow-sm rounded-lg overflow-hidden">
+        <div className="w-full overflow-x-auto">
+          <table className="min-w-[900px] max-w-full text-sm">
             <thead className="bg-gray-200">
               <tr>
                 {[
@@ -492,7 +492,7 @@ const Employees = () => {
                 ].map((header) => (
                   <th
                     key={header}
-                    className="px-4 py-3 text-left text-black font-semibold whitespace-nowrap"
+                    className="px-4 py-2 text-left text-black font-semibold whitespace-nowrap"
                   >
                     {header}
                   </th>
@@ -502,13 +502,13 @@ const Employees = () => {
             <tbody>
               {loading && !filteredEmployees.length ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8">
+                  <td colSpan={9} className="text-center py-8">
                     <i className="pi pi-spinner pi-spin text-2xl text-emerald-500"></i>
                   </td>
                 </tr>
               ) : filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-500">
+                  <td colSpan={9} className="text-center py-8 text-gray-500">
                     Không có nhân viên nào
                   </td>
                 </tr>
@@ -518,33 +518,33 @@ const Employees = () => {
                     key={employee._id}
                     className="border-b hover:bg-emerald-50/50 transition-colors"
                   >
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">
                       {employee.userName}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">
                       {employee.fullName || "N/A"}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">
                       {employee.birthday
                         ? new Date(employee.birthday).toLocaleDateString()
                         : "N/A"}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">
                       {employee.phone || "N/A"}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">
                       {employee.email || "N/A"}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">
                       {employee.role
                         ? roles.find((r) => r.value === employee.role)?.label ||
                           employee.role
                         : "N/A"}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">
                       {employee.branchName || "N/A"}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="px-4 py-2 whitespace-nowrap">
                       {employee.activityStatus === "working" ? (
                         <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
                           Còn làm việc
@@ -559,8 +559,8 @@ const Employees = () => {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex gap-2">
+                    <td className="px-4 py-2 whitespace-nowrap text-center">
+                      <div className="flex gap-2 justify-center">
                         <Button
                           icon="pi pi-pencil"
                           className="p-button-rounded p-button-warning p-button-text"

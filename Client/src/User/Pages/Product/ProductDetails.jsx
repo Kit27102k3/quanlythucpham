@@ -956,15 +956,36 @@ export default function ProductDetails() {
                         key={index}
                         type="button"
                         onClick={() => handleUnitChange(unit)}
-                        className={`px-3 py-1 border rounded-md text-sm transition-all duration-200 ${
-                          selectedUnit && selectedUnit.unit === unit.unit
-                            ? "bg-[#51bb1a] !important text-white !important border-[#51bb1a] !important font-medium"
-                            : "bg-white text-gray-700 border-gray-300 hover:border-[#51bb1a] hover:text-[#51bb1a]"
-                        }`}
                         style={{
-                          backgroundColor: selectedUnit && selectedUnit.unit === unit.unit ? '#51bb1a' : 'white',
-                          color: selectedUnit && selectedUnit.unit === unit.unit ? 'white' : '#374151',
-                          borderColor: selectedUnit && selectedUnit.unit === unit.unit ? '#51bb1a' : '#d1d5db'
+                          backgroundColor:
+                            selectedUnit &&
+                            selectedUnit.unit === unit.unit &&
+                            selectedUnit.conversionRate === unit.conversionRate
+                              ? '#51bb1a'
+                              : '#ffffff',
+                          color:
+                            selectedUnit &&
+                            selectedUnit.unit === unit.unit &&
+                            selectedUnit.conversionRate === unit.conversionRate
+                              ? '#ffffff'
+                              : '#374151',
+                          border:
+                            selectedUnit &&
+                            selectedUnit.unit === unit.unit &&
+                            selectedUnit.conversionRate === unit.conversionRate
+                              ? '1px solid #51bb1a'
+                              : '1px solid #d1d5db',
+                          borderRadius: '0.375rem',
+                          padding: '0.25rem 0.75rem',
+                          fontSize: '0.875rem',
+                          fontWeight:
+                            selectedUnit &&
+                            selectedUnit.unit === unit.unit &&
+                            selectedUnit.conversionRate === unit.conversionRate
+                              ? '500'
+                              : 'normal',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
                         }}
                       >
                         {unit.conversionRate} {unit.unit}

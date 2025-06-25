@@ -210,6 +210,14 @@ const Reports = () => {
     }));
   };
 
+  // Hàm xuất tự động: chuyển tab, đợi render xong rồi export
+  const handleAutoExport = (reportId) => {
+    setActiveTab(reportId);
+    setTimeout(() => {
+      exportToPDF(reportId, setExportLoading);
+    }, 600); // Đợi 600ms cho tab render xong
+  };
+
   const renderContent = () => {
     if (isLoading) {
     return (
@@ -319,18 +327,18 @@ const Reports = () => {
             setExportLoading={setExportLoading}
           />
         );
-      case "delivery":
-        return (
-          <DeliveryReport
-            deliveryData={deliveryData}
-            exportToPDF={exportToPDF}
-            exportToExcel={exportToExcel}
-            sendReportEmail={sendReportEmail}
-            exportLoading={exportLoading}
-            setExportLoading={setExportLoading}
-            formatCurrency={formatCurrency}
-          />
-        );
+      // case "delivery":
+      //   return (
+      //     <DeliveryReport
+      //       deliveryData={deliveryData}
+      //       exportToPDF={exportToPDF}
+      //       exportToExcel={exportToExcel}
+      //       sendReportEmail={sendReportEmail}
+      //       exportLoading={exportLoading}
+      //       setExportLoading={setExportLoading}
+      //       formatCurrency={formatCurrency}
+      //     />
+      //   );
       case "feedback":
         return (
           <FeedbackReport
@@ -353,6 +361,7 @@ const Reports = () => {
         return (
           <AutoExportManager
             setExportLoading={setExportLoading}
+            onAutoExport={handleAutoExport}
           />
         );
       default:
@@ -450,7 +459,7 @@ const Reports = () => {
           >
             Hoạt động hệ thống
           </button>
-          <button
+          {/* <button
             onClick={() => setActiveTab("delivery")}
             className={`${
               activeTab === "delivery"
@@ -459,7 +468,7 @@ const Reports = () => {
             } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
           >
             Giao hàng
-          </button>
+          </button> */}
           <button
             onClick={() => setActiveTab("feedback")}
             className={`${

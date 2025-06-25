@@ -26,6 +26,12 @@ const itemVariants = {
   exit: { opacity: 0, y: -20 }
 };
 
+// Hàm kiểm tra voucher đã hết hạn chưa
+const isExpired = (voucher) => {
+  if (!voucher || !voucher.expiresAt) return false;
+  return new Date(voucher.expiresAt) < new Date();
+};
+
 function Vouchers() {
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -374,7 +380,12 @@ function Vouchers() {
   // Pagination utilities
   const itemsPerPage = isMobile ? 1 : 3;
   
+  // Nếu chỉ có 1 voucher thì hiển thị luôn, không phân trang
+  const displayedVouchers = vouchers.length === 1 ? vouchers : vouchers.slice(0, 3);
+
   const getTotalPages = (items) => {
+    // Nếu chỉ có 1 voucher thì chỉ có 1 trang
+    if (vouchers.length === 1) return 1;
     return Math.ceil(items.length / itemsPerPage);
   };
   
@@ -383,6 +394,8 @@ function Vouchers() {
   };
   
   const getPaginatedVouchers = (items, page) => {
+    // Nếu chỉ có 1 voucher thì trả về luôn
+    if (vouchers.length === 1) return vouchers;
     const startIndex = page * itemsPerPage;
     return items.slice(startIndex, startIndex + itemsPerPage);
   };
@@ -494,7 +507,7 @@ function Vouchers() {
             variants={containerVariants}
             className="grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-3 gap-4"
           >
-            {getPaginatedVouchers(vouchers, currentPage).map((voucher, index) => (
+            {getPaginatedVouchers(displayedVouchers, currentPage).map((voucher, index) => (
               <motion.div
                 key={voucher._id}
                 variants={itemVariants}
@@ -558,11 +571,11 @@ function Vouchers() {
       </AnimatePresence>
       
       {/* Pagination dots */}
-      {vouchers.length > itemsPerPage && (
+      {vouchers.length > 1 && vouchers.length > itemsPerPage && (
         <div className="w-full flex flex-col items-center mt-6">
           <div className="flex justify-center items-center">
             <div className="flex space-x-3">
-              {Array.from({ length: getTotalPages(vouchers) }, (_, index) => (
+              {Array.from({ length: getTotalPages(displayedVouchers) }, (_, index) => (
                 <button
                   key={index}
                   onClick={() => handlePageChange(index)}

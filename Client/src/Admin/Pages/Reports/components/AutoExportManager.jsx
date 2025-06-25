@@ -39,7 +39,7 @@ import {
   exportNow
 } from '../utils/autoExport';
 
-const AutoExportManager = ({ setExportLoading }) => {
+const AutoExportManager = ({ setExportLoading, onAutoExport }) => {
   const [configs, setConfigs] = useState([]);
   const [open, setOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState(null);
@@ -125,10 +125,14 @@ const AutoExportManager = ({ setExportLoading }) => {
   };
 
   const handleRunNow = async (config) => {
-    try {
-      await exportNow(config.reportId, config.format, setExportLoading);
-    } catch (error) {
-      console.error('Error running export:', error);
+    if (onAutoExport) {
+      onAutoExport(config.reportId);
+    } else {
+      try {
+        await exportNow(config.reportId, config.format, setExportLoading);
+      } catch (error) {
+        console.error('Error running export:', error);
+      }
     }
   };
 
@@ -393,7 +397,8 @@ const AutoExportManager = ({ setExportLoading }) => {
 };
 
 AutoExportManager.propTypes = {
-  setExportLoading: PropTypes.func.isRequired
+  setExportLoading: PropTypes.func.isRequired,
+  onAutoExport: PropTypes.func
 };
 
 export default AutoExportManager; 

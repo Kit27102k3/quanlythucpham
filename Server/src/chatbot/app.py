@@ -12,6 +12,20 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from db_connector import get_product_data
 from flask_cors import CORS
+import random
+
+
+# Function to extract product names from answer text
+def extract_product_names_from_answer(answer):
+    import re
+
+    matches = re.findall(r": ([^\n\r]+)", answer)
+    product_names = []
+    for match in matches:
+        names = [n.strip(" .") for n in match.split(",")]
+        product_names.extend(names)
+    return product_names
+
 
 # Thêm đường dẫn hiện tại vào sys.path để có thể import các module local
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -92,6 +106,10 @@ def detect_faq_intent(question):
             "mua như thế nào",
             "mua như nào",
             "mua ở đâu",
+            "mua sản phẩm",
+            "mua thực phẩm",
+            "cách thức mua hàng",
+            "quy trình mua hàng",
         ],
         "faq_how_to_order": [
             "đặt hàng",
@@ -101,6 +119,15 @@ def detect_faq_intent(question):
             "hướng dẫn đặt hàng",
             "làm sao để đặt",
             "đặt như thế nào",
+            "đặt hàng như nào",
+            "đặt hàng thì làm như nào",
+            "đặt hàng như thế nào",
+            "làm thế nào để đặt hàng",
+            "muốn đặt hàng",
+            "tôi muốn đặt hàng",
+            "đặt mua",
+            "quy trình đặt hàng",
+            "đặt đơn hàng",
         ],
         "faq_payment_methods": [
             "thanh toán",
@@ -108,6 +135,12 @@ def detect_faq_intent(question):
             "cách thanh toán",
             "hình thức thanh toán",
             "trả tiền",
+            "thanh toán như thế nào",
+            "thanh toán bằng gì",
+            "tiền mặt",
+            "chuyển khoản",
+            "thẻ tín dụng",
+            "thanh toán online",
         ],
         "faq_register_account": [
             "đăng ký",
@@ -167,10 +200,33 @@ def detect_faq_intent(question):
         # ... (các intent FAQ khác copy từ intentKeywords JS sang đây) ...
     }
     q = question.lower()
+
+    # Ưu tiên kiểm tra các câu hỏi về đặt hàng và mua hàng trước
+    order_keywords = [
+        "đặt hàng",
+        "mua hàng",
+        "order",
+        "thanh toán",
+        "mua sắm",
+        "mua",
+        "đặt",
+    ]
+    if any(kw in q for kw in order_keywords):
+        # Kiểm tra các intent liên quan đến đặt hàng, mua hàng và thanh toán
+        for intent in ["faq_how_to_order", "faq_how_to_buy", "faq_payment_methods"]:
+            patterns = faq_patterns.get(intent, [])
+            if any(pat in q for pat in patterns):
+                print(f"Phát hiện intent {intent} cho câu hỏi: '{q}'")
+                return intent
+
+    # Kiểm tra các intent khác
     for intent, patterns in faq_patterns.items():
         for pat in patterns:
             if pat in q:
+                print(f"Phát hiện intent {intent} cho câu hỏi: '{q}'")
                 return intent
+
+    print(f"Không phát hiện intent FAQ nào cho câu hỏi: '{q}'")
     return None
 
 
@@ -245,6 +301,110 @@ def ask():
                 answer = f"Hiện tại cửa hàng không có sản phẩm '{product_name}'."
             return jsonify({"answer": answer, "products": product_list})
     # --- END NHẬN DIỆN KIỂM TRA SẢN PHẨM ---
+    
+    # --- NHẬN DIỆN TÌM KIẾM THEO GIÁ ---
+    price_range = extract_price_range(question)
+    if price_range:
+        log_debug(f"Phát hiện tìm kiếm theo giá: {price_range}")
+        
+        # Trích xuất từ khóa bổ sung
+        keywords = extract_keywords(question)
+        category = extract_product_category(question)
+        
+        # Tìm sản phẩm theo khoảng giá
+        products = search_products_by_category(category, keywords, price_range)
+        
+        if products and len(products) > 0:
+            product_list = []
+            for p in products[:5]:
+                name = str(p.get("productName", p.get("name", "Sản phẩm")))
+                price = p.get("productPrice", p.get("price", 0))
+                # Lấy hình ảnh đầu tiên
+                img = ""
+                if isinstance(p.get("productImages"), list) and len(p["productImages"]) > 0:
+                    img = p["productImages"][0]
+                else:
+                    img = (
+                        p.get("productImageURL")
+                        or p.get("productImage")
+                        or p.get("image")
+                        or p.get("imageUrl")
+                        or p.get("imageBase64")
+                        or ""
+                    )
+                product_list.append({"name": name, "price": price, "image": img})
+            
+            # Tạo câu trả lời dựa trên khoảng giá
+            price_text = ""
+            if "min" in price_range and "max" in price_range:
+                price_text = f"từ {format_price(price_range['min'])}đ đến {format_price(price_range['max'])}đ"
+            elif "min" in price_range:
+                price_text = f"trên {format_price(price_range['min'])}đ"
+            elif "max" in price_range:
+                price_text = f"dưới {format_price(price_range['max'])}đ"
+                
+            answer = f"Cửa hàng có các sản phẩm {price_text} như sau:"
+            
+            return jsonify({"answer": answer, "products": product_list})
+        else:
+            # Nếu không tìm thấy, thử tìm kiếm tổng quát
+            all_products = get_product_data()
+            filtered_products = []
+            
+            if all_products:
+                # Lọc theo khoảng giá
+                for p in all_products:
+                    price = p.get("productPrice", p.get("price", 0))
+                    if "min" in price_range and price < price_range["min"]:
+                        continue
+                    if "max" in price_range and price > price_range["max"]:
+                        continue
+                    filtered_products.append(p)
+                
+                if filtered_products:
+                    product_list = []
+                    for p in filtered_products[:5]:
+                        name = str(p.get("productName", p.get("name", "Sản phẩm")))
+                        price = p.get("productPrice", p.get("price", 0))
+                        img = ""
+                        if isinstance(p.get("productImages"), list) and len(p["productImages"]) > 0:
+                            img = p["productImages"][0]
+                        else:
+                            img = (
+                                p.get("productImageURL")
+                                or p.get("productImage")
+                                or p.get("image")
+                                or p.get("imageUrl")
+                                or p.get("imageBase64")
+                                or ""
+                            )
+                        product_list.append({"name": name, "price": price, "image": img})
+                    
+                    # Tạo câu trả lời dựa trên khoảng giá
+                    price_text = ""
+                    if "min" in price_range and "max" in price_range:
+                        price_text = f"từ {format_price(price_range['min'])}đ đến {format_price(price_range['max'])}đ"
+                    elif "min" in price_range:
+                        price_text = f"trên {format_price(price_range['min'])}đ"
+                    elif "max" in price_range:
+                        price_text = f"dưới {format_price(price_range['max'])}đ"
+                        
+                    answer = f"Cửa hàng có các sản phẩm {price_text} như sau:"
+                    
+                    return jsonify({"answer": answer, "products": product_list})
+            
+            # Nếu vẫn không tìm thấy
+            price_text = ""
+            if "min" in price_range and "max" in price_range:
+                price_text = f"từ {format_price(price_range['min'])}đ đến {format_price(price_range['max'])}đ"
+            elif "min" in price_range:
+                price_text = f"trên {format_price(price_range['min'])}đ"
+            elif "max" in price_range:
+                price_text = f"dưới {format_price(price_range['max'])}đ"
+                
+            answer = f"Hiện tại cửa hàng không có sản phẩm nào {price_text}. Bạn có thể xem các sản phẩm khác trong cửa hàng của chúng tôi."
+            return jsonify({"answer": answer, "products": []})
+    # --- END NHẬN DIỆN TÌM KIẾM THEO GIÁ ---
 
     # Detect health/diet/plan/benefit intent
     health_keywords = [
@@ -489,7 +649,13 @@ def ask():
                     img_urls = p.get("productImageURLs")
                     img = (
                         p.get("productImageURL")
-                        or (img_urls[0] if img_urls is not None and isinstance(img_urls, list) and len(img_urls) > 0 else None)
+                        or (
+                            img_urls[0]
+                            if img_urls is not None
+                            and isinstance(img_urls, list)
+                            and len(img_urls) > 0
+                            else None
+                        )
                         or p.get("productImage")
                         or p.get("image")
                         or p.get("imageUrl")
@@ -500,20 +666,16 @@ def ask():
                 return jsonify({"answer": answer, "products": product_list})
             else:
                 # Nếu không tìm thấy sản phẩm, thử trích xuất tên sản phẩm từ answer của GPT
-                def extract_product_names_from_answer(answer):
-                    import re
-                    matches = re.findall(r": ([^\n\r]+)", answer)
-                    product_names = []
-                    for match in matches:
-                        names = [n.strip(" .") for n in match.split(",")]
-                        product_names.extend(names)
-                    return product_names
                 product_names = extract_product_names_from_answer(answer)
                 matched_products = []
                 if product_names:
                     all_products = get_product_data()
                     for name in product_names:
-                        found = [p for p in all_products if name.lower() in str(p.get('productName', '')).lower()]
+                        found = [
+                            p
+                            for p in all_products
+                            if name.lower() in str(p.get("productName", "")).lower()
+                        ]
                         if found:
                             # Chỉ lấy 1 sản phẩm đầu tiên khớp tên
                             matched_products.append(found[0])
@@ -525,14 +687,22 @@ def ask():
                         img_urls = p.get("productImageURLs")
                         img = (
                             p.get("productImageURL")
-                            or (img_urls[0] if img_urls is not None and isinstance(img_urls, list) and len(img_urls) > 0 else None)
+                            or (
+                                img_urls[0]
+                                if img_urls is not None
+                                and isinstance(img_urls, list)
+                                and len(img_urls) > 0
+                                else None
+                            )
                             or p.get("productImage")
                             or p.get("image")
                             or p.get("imageUrl")
                             or p.get("imageBase64")
                             or ""
                         )
-                        product_list.append({"name": name, "price": price, "image": img})
+                        product_list.append(
+                            {"name": name, "price": price, "image": img}
+                        )
                     return jsonify({"answer": answer, "products": product_list})
                 else:
                     return jsonify({"answer": answer, "products": []})
@@ -676,18 +846,23 @@ def ask():
 
         # Sau khi lấy answer từ GPT và trước khi trả về response
         # (Chỉ thực hiện nếu không tìm thấy sản phẩm phù hợp ban đầu)
-        if (not products or len(products) == 0):
+        if not products or len(products) == 0:
             product_names = extract_product_names_from_answer(answer)
             if product_names:
                 all_products = get_product_data()
                 matched_products = []
                 for name in product_names:
-                    found = [p for p in all_products if name.lower() in str(p.get('productName', '')).lower()]
+                    found = [
+                        p
+                        for p in all_products
+                        if name.lower() in str(p.get("productName", "")).lower()
+                    ]
                     if found:
                         matched_products.append(found[0])
                 if matched_products:
                     products = matched_products
-        return products
+
+        return jsonify({"answer": answer, "products": products})
 
     except Exception as e:
         print(f"Lỗi OpenAI: {str(e)}")
@@ -1701,6 +1876,13 @@ def process_message(message, userId):
             log_debug("Chuyển hướng xử lý sang handle_low_sugar_fruit_query")
             return handle_low_sugar_fruit_query(message, userId)
 
+        # Kiểm tra xem có phải là câu hỏi về đặt hàng/mua hàng không
+        # Ưu tiên kiểm tra FAQ trước
+        faq_intent = detect_faq_intent(message)
+        if faq_intent and faq_intent in faq_answers:
+            log_debug(f"Phát hiện FAQ intent: {faq_intent}")
+            return faq_answers[faq_intent]
+
         # Phân tích ý định
         intent = analyze_intent(message)
         log_debug("Phân tích ý định:", intent)
@@ -1725,6 +1907,18 @@ def process_message(message, userId):
         elif intent == "promotion_inquiry":
             log_debug("Xử lý hỏi khuyến mãi")
             return "Hiện tại cửa hàng đang có chương trình giảm giá 10% cho tất cả các sản phẩm rau củ quả tươi và 15% cho các sản phẩm hữu cơ. Khuyến mãi áp dụng đến hết tháng này."
+
+        elif intent == "order_inquiry":
+            log_debug("Xử lý hỏi về đặt hàng")
+            # Trả về câu trả lời FAQ về đặt hàng
+            if "đặt hàng" in message_lower:
+                return faq_answers["faq_how_to_order"]
+            elif "mua hàng" in message_lower or "mua sắm" in message_lower:
+                return faq_answers["faq_how_to_buy"]
+            elif "thanh toán" in message_lower:
+                return faq_answers["faq_payment_methods"]
+            else:
+                return faq_answers["faq_how_to_order"]
 
         else:  # product_search là mặc định
             log_debug("Xử lý tìm kiếm sản phẩm")
@@ -1956,6 +2150,47 @@ def extract_price_range(message):
     price_range = {}
     message_lower = message.lower()
 
+    # Kiểm tra các mẫu câu cụ thể về giá
+    price_specific_patterns = [
+        r"sản phẩm dưới (\d+)[kK]",
+        r"sản phẩm dưới (\d+)\s*\.\s*\d{3}",
+        r"sản phẩm dưới (\d+)\s*nghìn",
+        r"sản phẩm từ (\d+)[kK] đến (\d+)[kK]",
+        r"sản phẩm từ (\d+)\s*\.\s*\d{3} đến (\d+)\s*\.\s*\d{3}",
+        r"sản phẩm từ (\d+)\s*nghìn đến (\d+)\s*nghìn",
+        r"sản phẩm giá dưới (\d+)[kK]",
+        r"sản phẩm giá từ (\d+)[kK] đến (\d+)[kK]",
+        r"thực phẩm dưới (\d+)[kK]",
+        r"thực phẩm từ (\d+)[kK] đến (\d+)[kK]",
+        r"hàng dưới (\d+)[kK]",
+        r"hàng từ (\d+)[kK] đến (\d+)[kK]",
+    ]
+    
+    # Kiểm tra các mẫu câu cụ thể về khoảng giá
+    for pattern in price_specific_patterns:
+        if "đến" in pattern:
+            matches = re.search(pattern, message_lower)
+            if matches:
+                try:
+                    min_price = int(matches.group(1)) * 1000
+                    max_price = int(matches.group(2)) * 1000
+                    price_range["min"] = min_price
+                    price_range["max"] = max_price
+                    log_debug("Phát hiện khoảng giá từ", min_price, "đến", max_price)
+                    return price_range
+                except:
+                    pass
+        else:
+            matches = re.search(pattern, message_lower)
+            if matches:
+                try:
+                    max_price = int(matches.group(1)) * 1000
+                    price_range["max"] = max_price
+                    log_debug("Phát hiện giá tối đa:", max_price)
+                    return price_range
+                except:
+                    pass
+
     # Mẫu giá tối thiểu
     min_price_patterns = [
         r"từ (\d+)[kK]",
@@ -1967,6 +2202,8 @@ def extract_price_range(message):
         r"lớn hơn (\d+)[kK]",
         r"lớn hơn (\d+)\s*\.\s*\d{3}",
         r"lớn hơn (\d+)\s*nghìn",
+        r"giá từ (\d+)[kK]",
+        r"giá trên (\d+)[kK]",
     ]
 
     # Mẫu giá tối đa
@@ -1986,6 +2223,8 @@ def extract_price_range(message):
         r"đến (\d+)[kK]",
         r"đến (\d+)\s*\.\s*\d{3}",
         r"đến (\d+)\s*nghìn",
+        r"giá dưới (\d+)[kK]",
+        r"giá không quá (\d+)[kK]",
     ]
 
     # Mẫu khoảng giá
@@ -1999,6 +2238,8 @@ def extract_price_range(message):
         r"giá (\d+)[kK] đến (\d+)[kK]",
         r"giá (\d+)\s*\.\s*\d{3} đến (\d+)\s*\.\s*\d{3}",
         r"giá (\d+)\s*nghìn đến (\d+)\s*nghìn",
+        r"giá từ (\d+)[kK] đến (\d+)[kK]",
+        r"giá từ (\d+)\s*\.\s*\d{3} đến (\d+)\s*\.\s*\d{3}",
     ]
 
     # Kiểm tra mẫu khoảng giá
@@ -2040,7 +2281,7 @@ def extract_price_range(message):
                 pass
 
     # Kiểm tra nếu có khoảng giá
-    if price_range["min"] is not None or price_range["max"] is not None:
+    if "min" in price_range or "max" in price_range:
         log_debug("Kết quả trích xuất khoảng giá:", price_range)
         return price_range
 
@@ -2207,8 +2448,11 @@ def search_products_by_category(category, keywords=None, price_range=None):
 
         all_products = get_product_data()
         if not all_products:
+            log_debug("Không có dữ liệu sản phẩm từ DB")
             return []
 
+        log_debug(f"Tìm kiếm sản phẩm với category={category}, keywords={keywords}, price_range={price_range}")
+        
         # Lọc theo danh mục
         filtered = all_products
         if category:
@@ -2217,10 +2461,10 @@ def search_products_by_category(category, keywords=None, price_range=None):
                 for p in filtered
                 if p.get("productCategory", "").lower() == category.lower()
             ]
+            log_debug(f"Lọc theo danh mục '{category}': {len(filtered)} sản phẩm")
 
         # Lọc theo từ khóa
         if keywords and len(keywords) > 0:
-
             def match_keywords(p):
                 name = str(p.get("productName", "")).lower()
                 desc = (
@@ -2231,11 +2475,13 @@ def search_products_by_category(category, keywords=None, price_range=None):
                 return any(kw.lower() in name or kw.lower() in desc for kw in keywords)
 
             filtered = [p for p in filtered if match_keywords(p)]
+            log_debug(f"Lọc theo từ khóa {keywords}: {len(filtered)} sản phẩm")
 
         # Lọc theo khoảng giá
         if price_range:
             min_price = price_range.get("min")
             max_price = price_range.get("max")
+            log_debug(f"Lọc theo giá: min={min_price}, max={max_price}")
 
             def match_price(p):
                 price = p.get("productPrice", p.get("price", 0))
@@ -2246,10 +2492,48 @@ def search_products_by_category(category, keywords=None, price_range=None):
                 return True
 
             filtered = [p for p in filtered if match_price(p)]
+            log_debug(f"Sau khi lọc theo giá: {len(filtered)} sản phẩm")
+            
+            # Sắp xếp theo giá
+            if min_price is not None and max_price is None:
+                # Nếu chỉ có giá tối thiểu, sắp xếp tăng dần
+                filtered.sort(key=lambda p: p.get("productPrice", p.get("price", 0)))
+                log_debug("Sắp xếp theo giá tăng dần")
+            elif max_price is not None and min_price is None:
+                # Nếu chỉ có giá tối đa, sắp xếp giảm dần
+                filtered.sort(key=lambda p: p.get("productPrice", p.get("price", 0)), reverse=True)
+                log_debug("Sắp xếp theo giá giảm dần")
+
+        # Nếu không tìm thấy sản phẩm nào phù hợp với tất cả điều kiện
+        if not filtered:
+            log_debug("Không tìm thấy sản phẩm phù hợp với tất cả điều kiện, thử lọc lại chỉ theo giá")
+            
+            # Thử lọc lại chỉ theo giá nếu có khoảng giá
+            if price_range:
+                filtered = all_products
+                min_price = price_range.get("min")
+                max_price = price_range.get("max")
+                
+                def match_price(p):
+                    price = p.get("productPrice", p.get("price", 0))
+                    if min_price is not None and price < min_price:
+                        return False
+                    if max_price is not None and price > max_price:
+                        return False
+                    return True
+                
+                filtered = [p for p in filtered if match_price(p)]
+                log_debug(f"Lọc chỉ theo giá: {len(filtered)} sản phẩm")
+                
+                # Sắp xếp theo giá
+                if min_price is not None and max_price is None:
+                    filtered.sort(key=lambda p: p.get("productPrice", p.get("price", 0)))
+                elif max_price is not None and min_price is None:
+                    filtered.sort(key=lambda p: p.get("productPrice", p.get("price", 0)), reverse=True)
 
         return filtered[:10]
     except Exception as e:
-        print(f"Lỗi khi tìm kiếm sản phẩm theo danh mục: {e}")
+        log_debug(f"Lỗi khi tìm kiếm sản phẩm theo danh mục: {str(e)}")
         return []
 
 
@@ -2322,22 +2606,73 @@ def search_products(message):
         products = search_products_by_category(category, keywords, price_range)
         log_debug("Kết quả tìm kiếm:", len(products) if products else 0, "sản phẩm")
 
-        # Nếu là truy vấn giảm cân mà không tìm thấy sản phẩm, trả về sản phẩm mẫu liên quan
-        if (
-            (not products or len(products) == 0)
-            and ("giảm cân" in message_lower or "weight loss" in message_lower or "healthy" in message_lower)
-        ):
-            products = [
-                {"productName": "Bông cải xanh", "productPrice": 25000, "productImageURL": "https://i.imgur.com/1.jpg"},
-                {"productName": "Cải xoăn", "productPrice": 30000, "productImageURL": "https://i.imgur.com/2.jpg"},
-                {"productName": "Rau diếp", "productPrice": 15000, "productImageURL": "https://i.imgur.com/3.jpg"},
-                {"productName": "Yến mạch", "productPrice": 50000, "productImageURL": "https://i.imgur.com/4.jpg"},
-                {"productName": "Quinoa", "productPrice": 80000, "productImageURL": "https://i.imgur.com/5.jpg"},
-                {"productName": "Gạo lứt", "productPrice": 40000, "productImageURL": "https://i.imgur.com/6.jpg"},
-                {"productName": "Đậu lăng", "productPrice": 35000, "productImageURL": "https://i.imgur.com/7.jpg"},
-                {"productName": "Đậu đen", "productPrice": 20000, "productImageURL": "https://i.imgur.com/8.jpg"},
-                {"productName": "Hạt chia", "productPrice": 90000, "productImageURL": "https://i.imgur.com/9.jpg"},
-            ]
+        # Nếu không tìm thấy sản phẩm phù hợp, lấy tất cả sản phẩm từ DB và lọc theo từ khóa chung
+        if not products or len(products) == 0:
+            log_debug("Không tìm thấy sản phẩm phù hợp, thử tìm kiếm tổng quát")
+            all_products = get_product_data()
+
+            if all_products and len(all_products) > 0:
+                # Nếu có từ khóa, tìm kiếm theo từ khóa trong tất cả sản phẩm
+                if keywords and len(keywords) > 0:
+                    filtered_products = []
+                    for product in all_products:
+                        product_name = str(product.get("productName", "")).lower()
+                        product_desc = str(
+                            product.get("productDescription", "")
+                        ).lower()
+                        if any(
+                            kw.lower() in product_name or kw.lower() in product_desc
+                            for kw in keywords
+                        ):
+                            filtered_products.append(product)
+
+                    # Nếu tìm thấy sản phẩm phù hợp với từ khóa
+                    if filtered_products and len(filtered_products) > 0:
+                        log_debug(
+                            f"Tìm thấy {len(filtered_products)} sản phẩm phù hợp với từ khóa"
+                        )
+                        return filtered_products[:10]
+
+                # Nếu không tìm thấy theo từ khóa hoặc không có từ khóa, trả về sản phẩm ngẫu nhiên từ DB
+                random_products = random.sample(all_products, min(5, len(all_products)))
+                log_debug(f"Trả về {len(random_products)} sản phẩm ngẫu nhiên từ DB")
+                return random_products
+
+            # Chỉ khi không có sản phẩm nào trong DB, mới trả về sản phẩm mẫu
+            log_debug("Không có sản phẩm trong DB, trả về sản phẩm mẫu")
+            if (
+                "giảm cân" in message_lower
+                or "weight loss" in message_lower
+                or "healthy" in message_lower
+            ):
+                return [
+                    {
+                        "productName": "Bông cải xanh",
+                        "productPrice": 25000,
+                        "productImageURL": "https://i.imgur.com/1.jpg",
+                    },
+                    {
+                        "productName": "Cải xoăn",
+                        "productPrice": 30000,
+                        "productImageURL": "https://i.imgur.com/2.jpg",
+                    },
+                    {
+                        "productName": "Rau diếp",
+                        "productPrice": 15000,
+                        "productImageURL": "https://i.imgur.com/3.jpg",
+                    },
+                    {
+                        "productName": "Yến mạch",
+                        "productPrice": 50000,
+                        "productImageURL": "https://i.imgur.com/4.jpg",
+                    },
+                    {
+                        "productName": "Quinoa",
+                        "productPrice": 80000,
+                        "productImageURL": "https://i.imgur.com/5.jpg",
+                    },
+                ]
+
         return products
     except Exception as e:
         log_debug("Lỗi khi tìm kiếm sản phẩm:", str(e))
@@ -2496,6 +2831,22 @@ def analyze_intent(message):
     if any(pattern in message_lower for pattern in promotion_patterns):
         log_debug("Phát hiện ý định: promotion_inquiry")
         return "promotion_inquiry"
+
+    # Kiểm tra hỏi về đặt hàng
+    order_patterns = [
+        "đặt hàng",
+        "mua hàng",
+        "order",
+        "thanh toán",
+        "mua sắm",
+        "làm sao để đặt",
+        "làm thế nào để mua",
+        "cách đặt",
+        "cách mua",
+    ]
+    if any(pattern in message_lower for pattern in order_patterns):
+        log_debug("Phát hiện ý định: order_inquiry")
+        return "order_inquiry"
 
     # Mặc định là tìm kiếm sản phẩm
     log_debug("Phát hiện ý định mặc định: product_search")
