@@ -11,6 +11,7 @@ try {
   Modal.setAppElement('#root');
 } catch (error) {
   // Ignore error in testing environment
+  console.error('Error setting app element:', error);
 }
 
 // Chuyển đổi thành function component hoàn chỉnh

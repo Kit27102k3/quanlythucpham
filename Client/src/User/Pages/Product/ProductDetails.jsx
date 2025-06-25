@@ -62,18 +62,13 @@ export default function ProductDetails() {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const allProducts = await productsApi.getAllProducts();
-
-        const product = allProducts.find(
-          (p) =>
-            p.productName
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .replace(/[^a-z0-9]+/g, "-")
-              .replace(/(^-|-$)/g, "") === slug
-        );
+        // Gọi trực tiếp API backend để lấy sản phẩm theo slug
+        console.log(`Fetching product with slug: ${slug}`);
+        const product = await productsApi.getProductBySlug(slug);
+        
         if (product) {
+          console.log(`Found product: ${product.productName} (${product.productCode}), Status: ${product.productStatus}`);
+          
           // Fetch branch name if branchId exists
           if (product.branchId) {
             try {
@@ -92,41 +87,44 @@ export default function ProductDetails() {
           }
 
           setProducts(product);
-          setProductImages(product.productImages);
-          setSelectedImage(product.productImages[0] || null);
+          setProductImages(product.productImages || []);
+          setSelectedImage(product.productImages?.[0] || null);
           sessionStorage.setItem("currentProductId", product._id);
           fetchProductReviews(product._id);
-          if (product) {
-            if (product.unitOptions && product.unitOptions.length > 0) {
-              setAvailableUnits(product.unitOptions);
-              const defaultUnit = product.unitOptions.find(
-                (opt) => opt.isDefault
-              );
-              if (defaultUnit) {
-                setSelectedUnit(defaultUnit);
-                setUnitPrice(defaultUnit.price);
-              } else {
-                setSelectedUnit(product.unitOptions[0]);
-                setUnitPrice(product.unitOptions[0].price);
-              }
-            } else {
-              const defaultUnit = {
-                unit: product.productUnit || "gram",
-                price: product.productPrice,
-                conversionRate: 1,
-                inStock: product.productStock,
-                isDefault: true,
-              };
-              setAvailableUnits([defaultUnit]);
+          
+          // Xử lý thông tin đơn vị
+          if (product.unitOptions && product.unitOptions.length > 0) {
+            setAvailableUnits(product.unitOptions);
+            const defaultUnit = product.unitOptions.find(
+              (opt) => opt.isDefault
+            );
+            if (defaultUnit) {
               setSelectedUnit(defaultUnit);
-              setUnitPrice(product.productPrice);
+              setUnitPrice(defaultUnit.price);
+            } else {
+              setSelectedUnit(product.unitOptions[0]);
+              setUnitPrice(product.unitOptions[0].price);
             }
+          } else {
+            const defaultUnit = {
+              unit: product.productUnit || "gram",
+              price: product.productPrice,
+              conversionRate: 1,
+              inStock: product.productStock,
+              isDefault: true,
+            };
+            setAvailableUnits([defaultUnit]);
+            setSelectedUnit(defaultUnit);
+            setUnitPrice(product.productPrice);
           }
+        } else {
+          console.error("Product not found for slug:", slug);
         }
       } catch (error) {
-        console.error("Lỗi khi lấy thông tin sản phẩm:", error);
+        console.error("Error fetching product:", error);
       }
     };
+    
     fetchProduct();
     return () => {
       if (reviewsInterval) {
@@ -958,11 +956,16 @@ export default function ProductDetails() {
                         key={index}
                         type="button"
                         onClick={() => handleUnitChange(unit)}
-                        className={`px-3 py-1 border rounded-md text-sm ${
+                        className={`px-3 py-1 border rounded-md text-sm transition-all duration-200 ${
                           selectedUnit && selectedUnit.unit === unit.unit
-                            ? "border text-black cursor-pointer border-[#51bb1a]"
-                            : " text-gray-700 border-gray-300 hover:border-[#51bb1a]"
+                            ? "bg-[#51bb1a] !important text-white !important border-[#51bb1a] !important font-medium"
+                            : "bg-white text-gray-700 border-gray-300 hover:border-[#51bb1a] hover:text-[#51bb1a]"
                         }`}
+                        style={{
+                          backgroundColor: selectedUnit && selectedUnit.unit === unit.unit ? '#51bb1a' : 'white',
+                          color: selectedUnit && selectedUnit.unit === unit.unit ? 'white' : '#374151',
+                          borderColor: selectedUnit && selectedUnit.unit === unit.unit ? '#51bb1a' : '#d1d5db'
+                        }}
                       >
                         {unit.conversionRate} {unit.unit}
                       </button>

@@ -86,18 +86,21 @@ function Vouchers() {
             console.log(`Vouchers API response from ${endpoint}:`, response.data);
             
             // Handle different response formats
+            let allVouchers = [];
             if (response.data && Array.isArray(response.data)) {
-              setVouchers(response.data);
+              allVouchers = response.data;
               success = true;
-              console.log(`Successfully fetched vouchers from ${endpoint}`);
-              break;
             } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-              setVouchers(response.data.data);
+              allVouchers = response.data.data;
               success = true;
-              console.log(`Successfully fetched vouchers from ${endpoint} with data property`);
+            }
+            
+            if (success) {
+              // Lọc bỏ các voucher đã hết hạn
+              const validVouchers = allVouchers.filter(voucher => !isExpired(voucher));
+              setVouchers(validVouchers);
+              console.log(`Successfully fetched and filtered ${validVouchers.length} valid vouchers from ${endpoint}`);
               break;
-            } else {
-              console.error(`Unexpected response format from ${endpoint}:`, response.data);
             }
           } catch (error) {
             console.error(`Error fetching vouchers from ${endpoint}:`, error);
@@ -108,7 +111,7 @@ function Vouchers() {
         if (!success) {
           if (import.meta.env.DEV) {
             console.log('All endpoints failed. Creating dummy voucher data for development');
-            setVouchers([
+            const dummyVouchers = [
               {
                 _id: 'dummy1',
                 code: 'WELCOME10',
@@ -144,7 +147,10 @@ function Vouchers() {
                 expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
                 description: 'Giảm 25% cho mùa hè'
               }
-            ]);
+            ];
+            // Lọc bỏ các voucher đã hết hạn trong dummy data
+            const validDummyVouchers = dummyVouchers.filter(voucher => !isExpired(voucher));
+            setVouchers(validDummyVouchers);
           } else {
             console.log('All endpoints failed and not in development mode. Setting empty vouchers array.');
             setVouchers([]);

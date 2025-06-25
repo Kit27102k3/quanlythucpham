@@ -32,7 +32,32 @@ export const getProductById = async (req, res) => {
     // Kiểm tra và cập nhật hạn sử dụng và giảm giá trước khi trả về chi tiết sản phẩm
     await updateProductExpirations();
 
-    const product = await Product.findById(id);
+    // Thay đổi: Tìm sản phẩm theo productCode thay vì _id
+    // Nếu id là MongoDB ObjectId, tìm theo _id, nếu không thì tìm theo productCode
+    let product;
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+    
+    if (isObjectId) {
+      // Tìm theo _id
+      product = await Product.findById(id);
+    } else {
+      // Tìm tất cả sản phẩm có cùng productCode
+      const products = await Product.find({ productCode: id }).sort({ createdAt: -1 });
+      
+      if (products.length > 0) {
+        // 1. Ưu tiên sản phẩm còn hàng và có createdAt mới nhất
+        const availableProducts = products.filter(p => p.productStatus !== "Hết hàng");
+        
+        if (availableProducts.length > 0) {
+          // Sản phẩm còn hàng, lấy sản phẩm mới nhất
+          product = availableProducts[0]; // Đã sắp xếp theo createdAt giảm dần
+        } else {
+          // Không có sản phẩm nào còn hàng, lấy sản phẩm mới nhất
+          product = products[0]; // Đã sắp xếp theo createdAt giảm dần
+        }
+      }
+    }
+
     if (!product) {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
     }
@@ -60,8 +85,11 @@ export const getProductBySlug = async (req, res) => {
     // Kiểm tra và cập nhật hạn sử dụng và giảm giá trước khi trả về sản phẩm
     await updateProductExpirations();
 
-    const products = await Product.find();
-    const product = products.find(
+    // Lấy tất cả sản phẩm
+    const allProducts = await Product.find().sort({ createdAt: -1 });
+    
+    // Lọc các sản phẩm có slug phù hợp
+    const matchingProducts = allProducts.filter(
       (p) =>
         p.productName
           .toLowerCase()
@@ -71,8 +99,32 @@ export const getProductBySlug = async (req, res) => {
           .replace(/(^-|-$)/g, "") === slug
     );
 
-    if (!product) {
+    if (matchingProducts.length === 0) {
       return res.status(404).json({ message: "Không tìm thấy sản phẩm" });
+    }
+
+    // Nhóm sản phẩm theo mã sản phẩm (productCode)
+    const productsByCode = {};
+    matchingProducts.forEach(product => {
+      if (!productsByCode[product.productCode]) {
+        productsByCode[product.productCode] = [];
+      }
+      productsByCode[product.productCode].push(product);
+    });
+
+    // Đối với mỗi mã sản phẩm, chọn sản phẩm mới nhất
+    const newestProducts = Object.values(productsByCode).map(products => {
+      // Sắp xếp theo createdAt giảm dần (mới nhất trước)
+      return products.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    });
+
+    // Tìm sản phẩm còn hàng và mới nhất
+    let product = newestProducts.find(p => p.productStatus === "Còn hàng");
+    
+    // Nếu không có sản phẩm nào còn hàng, lấy sản phẩm mới nhất
+    if (!product && newestProducts.length > 0) {
+      // Sắp xếp theo createdAt giảm dần
+      product = newestProducts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
     }
 
     // Chuyển đổi dữ liệu số thành chuỗi
@@ -86,8 +138,11 @@ export const getProductBySlug = async (req, res) => {
     );
     productToSend.productWarranty = String(productToSend.productWarranty || "");
 
+    console.log(`[getProductBySlug] Trả về sản phẩm: ${productToSend.productName}, Mã: ${productToSend.productCode}, Trạng thái: ${productToSend.productStatus}`);
+    
     res.status(200).json(productToSend);
   } catch (error) {
+    console.error("[getProductBySlug] Lỗi:", error);
     res.status(500).json({ message: "Lấy chi tiết sản phẩm thất bại", error });
   }
 };

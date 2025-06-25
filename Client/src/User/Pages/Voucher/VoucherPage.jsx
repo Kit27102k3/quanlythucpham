@@ -43,22 +43,31 @@ const VoucherPage = () => {
       const response = await axios.get(`${API_URLS.COUPONS}/all-for-debug`);
       console.log('Fetched all vouchers from debug endpoint:', response.data);
       
+      let allVouchers = [];
       if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-        setVouchers(response.data);
+        allVouchers = response.data;
       } else if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
-        setVouchers(response.data.data);
+        allVouchers = response.data.data;
       } else {
         // Fallback to regular coupon API if debug endpoint fails
         const coupons = await couponApi.getPublicCoupons();
         console.log('Fallback to couponApi:', coupons);
         
         if (coupons && Array.isArray(coupons) && coupons.length > 0) {
-          setVouchers(coupons);
+          allVouchers = coupons;
         } else {
           console.log('No vouchers found');
           setVouchers([]);
           showToast("info", "Không có mã giảm giá nào trong hệ thống");
         }
+      }
+      
+      // Lọc bỏ các voucher đã hết hạn
+      const validVouchers = allVouchers.filter(voucher => !isExpired(voucher));
+      setVouchers(validVouchers);
+      
+      if (allVouchers.length > 0 && validVouchers.length === 0) {
+        showToast("info", "Hiện tại không có mã giảm giá khả dụng");
       }
     } catch (error) {
       console.error("Error fetching vouchers:", error);
@@ -67,7 +76,13 @@ const VoucherPage = () => {
         // Try the regular endpoint as fallback
         const coupons = await couponApi.getPublicCoupons();
         if (coupons && Array.isArray(coupons) && coupons.length > 0) {
-          setVouchers(coupons);
+          // Lọc bỏ các voucher đã hết hạn
+          const validVouchers = coupons.filter(voucher => !isExpired(voucher));
+          setVouchers(validVouchers);
+          
+          if (coupons.length > 0 && validVouchers.length === 0) {
+            showToast("info", "Hiện tại không có mã giảm giá khả dụng");
+          }
         } else {
           setVouchers([]);
           showToast("error", "Đã xảy ra lỗi khi tải danh sách voucher");
@@ -358,8 +373,8 @@ const VoucherPage = () => {
               <div
                 key={voucher._id}
                 className={`voucher-card ${
-                  isExpired(voucher) ? "expired" : ""
-                } ${isVoucherSaved(voucher._id) ? "saved" : ""}`}
+                  isVoucherSaved(voucher._id) ? "saved" : ""
+                }`}
               >
                 <div className="voucher-card-inner">
                   {isVoucherSaved(voucher._id) && (
@@ -384,9 +399,6 @@ const VoucherPage = () => {
                       <span className="voucher-type-tag">
                         {voucher.type === "percentage" ? "Giảm %" : "Giảm tiền"}
                       </span>
-                      {isExpired(voucher) && (
-                        <span className="voucher-expired-tag">Đã hết hạn</span>
-                      )}
                       {isOutOfStock(voucher) && (
                         <span className="voucher-expired-tag">Đã hết</span>
                       )}

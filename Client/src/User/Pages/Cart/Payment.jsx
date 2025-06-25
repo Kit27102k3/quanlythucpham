@@ -55,7 +55,7 @@ export default function Payment() {
   const [selectedBranch, setSelectedBranch] = useState(null);
 
   const shippingFee = useMemo(() => {
-    const baseFee = 0;
+    const baseFee = 20000;
     const distance = assignedBranch?.distance || 0;
     let distanceFee = 0;
     if (distance > 5) {
@@ -235,6 +235,12 @@ export default function Payment() {
         });
 
         setUserSavedVouchers(validVouchers);
+        
+        // Hiển thị thông báo nếu có voucher bị lọc ra
+        if (response.data.length > validVouchers.length) {
+          const removedCount = response.data.length - validVouchers.length;
+          toast.info(`${removedCount} voucher đã hết hạn hoặc không khả dụng đã được ẩn.`);
+        }
       }
     } catch (error) {
       console.error("Error fetching saved vouchers:", error);

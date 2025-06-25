@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import { API_URLS } from '../config/apiConfig';
 import { toast, ToastContainer } from 'react-toastify';
@@ -118,8 +118,8 @@ const FixPaymentStatus = () => {
         <p className="mb-1">Hướng dẫn:</p>
         <ol className="list-decimal pl-5 space-y-1">
           <li>Nhập mã đơn hàng cần cập nhật trạng thái thanh toán</li>
-          <li>Nhấn "Cập nhật trạng thái" để cập nhật trạng thái thanh toán</li>
-          <li>Hoặc nhấn "Đánh dấu đã thanh toán" để sử dụng API mark-paid</li>
+          <li>Nhấn &quot;Cập nhật trạng thái&quot; để cập nhật trạng thái thanh toán</li>
+          <li>Hoặc nhấn &quot;Đánh dấu đã thanh toán&quot; để sử dụng API mark-paid</li>
           <li>Sau khi cập nhật, làm mới trang đơn hàng để xem kết quả</li>
         </ol>
       </div>

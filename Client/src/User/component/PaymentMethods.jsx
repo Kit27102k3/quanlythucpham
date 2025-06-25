@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+/* eslint-disable react/prop-types */
+import  { useState } from 'react';
 import { Button, message } from 'antd';
 import axios from 'axios';
 import SePayCheckout from './SePayCheckout';

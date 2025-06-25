@@ -29,7 +29,17 @@ const SavedVoucher = () => {
 
       const response = await savedVoucherApi.getUserSavedVouchers(token);
       if (response.success && response.data && response.data.length > 0) {
-        setSavedVouchers(response.data);
+        // Lọc bỏ các voucher đã hết hạn
+        const validVouchers = response.data.filter(voucher => 
+          !isExpired(voucher.couponId) && voucher.couponId.isActive
+        );
+        setSavedVouchers(validVouchers);
+        
+        // Hiển thị thông báo nếu có voucher bị lọc ra
+        if (response.data.length > validVouchers.length) {
+          const removedCount = response.data.length - validVouchers.length;
+          toast.info(`${removedCount} voucher đã hết hạn hoặc không còn hoạt động đã được ẩn.`);
+        }
       } else {
         setSavedVouchers([]);
       }
@@ -148,13 +158,6 @@ const SavedVoucher = () => {
         <div className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
           <i className="pi pi-check mr-1"></i>
           <span>Đã sử dụng</span>
-        </div>
-      );
-    } else if (isExpired(coupon)) {
-      return (
-        <div className="flex items-center px-2 py-1 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
-          <i className="pi pi-clock mr-1"></i>
-          <span>Đã hết hạn</span>
         </div>
       );
     } else if (isInactive(coupon)) {

@@ -366,7 +366,8 @@ const startServer = (port) => {
 
   try {
     const server = app.listen(port, () => {
-      // Removed console.log for server running
+      console.log(`Server đang chạy trên cổng ${port}`);
+      console.log(`Đã áp dụng thay đổi cho API getProductById để ưu tiên lấy sản phẩm mới thay vì sản phẩm hết hạn.`);
 
       // Schedule cleanup of expired vouchers
       scheduleExpiredVoucherCleanup(); // Run once at startup

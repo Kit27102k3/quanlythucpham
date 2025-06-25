@@ -68,11 +68,28 @@ export const productsApi = {
     try {
       const token = localStorage.getItem("accessToken");
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await axios.get(`${API_URL}/${id}`, { headers });
+      
+      // Đổi đường dẫn API để gọi đúng endpoint mới đã cập nhật
+      const response = await axios.get(`${API_BASE_URL}/api/products/productId/${id}`, { headers });
+      
+      console.log(`Fetched product by ID/code ${id}:`, response.data);
       return response.data;
     } catch (error) {
       console.error("Error fetching product by ID:", error);
-      throw error;
+      
+      // Cố gắng thử lại với API cũ nếu API mới thất bại
+      try {
+        console.log("Trying fallback API endpoint...");
+        const token = localStorage.getItem("accessToken");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const fallbackResponse = await axios.get(`${API_URL}/${id}`, { headers });
+        
+        console.log(`Fallback: Fetched product by ID ${id}:`, fallbackResponse.data);
+        return fallbackResponse.data;
+      } catch (fallbackError) {
+        console.error("Both API endpoints failed:", fallbackError);
+        throw fallbackError;
+      }
     }
   },
 
@@ -426,13 +443,41 @@ export const productsApi = {
 
   getProductBySlug: async (slug) => {
     try {
-      const response = await axios.get(
-        `${API_URL}/slug/${encodeURIComponent(slug)}`
-      );
+      const token = localStorage.getItem("accessToken");
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      console.log(`Gọi API lấy sản phẩm theo slug: ${slug}`);
+      const response = await axios.get(`${API_BASE_URL}/api/products/slug/${slug}`, { headers });
+      
+      console.log(`Kết quả API cho slug ${slug}:`, response.data);
       return response.data;
     } catch (error) {
-      console.error("Lỗi khi lấy thông tin sản phẩm theo slug:", error);
-      throw error;
+      console.error(`Lỗi khi lấy sản phẩm theo slug ${slug}:`, error);
+      
+      // Thử fallback với cách cũ
+      try {
+        console.log("Thử cách cũ - tìm trong danh sách sản phẩm");
+        const allProducts = await productsApi.getAllProducts();
+        const product = allProducts.find(
+          (p) =>
+            p.productName
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/(^-|-$)/g, "") === slug
+        );
+        
+        if (product) {
+          console.log("Tìm thấy sản phẩm từ cách cũ:", product);
+          return product;
+        }
+        
+        throw new Error("Không tìm thấy sản phẩm");
+      } catch (fallbackError) {
+        console.error("Cả hai cách đều thất bại:", fallbackError);
+        throw fallbackError;
+      }
     }
   },
 
